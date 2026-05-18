@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx prisma *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)",
+      "Bash(npx --yes prisma generate)",
+      "Bash(docker-compose down *)",
+      "Bash(docker-compose up *)",
+      "Bash(tasklist)",
+      "Bash(findstr /i \"node.exe\")",
+      "Bash(findstr /i \"node\")",
+      "Bash(findstr -i \"prisma node next\")",
+      "PowerShell(Get-Process *)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

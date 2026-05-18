@@ -1,0 +1,261 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════
+// КОРИСТУВАЧІ
+// ═══════════════════════════════════════
+
+model User {
+  id             String    @id @default(cuid())
+  email          String    @unique
+  emailVerified  DateTime?
+  name           String?
+  passwordHash   String?
+  role           Role      @default(USER)
+  isBlocked      Boolean   @default(false)
+  telegramChatId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  wallets       Wallet[]
+  triggers      PriceTrigger[]
+  notifications NotificationLog[]
+  accounts      Account[]
+  sessions      Session[]
+  snapshots     PortfolioSnapshot[]
+
+  @@index([email])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ═══════════════════════════════════════
+// ГАМАНЦІ
+// ═══════════════════════════════════════
+
+model Wallet {
+  id         String    @id @default(cuid())
+  userId     String
+  address    String
+  network    Network   // EVM = одна адреса для всіх 7 EVM-мереж; SOLANA = окремо
+  label      String?
+  isActive   Boolean   @default(true)
+  lastSyncAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balances     TokenBalance[]
+  transactions WalletTransaction[]
+
+  @@unique([userId, address, network])
+  @@index([userId])
+}
+
+// EVM — одна адреса покриває всі EVM-мережі (Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche)
+// SOLANA — окремо
+enum Network {
+  EVM
+  SOLANA
+}
+
+// ═══════════════════════════════════════
+// БАЛАНСИ ТОКЕНІВ
+// ═══════════════════════════════════════
+
+model TokenBalance {
+  id           String   @id @default(cuid())
+  walletId     String
+  tokenSymbol  String
+  tokenName    String
+  // chainName — конкретна блокчейн-мережа: "ethereum","bsc","polygon","arbitrum","optimism","base","avalanche","solana"
+  chainName    String   @default("")
+  tokenAddress String   @default("") // "" для нативних токенів
+  decimals     Int      @default(18)
+  balance      Float
+  usdValue     Float    @default(0)
+  priceUsd     Float    @default(0) // ціна за одиницю токена (USD)
+  priceChange24h Float  @default(0) // % зміна за 24 год
+  logoUrl      String?
+  coingeckoId  String?
+  isSpam       Boolean  @default(false)
+  isHidden     Boolean  @default(false) // приховано вручну користувачем
+  updatedAt    DateTime @updatedAt
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, chainName, tokenAddress, tokenSymbol])
+  @@index([walletId])
+}
+
+// ═══════════════════════════════════════
+// ТРАНЗАКЦІЇ
+// ═══════════════════════════════════════
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  walletId    String
+  hash        String
+  chainName   String   @default("")
+  type        String
+  tokenSymbol String?
+  tokenName   String?
+  fromAddress String?
+  toAddress   String?
+  value       Float?
+  usdValue    Float?
+  gasUsed     Float?
+  status      String   @default("success")
+  blockNumber BigInt?
+  timestamp   DateTime
+  createdAt   DateTime @default(now())
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, chainName, hash])
+  @@index([walletId, timestamp])
+}
+
+// ═══════════════════════════════════════
+// РИНКОВІ ЦІНИ (КЕШ)
+// ═══════════════════════════════════════
+
+model TokenPrice {
+  id             String   @id @default(cuid())
+  tokenId        String
+  symbol         String
+  name           String
+  currentPrice   Float
+  priceChange24h Float    @default(0)
+  priceChange7d  Float    @default(0)
+  marketCap      Float?
+  volume24h      Float?
+  logoUrl        String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@unique([tokenId])
+  @@index([symbol])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  tokenId   String
+  price     Float
+  timestamp DateTime
+  createdAt DateTime @default(now())
+
+  @@index([tokenId, timestamp])
+}
+
+// ═══════════════════════════════════════
+// ЦІНОВІ ТРИГЕРИ
+// ═══════════════════════════════════════
+
+model PriceTrigger {
+  id            String           @id @default(cuid())
+  userId        String
+  tokenId       String
+  tokenSymbol   String
+  tokenName     String
+  threshold     Float
+  direction     TriggerDirection @default(BOTH)
+  interval      Int              @default(60)
+  isActive      Boolean          @default(true)
+  lastCheckedAt DateTime?
+  lastPrice     Float?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications NotificationLog[]
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+enum TriggerDirection {
+  UP
+  DOWN
+  BOTH
+}
+
+// ═══════════════════════════════════════
+// ЖУРНАЛ СПОВІЩЕНЬ
+// ═══════════════════════════════════════
+
+model NotificationLog {
+  id           String   @id @default(cuid())
+  userId       String
+  triggerId    String?
+  tokenSymbol  String
+  message      String
+  deltaPercent Float
+  price        Float
+  status       String   @default("sent")
+  sentAt       DateTime @default(now())
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trigger PriceTrigger? @relation(fields: [triggerId], references: [id])
+
+  @@index([userId])
+  @@index([triggerId])
+}
+
+// ═══════════════════════════════════════
+// SNAPSHOT ВАРТОСТІ ПОРТФЕЛЯ
+// ═══════════════════════════════════════
+
+model PortfolioSnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  totalUsd  Float
+  timestamp DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, timestamp])
+}

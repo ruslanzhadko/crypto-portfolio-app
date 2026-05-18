@@ -1,0 +1,265 @@
+import { Network } from '@prisma/client';
+import { prisma } from '@/lib/db/prisma';
+import {
+  fetchWalletTokens,
+  fetchWalletTransactions,
+  MIN_TOKEN_USD,
+  type NormalizedToken,
+} from '@/lib/services/moralis';
+import { fetchPricesByIds } from '@/lib/services/coingecko';
+import { getChainInfo } from '@/lib/utils/networks';
+
+export interface SyncResult {
+  walletId: string;
+  tokensSynced: number;
+  transactionsSynced: number;
+  spamFiltered: number;
+  totalUsd: number;
+  syncedAt: Date;
+}
+
+// Ключ для ідентифікації токена незалежно від id запису в БД
+function tokenKey(chainName: string, tokenAddress: string, tokenSymbol: string): string {
+  return `${chainName}::${tokenAddress}::${tokenSymbol.toLowerCase()}`;
+}
+
+export async function syncWallet(walletId: string): Promise<SyncResult> {
+  const wallet = await prisma.wallet.findUnique({
+    where: { id: walletId },
+    select: { id: true, address: true, network: true },
+  });
+  if (!wallet) throw new Error('Гаманець не знайдено');
+
+  const [tokens, txs] = await Promise.all([
+    fetchWalletTokens(wallet.address, wallet.network),
+    fetchWalletTransactions(wallet.address, wallet.network, 25).catch(() => []),
+  ]);
+
+  const enriched = await applyCachedPrices(tokens, wallet.network);
+  await enrichMissingPrices(enriched);
+
+  const spamCount = enriched.filter(
+    (t) => t.isSpam || (!t.isNative && t.usdValue < MIN_TOKEN_USD),
+  ).length;
+
+  const toSave = enriched.filter((t) => t.balance > 0);
+
+  // Зберігаємо isHidden/isSpam перед видаленням — щоб відновити після sync
+  const prevTokens = await prisma.tokenBalance.findMany({
+    where: { walletId },
+    select: { chainName: true, tokenAddress: true, tokenSymbol: true, isHidden: true },
+  });
+  const prevHidden = new Map<string, boolean>();
+  for (const t of prevTokens) {
+    if (t.isHidden) {
+      prevHidden.set(tokenKey(t.chainName, t.tokenAddress, t.tokenSymbol), true);
+    }
+  }
+
+  // Якщо API повернув 0 токенів але в БД вже є дані — підозрілий стан
+  // (ліміт API, порожня відповідь). Не видаляємо, просто оновлюємо lastSyncAt.
+  if (toSave.length === 0) {
+    const existing = await prisma.tokenBalance.count({ where: { walletId } });
+    if (existing > 0) {
+      await prisma.wallet.update({ where: { id: walletId }, data: { lastSyncAt: new Date() } });
+      return { walletId, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date() };
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.tokenBalance.deleteMany({ where: { walletId } });
+
+    if (toSave.length > 0) {
+      await tx.tokenBalance.createMany({
+        data: toSave.map((t) => {
+          const key = tokenKey(t.chainName, t.address, t.symbol);
+          return {
+            walletId,
+            tokenSymbol: t.symbol,
+            tokenName: t.name,
+            chainName: t.chainName,
+            tokenAddress: t.address,
+            decimals: t.decimals,
+            balance: t.balance,
+            usdValue: t.usdValue,
+            priceUsd: t.priceUsd,
+            priceChange24h: t.priceChange24h,
+            logoUrl: t.logoUrl,
+            coingeckoId: t.coingeckoId ?? null,
+            isSpam: t.isSpam || (!t.isNative && t.usdValue < MIN_TOKEN_USD),
+            // Відновлюємо isHidden якщо токен раніше був прихований користувачем
+            isHidden: prevHidden.get(key) ?? false,
+          };
+        }),
+        skipDuplicates: true,
+      });
+    }
+
+    for (const txItem of txs) {
+      if (!txItem.hash) continue;
+      await tx.walletTransaction.upsert({
+        where: {
+          walletId_chainName_hash: {
+            walletId,
+            chainName: txItem.chainName,
+            hash: txItem.hash,
+          },
+        },
+        create: {
+          walletId,
+          hash: txItem.hash,
+          chainName: txItem.chainName,
+          type: txItem.type,
+          tokenSymbol: txItem.tokenSymbol,
+          tokenName: txItem.tokenName,
+          fromAddress: txItem.fromAddress,
+          toAddress: txItem.toAddress,
+          value: txItem.value,
+          usdValue: txItem.usdValue,
+          gasUsed: txItem.gasUsed,
+          status: txItem.status,
+          blockNumber: txItem.blockNumber,
+          timestamp: txItem.timestamp,
+        },
+        update: {},
+      });
+    }
+
+    await tx.wallet.update({
+      where: { id: walletId },
+      data: { lastSyncAt: new Date() },
+    });
+  });
+
+  const totalUsd = toSave
+    .filter((t) => !prevHidden.get(tokenKey(t.chainName, t.address, t.symbol)))
+    .reduce((s, t) => s + t.usdValue, 0);
+
+  return {
+    walletId,
+    tokensSynced: toSave.length,
+    transactionsSynced: txs.length,
+    spamFiltered: spamCount,
+    totalUsd,
+    syncedAt: new Date(),
+  };
+}
+
+// ─────────────────────────────────────────
+// Підтягування цін для токенів без USD-вартості
+// ─────────────────────────────────────────
+
+async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
+  // Запитуємо CoinGecko для всіх токенів з coingeckoId, де відсутні priceUsd або usdValue.
+  // Це покриває нативні EVM-токени та Solana, у яких Moralis не повертає ціни.
+  const missingIds = Array.from(
+    new Set(
+      tokens
+        .filter((t) => (t.priceUsd === 0 || t.usdValue === 0) && t.coingeckoId)
+        .map((t) => t.coingeckoId!),
+    ),
+  );
+  if (missingIds.length === 0) return;
+
+  const prices = await fetchPricesByIds(missingIds).catch(() => new Map());
+  if (prices.size === 0) return;
+
+  // Оновлюємо priceUsd / priceChange24h / usdValue в масиві збагачених токенів
+  for (const t of tokens) {
+    if (!t.coingeckoId) continue;
+    const p = prices.get(t.coingeckoId);
+    if (!p) continue;
+    if (t.priceUsd === 0 && p.price > 0) t.priceUsd = p.price;
+    if (t.priceChange24h === 0 && Number.isFinite(p.change24h)) {
+      t.priceChange24h = p.change24h;
+    }
+    if (t.usdValue === 0 && p.price > 0) t.usdValue = t.balance * p.price;
+  }
+
+  // Зберігаємо ціни в кеш, щоб наступні синки не потребували живого запиту
+  const now = new Date();
+  await Promise.allSettled(
+    Array.from(prices.values()).map((p) =>
+      prisma.tokenPrice.upsert({
+        where: { tokenId: p.id },
+        create: {
+          tokenId: p.id,
+          symbol: p.symbol ?? p.id,
+          name: p.name ?? p.id,
+          currentPrice: p.price,
+          priceChange24h: p.change24h,
+          marketCap: p.marketCap ?? null,
+          volume24h: p.volume24h ?? null,
+          logoUrl: p.image ?? null,
+        },
+        update: {
+          currentPrice: p.price,
+          priceChange24h: p.change24h,
+          marketCap: p.marketCap ?? null,
+          volume24h: p.volume24h ?? null,
+          ...(p.image ? { logoUrl: p.image } : {}),
+        },
+      }).then(() =>
+        prisma.priceHistory.create({ data: { tokenId: p.id, price: p.price, timestamp: now } }),
+      ),
+    ),
+  );
+}
+
+// ─────────────────────────────────────────
+// Збагачення кешованими цінами
+// ─────────────────────────────────────────
+
+interface EnrichedToken extends NormalizedToken {
+  coingeckoId: string | null;
+}
+
+async function applyCachedPrices(
+  tokens: NormalizedToken[],
+  network: Network,
+): Promise<EnrichedToken[]> {
+  if (tokens.length === 0) return [];
+
+  const symbols = Array.from(new Set(tokens.map((t) => t.symbol.toLowerCase())));
+  const cached = await prisma.tokenPrice.findMany({
+    where: { symbol: { in: symbols, mode: 'insensitive' } },
+  });
+
+  const priceBySymbol = new Map<string, { price: number; change24h: number; id: string }>();
+  for (const p of cached) {
+    const key = p.symbol.toLowerCase();
+    if (!priceBySymbol.has(key)) {
+      priceBySymbol.set(key, {
+        price: p.currentPrice,
+        change24h: p.priceChange24h,
+        id: p.tokenId,
+      });
+    }
+  }
+
+  return tokens.map((t): EnrichedToken => {
+    const fromCache = priceBySymbol.get(t.symbol.toLowerCase());
+    let coingeckoId: string | null = null;
+    let usdValue = t.usdValue;
+    let priceUsd = t.priceUsd;
+    let priceChange24h = t.priceChange24h;
+
+    if (t.isNative) {
+      const chainInfo = getChainInfo(t.chainName);
+      coingeckoId = chainInfo?.coingeckoNativeId ?? null;
+      if (fromCache) {
+        if (priceUsd === 0) priceUsd = fromCache.price;
+        if (priceChange24h === 0) priceChange24h = fromCache.change24h;
+        if (usdValue === 0) usdValue = t.balance * fromCache.price;
+      }
+    } else if (fromCache) {
+      // Для не-нативних EVM/Solana токенів — лише як fallback за символом
+      coingeckoId = fromCache.id;
+      if (priceUsd === 0) priceUsd = fromCache.price;
+      if (priceChange24h === 0) priceChange24h = fromCache.change24h;
+      if (usdValue === 0) usdValue = t.balance * fromCache.price;
+    }
+
+    return { ...t, usdValue, priceUsd, priceChange24h, coingeckoId };
+  });
+}
