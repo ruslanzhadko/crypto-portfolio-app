@@ -1,6 +1,7 @@
 import { TriggerDirection } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko';
+import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { sendPriceAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 
@@ -120,35 +121,96 @@ async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<void
   );
 }
 
+/**
+ * Перераховує `usdValue` / `priceUsd` / `priceChange24h` для всіх токен-балансів.
+ *
+ * Джерело цін — `price-feed` (Binance native + DexScreener за contract address).
+ * Для токенів без contract але з `coingeckoId` — fallback на `TokenPrice` кеш,
+ * який окремо оновлює CoinGecko через `persistPrices()` (виклик 1-2 вище у пайплайні).
+ *
+ * Чому НЕ Moralis: він був би тут найдорожчим джерелом і вже виконав свою роботу
+ * під час wallet sync. Окреме оновлення цін — це саме те, що має робити cron безкоштовно.
+ */
 async function recalculateBalances(): Promise<number> {
   const balances = await prisma.tokenBalance.findMany({
-    where: { coingeckoId: { not: null } },
+    where: { isSpam: false, balance: { gt: 0 } },
+    select: {
+      id: true,
+      chainName: true,
+      tokenAddress: true,
+      tokenSymbol: true,
+      balance: true,
+      usdValue: true,
+      priceUsd: true,
+      priceChange24h: true,
+      coingeckoId: true,
+    },
   });
   if (balances.length === 0) return 0;
 
-  const ids = Array.from(new Set(balances.map((b) => b.coingeckoId).filter((id): id is string => !!id)));
-  const cached = await prisma.tokenPrice.findMany({
-    where: { tokenId: { in: ids } },
-  });
-  const priceMap = new Map(
-    cached.map((c) => [c.tokenId, { price: c.currentPrice, change24h: c.priceChange24h }]),
+  // Дедуплікація запитів: для одного контракту може бути N записів у різних гаманцях
+  const queries = new Map<string, PriceQuery>();
+  for (const b of balances) {
+    const isNative = b.tokenAddress === '';
+    const key = priceKeyFor(b.chainName, b.tokenAddress);
+    if (!queries.has(key)) {
+      queries.set(key, {
+        key,
+        isNative,
+        chainName: b.chainName,
+        contractAddress: isNative ? undefined : b.tokenAddress || undefined,
+      });
+    }
+  }
+
+  const feedPrices = await fetchPrices(Array.from(queries.values())).catch(
+    () => new Map(),
+  );
+
+  // CoinGecko cache як fallback для тих, кого не покрив price-feed (немає DEX-пар)
+  const cgIds = Array.from(
+    new Set(
+      balances
+        .filter(
+          (b) => b.coingeckoId && !feedPrices.has(priceKeyFor(b.chainName, b.tokenAddress)),
+        )
+        .map((b) => b.coingeckoId!),
+    ),
+  );
+  const cgCache =
+    cgIds.length > 0
+      ? await prisma.tokenPrice.findMany({
+          where: { tokenId: { in: cgIds } },
+          select: { tokenId: true, currentPrice: true, priceChange24h: true },
+        })
+      : [];
+  const cgPriceMap = new Map(
+    cgCache.map((c) => [c.tokenId, { price: c.currentPrice, change24h: c.priceChange24h }]),
   );
 
   let updated = 0;
   for (const b of balances) {
-    const entry = b.coingeckoId ? priceMap.get(b.coingeckoId) : null;
-    if (!entry || typeof entry.price !== 'number') continue;
-    const newUsd = b.balance * entry.price;
+    const feed = feedPrices.get(priceKeyFor(b.chainName, b.tokenAddress));
+    const cg = b.coingeckoId ? cgPriceMap.get(b.coingeckoId) : null;
+
+    const newPrice = feed?.price ?? cg?.price ?? null;
+    const newChange = feed?.change24h ?? cg?.change24h ?? null;
+    if (newPrice == null || newPrice <= 0) continue;
+
+    const newUsd = b.balance * newPrice;
     const usdChanged = Math.abs(newUsd - b.usdValue) >= 0.01;
-    const priceChanged = Math.abs(entry.price - b.priceUsd) >= 1e-9;
-    const changeChanged = Math.abs(entry.change24h - b.priceChange24h) >= 1e-6;
+    const priceChanged = Math.abs(newPrice - b.priceUsd) >= 1e-9;
+    const changeChanged =
+      newChange != null && Math.abs(newChange - b.priceChange24h) >= 1e-6;
+
     if (!usdChanged && !priceChanged && !changeChanged) continue;
+
     await prisma.tokenBalance.update({
       where: { id: b.id },
       data: {
         usdValue: newUsd,
-        priceUsd: entry.price,
-        priceChange24h: entry.change24h,
+        priceUsd: newPrice,
+        ...(newChange != null ? { priceChange24h: newChange } : {}),
       },
     });
     updated++;
@@ -271,6 +333,11 @@ async function checkTriggers(
   }
 
   return result;
+}
+
+/** Канонічний ключ для співставлення TokenBalance ↔ PriceQuery / PriceInfo. */
+function priceKeyFor(chainName: string, tokenAddress: string): string {
+  return `${chainName}::${tokenAddress === '' ? 'native' : tokenAddress}`;
 }
 
 function directionMatches(direction: TriggerDirection, delta: number): boolean {

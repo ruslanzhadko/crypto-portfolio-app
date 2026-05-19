@@ -2,9 +2,10 @@ import { prisma } from '@/lib/db/prisma';
 import { syncWallet, type SyncResult } from '@/lib/services/wallet-sync';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 
-// Хвилин до наступного auto-sync для одного гаманця.
-// 5 хв ≈ 12 syncів/год на гаманець у найгіршому випадку — у межах безкоштовного Moralis.
-export const SYNC_THROTTLE_MINUTES = 5;
+// Хвилин до наступного sync для одного гаманця.
+// 30 хв ≈ 2 sync/год на гаманець — економимо Moralis CU.
+// Ціни оновлюються окремо через DexScreener/Binance (price-feed.ts), що безкоштовне.
+export const SYNC_THROTTLE_MINUTES = 30;
 
 export interface PortfolioSyncResult {
   synced: SyncResult[];

@@ -7,6 +7,7 @@ import {
   type NormalizedToken,
 } from '@/lib/services/moralis';
 import { fetchPricesByIds } from '@/lib/services/coingecko';
+import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
 
 export interface SyncResult {
@@ -149,61 +150,96 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
 // Підтягування цін для токенів без USD-вартості
 // ─────────────────────────────────────────
 
+/**
+ * Заповнює ціни для токенів, які Moralis повернув без `priceUsd` або з нульовим `usdValue`.
+ *
+ * Pipeline:
+ *  1. price-feed (Binance native + DexScreener за contract address) — головне джерело.
+ *  2. CoinGecko по coingeckoId — fallback для токенів без DEX-листингу.
+ *
+ * CoinGecko результати кешуються у `TokenPrice` (як раніше). DexScreener/Binance
+ * не кешуються — їх дешево перезапитати при наступному sync.
+ */
 async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
-  // Запитуємо CoinGecko для всіх токенів з coingeckoId, де відсутні priceUsd або usdValue.
-  // Це покриває нативні EVM-токени та Solana, у яких Moralis не повертає ціни.
-  const missingIds = Array.from(
-    new Set(
-      tokens
-        .filter((t) => (t.priceUsd === 0 || t.usdValue === 0) && t.coingeckoId)
-        .map((t) => t.coingeckoId!),
-    ),
-  );
-  if (missingIds.length === 0) return;
+  const needPricing = tokens.filter((t) => t.priceUsd === 0 || t.usdValue === 0);
+  if (needPricing.length === 0) return;
 
-  const prices = await fetchPricesByIds(missingIds).catch(() => new Map());
-  if (prices.size === 0) return;
+  // ── 1. price-feed (Binance + DexScreener) ──
+  const queries: PriceQuery[] = needPricing.map((t) => ({
+    key: priceFeedKey(t),
+    isNative: t.isNative,
+    chainName: t.chainName,
+    contractAddress: t.isNative ? undefined : t.address || undefined,
+  }));
+  const feedPrices = await fetchPrices(queries).catch(() => new Map());
 
-  // Оновлюємо priceUsd / priceChange24h / usdValue в масиві збагачених токенів
-  for (const t of tokens) {
-    if (!t.coingeckoId) continue;
-    const p = prices.get(t.coingeckoId);
+  for (const t of needPricing) {
+    const p = feedPrices.get(priceFeedKey(t));
     if (!p) continue;
-    if (t.priceUsd === 0 && p.price > 0) t.priceUsd = p.price;
-    if (t.priceChange24h === 0 && Number.isFinite(p.change24h)) {
-      t.priceChange24h = p.change24h;
-    }
-    if (t.usdValue === 0 && p.price > 0) t.usdValue = t.balance * p.price;
+    applyPriceToToken(t, p.price, p.change24h);
   }
 
-  // Зберігаємо ціни в кеш, щоб наступні синки не потребували живого запиту
+  // ── 2. CoinGecko fallback (тільки для токенів, що залишились без ціни) ──
+  const stillMissing = needPricing.filter(
+    (t) => t.priceUsd === 0 && t.coingeckoId,
+  );
+  if (stillMissing.length === 0) return;
+
+  const cgIds = Array.from(new Set(stillMissing.map((t) => t.coingeckoId!)));
+  const cgPrices = await fetchPricesByIds(cgIds).catch(() => new Map());
+  if (cgPrices.size === 0) return;
+
+  for (const t of stillMissing) {
+    const p = cgPrices.get(t.coingeckoId!);
+    if (!p) continue;
+    applyPriceToToken(t, p.price, p.change24h);
+  }
+
+  // Кешуємо CoinGecko-ціни у TokenPrice (важливо для cron і market сторінок).
   const now = new Date();
   await Promise.allSettled(
-    Array.from(prices.values()).map((p) =>
-      prisma.tokenPrice.upsert({
-        where: { tokenId: p.id },
-        create: {
-          tokenId: p.id,
-          symbol: p.symbol ?? p.id,
-          name: p.name ?? p.id,
-          currentPrice: p.price,
-          priceChange24h: p.change24h,
-          marketCap: p.marketCap ?? null,
-          volume24h: p.volume24h ?? null,
-          logoUrl: p.image ?? null,
-        },
-        update: {
-          currentPrice: p.price,
-          priceChange24h: p.change24h,
-          marketCap: p.marketCap ?? null,
-          volume24h: p.volume24h ?? null,
-          ...(p.image ? { logoUrl: p.image } : {}),
-        },
-      }).then(() =>
-        prisma.priceHistory.create({ data: { tokenId: p.id, price: p.price, timestamp: now } }),
-      ),
+    Array.from(cgPrices.values()).map((p) =>
+      prisma.tokenPrice
+        .upsert({
+          where: { tokenId: p.id },
+          create: {
+            tokenId: p.id,
+            symbol: p.symbol ?? p.id,
+            name: p.name ?? p.id,
+            currentPrice: p.price,
+            priceChange24h: p.change24h,
+            marketCap: p.marketCap ?? null,
+            volume24h: p.volume24h ?? null,
+            logoUrl: p.image ?? null,
+          },
+          update: {
+            currentPrice: p.price,
+            priceChange24h: p.change24h,
+            marketCap: p.marketCap ?? null,
+            volume24h: p.volume24h ?? null,
+            ...(p.image ? { logoUrl: p.image } : {}),
+          },
+        })
+        .then(() =>
+          prisma.priceHistory.create({
+            data: { tokenId: p.id, price: p.price, timestamp: now },
+          }),
+        ),
     ),
   );
+}
+
+function priceFeedKey(t: EnrichedToken): string {
+  return `${t.chainName}::${t.isNative ? 'native' : t.address}::${t.symbol.toLowerCase()}`;
+}
+
+function applyPriceToToken(t: EnrichedToken, price: number, change24h: number): void {
+  if (!Number.isFinite(price) || price <= 0) return;
+  if (t.priceUsd === 0) t.priceUsd = price;
+  if (t.priceChange24h === 0 && Number.isFinite(change24h)) {
+    t.priceChange24h = change24h;
+  }
+  if (t.usdValue === 0) t.usdValue = t.balance * price;
 }
 
 // ─────────────────────────────────────────

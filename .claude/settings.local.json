@@ -13,7 +13,9 @@
       "Bash(findstr /i \"node\")",
       "Bash(findstr -i \"prisma node next\")",
       "PowerShell(Get-Process *)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(npx tsx -e ' *)",
+      "Bash(npx tsx *)"
     ]
   }
 }
