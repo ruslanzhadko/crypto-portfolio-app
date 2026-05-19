@@ -89,7 +89,7 @@ export default async function DashboardPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {latestSyncAt && (
-            <span className="text-xs text-text-muted">
+            <span className="text-xs text-text-muted" suppressHydrationWarning>
               Оновлено {formatRelative(latestSyncAt)}
             </span>
           )}

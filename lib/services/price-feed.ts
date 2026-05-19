@@ -22,6 +22,8 @@ export interface PriceInfo {
   price: number;
   change24h: number;
   source: PriceSource;
+  /** Логотип токена з DexScreener info.imageUrl — є не у всіх токенів */
+  logoUrl?: string;
 }
 
 export interface PriceQuery {
@@ -167,6 +169,7 @@ interface DexPair {
   priceNative?: string; // ціна base в одиницях quote (e.g. 1 ETH = 2137 USDC)
   priceChange?: { h24?: number };
   liquidity?: { usd?: number };
+  info?: { imageUrl?: string }; // логотип токена (є не у всіх пар)
 }
 
 /**
@@ -231,12 +234,19 @@ async function fetchDexScreenerToken(
 
     // 24h change показуємо лише для base-пар — для quote-пар change стосується іншого токена
     const isBase = best.pair.baseToken.address.toLowerCase() === lowerAddr;
-    const change = isBase ? best.pair.priceChange?.h24 ?? 0 : 0;
+    const rawChange = isBase ? (best.pair.priceChange?.h24 ?? 0) : 0;
+    // Ціна не може впасти більш ніж на 100%; значення поза [-99.9, 10000] — брудні дані
+    const change = Number.isFinite(rawChange) ? Math.max(-99.9, Math.min(rawChange, 10_000)) : 0;
+
+    // Збираємо imageUrl з усіх кандидатів — беремо перший непорожній
+    const logoUrl =
+      candidates.find((c) => c.pair.info?.imageUrl)?.pair.info?.imageUrl ?? undefined;
 
     return {
       price: best.price,
-      change24h: Number.isFinite(change) ? change : 0,
+      change24h: change,
       source: 'dexscreener',
+      ...(logoUrl ? { logoUrl } : {}),
     };
   } catch (err) {
     // 404 на неіснуючий контракт — нормально, не логуємо

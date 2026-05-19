@@ -159,9 +159,10 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
     );
   }
 
-  const regularCount = visible.filter(
+  const activeTokens = visible.filter(
     (t) => !t.isSpam && !(localHidden[t.id] ?? t.isHidden),
-  ).length;
+  );
+  const uniqueChainCount = new Set(activeTokens.map((t) => t.chainName)).size;
 
   return (
     <Card>
@@ -169,7 +170,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
         <CardTitle>
           Токени{' '}
           <span className="text-sm font-normal text-text-muted">
-            ({groups.length} · {regularCount} мереж)
+            ({groups.length} · {uniqueChainCount} мереж)
           </span>
         </CardTitle>
         <div className="flex flex-wrap items-center gap-2">

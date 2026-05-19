@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ExternalLink, MoreVertical, RefreshCw, Trash2, Wallet as WalletIcon } from 'lucide-react';
 import { Network } from '@prisma/client';
@@ -34,7 +34,10 @@ export function WalletCard({ wallet }: WalletCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => setMounted(true), []);
 
   function onSync() {
     startTransition(async () => {
@@ -149,10 +152,12 @@ export function WalletCard({ wallet }: WalletCardProps) {
 
         <div className="mt-4 flex items-center justify-between gap-2">
           <NetworkBadge network={wallet.network} />
-          <span className="text-xs text-text-muted">
-            {wallet.lastSyncAt
-              ? `Sync ${formatRelative(wallet.lastSyncAt)}`
-              : 'Не синхронізовано'}
+          <span className="text-xs text-text-muted" suppressHydrationWarning>
+            {mounted
+              ? wallet.lastSyncAt
+                ? `Sync ${formatRelative(wallet.lastSyncAt)}`
+                : 'Не синхронізовано'
+              : ''}
           </span>
         </div>
       </CardContent>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AggregatedToken } from '@/lib/services/portfolio';
@@ -10,6 +11,9 @@ import { PieChart as PieIcon } from 'lucide-react';
 const COLORS = ['#6c63ff', '#a855f7', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#14f195', '#f3ba2f'];
 
 export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const top = tokens.slice(0, 7);
   const rest = tokens.slice(7);
   const restUsd = rest.reduce((s, t) => s + t.totalUsd, 0);
@@ -52,24 +56,28 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
       <CardContent className="flex flex-col gap-4 pb-4">
         {/* Pie має фіксовану висоту, легенда росте знизу */}
         <div className="h-[220px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                innerRadius={55}
-                outerRadius={90}
-                paddingAngle={2}
-                stroke="none"
-              >
-                {data.map((d, i) => (
-                  <Cell key={i} fill={d.color} />
-                ))}
-              </Pie>
-              <Tooltip content={<AllocTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
+          {mounted ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={55}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {data.map((d, i) => (
+                    <Cell key={i} fill={d.color} />
+                  ))}
+                </Pie>
+                <Tooltip content={<AllocTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full animate-pulse rounded-full bg-surface-2 mx-auto aspect-square max-h-full" />
+          )}
         </div>
 
         {/* Легенда: flex-grid з мінімальною шириною елемента, переноситься на нові рядки */}

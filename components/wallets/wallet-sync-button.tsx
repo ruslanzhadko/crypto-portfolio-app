@@ -39,6 +39,8 @@ export function WalletSyncButton({
         title: 'Sync завершено',
         description: `${data.result?.tokensSynced ?? 0} токенів · ${data.result?.transactionsSynced ?? 0} транзакцій`,
       });
+      // Сигналізуємо клієнтським компонентам (TransactionList тощо) про оновлення
+      window.dispatchEvent(new CustomEvent('wallet-synced', { detail: { walletId } }));
       router.refresh();
     });
   }

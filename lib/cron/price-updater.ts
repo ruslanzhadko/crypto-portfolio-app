@@ -127,9 +127,6 @@ async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<void
  * Джерело цін — `price-feed` (Binance native + DexScreener за contract address).
  * Для токенів без contract але з `coingeckoId` — fallback на `TokenPrice` кеш,
  * який окремо оновлює CoinGecko через `persistPrices()` (виклик 1-2 вище у пайплайні).
- *
- * Чому НЕ Moralis: він був би тут найдорожчим джерелом і вже виконав свою роботу
- * під час wallet sync. Окреме оновлення цін — це саме те, що має робити cron безкоштовно.
  */
 async function recalculateBalances(): Promise<number> {
   const balances = await prisma.tokenBalance.findMany({
@@ -210,7 +207,9 @@ async function recalculateBalances(): Promise<number> {
       data: {
         usdValue: newUsd,
         priceUsd: newPrice,
-        ...(newChange != null ? { priceChange24h: newChange } : {}),
+        ...(newChange != null
+          ? { priceChange24h: Math.max(-99.9, Math.min(newChange, 10_000)) }
+          : {}),
       },
     });
     updated++;

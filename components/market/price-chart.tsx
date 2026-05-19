@@ -35,9 +35,12 @@ const RANGES = [
 ] as const;
 
 export function PriceChart({ tokenId, initialDays = 7 }: PriceChartProps) {
+  const [mounted, setMounted] = useState(false);
   const [days, setDays] = useState<number>(initialDays);
   const [points, setPoints] = useState<PricePoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,7 +83,7 @@ export function PriceChart({ tokenId, initialDays = 7 }: PriceChartProps) {
       <CardContent className="h-[320px]">
         {error && <p className="text-sm text-danger">{error}</p>}
         {!error && points === null && <Skeleton className="h-full w-full rounded-lg" />}
-        {!error && points && points.length > 0 && (
+        {!error && points && points.length > 0 && mounted && (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={points}

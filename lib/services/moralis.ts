@@ -109,7 +109,8 @@ export interface NormalizedTransaction {
   tokenName: string | null;
   fromAddress: string | null;
   toAddress: string | null;
-  value: number | null;
+  value: number | null;       // для свопу: сума отриманого (in)
+  sentValue?: number | null;  // для свопу: сума продано (out)
   usdValue: number | null;
   gasUsed: number | null;
   status: string;
@@ -267,11 +268,12 @@ function normalizeEvmToken(t: EvmTokenItem, chainName: string): NormalizedToken 
         ? priceUsd * balance
         : 0;
 
-  const priceChange24h =
-    typeof t.usd_price_24hr_percent_change === 'number' &&
+  const rawChange = typeof t.usd_price_24hr_percent_change === 'number' &&
     Number.isFinite(t.usd_price_24hr_percent_change)
       ? t.usd_price_24hr_percent_change
       : 0;
+  // Ціна не може впасти більш ніж на 100%; значення поза [-99.9, 10000] — брудні дані Moralis
+  const priceChange24h = rawChange !== 0 ? Math.max(-99.9, Math.min(rawChange, 10_000)) : 0;
 
   return {
     symbol,

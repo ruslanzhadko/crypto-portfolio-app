@@ -3,8 +3,8 @@ import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { syncWallet } from '@/lib/services/wallet-sync';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
-import { backfillPortfolioHistory } from '@/lib/services/portfolio-backfill';
 import { MoralisApiError, MoralisConfigError } from '@/lib/services/moralis';
+import { AnkrApiError } from '@/lib/services/ankr';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -25,10 +25,12 @@ export async function POST(
 
     const result = await syncWallet(wallet.id);
     savePortfolioSnapshot(guard.user.id).catch(() => {});
-    backfillPortfolioHistory(wallet.id, guard.user.id).catch(() => {});
 
     return ok({ result });
   } catch (err) {
+    if (err instanceof AnkrApiError) {
+      return apiError('UPSTREAM_ERROR', `Ankr: ${err.message}`);
+    }
     if (err instanceof MoralisConfigError) {
       return apiError('INTERNAL_ERROR', err.message);
     }

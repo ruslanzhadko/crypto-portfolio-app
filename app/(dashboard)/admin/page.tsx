@@ -1,9 +1,13 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Bell, ShieldOff, Users, Wallet } from 'lucide-react';
+import { Bell, ShieldOff, Users, Wallet, ArrowRight } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { StatCard } from '@/components/common/stat-card';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { formatRelative } from '@/lib/utils/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,33 +33,40 @@ export default async function AdminPage() {
   const recentUsers = await prisma.user.findMany({
     orderBy: { createdAt: 'desc' },
     take: 5,
-    select: { id: true, email: true, name: true, createdAt: true, role: true },
+    select: { id: true, email: true, name: true, createdAt: true, role: true, isBlocked: true },
   });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Адміністрування</h1>
-        <p className="text-sm text-text-muted">Огляд та управління користувачами.</p>
+        <p className="text-sm text-text-muted">Огляд та управління системою.</p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Користувачі" value={totalUsers} icon={Users} />
-        <StatCard label="Заблоковані" value={blockedUsers} icon={ShieldOff} />
-        <StatCard label="Гаманці" value={totalWallets} icon={Wallet} />
         <StatCard
-          label="Активні тригери"
-          value={activeTriggers}
-          icon={Bell}
+          label="Користувачі"
+          value={totalUsers}
+          icon={Users}
+          subtext={blockedUsers > 0 ? `${blockedUsers} заблоковано` : undefined}
+          href="/admin/users"
         />
+        <StatCard label="Заблоковані" value={blockedUsers} icon={ShieldOff} href="/admin/users" />
+        <StatCard label="Гаманці" value={totalWallets} icon={Wallet} />
+        <StatCard label="Активні тригери" value={activeTriggers} icon={Bell} />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle>Сповіщення</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="-mr-2 text-xs text-text-muted">
+              <Link href="/admin/logs">
+                Всі <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="text-text-muted">За останні 24г</span>
               <span className="font-medium">{notifs24h}</span>
@@ -66,26 +77,39 @@ export default async function AdminPage() {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-text-muted">Невдалих</span>
-              <span className="font-medium text-danger">{notifsFailed}</span>
+              <span className={`font-medium ${notifsFailed > 0 ? 'text-danger' : 'text-text-muted'}`}>
+                {notifsFailed}
+              </span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
             <CardTitle>Нові користувачі</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="-mr-2 text-xs text-text-muted">
+              <Link href="/admin/users">
+                Всі <ArrowRight className="ml-1 h-3 w-3" />
+              </Link>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {recentUsers.length === 0 && (
               <p className="text-text-muted">Поки що порожньо.</p>
             )}
             {recentUsers.map((u) => (
-              <div key={u.id} className="flex items-center justify-between">
+              <div key={u.id} className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{u.name ?? u.email}</p>
                   <p className="truncate font-mono text-xs text-text-muted">{u.email}</p>
                 </div>
-                <span className="text-xs text-text-muted">{u.role}</span>
+                <div className="flex shrink-0 items-center gap-1">
+                  {u.isBlocked && <Badge variant="danger" className="text-[10px]">Blocked</Badge>}
+                  <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'} className="text-[10px]">
+                    {u.role}
+                  </Badge>
+                  <span className="text-xs text-text-muted">{formatRelative(u.createdAt)}</span>
+                </div>
               </div>
             ))}
           </CardContent>

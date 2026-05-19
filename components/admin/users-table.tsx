@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useTransition } from 'react';
-import { Loader2, Search, ShieldOff, ShieldCheck, Trash2 } from 'lucide-react';
+import { Loader2, Search, ShieldOff, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -49,31 +49,59 @@ export function UsersTable() {
     return () => clearTimeout(t);
   }, [load]);
 
+  async function patch(userId: string, body: Record<string, unknown>, successMsg: string) {
+    const res = await fetch(`/api/admin/users/${userId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+      toast({
+        variant: 'destructive',
+        title: 'Помилка',
+        description: data?.error?.message ?? 'Щось пішло не так',
+      });
+      return false;
+    }
+    toast({ title: successMsg });
+    return true;
+  }
+
   function onToggleBlock(user: UserDTO) {
     startTransition(async () => {
-      const res = await fetch(`/api/admin/users/${user.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isBlocked: !user.isBlocked }),
-      });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
-        toast({
-          variant: 'destructive',
-          title: 'Не вдалось оновити',
-          description: body?.error?.message ?? '',
-        });
-        return;
-      }
-      toast({ title: user.isBlocked ? 'Розблоковано' : 'Заблоковано' });
-      void load();
+      const ok = await patch(
+        user.id,
+        { isBlocked: !user.isBlocked },
+        user.isBlocked ? 'Акаунт розблоковано' : 'Акаунт заблоковано',
+      );
+      if (ok) void load();
+    });
+  }
+
+  function onToggleRole(user: UserDTO) {
+    const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
+    if (
+      !confirm(
+        `${newRole === 'ADMIN' ? 'Підвищити' : 'Понизити'} ${user.email} до ролі ${newRole}?`,
+      )
+    )
+      return;
+    startTransition(async () => {
+      const ok = await patch(
+        user.id,
+        { role: newRole },
+        `Роль змінено на ${newRole}`,
+      );
+      if (ok) void load();
     });
   }
 
   function onDelete(user: UserDTO) {
-    if (!confirm(`Видалити користувача ${user.email}? Всі його дані буде видалено каскадно.`)) return;
+    if (
+      !confirm(`Видалити ${user.email}? Усі дані буде видалено каскадно.`)
+    )
+      return;
     startTransition(async () => {
       const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -135,14 +163,17 @@ export function UsersTable() {
                         {u.name ?? <span className="text-text-muted">—</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'}>
-                          {u.role}
-                        </Badge>
-                        {u.isBlocked && (
-                          <Badge variant="danger" className="ml-1">
-                            Blocked
+                        <div className="flex flex-wrap items-center gap-1">
+                          <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'}>
+                            {u.role}
                           </Badge>
-                        )}
+                          {u.isBlocked && (
+                            <Badge variant="danger">Blocked</Badge>
+                          )}
+                          {u.telegramChatId && (
+                            <Badge variant="success">TG</Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="hidden px-4 py-3 text-center md:table-cell">
                         {u._count.wallets}
@@ -154,34 +185,45 @@ export function UsersTable() {
                         {formatRelative(u.createdAt)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        {u.role !== 'ADMIN' && (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onToggleBlock(u)}
-                              disabled={isPending}
-                            >
-                              {u.isBlocked ? (
-                                <ShieldCheck className="h-4 w-4 text-success" />
-                              ) : (
-                                <ShieldOff className="h-4 w-4 text-warning" />
-                              )}
-                              <span className="hidden md:inline">
-                                {u.isBlocked ? 'Розблокувати' : 'Заблокувати'}
-                              </span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDelete(u)}
-                              disabled={isPending}
-                              className="text-danger hover:text-danger"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            title={u.role === 'ADMIN' ? 'Понизити до USER' : 'Підвищити до ADMIN'}
+                            onClick={() => onToggleRole(u)}
+                            disabled={isPending}
+                          >
+                            <UserCog className="h-4 w-4 text-text-muted" />
+                          </Button>
+                          {u.role !== 'ADMIN' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onToggleBlock(u)}
+                                disabled={isPending}
+                              >
+                                {u.isBlocked ? (
+                                  <ShieldCheck className="h-4 w-4 text-success" />
+                                ) : (
+                                  <ShieldOff className="h-4 w-4 text-warning" />
+                                )}
+                                <span className="hidden md:inline">
+                                  {u.isBlocked ? 'Розблокувати' : 'Заблокувати'}
+                                </span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onDelete(u)}
+                                disabled={isPending}
+                                className="text-danger hover:text-danger"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

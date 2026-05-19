@@ -92,8 +92,9 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
           : cached?.price
             ? cached.price
             : fallbackPriceFromUsd;
-      const effectiveChange =
+      const rawChange =
         b.priceChange24h !== 0 ? b.priceChange24h : cached?.change24h ?? 0;
+      const effectiveChange = Number.isFinite(rawChange) ? rawChange : 0;
 
       const existing = tokenMap.get(key);
       const breakdown: WalletTokenBreakdown = {
@@ -144,11 +145,13 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
         });
       }
 
-      // USD-зважена 24г-зміна
-      if (effectiveChange !== 0 && b.usdValue > 0) {
+      // USD-зважена 24г-зміна; ціна не може впасти більш ніж на 100% — клампуємо брудні дані
+      const clampedChange =
+        effectiveChange !== 0 ? Math.max(-99.9, Math.min(effectiveChange, 10_000)) : 0;
+      if (clampedChange !== 0 && b.usdValue > 0) {
         const acc = changeAcc.get(key) ?? { weighted: 0, weight: 0 };
         changeAcc.set(key, {
-          weighted: acc.weighted + effectiveChange * b.usdValue,
+          weighted: acc.weighted + clampedChange * b.usdValue,
           weight: acc.weight + b.usdValue,
         });
       }
@@ -196,15 +199,21 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     }))
     .sort((a, b) => b.totalUsd - a.totalUsd);
 
-  // Зважена зміна 24г на рівні портфеля
+  // Зважена зміна 24г на рівні портфеля.
+  // Guard 1: change < -100 дає від'ємний знаменник → клампуємо до -99.9.
+  // Guard 2: contribution обмежується [-totalUsd, +totalUsd*100], щоб один токен
+  //          з підозрілими даними (-99.9%) не зруйнував весь портфельний показник.
   let priceChange24hUsd = 0;
   for (const t of tokens) {
-    const prev = t.priceChange24h !== 0
-      ? t.totalUsd / (1 + t.priceChange24h / 100)
-      : t.totalUsd;
-    priceChange24hUsd += t.totalUsd - prev;
+    if (t.priceChange24h === 0) continue;
+    const safeChange = Math.max(-99.9, t.priceChange24h);
+    const prev = t.totalUsd / (1 + safeChange / 100);
+    const contribution = t.totalUsd - prev;
+    // Максимальний збиток = поточна вартість (ціна не може стати від'ємною)
+    priceChange24hUsd += Math.max(contribution, -t.totalUsd);
   }
-  const priceChange24h = totalUsd > 0 ? (priceChange24hUsd / totalUsd) * 100 : 0;
+  const rawPriceChange24h = totalUsd > 0 ? (priceChange24hUsd / totalUsd) * 100 : 0;
+  const priceChange24h = Number.isFinite(rawPriceChange24h) ? rawPriceChange24h : 0;
 
   const topMovers = [...tokens]
     .filter((t) => Number.isFinite(t.priceChange24h) && t.priceChange24h !== 0)

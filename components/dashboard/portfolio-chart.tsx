@@ -30,11 +30,14 @@ interface PortfolioChartProps {
 }
 
 export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0 }: PortfolioChartProps) {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [days, setDays] = useState<number>(30);
   const [points, setPoints] = useState<SnapshotPoint[] | null>(null);
   const [source, setSource] = useState<SnapshotSource>('empty');
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     if (!open) return;
@@ -87,8 +90,8 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
           <span className="font-mono text-sm font-semibold text-text">
             {formatUsd(totalUsd, { compact: true })}
           </span>
-          <span className={cn('text-xs font-medium', priceChange24h >= 0 ? 'text-green-500' : 'text-red-500')}>
-            {priceChange24h >= 0 ? '+' : ''}{formatPercent(priceChange24h)}
+          <span className={cn('text-xs font-medium', (priceChange24h ?? 0) >= 0 ? 'text-green-500' : 'text-red-500')}>
+            {formatPercent(priceChange24h)}
           </span>
           {open && (source === 'reconstructed' || source === 'mixed') && (
             <span
@@ -147,7 +150,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
               description="Жоден з ваших токенів не має coingeckoId — реконструкція історії з CoinGecko неможлива. Зробіть Sync щоб підвантажити ринкові метадані."
             />
           )}
-          {points && points.length > 0 && (
+          {points && points.length > 0 && mounted && (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>

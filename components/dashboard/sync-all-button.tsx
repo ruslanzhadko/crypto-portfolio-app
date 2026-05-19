@@ -65,21 +65,24 @@ export function SyncAllButton({
             description: `Спробуйте через ${Math.ceil(next / 60)} хв або натисніть ще раз для примусового sync.`,
           });
         } else {
+          const descParts: string[] = [];
+          if (tokensTotal > 0) {
+            descParts.push(`${tokensTotal} токенів`);
+          } else if (synced.length > 0) {
+            descParts.push('Дані актуальні (API не повернув змін)');
+          }
+          if (skipped.length > 0) descParts.push(`${skipped.length} пропущено`);
+          if (errors.length > 0) descParts.push(`${errors.length} з помилкою`);
           toast({
             title: `Sync завершено · ${synced.length} гаманц(ів)`,
-            description: [
-              `${tokensTotal} токенів`,
-              skipped.length > 0 ? `${skipped.length} пропущено` : null,
-              errors.length > 0 ? `${errors.length} з помилкою` : null,
-            ]
-              .filter(Boolean)
-              .join(' · '),
+            description: descParts.join(' · '),
             variant: errors.length > 0 ? 'destructive' : 'default',
           });
         }
       }
 
-      if (synced.length > 0) router.refresh();
+      // Завжди оновлюємо дашборд — навіть якщо synced.length = 0 (помилки чи throttle)
+      router.refresh();
     });
   }
 

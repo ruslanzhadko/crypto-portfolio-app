@@ -2,10 +2,10 @@ import { Network } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import {
   fetchWalletTokens,
-  fetchWalletTransactions,
   MIN_TOKEN_USD,
   type NormalizedToken,
 } from '@/lib/services/moralis';
+import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
 import { fetchPricesByIds } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
@@ -31,10 +31,11 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   });
   if (!wallet) throw new Error('Гаманець не знайдено');
 
-  const [tokens, txs] = await Promise.all([
-    fetchWalletTokens(wallet.address, wallet.network),
-    fetchWalletTransactions(wallet.address, wallet.network, 25).catch(() => []),
-  ]);
+  // Транзакції більше не синхронізуються в БД — підтягуються live з Ankr при перегляді.
+  const isEvm = wallet.network === Network.EVM;
+  const tokens = isEvm
+    ? await fetchEVMBalancesFromAnkr(wallet.address)
+    : await fetchWalletTokens(wallet.address, wallet.network);
 
   const enriched = await applyCachedPrices(tokens, wallet.network);
   await enrichMissingPrices(enriched);
@@ -63,7 +64,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     const existing = await prisma.tokenBalance.count({ where: { walletId } });
     if (existing > 0) {
       await prisma.wallet.update({ where: { id: walletId }, data: { lastSyncAt: new Date() } });
-      return { walletId, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date() };
+      return { walletId, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date()} ;
     }
   }
 
@@ -96,36 +97,6 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
       });
     }
 
-    for (const txItem of txs) {
-      if (!txItem.hash) continue;
-      await tx.walletTransaction.upsert({
-        where: {
-          walletId_chainName_hash: {
-            walletId,
-            chainName: txItem.chainName,
-            hash: txItem.hash,
-          },
-        },
-        create: {
-          walletId,
-          hash: txItem.hash,
-          chainName: txItem.chainName,
-          type: txItem.type,
-          tokenSymbol: txItem.tokenSymbol,
-          tokenName: txItem.tokenName,
-          fromAddress: txItem.fromAddress,
-          toAddress: txItem.toAddress,
-          value: txItem.value,
-          usdValue: txItem.usdValue,
-          gasUsed: txItem.gasUsed,
-          status: txItem.status,
-          blockNumber: txItem.blockNumber,
-          timestamp: txItem.timestamp,
-        },
-        update: {},
-      });
-    }
-
     await tx.wallet.update({
       where: { id: walletId },
       data: { lastSyncAt: new Date() },
@@ -139,7 +110,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   return {
     walletId,
     tokensSynced: toSave.length,
-    transactionsSynced: txs.length,
+    transactionsSynced: 0,
     spamFiltered: spamCount,
     totalUsd,
     syncedAt: new Date(),
@@ -161,7 +132,11 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
  * не кешуються — їх дешево перезапитати при наступному sync.
  */
 async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
-  const needPricing = tokens.filter((t) => t.priceUsd === 0 || t.usdValue === 0);
+  // Ankr повертає priceUsd/usdValue, але не priceChange24h.
+  // Включаємо всі токени з priceChange24h === 0 щоб DexScreener/Binance їх збагатив.
+  const needPricing = tokens.filter(
+    (t) => t.priceUsd === 0 || t.usdValue === 0 || t.priceChange24h === 0,
+  );
   if (needPricing.length === 0) return;
 
   // ── 1. price-feed (Binance + DexScreener) ──
@@ -176,7 +151,7 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
   for (const t of needPricing) {
     const p = feedPrices.get(priceFeedKey(t));
     if (!p) continue;
-    applyPriceToToken(t, p.price, p.change24h);
+    applyPriceToToken(t, p.price, p.change24h, p.logoUrl);
   }
 
   // ── 2. CoinGecko fallback (тільки для токенів, що залишились без ціни) ──
@@ -192,7 +167,7 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
   for (const t of stillMissing) {
     const p = cgPrices.get(t.coingeckoId!);
     if (!p) continue;
-    applyPriceToToken(t, p.price, p.change24h);
+    applyPriceToToken(t, p.price, p.change24h, p.image ?? undefined);
   }
 
   // Кешуємо CoinGecko-ціни у TokenPrice (важливо для cron і market сторінок).
@@ -233,13 +208,20 @@ function priceFeedKey(t: EnrichedToken): string {
   return `${t.chainName}::${t.isNative ? 'native' : t.address}::${t.symbol.toLowerCase()}`;
 }
 
-function applyPriceToToken(t: EnrichedToken, price: number, change24h: number): void {
+function applyPriceToToken(
+  t: EnrichedToken,
+  price: number,
+  change24h: number,
+  logoUrl?: string,
+): void {
   if (!Number.isFinite(price) || price <= 0) return;
   if (t.priceUsd === 0) t.priceUsd = price;
   if (t.priceChange24h === 0 && Number.isFinite(change24h)) {
-    t.priceChange24h = change24h;
+    t.priceChange24h = Math.max(-99.9, Math.min(change24h, 10_000));
   }
   if (t.usdValue === 0) t.usdValue = t.balance * price;
+  // Логотип з DexScreener перезаписує тільки якщо поточний відсутній
+  if (!t.logoUrl && logoUrl) t.logoUrl = logoUrl;
 }
 
 // ─────────────────────────────────────────
@@ -279,10 +261,13 @@ async function applyCachedPrices(
     let usdValue = t.usdValue;
     let priceUsd = t.priceUsd;
     let priceChange24h = t.priceChange24h;
+    let logoUrl = t.logoUrl;
 
     if (t.isNative) {
       const chainInfo = getChainInfo(t.chainName);
       coingeckoId = chainInfo?.coingeckoNativeId ?? null;
+      // Нативний токен — логотип з ChainInfo (Trust Wallet CDN) якщо не прийшов від API
+      if (!logoUrl && chainInfo?.nativeLogoUrl) logoUrl = chainInfo.nativeLogoUrl;
       if (fromCache) {
         if (priceUsd === 0) priceUsd = fromCache.price;
         if (priceChange24h === 0) priceChange24h = fromCache.change24h;
@@ -296,6 +281,6 @@ async function applyCachedPrices(
       if (usdValue === 0) usdValue = t.balance * fromCache.price;
     }
 
-    return { ...t, usdValue, priceUsd, priceChange24h, coingeckoId };
+    return { ...t, usdValue, priceUsd, priceChange24h, coingeckoId, logoUrl };
   });
 }

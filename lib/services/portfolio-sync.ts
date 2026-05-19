@@ -3,8 +3,8 @@ import { syncWallet, type SyncResult } from '@/lib/services/wallet-sync';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 
 // Хвилин до наступного sync для одного гаманця.
-// 30 хв ≈ 2 sync/год на гаманець — економимо Moralis CU.
-// Ціни оновлюються окремо через DexScreener/Binance (price-feed.ts), що безкоштовне.
+// EVM баланси — Ankr (безлімітно); Solana — Moralis.
+// Ціни/зміни — DexScreener/Binance через price-feed.ts (безкоштовно).
 export const SYNC_THROTTLE_MINUTES = 30;
 
 export interface PortfolioSyncResult {
@@ -67,20 +67,18 @@ export async function syncAllWallets(
     toSync.push(w);
   }
 
-  const results = await Promise.allSettled(toSync.map((w) => syncWallet(w.id)));
-
+  // Послідовний sync — захист від rate limit Ankr (3 паралельних → 401).
+  // Для 3 гаманців: ~5-10с кожен = 15-30с сумарно. Вкладається в maxDuration=60.
   const synced: SyncResult[] = [];
   const errors: SyncError[] = [];
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i]!;
-    const w = toSync[i]!;
-    if (r.status === 'fulfilled') {
-      synced.push(r.value);
-    } else {
+  for (const w of toSync) {
+    try {
+      synced.push(await syncWallet(w.id));
+    } catch (err) {
       errors.push({
         walletId: w.id,
         label: w.label,
-        message: r.reason instanceof Error ? r.reason.message : 'Невідома помилка',
+        message: err instanceof Error ? err.message : 'Невідома помилка',
       });
     }
   }

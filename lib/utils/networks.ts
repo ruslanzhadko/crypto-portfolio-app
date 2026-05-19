@@ -13,9 +13,14 @@ export interface ChainInfo {
   moralisId: string;
   coingeckoPlatform: string | null;
   coingeckoNativeId: string;
+  /** Логотип нативного токена — Trust Wallet CDN, стабільні URL */
+  nativeLogoUrl: string;
   color: string;
   network: Network; // EVM або SOLANA
 }
+
+const TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains';
+const ETH_LOGO = `${TW}/ethereum/info/logo.png`;
 
 export const EVM_CHAINS: ChainInfo[] = [
   {
@@ -26,6 +31,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'eth',
     coingeckoPlatform: 'ethereum',
     coingeckoNativeId: 'ethereum',
+    nativeLogoUrl: ETH_LOGO,
     color: '#627eea',
     network: Network.EVM,
   },
@@ -37,6 +43,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'bsc',
     coingeckoPlatform: 'binance-smart-chain',
     coingeckoNativeId: 'binancecoin',
+    nativeLogoUrl: `${TW}/smartchain/info/logo.png`,
     color: '#f3ba2f',
     network: Network.EVM,
   },
@@ -48,6 +55,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'polygon',
     coingeckoPlatform: 'polygon-pos',
     coingeckoNativeId: 'matic-network',
+    nativeLogoUrl: `${TW}/polygon/info/logo.png`,
     color: '#8247e5',
     network: Network.EVM,
   },
@@ -59,6 +67,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'arbitrum',
     coingeckoPlatform: 'arbitrum-one',
     coingeckoNativeId: 'ethereum',
+    nativeLogoUrl: ETH_LOGO,
     color: '#28a0f0',
     network: Network.EVM,
   },
@@ -70,6 +79,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'optimism',
     coingeckoPlatform: 'optimistic-ethereum',
     coingeckoNativeId: 'ethereum',
+    nativeLogoUrl: ETH_LOGO,
     color: '#ff0420',
     network: Network.EVM,
   },
@@ -81,6 +91,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'base',
     coingeckoPlatform: 'base',
     coingeckoNativeId: 'ethereum',
+    nativeLogoUrl: ETH_LOGO,
     color: '#0052ff',
     network: Network.EVM,
   },
@@ -92,6 +103,7 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'avalanche',
     coingeckoPlatform: 'avalanche',
     coingeckoNativeId: 'avalanche-2',
+    nativeLogoUrl: `${TW}/avalanchec/info/logo.png`,
     color: '#e84142',
     network: Network.EVM,
   },
@@ -105,6 +117,7 @@ export const SOLANA_CHAIN: ChainInfo = {
   moralisId: 'mainnet',
   coingeckoPlatform: 'solana',
   coingeckoNativeId: 'solana',
+  nativeLogoUrl: `${TW}/solana/info/logo.png`,
   color: '#14f195',
   network: Network.SOLANA,
 };
