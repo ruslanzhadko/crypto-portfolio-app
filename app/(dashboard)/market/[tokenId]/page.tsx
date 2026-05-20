@@ -9,7 +9,7 @@ import { PriceChange } from '@/components/common/price-change';
 import { PriceChart } from '@/components/market/price-chart';
 import { CreateTriggerButton } from '@/components/alerts/create-trigger-button';
 import { CoinGeckoError, fetchCoinDetail, type CoinDetail } from '@/lib/services/coingecko';
-import { formatUsd } from '@/lib/utils/format';
+import { formatUsd, formatPercent } from '@/lib/utils/format';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +110,7 @@ export default async function TokenDetailPage({
         </CardContent>
       </Card>
 
+      {/* Ряд 1 — ринкові показники */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Капіталізація"
@@ -119,8 +120,46 @@ export default async function TokenDetailPage({
           label="Обʼєм 24г"
           value={coin.volume24h ? formatUsd(coin.volume24h, { compact: true }) : '—'}
         />
-        <StatCard label="7д" value="" delta={coin.priceChange7d} deltaLabel="за тиждень" />
-        <StatCard label="30д" value="" delta={coin.priceChange30d} deltaLabel="за місяць" />
+        <StatCard
+          label="Макс. за 24г"
+          value={coin.high24h ? formatUsd(coin.high24h) : '—'}
+        />
+        <StatCard
+          label="Мін. за 24г"
+          value={coin.low24h ? formatUsd(coin.low24h) : '—'}
+        />
+      </div>
+
+      {/* Ряд 2 — динаміка цін */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="1г"
+          value={formatPercent(coin.priceChange1h)}
+          valueClassName={coin.priceChange1h >= 0 ? 'text-success' : 'text-danger'}
+          subtext="за годину"
+        />
+        <StatCard
+          label="7д"
+          value={formatPercent(coin.priceChange7d)}
+          valueClassName={coin.priceChange7d >= 0 ? 'text-success' : 'text-danger'}
+          subtext="за тиждень"
+        />
+        <StatCard
+          label="30д"
+          value={formatPercent(coin.priceChange30d)}
+          valueClassName={coin.priceChange30d >= 0 ? 'text-success' : 'text-danger'}
+          subtext="за місяць"
+        />
+        <StatCard
+          label="Від ATH"
+          value={coin.athChangePercent !== null ? formatPercent(coin.athChangePercent) : '—'}
+          valueClassName={
+            coin.athChangePercent !== null
+              ? coin.athChangePercent >= 0 ? 'text-success' : 'text-danger'
+              : undefined
+          }
+          subtext={coin.ath ? `ATH: ${formatUsd(coin.ath)}` : undefined}
+        />
       </div>
 
       <PriceChart tokenId={coin.id} />

@@ -14,6 +14,7 @@ interface StatCardProps {
   subtext?: string;
   href?: string;
   className?: string;
+  valueClassName?: string;
 }
 
 export function StatCard({
@@ -27,6 +28,7 @@ export function StatCard({
   subtext,
   href,
   className,
+  valueClassName,
 }: StatCardProps) {
   const inner = (
     <div
@@ -55,7 +57,7 @@ export function StatCard({
         )}
       </div>
 
-      <p className="relative mt-3 text-[1.75rem] font-bold tracking-tight leading-none">
+      <p className={cn('relative mt-3 text-[1.75rem] font-bold tracking-tight leading-none', valueClassName)}>
         {value}
       </p>
 

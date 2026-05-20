@@ -1,7 +1,5 @@
 /**
  * Локальний планувальник на основі node-cron для розробки.
- * Запуск: `npm run cron:local`
- *
  * У production цю функцію виконує Vercel Cron Jobs (див. vercel.json).
  */
 import cron from 'node-cron';
