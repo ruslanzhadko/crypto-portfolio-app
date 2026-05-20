@@ -38,9 +38,13 @@ async function sendMessage(chatId: number, text: string): Promise<void> {
   });
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function buildStartReply(chatId: number, firstName?: string): string {
   const settingsUrl = `${APP_URL}/settings`;
-  const greeting = firstName ? `Привіт, ${firstName}!` : 'Привіт!';
+  const greeting = firstName ? `Привіт, ${escapeHtml(firstName)}!` : 'Привіт!';
   return [
     `👋 ${greeting}`,
     '',

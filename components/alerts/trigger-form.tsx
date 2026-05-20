@@ -68,8 +68,9 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
       setTokenCurrentPrice(null);
       return;
     }
+    const controller = new AbortController();
     setPriceLoading(true);
-    fetch(`/api/market/${selectedToken.tokenId}`)
+    fetch(`/api/market/${selectedToken.tokenId}`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data: { coin?: { currentPrice?: number } }) => {
         const price = data.coin?.currentPrice ?? null;
@@ -79,8 +80,14 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
           setTargetPrice(String(price));
         }
       })
-      .catch(() => setTokenCurrentPrice(null))
-      .finally(() => setPriceLoading(false));
+      .catch((err: unknown) => {
+        // AbortError = запит скасований через зміну токена — ігноруємо
+        if ((err as { name?: string }).name !== 'AbortError') setTokenCurrentPrice(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPriceLoading(false);
+      });
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedToken?.tokenId]);
 
@@ -111,6 +118,10 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
       toast({ variant: 'destructive', title: 'Введіть цільову ціну' });
       return;
     }
+    if (triggerType === 'PRICE_TARGET' && tokenCurrentPrice === null) {
+      toast({ variant: 'destructive', title: 'Поточна ціна недоступна', description: 'Спробуйте оновити сторінку' });
+      return;
+    }
 
     startTransition(async () => {
       const body =
@@ -131,7 +142,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
               tokenSymbol: selectedToken.tokenSymbol,
               tokenName: selectedToken.tokenName,
               targetPrice: Number(targetPrice),
-              direction: Number(targetPrice) >= (tokenCurrentPrice ?? 0) ? 'UP' : 'DOWN',
+              direction: Number(targetPrice) >= tokenCurrentPrice! ? 'UP' : 'DOWN',
               isActive,
             };
 

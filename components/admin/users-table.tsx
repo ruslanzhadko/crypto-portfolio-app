@@ -30,16 +30,21 @@ export function UsersTable() {
   const { toast } = useToast();
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(page), pageSize: '20' });
-    if (search.trim()) params.set('q', search.trim());
-    const res = await fetch(`/api/admin/users?${params.toString()}`);
-    if (!res.ok) return;
-    const data = (await res.json()) as {
-      users: UserDTO[];
-      pagination: { totalPages: number };
-    };
-    setUsers(data.users);
-    setTotalPages(data.pagination.totalPages);
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+      if (search.trim()) params.set('q', search.trim());
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as {
+        users: UserDTO[];
+        pagination: { totalPages: number };
+      };
+      setUsers(data.users);
+      setTotalPages(data.pagination.totalPages);
+    } catch {
+      setUsers([]);
+      setTotalPages(0);
+    }
   }, [page, search]);
 
   useEffect(() => {
@@ -50,22 +55,27 @@ export function UsersTable() {
   }, [load]);
 
   async function patch(userId: string, body: Record<string, unknown>, successMsg: string) {
-    const res = await fetch(`/api/admin/users/${userId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-      toast({
-        variant: 'destructive',
-        title: 'Помилка',
-        description: data?.error?.message ?? 'Щось пішло не так',
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        toast({
+          variant: 'destructive',
+          title: 'Помилка',
+          description: data?.error?.message ?? 'Щось пішло не так',
+        });
+        return false;
+      }
+      toast({ title: successMsg });
+      return true;
+    } catch {
+      toast({ variant: 'destructive', title: 'Помилка мережі', description: 'Спробуйте ще раз.' });
       return false;
     }
-    toast({ title: successMsg });
-    return true;
   }
 
   function onToggleBlock(user: UserDTO) {
@@ -190,6 +200,7 @@ export function UsersTable() {
                             variant="ghost"
                             size="sm"
                             title={u.role === 'ADMIN' ? 'Понизити до USER' : 'Підвищити до ADMIN'}
+                            aria-label={u.role === 'ADMIN' ? 'Понизити до USER' : 'Підвищити до ADMIN'}
                             onClick={() => onToggleRole(u)}
                             disabled={isPending}
                           >
@@ -200,6 +211,7 @@ export function UsersTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label={u.isBlocked ? 'Розблокувати' : 'Заблокувати'}
                                 onClick={() => onToggleBlock(u)}
                                 disabled={isPending}
                               >
@@ -215,6 +227,7 @@ export function UsersTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                aria-label="Видалити користувача"
                                 onClick={() => onDelete(u)}
                                 disabled={isPending}
                                 className="text-danger hover:text-danger"

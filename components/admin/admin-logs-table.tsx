@@ -30,17 +30,23 @@ export function AdminLogsTable() {
   const [status, setStatus] = useState<StatusFilter>('all');
 
   const load = useCallback(async () => {
-    const params = new URLSearchParams({ page: String(page), pageSize: '25' });
-    if (status !== 'all') params.set('status', status);
-    const res = await fetch(`/api/admin/logs?${params.toString()}`);
-    if (!res.ok) return;
-    const data = (await res.json()) as {
-      logs: LogDTO[];
-      pagination: { total: number; totalPages: number };
-    };
-    setItems(data.logs);
-    setTotal(data.pagination.total);
-    setTotalPages(data.pagination.totalPages);
+    try {
+      const params = new URLSearchParams({ page: String(page), pageSize: '25' });
+      if (status !== 'all') params.set('status', status);
+      const res = await fetch(`/api/admin/logs?${params.toString()}`);
+      if (!res.ok) throw new Error();
+      const data = (await res.json()) as {
+        logs: LogDTO[];
+        pagination: { total: number; totalPages: number };
+      };
+      setItems(data.logs);
+      setTotal(data.pagination.total);
+      setTotalPages(data.pagination.totalPages);
+    } catch {
+      setItems([]);
+      setTotal(0);
+      setTotalPages(0);
+    }
   }, [page, status]);
 
   useEffect(() => {

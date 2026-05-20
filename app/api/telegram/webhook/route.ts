@@ -13,6 +13,10 @@ interface TelegramUpdate {
   };
 }
 
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
   if (!secret) return false;
@@ -22,7 +26,7 @@ function isAuthorized(req: NextRequest): boolean {
 function buildStartReply(chatId: number, firstName?: string): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
   const settingsUrl = appUrl ? `${appUrl}/settings` : '/settings';
-  const greeting = firstName ? `Привіт, ${firstName}!` : 'Привіт!';
+  const greeting = firstName ? `Привіт, ${escapeHtml(firstName)}!` : 'Привіт!';
 
   return [
     `👋 ${greeting}`,

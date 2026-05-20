@@ -21,12 +21,19 @@ export function TelegramWebhookCard() {
 
   async function fetchStatus() {
     setLoading(true);
-    const res = await fetch('/api/admin/telegram');
-    if (res.ok) {
-      const data = (await res.json()) as { webhook: WebhookInfo };
-      setInfo(data.webhook);
+    try {
+      const res = await fetch('/api/admin/telegram');
+      if (res.ok) {
+        const data = (await res.json()) as { webhook: WebhookInfo };
+        setInfo(data.webhook);
+      } else {
+        setInfo(null);
+      }
+    } catch {
+      setInfo(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => { void fetchStatus(); }, []);

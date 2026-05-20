@@ -35,7 +35,7 @@ export async function PATCH(
     });
     if (!target) return apiError('NOT_FOUND', 'Користувача не знайдено');
 
-    if (parsed.data.isBlocked !== undefined && target.role === 'ADMIN') {
+    if (parsed.data.isBlocked === true && target.role === 'ADMIN') {
       return apiError('FORBIDDEN', 'Не можна блокувати адміністратора');
     }
 

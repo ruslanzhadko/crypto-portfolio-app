@@ -114,19 +114,19 @@ export default async function TokenDetailPage({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="Капіталізація"
-          value={coin.marketCap ? formatUsd(coin.marketCap, { compact: true }) : '—'}
+          value={coin.marketCap !== null ? formatUsd(coin.marketCap, { compact: true }) : '—'}
         />
         <StatCard
           label="Обʼєм 24г"
-          value={coin.volume24h ? formatUsd(coin.volume24h, { compact: true }) : '—'}
+          value={coin.volume24h !== null ? formatUsd(coin.volume24h, { compact: true }) : '—'}
         />
         <StatCard
           label="Макс. за 24г"
-          value={coin.high24h ? formatUsd(coin.high24h) : '—'}
+          value={coin.high24h !== null ? formatUsd(coin.high24h) : '—'}
         />
         <StatCard
           label="Мін. за 24г"
-          value={coin.low24h ? formatUsd(coin.low24h) : '—'}
+          value={coin.low24h !== null ? formatUsd(coin.low24h) : '—'}
         />
       </div>
 
@@ -158,7 +158,7 @@ export default async function TokenDetailPage({
               ? coin.athChangePercent >= 0 ? 'text-success' : 'text-danger'
               : undefined
           }
-          subtext={coin.ath ? `ATH: ${formatUsd(coin.ath)}` : undefined}
+          subtext={coin.ath !== null ? `ATH: ${formatUsd(coin.ath)}` : undefined}
         />
       </div>
 
