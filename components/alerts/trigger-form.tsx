@@ -31,10 +31,11 @@ interface TriggerFormProps {
 }
 
 const INTERVALS = [
+  { label: '1 хвилина', value: 1 },
+  { label: '5 хвилин', value: 5 },
   { label: '15 хвилин', value: 15 },
   { label: '1 година', value: 60 },
   { label: '4 години', value: 240 },
-  { label: '24 години', value: 1440 },
 ];
 
 export function TriggerForm({ initial = null }: TriggerFormProps) {
@@ -176,9 +177,9 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
         <Input
           id="threshold"
           type="number"
-          min={0.1}
+          min={1}
           max={100}
-          step={0.5}
+          step={1}
           value={threshold}
           onChange={(e) => setThreshold(Number(e.target.value))}
         />

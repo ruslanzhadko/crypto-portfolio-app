@@ -91,3 +91,47 @@ export async function sendTestMessage(chatId: string): Promise<void> {
     parseMode: 'HTML',
   });
 }
+
+// ─────────────────────────────────────────
+// Webhook management
+// ─────────────────────────────────────────
+
+export interface WebhookInfo {
+  url: string;
+  has_custom_certificate: boolean;
+  pending_update_count: number;
+  last_error_date?: number;
+  last_error_message?: string;
+}
+
+export async function setWebhook(webhookUrl: string, secretToken: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не встановлено');
+
+  const { data } = await axios.post<TelegramResponse>(
+    `https://api.telegram.org/bot${token}/setWebhook`,
+    { url: webhookUrl, secret_token: secretToken, allowed_updates: ['message'] },
+    { timeout: 10000 },
+  );
+  if (!data.ok) throw new TelegramError(data.description ?? 'setWebhook failed');
+}
+
+export async function getWebhookInfo(): Promise<WebhookInfo> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не встановлено');
+
+  const { data } = await axios.get<{ ok: boolean; result: WebhookInfo }>(
+    `https://api.telegram.org/bot${token}/getWebhookInfo`,
+    { timeout: 10000 },
+  );
+  if (!data.ok) throw new TelegramError('getWebhookInfo failed');
+  return data.result;
+}
+
+// ─────────────────────────────────────────
+// Bot reply (used by webhook handler)
+// ─────────────────────────────────────────
+
+export async function replyToUpdate(chatId: number, text: string): Promise<void> {
+  await sendMessage({ chatId: String(chatId), text, parseMode: 'HTML' });
+}

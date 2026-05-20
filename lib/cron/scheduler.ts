@@ -7,7 +7,7 @@
 import cron from 'node-cron';
 import { runPriceUpdater } from './price-updater';
 
-const SCHEDULE = process.env.CRON_SCHEDULE ?? '*/15 * * * *';
+const SCHEDULE = process.env.CRON_SCHEDULE ?? '* * * * *';
 
 console.log(`[cron] Стартую локальний планувальник з розкладом "${SCHEDULE}"`);
 
@@ -20,7 +20,7 @@ cron.schedule(SCHEDULE, async () => {
   running = true;
   try {
     const result = await runPriceUpdater();
-    console.log('[cron] Виконано:', result);
+    console.log(`[cron] ${new Date().toLocaleTimeString('uk-UA')} Виконано:`, result);
   } catch (err) {
     console.error('[cron] Помилка:', err);
   } finally {

@@ -72,7 +72,7 @@ export const triggerCreateSchema = z.object({
   tokenName: z.string().min(1),
   threshold: z.number().positive().min(0.1).max(100),
   direction: z.nativeEnum(TriggerDirection).default('BOTH'),
-  interval: z.number().int().positive().min(15).max(1440),
+  interval: z.number().int().positive().min(1).max(240),
   isActive: z.boolean().default(true),
 });
 

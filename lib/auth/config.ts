@@ -59,6 +59,7 @@ export const authConfig = {
         pathname.startsWith('/api/auth') ||
         pathname.startsWith('/api/health') ||
         pathname.startsWith('/api/cron') ||
+        pathname.startsWith('/api/telegram/webhook') ||
         pathname.startsWith('/_next') ||
         pathname.startsWith('/icons') ||
         isAuthPath;

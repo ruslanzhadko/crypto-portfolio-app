@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatRelative } from '@/lib/utils/format';
+import { TelegramWebhookCard } from '@/components/admin/telegram-webhook-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,6 +55,10 @@ export default async function AdminPage() {
         <StatCard label="Заблоковані" value={blockedUsers} icon={ShieldOff} href="/admin/users" />
         <StatCard label="Гаманці" value={totalWallets} icon={Wallet} />
         <StatCard label="Активні тригери" value={activeTriggers} icon={Bell} />
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <TelegramWebhookCard />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

@@ -6,7 +6,7 @@ import {
   type NormalizedToken,
 } from '@/lib/services/moralis';
 import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
-import { fetchPricesByIds } from '@/lib/services/coingecko';
+import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
 
@@ -170,10 +170,14 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
     applyPriceToToken(t, p.price, p.change24h, p.image ?? undefined);
   }
 
-  // Кешуємо CoinGecko-ціни у TokenPrice (важливо для cron і market сторінок).
+  await saveCoinGeckoPricesToCache(cgPrices);
+}
+
+// Persists CoinGecko prices to TokenPrice cache so the cron and market pages can reuse them.
+async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>): Promise<void> {
   const now = new Date();
   await Promise.allSettled(
-    Array.from(cgPrices.values()).map((p) =>
+    Array.from(prices.values()).map((p) =>
       prisma.tokenPrice
         .upsert({
           where: { tokenId: p.id },

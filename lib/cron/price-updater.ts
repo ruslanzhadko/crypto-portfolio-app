@@ -5,6 +5,10 @@ import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { sendPriceAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 
+// ─────────────────────────────────────────
+// Public types
+// ─────────────────────────────────────────
+
 export interface PriceUpdaterResult {
   pricesUpdated: number;
   balancesRecalculated: number;
@@ -15,56 +19,142 @@ export interface PriceUpdaterResult {
   durationMs: number;
 }
 
-export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
-  const startedAt = Date.now();
-  let pricesUpdated = 0;
-  let balancesRecalculated = 0;
-  let snapshotsCreated = 0;
-  let triggersChecked = 0;
-  let notificationsSent = 0;
-  let errors = 0;
+// ─────────────────────────────────────────
+// Internal types
+// ─────────────────────────────────────────
 
-  try {
-    // 1. Збираємо всі унікальні tokenId з тригерів + з кешу цін з ненульовою кількістю
-    const tokenIds = await collectActiveTokenIds();
-
-    let prices = new Map<string, SimplePriceItem>();
-    if (tokenIds.length > 0) {
-      prices = await fetchPricesByIds(tokenIds);
-      pricesUpdated = prices.size;
-
-      // 2. Зберегти ціни в БД (TokenPrice + PriceHistory)
-      await persistPrices(prices);
-    }
-
-    // 3. Перерахувати USD вартість балансів на основі оновлених цін
-    balancesRecalculated = await recalculateBalances();
-
-    // 4. Snapshots — створити нові для кожного користувача з гаманцями (не частіше ніж раз на годину)
-    snapshotsCreated = await createSnapshotsForActiveUsers();
-
-    // 5. Перевірити тригери
-    const result = await checkTriggers(prices);
-    triggersChecked = result.checked;
-    notificationsSent = result.notified;
-    errors = result.errors;
-  } catch (err) {
-    console.error('[price-updater] unexpected error:', err);
-    errors++;
-  }
-
-  return {
-    pricesUpdated,
-    balancesRecalculated,
-    snapshotsCreated,
-    triggersChecked,
-    notificationsSent,
-    errors,
-    durationMs: Date.now() - startedAt,
-  };
+interface BalanceRow {
+  id: string;
+  chainName: string;
+  tokenAddress: string;
+  tokenSymbol: string;
+  balance: number;
+  usdValue: number;
+  priceUsd: number;
+  priceChange24h: number;
+  coingeckoId: string | null;
 }
 
-async function collectActiveTokenIds(): Promise<string[]> {
+interface PriceInfo {
+  price: number;
+  change24h: number;
+}
+
+interface TriggerWithUser {
+  id: string;
+  userId: string;
+  tokenId: string;
+  tokenSymbol: string;
+  tokenName: string;
+  threshold: number;
+  direction: TriggerDirection;
+  interval: number;
+  lastPrice: number | null;
+  lastCheckedAt: Date | null;
+  user: { telegramChatId: string | null; isBlocked: boolean };
+}
+
+export interface TriggerEvaluation {
+  shouldNotify: boolean;
+  shouldUpdate: boolean;
+  delta: number;
+}
+
+// ─────────────────────────────────────────
+// Pure helpers — no I/O, fully unit-testable
+// ─────────────────────────────────────────
+
+function priceKey(chainName: string, tokenAddress: string): string {
+  return `${chainName}::${tokenAddress === '' ? 'native' : tokenAddress}`;
+}
+
+function clampChange(value: number): number {
+  return Math.max(-99.9, Math.min(value, 10_000));
+}
+
+function directionMatches(direction: TriggerDirection, delta: number): boolean {
+  switch (direction) {
+    case TriggerDirection.UP:   return delta > 0;
+    case TriggerDirection.DOWN: return delta < 0;
+    case TriggerDirection.BOTH: return true;
+  }
+}
+
+/**
+ * Determines whether a trigger should fire for a given price.
+ * Pure — no side effects, safe to unit-test without mocking.
+ */
+export function evaluateTrigger(
+  trigger: Pick<
+    TriggerWithUser,
+    'lastPrice' | 'lastCheckedAt' | 'interval' | 'threshold' | 'direction' | 'user'
+  >,
+  currentPrice: number,
+  now: Date,
+): TriggerEvaluation {
+  if (trigger.lastPrice === null) {
+    return { shouldNotify: false, shouldUpdate: true, delta: 0 };
+  }
+
+  const intervalMs = trigger.interval * 60 * 1000;
+  const elapsed = trigger.lastCheckedAt
+    ? now.getTime() - trigger.lastCheckedAt.getTime()
+    : Infinity;
+
+  if (elapsed < intervalMs) {
+    return { shouldNotify: false, shouldUpdate: false, delta: 0 };
+  }
+
+  const delta = ((currentPrice - trigger.lastPrice) / trigger.lastPrice) * 100;
+  const shouldNotify =
+    Math.abs(delta) >= trigger.threshold &&
+    directionMatches(trigger.direction, delta) &&
+    !!trigger.user.telegramChatId &&
+    !trigger.user.isBlocked;
+
+  return { shouldNotify, shouldUpdate: true, delta };
+}
+
+/**
+ * Builds a deduplicated map of price queries from balance rows.
+ * Pure — no side effects, safe to unit-test without mocking.
+ */
+export function buildPriceQueries(balances: BalanceRow[]): Map<string, PriceQuery> {
+  const queries = new Map<string, PriceQuery>();
+  for (const b of balances) {
+    const key = priceKey(b.chainName, b.tokenAddress);
+    if (!queries.has(key)) {
+      queries.set(key, {
+        key,
+        isNative: b.tokenAddress === '',
+        chainName: b.chainName,
+        contractAddress: b.tokenAddress === '' ? undefined : b.tokenAddress || undefined,
+      });
+    }
+  }
+  return queries;
+}
+
+/**
+ * Returns the best available price for a balance row.
+ * Priority: price-feed (Binance/DexScreener) → CoinGecko cache.
+ * Pure — no side effects, safe to unit-test without mocking.
+ */
+export function resolveBalancePrice(
+  b: BalanceRow,
+  feedPrices: Map<string, PriceInfo>,
+  cgPriceMap: Map<string, PriceInfo>,
+): PriceInfo | null {
+  const feed = feedPrices.get(priceKey(b.chainName, b.tokenAddress));
+  if (feed) return feed;
+  return b.coingeckoId ? (cgPriceMap.get(b.coingeckoId) ?? null) : null;
+}
+
+// ─────────────────────────────────────────
+// Step 1 — Collect token IDs
+// ─────────────────────────────────────────
+
+async function collectTokenIds(): Promise<string[]> {
   const [triggers, balances, topCached] = await Promise.all([
     prisma.priceTrigger.findMany({
       where: { isActive: true },
@@ -90,44 +180,52 @@ async function collectActiveTokenIds(): Promise<string[]> {
   return Array.from(ids);
 }
 
+// ─────────────────────────────────────────
+// Step 2 — Fetch & persist prices
+// ─────────────────────────────────────────
+
 async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<void> {
   const now = new Date();
-  await Promise.all(
-    Array.from(prices.values()).map(async (p) => {
-      await prisma.tokenPrice.upsert({
-        where: { tokenId: p.id },
-        create: {
-          tokenId: p.id,
-          symbol: p.symbol ?? p.id,
-          name: p.name ?? p.id,
-          currentPrice: p.price,
-          priceChange24h: p.change24h,
-          marketCap: p.marketCap ?? null,
-          volume24h: p.volume24h ?? null,
-          logoUrl: p.image ?? null,
-        },
-        update: {
-          currentPrice: p.price,
-          priceChange24h: p.change24h,
-          marketCap: p.marketCap ?? null,
-          volume24h: p.volume24h ?? null,
-          ...(p.image ? { logoUrl: p.image } : {}),
-        },
-      });
-      await prisma.priceHistory.create({
-        data: { tokenId: p.id, price: p.price, timestamp: now },
-      });
-    }),
-  );
+  // Sequential to avoid overwhelming the DB with concurrent upserts
+  for (const p of prices.values()) {
+    await prisma.tokenPrice.upsert({
+      where: { tokenId: p.id },
+      create: {
+        tokenId: p.id,
+        symbol: p.symbol ?? p.id,
+        name: p.name ?? p.id,
+        currentPrice: p.price,
+        priceChange24h: p.change24h,
+        marketCap: p.marketCap ?? null,
+        volume24h: p.volume24h ?? null,
+        logoUrl: p.image ?? null,
+      },
+      update: {
+        currentPrice: p.price,
+        priceChange24h: p.change24h,
+        marketCap: p.marketCap ?? null,
+        volume24h: p.volume24h ?? null,
+        ...(p.image ? { logoUrl: p.image } : {}),
+      },
+    });
+    await prisma.priceHistory.create({
+      data: { tokenId: p.id, price: p.price, timestamp: now },
+    });
+  }
 }
 
-/**
- * Перераховує `usdValue` / `priceUsd` / `priceChange24h` для всіх токен-балансів.
- *
- * Джерело цін — `price-feed` (Binance native + DexScreener за contract address).
- * Для токенів без contract але з `coingeckoId` — fallback на `TokenPrice` кеш,
- * який окремо оновлює CoinGecko через `persistPrices()` (виклик 1-2 вище у пайплайні).
- */
+async function fetchAndPersistPrices(
+  tokenIds: string[],
+): Promise<Map<string, SimplePriceItem>> {
+  const prices = await fetchPricesByIds(tokenIds);
+  if (prices.size > 0) await persistPrices(prices);
+  return prices;
+}
+
+// ─────────────────────────────────────────
+// Step 3 — Recalculate balance USD values
+// ─────────────────────────────────────────
+
 async function recalculateBalances(): Promise<number> {
   const balances = await prisma.tokenBalance.findMany({
     where: { isSpam: false, balance: { gt: 0 } },
@@ -145,90 +243,66 @@ async function recalculateBalances(): Promise<number> {
   });
   if (balances.length === 0) return 0;
 
-  // Дедуплікація запитів: для одного контракту може бути N записів у різних гаманцях
-  const queries = new Map<string, PriceQuery>();
-  for (const b of balances) {
-    const isNative = b.tokenAddress === '';
-    const key = priceKeyFor(b.chainName, b.tokenAddress);
-    if (!queries.has(key)) {
-      queries.set(key, {
-        key,
-        isNative,
-        chainName: b.chainName,
-        contractAddress: isNative ? undefined : b.tokenAddress || undefined,
-      });
-    }
-  }
-
+  const queries = buildPriceQueries(balances);
   const feedPrices = await fetchPrices(Array.from(queries.values())).catch(
-    () => new Map(),
+    () => new Map<string, PriceInfo>(),
   );
 
-  // CoinGecko cache як fallback для тих, кого не покрив price-feed (немає DEX-пар)
+  // CoinGecko cache as fallback for tokens the price-feed doesn't cover
   const cgIds = Array.from(
     new Set(
       balances
-        .filter(
-          (b) => b.coingeckoId && !feedPrices.has(priceKeyFor(b.chainName, b.tokenAddress)),
-        )
+        .filter((b) => b.coingeckoId && !feedPrices.has(priceKey(b.chainName, b.tokenAddress)))
         .map((b) => b.coingeckoId!),
     ),
   );
-  const cgCache =
+  const cgRows =
     cgIds.length > 0
       ? await prisma.tokenPrice.findMany({
           where: { tokenId: { in: cgIds } },
           select: { tokenId: true, currentPrice: true, priceChange24h: true },
         })
       : [];
-  const cgPriceMap = new Map(
-    cgCache.map((c) => [c.tokenId, { price: c.currentPrice, change24h: c.priceChange24h }]),
+  const cgPriceMap = new Map<string, PriceInfo>(
+    cgRows.map((c) => [c.tokenId, { price: c.currentPrice, change24h: c.priceChange24h }]),
   );
 
   let updated = 0;
   for (const b of balances) {
-    const feed = feedPrices.get(priceKeyFor(b.chainName, b.tokenAddress));
-    const cg = b.coingeckoId ? cgPriceMap.get(b.coingeckoId) : null;
+    const resolved = resolveBalancePrice(b, feedPrices, cgPriceMap);
+    if (!resolved || resolved.price <= 0 || !Number.isFinite(resolved.price)) continue;
 
-    const newPrice = feed?.price ?? cg?.price ?? null;
-    const newChange = feed?.change24h ?? cg?.change24h ?? null;
-    if (newPrice == null || newPrice <= 0) continue;
+    const newUsd = b.balance * resolved.price;
+    const newChange = clampChange(resolved.change24h);
 
-    const newUsd = b.balance * newPrice;
-    const usdChanged = Math.abs(newUsd - b.usdValue) >= 0.01;
-    const priceChanged = Math.abs(newPrice - b.priceUsd) >= 1e-9;
-    const changeChanged =
-      newChange != null && Math.abs(newChange - b.priceChange24h) >= 1e-6;
-
-    if (!usdChanged && !priceChanged && !changeChanged) continue;
+    const unchanged =
+      Math.abs(newUsd - b.usdValue) < 0.01 &&
+      Math.abs(resolved.price - b.priceUsd) < 1e-9 &&
+      Math.abs(newChange - b.priceChange24h) < 1e-6;
+    if (unchanged) continue;
 
     await prisma.tokenBalance.update({
       where: { id: b.id },
-      data: {
-        usdValue: newUsd,
-        priceUsd: newPrice,
-        ...(newChange != null
-          ? { priceChange24h: Math.max(-99.9, Math.min(newChange, 10_000)) }
-          : {}),
-      },
+      data: { usdValue: newUsd, priceUsd: resolved.price, priceChange24h: newChange },
     });
     updated++;
   }
   return updated;
 }
 
-async function createSnapshotsForActiveUsers(): Promise<number> {
+// ─────────────────────────────────────────
+// Step 4 — Portfolio snapshots
+// ─────────────────────────────────────────
+
+async function createSnapshots(): Promise<number> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-  const usersWithWallets = await prisma.user.findMany({
-    where: {
-      isBlocked: false,
-      wallets: { some: {} },
-    },
+  const users = await prisma.user.findMany({
+    where: { isBlocked: false, wallets: { some: {} } },
     select: { id: true },
   });
 
   let created = 0;
-  for (const u of usersWithWallets) {
+  for (const u of users) {
     const latest = await prisma.portfolioSnapshot.findFirst({
       where: { userId: u.id },
       orderBy: { timestamp: 'desc' },
@@ -240,112 +314,143 @@ async function createSnapshotsForActiveUsers(): Promise<number> {
   return created;
 }
 
-interface CheckTriggersResult {
-  checked: number;
-  notified: number;
-  errors: number;
-}
+// ─────────────────────────────────────────
+// Step 5 — Price trigger evaluation
+// ─────────────────────────────────────────
 
-async function checkTriggers(
+async function processTrigger(
+  trigger: TriggerWithUser,
   prices: Map<string, SimplePriceItem>,
-): Promise<CheckTriggersResult> {
-  const triggers = await prisma.priceTrigger.findMany({
-    where: { isActive: true },
-    include: {
-      user: { select: { telegramChatId: true, isBlocked: true } },
-    },
-  });
+  now: Date,
+): Promise<'notified' | 'updated' | 'skipped' | 'error'> {
+  const currentPrice = prices.get(trigger.tokenId)?.price;
+  if (typeof currentPrice !== 'number' || currentPrice <= 0) return 'skipped';
 
-  const result: CheckTriggersResult = { checked: 0, notified: 0, errors: 0 };
-  const now = new Date();
+  const evaluation = evaluateTrigger(trigger, currentPrice, now);
+  if (!evaluation.shouldUpdate) return 'skipped';
 
-  for (const trigger of triggers) {
-    result.checked++;
-    if (trigger.user.isBlocked) continue;
-
-    const priceData = prices.get(trigger.tokenId);
-    const currentPrice = priceData?.price;
-    if (typeof currentPrice !== 'number' || currentPrice <= 0) continue;
-
-    if (trigger.lastPrice === null) {
+  if (evaluation.shouldNotify && trigger.user.telegramChatId) {
+    try {
+      await sendPriceAlert(trigger.user.telegramChatId, {
+        tokenSymbol: trigger.tokenSymbol,
+        tokenName: trigger.tokenName,
+        deltaPercent: evaluation.delta,
+        price: currentPrice,
+        intervalMinutes: trigger.interval,
+      });
+      await prisma.notificationLog.create({
+        data: {
+          userId: trigger.userId,
+          triggerId: trigger.id,
+          tokenSymbol: trigger.tokenSymbol,
+          message: `${evaluation.delta > 0 ? '+' : ''}${evaluation.delta.toFixed(2)}% за ${trigger.interval}хв (${currentPrice})`,
+          deltaPercent: evaluation.delta,
+          price: currentPrice,
+          status: 'sent',
+        },
+      });
       await prisma.priceTrigger.update({
         where: { id: trigger.id },
         data: { lastPrice: currentPrice, lastCheckedAt: now },
       });
-      continue;
-    }
-
-    const intervalMs = trigger.interval * 60 * 1000;
-    if (trigger.lastCheckedAt && now.getTime() - trigger.lastCheckedAt.getTime() < intervalMs) {
-      continue;
-    }
-
-    const delta = ((currentPrice - trigger.lastPrice) / trigger.lastPrice) * 100;
-    const absDelta = Math.abs(delta);
-
-    const shouldNotify =
-      absDelta >= trigger.threshold &&
-      directionMatches(trigger.direction, delta) &&
-      !!trigger.user.telegramChatId;
-
-    if (shouldNotify && trigger.user.telegramChatId) {
-      try {
-        await sendPriceAlert(trigger.user.telegramChatId, {
+      return 'notified';
+    } catch (err) {
+      await prisma.notificationLog.create({
+        data: {
+          userId: trigger.userId,
+          triggerId: trigger.id,
           tokenSymbol: trigger.tokenSymbol,
-          tokenName: trigger.tokenName,
-          deltaPercent: delta,
+          message: err instanceof TelegramError ? err.message : 'Помилка надсилання',
+          deltaPercent: evaluation.delta,
           price: currentPrice,
-          intervalMinutes: trigger.interval,
-        });
-        await prisma.notificationLog.create({
-          data: {
-            userId: trigger.userId,
-            triggerId: trigger.id,
-            tokenSymbol: trigger.tokenSymbol,
-            message: `${delta > 0 ? '+' : ''}${delta.toFixed(2)}% за ${trigger.interval}хв (${currentPrice})`,
-            deltaPercent: delta,
-            price: currentPrice,
-            status: 'sent',
-          },
-        });
-        result.notified++;
-      } catch (err) {
-        result.errors++;
-        await prisma.notificationLog.create({
-          data: {
-            userId: trigger.userId,
-            triggerId: trigger.id,
-            tokenSymbol: trigger.tokenSymbol,
-            message: err instanceof TelegramError ? err.message : 'Помилка надсилання',
-            deltaPercent: delta,
-            price: currentPrice,
-            status: 'failed',
-          },
-        });
-      }
+          status: 'failed',
+        },
+      });
+      return 'error';
     }
+  }
 
-    await prisma.priceTrigger.update({
-      where: { id: trigger.id },
-      data: { lastPrice: currentPrice, lastCheckedAt: now },
-    });
+  await prisma.priceTrigger.update({
+    where: { id: trigger.id },
+    data: { lastPrice: currentPrice, lastCheckedAt: now },
+  });
+  return 'updated';
+}
+
+async function checkTriggers(
+  prices: Map<string, SimplePriceItem>,
+): Promise<{ checked: number; notified: number; errors: number }> {
+  const triggers = await prisma.priceTrigger.findMany({
+    where: { isActive: true },
+    include: { user: { select: { telegramChatId: true, isBlocked: true } } },
+  });
+
+  const result = { checked: 0, notified: 0, errors: 0 };
+  const now = new Date();
+
+  for (const trigger of triggers) {
+    result.checked++;
+    const outcome = await processTrigger(trigger, prices, now);
+    if (outcome === 'notified') result.notified++;
+    if (outcome === 'error') result.errors++;
   }
 
   return result;
 }
 
-/** Канонічний ключ для співставлення TokenBalance ↔ PriceQuery / PriceInfo. */
-function priceKeyFor(chainName: string, tokenAddress: string): string {
-  return `${chainName}::${tokenAddress === '' ? 'native' : tokenAddress}`;
-}
+// ─────────────────────────────────────────
+// Pipeline orchestrator
+// ─────────────────────────────────────────
 
-function directionMatches(direction: TriggerDirection, delta: number): boolean {
-  switch (direction) {
-    case TriggerDirection.UP:
-      return delta > 0;
-    case TriggerDirection.DOWN:
-      return delta < 0;
-    case TriggerDirection.BOTH:
-      return true;
+export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
+  const startedAt = Date.now();
+  const result: PriceUpdaterResult = {
+    pricesUpdated: 0,
+    balancesRecalculated: 0,
+    snapshotsCreated: 0,
+    triggersChecked: 0,
+    notificationsSent: 0,
+    errors: 0,
+    durationMs: 0,
+  };
+
+  let prices = new Map<string, SimplePriceItem>();
+
+  try {
+    const tokenIds = await collectTokenIds();
+    if (tokenIds.length > 0) {
+      prices = await fetchAndPersistPrices(tokenIds);
+      result.pricesUpdated = prices.size;
+    }
+  } catch (err) {
+    result.errors++;
+    console.error('[price-updater] step 1-2 (fetch prices):', err);
   }
+
+  try {
+    result.balancesRecalculated = await recalculateBalances();
+  } catch (err) {
+    result.errors++;
+    console.error('[price-updater] step 3 (recalculate balances):', err);
+  }
+
+  try {
+    result.snapshotsCreated = await createSnapshots();
+  } catch (err) {
+    result.errors++;
+    console.error('[price-updater] step 4 (snapshots):', err);
+  }
+
+  try {
+    const triggerResult = await checkTriggers(prices);
+    result.triggersChecked = triggerResult.checked;
+    result.notificationsSent = triggerResult.notified;
+    result.errors += triggerResult.errors;
+  } catch (err) {
+    result.errors++;
+    console.error('[price-updater] step 5 (triggers):', err);
+  }
+
+  result.durationMs = Date.now() - startedAt;
+  return result;
 }
