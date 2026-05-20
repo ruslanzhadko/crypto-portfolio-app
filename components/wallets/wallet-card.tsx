@@ -28,9 +28,10 @@ interface WalletCardProps {
     tokenCount: number;
     totalUsd: number;
   };
+  lastPriceUpdateAt?: Date | string | null;
 }
 
-export function WalletCard({ wallet }: WalletCardProps) {
+export function WalletCard({ wallet, lastPriceUpdateAt }: WalletCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -152,13 +153,20 @@ export function WalletCard({ wallet }: WalletCardProps) {
 
         <div className="mt-4 flex items-center justify-between gap-2">
           <NetworkBadge network={wallet.network} />
-          <span className="text-xs text-text-muted" suppressHydrationWarning>
-            {mounted
-              ? wallet.lastSyncAt
-                ? `Sync ${formatRelative(wallet.lastSyncAt)}`
-                : 'Не синхронізовано'
-              : ''}
-          </span>
+          <div className="flex flex-col items-end gap-0.5" suppressHydrationWarning>
+            {mounted && lastPriceUpdateAt && (
+              <span className="text-xs text-text-muted">
+                Ціни: {formatRelative(lastPriceUpdateAt)}
+              </span>
+            )}
+            {mounted && (
+              <span className="text-xs text-text-muted">
+                {wallet.lastSyncAt
+                  ? `Sync: ${formatRelative(wallet.lastSyncAt)}`
+                  : 'Не синхронізовано'}
+              </span>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

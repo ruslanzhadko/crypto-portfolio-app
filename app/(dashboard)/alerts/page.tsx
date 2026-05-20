@@ -26,6 +26,19 @@ export default async function AlertsPage() {
     }),
   ]);
 
+  // Fetch current prices for PRICE_TARGET triggers
+  const priceTargetIds = triggers
+    .filter((t) => t.triggerType === 'PRICE_TARGET')
+    .map((t) => t.tokenId);
+  const cachedPrices =
+    priceTargetIds.length > 0
+      ? await prisma.tokenPrice.findMany({
+          where: { tokenId: { in: priceTargetIds } },
+          select: { tokenId: true, currentPrice: true },
+        })
+      : [];
+  const currentPriceMap = new Map(cachedPrices.map((p) => [p.tokenId, p.currentPrice]));
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -80,7 +93,11 @@ export default async function AlertsPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {triggers.map((t) => (
-                <TriggerCard key={t.id} trigger={t} />
+                <TriggerCard
+                  key={t.id}
+                  trigger={t}
+                  currentPrice={currentPriceMap.get(t.tokenId)}
+                />
               ))}
             </div>
           )}

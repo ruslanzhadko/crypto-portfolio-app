@@ -1,8 +1,8 @@
-import { TriggerDirection } from '@prisma/client';
+import { TriggerDirection, TriggerType } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
-import { sendPriceAlert, TelegramError } from '@/lib/services/telegram';
+import { sendPriceAlert, sendPriceTargetAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 
 // ─────────────────────────────────────────
@@ -46,7 +46,9 @@ interface TriggerWithUser {
   tokenId: string;
   tokenSymbol: string;
   tokenName: string;
+  triggerType: TriggerType;
   threshold: number;
+  targetPrice: number | null;
   direction: TriggerDirection;
   interval: number;
   lastPrice: number | null;
@@ -314,18 +316,37 @@ async function createSnapshots(): Promise<number> {
   return created;
 }
 
+/**
+ * Determines whether a PRICE_TARGET trigger should fire.
+ * Fires when price crosses the target (lastPrice was on opposite side).
+ * Pure — no side effects, safe to unit-test without mocking.
+ */
+export function evaluatePriceTargetTrigger(
+  trigger: Pick<TriggerWithUser, 'lastPrice' | 'targetPrice' | 'direction' | 'user'>,
+  currentPrice: number,
+): boolean {
+  const { lastPrice, targetPrice, direction, user } = trigger;
+  if (lastPrice === null || targetPrice === null) return false;
+  if (!user.telegramChatId || user.isBlocked) return false;
+
+  if (direction === TriggerDirection.UP || direction === TriggerDirection.BOTH) {
+    if (lastPrice < targetPrice && currentPrice >= targetPrice) return true;
+  }
+  if (direction === TriggerDirection.DOWN || direction === TriggerDirection.BOTH) {
+    if (lastPrice > targetPrice && currentPrice <= targetPrice) return true;
+  }
+  return false;
+}
+
 // ─────────────────────────────────────────
 // Step 5 — Price trigger evaluation
 // ─────────────────────────────────────────
 
-async function processTrigger(
+async function processPercentTrigger(
   trigger: TriggerWithUser,
-  prices: Map<string, SimplePriceItem>,
+  currentPrice: number,
   now: Date,
 ): Promise<'notified' | 'updated' | 'skipped' | 'error'> {
-  const currentPrice = prices.get(trigger.tokenId)?.price;
-  if (typeof currentPrice !== 'number' || currentPrice <= 0) return 'skipped';
-
   const evaluation = evaluateTrigger(trigger, currentPrice, now);
   if (!evaluation.shouldUpdate) return 'skipped';
 
@@ -343,17 +364,12 @@ async function processTrigger(
           userId: trigger.userId,
           triggerId: trigger.id,
           tokenSymbol: trigger.tokenSymbol,
-          message: `${evaluation.delta > 0 ? '+' : ''}${evaluation.delta.toFixed(2)}% за ${trigger.interval}хв (${currentPrice})`,
+          message: `${evaluation.delta > 0 ? '+' : ''}${evaluation.delta.toFixed(2)}% за ${trigger.interval}хв ($${currentPrice})`,
           deltaPercent: evaluation.delta,
           price: currentPrice,
           status: 'sent',
         },
       });
-      await prisma.priceTrigger.update({
-        where: { id: trigger.id },
-        data: { lastPrice: currentPrice, lastCheckedAt: now },
-      });
-      return 'notified';
     } catch (err) {
       await prisma.notificationLog.create({
         data: {
@@ -366,6 +382,10 @@ async function processTrigger(
           status: 'failed',
         },
       });
+      await prisma.priceTrigger.update({
+        where: { id: trigger.id },
+        data: { lastPrice: currentPrice, lastCheckedAt: now },
+      });
       return 'error';
     }
   }
@@ -374,7 +394,81 @@ async function processTrigger(
     where: { id: trigger.id },
     data: { lastPrice: currentPrice, lastCheckedAt: now },
   });
+  return evaluation.shouldNotify ? 'notified' : 'updated';
+}
+
+async function processPriceTargetTrigger(
+  trigger: TriggerWithUser,
+  currentPrice: number,
+  now: Date,
+): Promise<'notified' | 'updated' | 'skipped' | 'error'> {
+  const shouldFire = evaluatePriceTargetTrigger(trigger, currentPrice);
+
+  if (shouldFire && trigger.user.telegramChatId && trigger.targetPrice !== null) {
+    const direction = trigger.direction === TriggerDirection.UP ? 'UP' : 'DOWN';
+    try {
+      await sendPriceTargetAlert(trigger.user.telegramChatId, {
+        tokenSymbol: trigger.tokenSymbol,
+        tokenName: trigger.tokenName,
+        targetPrice: trigger.targetPrice,
+        currentPrice,
+        direction,
+      });
+      await Promise.all([
+        prisma.notificationLog.create({
+          data: {
+            userId: trigger.userId,
+            triggerId: trigger.id,
+            tokenSymbol: trigger.tokenSymbol,
+            message: `Ціль $${trigger.targetPrice} досягнута (${direction === 'UP' ? 'вище' : 'нижче'})`,
+            deltaPercent: 0,
+            price: currentPrice,
+            status: 'sent',
+          },
+        }),
+        // Deactivate after firing — price target is one-shot
+        prisma.priceTrigger.update({
+          where: { id: trigger.id },
+          data: { lastPrice: currentPrice, lastCheckedAt: now, isActive: false },
+        }),
+      ]);
+      return 'notified';
+    } catch (err) {
+      await prisma.notificationLog.create({
+        data: {
+          userId: trigger.userId,
+          triggerId: trigger.id,
+          tokenSymbol: trigger.tokenSymbol,
+          message: err instanceof TelegramError ? err.message : 'Помилка надсилання',
+          deltaPercent: 0,
+          price: currentPrice,
+          status: 'failed',
+        },
+      });
+      return 'error';
+    }
+  }
+
+  // Always update lastPrice so next run can detect the crossing
+  await prisma.priceTrigger.update({
+    where: { id: trigger.id },
+    data: { lastPrice: currentPrice, lastCheckedAt: now },
+  });
   return 'updated';
+}
+
+async function processTrigger(
+  trigger: TriggerWithUser,
+  prices: Map<string, SimplePriceItem>,
+  now: Date,
+): Promise<'notified' | 'updated' | 'skipped' | 'error'> {
+  const currentPrice = prices.get(trigger.tokenId)?.price;
+  if (typeof currentPrice !== 'number' || currentPrice <= 0) return 'skipped';
+
+  if (trigger.triggerType === TriggerType.PRICE_TARGET) {
+    return processPriceTargetTrigger(trigger, currentPrice, now);
+  }
+  return processPercentTrigger(trigger, currentPrice, now);
 }
 
 async function checkTriggers(
@@ -382,7 +476,12 @@ async function checkTriggers(
 ): Promise<{ checked: number; notified: number; errors: number }> {
   const triggers = await prisma.priceTrigger.findMany({
     where: { isActive: true },
-    include: { user: { select: { telegramChatId: true, isBlocked: true } } },
+    select: {
+      id: true, userId: true, tokenId: true, tokenSymbol: true, tokenName: true,
+      triggerType: true, threshold: true, targetPrice: true, direction: true,
+      interval: true, lastPrice: true, lastCheckedAt: true,
+      user: { select: { telegramChatId: true, isBlocked: true } },
+    },
   });
 
   const result = { checked: 0, notified: 0, errors: 0 };

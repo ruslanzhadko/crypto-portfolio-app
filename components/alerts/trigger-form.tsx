@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Bell, Target } from 'lucide-react';
 import { TriggerDirection } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,8 @@ import {
 } from '@/components/ui/select';
 import { TokenLogo } from '@/components/common/token-logo';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils/cn';
+import { formatUsd } from '@/lib/utils/format';
 import type { SearchResult } from '@/lib/services/coingecko';
 
 interface InitialToken {
@@ -30,12 +32,15 @@ interface TriggerFormProps {
   initial?: InitialToken | null;
 }
 
+type TriggerType = 'PERCENT' | 'PRICE_TARGET';
+
 const INTERVALS = [
   { label: '1 хвилина', value: 1 },
   { label: '5 хвилин', value: 5 },
   { label: '15 хвилин', value: 15 },
   { label: '1 година', value: 60 },
   { label: '4 години', value: 240 },
+  { label: '24 години', value: 1440 },
 ];
 
 export function TriggerForm({ initial = null }: TriggerFormProps) {
@@ -48,10 +53,36 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
 
-  const [threshold, setThreshold] = useState(10);
+  const [triggerType, setTriggerType] = useState<TriggerType>('PERCENT');
+  const [threshold, setThreshold] = useState(5);
   const [direction, setDirection] = useState<TriggerDirection>(TriggerDirection.BOTH);
-  const [interval, setInterval] = useState(60);
+  const [interval, setInterval] = useState(15);
+  const [targetPrice, setTargetPrice] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [tokenCurrentPrice, setTokenCurrentPrice] = useState<number | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+
+  // Fetch current price when token is selected
+  useEffect(() => {
+    if (!selectedToken) {
+      setTokenCurrentPrice(null);
+      return;
+    }
+    setPriceLoading(true);
+    fetch(`/api/market/${selectedToken.tokenId}`)
+      .then((r) => r.json())
+      .then((data: { coin?: { currentPrice?: number } }) => {
+        const price = data.coin?.currentPrice ?? null;
+        setTokenCurrentPrice(price);
+        // Pre-fill targetPrice with current price for PRICE_TARGET
+        if (price && !targetPrice) {
+          setTargetPrice(String(price));
+        }
+      })
+      .catch(() => setTokenCurrentPrice(null))
+      .finally(() => setPriceLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedToken?.tokenId]);
 
   useEffect(() => {
     if (search.length < 2 || selectedToken) {
@@ -76,28 +107,48 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
       toast({ variant: 'destructive', title: 'Оберіть токен' });
       return;
     }
+    if (triggerType === 'PRICE_TARGET' && (!targetPrice || Number(targetPrice) <= 0)) {
+      toast({ variant: 'destructive', title: 'Введіть цільову ціну' });
+      return;
+    }
+
     startTransition(async () => {
+      const body =
+        triggerType === 'PERCENT'
+          ? {
+              triggerType: 'PERCENT',
+              tokenId: selectedToken.tokenId,
+              tokenSymbol: selectedToken.tokenSymbol,
+              tokenName: selectedToken.tokenName,
+              threshold,
+              direction,
+              interval,
+              isActive,
+            }
+          : {
+              triggerType: 'PRICE_TARGET',
+              tokenId: selectedToken.tokenId,
+              tokenSymbol: selectedToken.tokenSymbol,
+              tokenName: selectedToken.tokenName,
+              targetPrice: Number(targetPrice),
+              direction: Number(targetPrice) >= (tokenCurrentPrice ?? 0) ? 'UP' : 'DOWN',
+              isActive,
+            };
+
       const res = await fetch('/api/alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tokenId: selectedToken.tokenId,
-          tokenSymbol: selectedToken.tokenSymbol,
-          tokenName: selectedToken.tokenName,
-          threshold,
-          direction,
-          interval,
-          isActive,
-        }),
+        body: JSON.stringify(body),
       });
+
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
+        const data = (await res.json().catch(() => null)) as
           | { error?: { message?: string } }
           | null;
         toast({
           variant: 'destructive',
           title: 'Не вдалось створити тригер',
-          description: body?.error?.message ?? 'Спробуйте пізніше',
+          description: data?.error?.message ?? 'Спробуйте пізніше',
         });
         return;
       }
@@ -109,28 +160,76 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
+      {/* Type selector */}
+      <div className="space-y-2">
+        <Label>Тип тригера</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setTriggerType('PERCENT')}
+            className={cn(
+              'flex items-center gap-3 rounded-lg border p-3 text-left text-sm transition-colors',
+              triggerType === 'PERCENT'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-surface-2 text-text-muted hover:border-border/80',
+            )}
+          >
+            <Bell className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-medium">Зміна %</p>
+              <p className="text-xs opacity-70">Реагує на різкий рух</p>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTriggerType('PRICE_TARGET')}
+            className={cn(
+              'flex items-center gap-3 rounded-lg border p-3 text-left text-sm transition-colors',
+              triggerType === 'PRICE_TARGET'
+                ? 'border-warning bg-warning/10 text-warning'
+                : 'border-border bg-surface-2 text-text-muted hover:border-border/80',
+            )}
+          >
+            <Target className="h-5 w-5 shrink-0" />
+            <div>
+              <p className="font-medium">Цільова ціна</p>
+              <p className="text-xs opacity-70">Спрацьовує один раз</p>
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Token selector */}
       <div className="space-y-2">
         <Label>Токен</Label>
         {selectedToken ? (
-          <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2 p-3">
-            <div className="flex items-center gap-3">
-              <TokenLogo src={selectedToken.logoUrl ?? null} symbol={selectedToken.tokenSymbol} size={36} />
-              <div>
-                <p className="font-medium">{selectedToken.tokenName}</p>
-                <p className="text-xs uppercase text-text-muted">{selectedToken.tokenSymbol}</p>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2 p-3">
+              <div className="flex items-center gap-3">
+                <TokenLogo src={selectedToken.logoUrl ?? null} symbol={selectedToken.tokenSymbol} size={36} />
+                <div>
+                  <p className="font-medium">{selectedToken.tokenName}</p>
+                  <p className="text-xs uppercase text-text-muted">{selectedToken.tokenSymbol}</p>
+                </div>
               </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSelectedToken(null); setSearch(''); setTokenCurrentPrice(null); setTargetPrice(''); }}
+              >
+                Змінити
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setSelectedToken(null);
-                setSearch('');
-              }}
-            >
-              Змінити
-            </Button>
+            {/* Current price block */}
+            {priceLoading ? (
+              <p className="text-xs text-text-muted">Завантаження ціни…</p>
+            ) : tokenCurrentPrice != null ? (
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-border/50 bg-surface-2/50 px-3 py-2 text-sm">
+                <span className="text-text-muted">Поточна ціна:</span>
+                <span className="font-semibold tabular-nums">{formatUsd(tokenCurrentPrice)}</span>
+              </div>
+            ) : null}
           </div>
         ) : (
           <>
@@ -140,9 +239,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
               placeholder="Пошук токену (мінімум 2 символи)..."
               autoFocus
             />
-            {searching && (
-              <p className="text-xs text-text-muted">Пошук...</p>
-            )}
+            {searching && <p className="text-xs text-text-muted">Пошук...</p>}
             {searchResults.length > 0 && (
               <div className="max-h-60 overflow-auto rounded-lg border border-border bg-popover">
                 {searchResults.map((r) => (
@@ -172,65 +269,89 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
         )}
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="threshold">Поріг Δ% (1–100)</Label>
-        <Input
-          id="threshold"
-          type="number"
-          min={1}
-          max={100}
-          step={1}
-          value={threshold}
-          onChange={(e) => setThreshold(Number(e.target.value))}
-        />
-        <p className="text-xs text-text-muted">
-          Сповіщення спрацює коли зміна ціни за обраний інтервал перевищить вказаний поріг.
-        </p>
-      </div>
+      {/* PERCENT fields */}
+      {triggerType === 'PERCENT' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="threshold">Поріг Δ% (1–100)</Label>
+            <Input
+              id="threshold"
+              type="number"
+              min={1}
+              max={100}
+              step={1}
+              value={threshold}
+              onChange={(e) => setThreshold(Number(e.target.value))}
+            />
+            <p className="text-xs text-text-muted">
+              Сповіщення надійде коли ціна зміниться на вказаний % за обраний інтервал.
+            </p>
+          </div>
 
-      <div className="space-y-2">
-        <Label>Напрямок</Label>
-        <Select
-          value={direction}
-          onValueChange={(v) => setDirection(v as TriggerDirection)}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={TriggerDirection.BOTH}>Зростання або падіння</SelectItem>
-            <SelectItem value={TriggerDirection.UP}>Лише зростання ↑</SelectItem>
-            <SelectItem value={TriggerDirection.DOWN}>Лише падіння ↓</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+          <div className="space-y-2">
+            <Label>Напрямок</Label>
+            <Select value={direction} onValueChange={(v) => setDirection(v as TriggerDirection)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={TriggerDirection.BOTH}>↑↓ Зростання або падіння</SelectItem>
+                <SelectItem value={TriggerDirection.UP}>↑ Лише зростання</SelectItem>
+                <SelectItem value={TriggerDirection.DOWN}>↓ Лише падіння</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-      <div className="space-y-2">
-        <Label>Інтервал перевірки</Label>
-        <Select value={String(interval)} onValueChange={(v) => setInterval(Number(v))}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {INTERVALS.map((i) => (
-              <SelectItem key={i.value} value={String(i.value)}>
-                {i.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+          <div className="space-y-2">
+            <Label>Інтервал перевірки</Label>
+            <Select value={String(interval)} onValueChange={(v) => setInterval(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {INTERVALS.map((i) => (
+                  <SelectItem key={i.value} value={String(i.value)}>
+                    {i.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </>
+      )}
+
+      {/* PRICE_TARGET fields */}
+      {triggerType === 'PRICE_TARGET' && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="targetPrice">Цільова ціна (USD)</Label>
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
+              <Input
+                id="targetPrice"
+                type="number"
+                min={0}
+                step="any"
+                value={targetPrice}
+                onChange={(e) => setTargetPrice(e.target.value)}
+                placeholder="0.00"
+                className="pl-7"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-text-muted">
+            Напрямок визначається автоматично. Тригер спрацює один раз і деактивується.
+          </p>
+        </>
+      )}
 
       <div className="flex items-center justify-between rounded-lg border border-border p-3">
         <div>
           <Label htmlFor="active">Активний</Label>
           <p className="text-xs text-text-muted">Вимкнений тригер не надсилає сповіщень.</p>
         </div>
-        <Switch
-          id="active"
-          checked={isActive}
-          onCheckedChange={(c) => setIsActive(c)}
-        />
+        <Switch id="active" checked={isActive} onCheckedChange={setIsActive} />
       </div>
 
       <Button type="submit" disabled={isPending || !selectedToken} className="w-full">

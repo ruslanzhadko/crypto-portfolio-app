@@ -52,12 +52,14 @@ export function formatPriceAlert(payload: PriceAlertPayload): string {
       ? `${(payload.intervalMinutes / 60).toFixed(1).replace(/\.0$/, '')} год`
       : `${payload.intervalMinutes} хв`;
 
+  const prevPrice = payload.price / (1 + payload.deltaPercent / 100);
+
   return [
     `🚨 <b>Цінова аномалія: ${escapeHtml(payload.tokenSymbol)}</b>`,
     '',
     `${direction} Зміна: <b>${sign}${payload.deltaPercent.toFixed(2)}%</b> за ${escapeHtml(intervalLabel)}`,
-    `💰 Поточна ціна: <b>$${formatPrice(payload.price)}</b>`,
-    `📊 Токен: ${escapeHtml(payload.tokenName)}`,
+    `💰 Ціна зараз:  <b>$${formatPrice(payload.price)}</b>`,
+    `📌 Ціна раніше: <b>$${formatPrice(prevPrice)}</b>`,
     '',
     `⏱ ${new Date().toLocaleString('uk-UA')}`,
   ].join('\n');
@@ -81,6 +83,39 @@ export async function sendPriceAlert(
   payload: PriceAlertPayload,
 ): Promise<void> {
   const text = formatPriceAlert(payload);
+  await sendMessage({ chatId, text, parseMode: 'HTML' });
+}
+
+export interface PriceTargetPayload {
+  tokenSymbol: string;
+  tokenName: string;
+  targetPrice: number;
+  currentPrice: number;
+  direction: 'UP' | 'DOWN';
+}
+
+export function formatPriceTargetAlert(payload: PriceTargetPayload): string {
+  const icon = payload.direction === 'UP' ? '📈' : '📉';
+  const label = payload.direction === 'UP' ? 'вище' : 'нижче';
+
+  return [
+    `🎯 <b>Цільова ціна досягнута: ${escapeHtml(payload.tokenSymbol)}</b>`,
+    '',
+    `${icon} Ціна пішла <b>${label}</b> позначки $${formatPrice(payload.targetPrice)}`,
+    `💰 Поточна ціна: <b>$${formatPrice(payload.currentPrice)}</b>`,
+    `📊 Токен: ${escapeHtml(payload.tokenName)}`,
+    '',
+    `⏱ ${new Date().toLocaleString('uk-UA')}`,
+    '',
+    '<i>Тригер деактивовано після спрацювання.</i>',
+  ].join('\n');
+}
+
+export async function sendPriceTargetAlert(
+  chatId: string,
+  payload: PriceTargetPayload,
+): Promise<void> {
+  const text = formatPriceTargetAlert(payload);
   await sendMessage({ chatId, text, parseMode: 'HTML' });
 }
 

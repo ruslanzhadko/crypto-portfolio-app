@@ -16,7 +16,11 @@ export default async function WalletsPage() {
     orderBy: { createdAt: 'desc' },
     include: {
       _count: { select: { balances: { where: { isSpam: false, isHidden: false } } } },
-      balances: { where: { isSpam: false, isHidden: false }, select: { usdValue: true } },
+      balances: {
+        where: { isSpam: false, isHidden: false },
+        select: { usdValue: true, updatedAt: true },
+        orderBy: { updatedAt: 'desc' },
+      },
     },
   });
 
@@ -26,6 +30,7 @@ export default async function WalletsPage() {
     network: w.network,
     label: w.label,
     lastSyncAt: w.lastSyncAt,
+    lastPriceUpdateAt: w.balances[0]?.updatedAt ?? null,
     tokenCount: w._count.balances,
     totalUsd: w.balances.reduce((s, b) => s + b.usdValue, 0),
   }));
@@ -51,7 +56,7 @@ export default async function WalletsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((w) => (
-            <WalletCard key={w.id} wallet={w} />
+            <WalletCard key={w.id} wallet={w} lastPriceUpdateAt={w.lastPriceUpdateAt} />
           ))}
         </div>
       )}
