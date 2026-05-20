@@ -17,12 +17,17 @@ dist/
 .env*.local
 .env.development
 .env.production
+.env.test
+.env.staging
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Claude Code (local machine settings + temp screenshots)
+.claude/
 
 # OS
 .DS_Store
@@ -39,6 +44,7 @@ prisma/*.db-journal
 # Misc
 .turbo
 coverage/
+*.local.json
 
 docs/
 
