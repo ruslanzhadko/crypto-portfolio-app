@@ -223,13 +223,9 @@ function normalizeAnkrAsset(asset: AnkrAsset): NormalizedToken | null {
   const contractAddress = isNative ? '' : (asset.contractAddress?.toLowerCase() ?? '');
 
   // Ankr надає thumbnail тільки для відомих токенів.
-  // Fallback: DexScreener CDN — покриває більшість ERC-20 з DEX-активністю,
-  // приймає lowercase адресу. TokenLogo обробляє 404 через onError → letter avatar.
-  const logoUrl =
-    asset.thumbnail ||
-    (!isNative && contractAddress
-      ? `https://dd.dexscreener.com/ds-data/tokens/${chainName}/${contractAddress}.png`
-      : null);
+  // Не встановлюємо спекулятивний CDN URL — він часто 404-ить і блокує
+  // реальний логотип з DexScreener API (applyPriceToToken перевіряє !t.logoUrl).
+  const logoUrl = asset.thumbnail || null;
 
   return {
     symbol,

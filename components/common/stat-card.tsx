@@ -63,13 +63,13 @@ export function StatCard({
 
       <div className="relative mt-2.5 flex min-h-[1.25rem] flex-wrap items-center gap-x-2 gap-y-1">
         {typeof delta === 'number' && (
-          <PriceChange value={delta} size="sm" />
+          <PriceChange value={delta} size="default" />
         )}
         {deltaLabel && (
-          <span className="text-xs text-text-muted">{deltaLabel}</span>
+          <span className="text-sm text-text-muted">{deltaLabel}</span>
         )}
         {typeof deltaUsd === 'number' && deltaUsd !== 0 && (
-          <span className={cn('text-xs font-medium tabular-nums', deltaUsd >= 0 ? 'text-success' : 'text-danger')}>
+          <span className={cn('text-sm font-medium tabular-nums', deltaUsd >= 0 ? 'text-success' : 'text-danger')}>
             {deltaUsd >= 0 ? '+' : ''}
             {deltaUsd < 0
               ? `-$${Math.abs(deltaUsd).toLocaleString('en-US', { maximumFractionDigits: 2 })}`
@@ -77,7 +77,7 @@ export function StatCard({
           </span>
         )}
         {subtext && !delta && (
-          <span className="text-xs text-text-muted">{subtext}</span>
+          <span className="text-sm text-text-muted">{subtext}</span>
         )}
       </div>
     </div>

@@ -135,7 +135,7 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
   // Ankr повертає priceUsd/usdValue, але не priceChange24h.
   // Включаємо всі токени з priceChange24h === 0 щоб DexScreener/Binance їх збагатив.
   const needPricing = tokens.filter(
-    (t) => t.priceUsd === 0 || t.usdValue === 0 || t.priceChange24h === 0,
+    (t) => t.priceUsd === 0 || t.usdValue === 0 || t.priceChange24h === 0 || !t.logoUrl,
   );
   if (needPricing.length === 0) return;
 
@@ -154,9 +154,22 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
     applyPriceToToken(t, p.price, p.change24h, p.logoUrl);
   }
 
+  // Persist logos back to TokenPrice so subsequent syncs read them from cache
+  const withNewLogos = needPricing.filter((t) => t.logoUrl && t.coingeckoId);
+  if (withNewLogos.length > 0) {
+    await Promise.allSettled(
+      withNewLogos.map((t) =>
+        prisma.tokenPrice.updateMany({
+          where: { tokenId: t.coingeckoId!, logoUrl: null },
+          data: { logoUrl: t.logoUrl! },
+        }),
+      ),
+    );
+  }
+
   // ── 2. CoinGecko fallback (тільки для токенів, що залишились без ціни) ──
   const stillMissing = needPricing.filter(
-    (t) => t.priceUsd === 0 && t.coingeckoId,
+    (t) => (t.priceUsd === 0 || !t.logoUrl) && t.coingeckoId,
   );
   if (stillMissing.length === 0) return;
 
@@ -218,14 +231,13 @@ function applyPriceToToken(
   change24h: number,
   logoUrl?: string,
 ): void {
+  if (!t.logoUrl && logoUrl) t.logoUrl = logoUrl;
   if (!Number.isFinite(price) || price <= 0) return;
   if (t.priceUsd === 0) t.priceUsd = price;
   if (t.priceChange24h === 0 && Number.isFinite(change24h)) {
     t.priceChange24h = Math.max(-99.9, Math.min(change24h, 10_000));
   }
   if (t.usdValue === 0) t.usdValue = t.balance * price;
-  // Логотип з DexScreener перезаписує тільки якщо поточний відсутній
-  if (!t.logoUrl && logoUrl) t.logoUrl = logoUrl;
 }
 
 // ─────────────────────────────────────────
@@ -247,7 +259,7 @@ async function applyCachedPrices(
     where: { symbol: { in: symbols, mode: 'insensitive' } },
   });
 
-  const priceBySymbol = new Map<string, { price: number; change24h: number; id: string }>();
+  const priceBySymbol = new Map<string, { price: number; change24h: number; id: string; logoUrl: string | null }>();
   for (const p of cached) {
     const key = p.symbol.toLowerCase();
     if (!priceBySymbol.has(key)) {
@@ -255,6 +267,7 @@ async function applyCachedPrices(
         price: p.currentPrice,
         change24h: p.priceChange24h,
         id: p.tokenId,
+        logoUrl: p.logoUrl ?? null,
       });
     }
   }
@@ -283,6 +296,7 @@ async function applyCachedPrices(
       if (priceUsd === 0) priceUsd = fromCache.price;
       if (priceChange24h === 0) priceChange24h = fromCache.change24h;
       if (usdValue === 0) usdValue = t.balance * fromCache.price;
+      if (!logoUrl && fromCache.logoUrl) logoUrl = fromCache.logoUrl;
     }
 
     return { ...t, usdValue, priceUsd, priceChange24h, coingeckoId, logoUrl };
