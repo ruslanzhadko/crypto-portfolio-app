@@ -5,7 +5,12 @@ const prisma = new PrismaClient();
 
 async function main() {
   const adminEmail = process.env.ADMIN_EMAIL ?? 'admin@example.com';
-  const adminPassword = process.env.ADMIN_PASSWORD ?? 'admin12345';
+  const adminPassword = process.env.ADMIN_PASSWORD ?? process.env.SEED_PASSWORD;
+  if (!adminPassword) {
+    throw new Error(
+      'Set ADMIN_PASSWORD (or SEED_PASSWORD) in .env before seeding (see .env.example).',
+    );
+  }
 
   const passwordHash = await bcrypt.hash(adminPassword, 12);
 

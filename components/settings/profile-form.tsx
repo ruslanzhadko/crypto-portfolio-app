@@ -108,8 +108,7 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
           і дізнайтесь ваш Chat ID через{' '}
           <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-primary hover:underline">
             @userinfobot
-          </a>
-          .
+          </a>.
         </p>
       </div>
 

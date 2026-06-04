@@ -14,7 +14,7 @@ interface TelegramUpdate {
 }
 
 function escapeHtml(text: string): string {
-  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text.replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;');
 }
 
 function isAuthorized(req: NextRequest): boolean {

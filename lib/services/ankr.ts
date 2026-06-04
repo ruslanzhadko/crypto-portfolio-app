@@ -179,7 +179,7 @@ function parseTokenAmount(value: string | undefined | null, decimals: number): n
     return result > 0 ? result : null;
   } catch {
     // Fallback: parseFloat для нецілих рядків (напр. "50.5")
-    const n = parseFloat(value);
+    const n = Number.parseFloat(value);
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 }
@@ -189,7 +189,7 @@ function parseAnkrTimestamp(raw: number | string | undefined): number {
   if (raw === undefined || raw === null) return 0;
   if (typeof raw === 'number') return raw;
   // Hex рядок: "0x60f5d9c0"
-  if (typeof raw === 'string' && raw.startsWith('0x')) return parseInt(raw, 16);
+  if (typeof raw === 'string' && raw.startsWith('0x')) return Number.parseInt(raw, 16);
   // Decimal рядок: "1626708414"
   const n = Number(raw);
   return Number.isFinite(n) ? n : 0;
@@ -202,13 +202,13 @@ function normalizeAnkrAsset(asset: AnkrAsset): NormalizedToken | null {
   const isNative = asset.tokenType === 'NATIVE';
 
   // balance — вже відформатований рядок (не raw), парсимо напряму
-  const balance = parseFloat(asset.balance);
+  const balance = Number.parseFloat(asset.balance);
   if (!Number.isFinite(balance) || balance <= 0) return null;
 
-  const priceUsd = Math.max(0, parseFloat(asset.tokenPrice) || 0);
+  const priceUsd = Math.max(0, Number.parseFloat(asset.tokenPrice) || 0);
   const usdValue = Math.max(
     0,
-    parseFloat(asset.balanceUsd) || (priceUsd > 0 ? priceUsd * balance : 0),
+    Number.parseFloat(asset.balanceUsd) || (priceUsd > 0 ? priceUsd * balance : 0),
   );
 
   // Для нативних токенів беремо канонічні назви (Ankr іноді дає "Ether" замість "Ethereum")
@@ -624,7 +624,7 @@ async function fetchAnkrNativeTransfers(
       if (tx.status && tx.status !== '0x1') continue;
 
       const weiHex = tx.value ?? '0x0';
-      const valueWei = parseInt(weiHex, 16);
+      const valueWei = Number.parseInt(weiHex, 16);
       if (!Number.isFinite(valueWei) || valueWei <= 0) continue;
       const value = valueWei / 1e18;
       if (value < 0.0001) continue;
@@ -632,7 +632,7 @@ async function fetchAnkrNativeTransfers(
       const native = NATIVE_INFO[chainName];
       const isOutgoing = tx.from?.toLowerCase() === wallet;
       const ts = parseAnkrTimestamp(tx.blockTimestamp ?? tx.timestamp);
-      const blockNumber = tx.blockNumber ? BigInt(parseInt(tx.blockNumber, 16)) : null;
+      const blockNumber = tx.blockNumber ? BigInt(Number.parseInt(tx.blockNumber, 16)) : null;
 
       results.push({
         hash,
@@ -644,7 +644,7 @@ async function fetchAnkrNativeTransfers(
         toAddress: tx.to?.toLowerCase() ?? null,
         value,
         usdValue: null,
-        gasUsed: tx.gasUsed ? parseInt(tx.gasUsed, 16) : null,
+        gasUsed: tx.gasUsed ? Number.parseInt(tx.gasUsed, 16) : null,
         status: 'success',
         blockNumber,
         timestamp: new Date((Number.isFinite(ts) ? ts : 0) * 1000),

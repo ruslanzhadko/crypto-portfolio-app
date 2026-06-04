@@ -23,7 +23,7 @@ describe('formatUsd', () => {
     expect(formatUsd(10, { minimumFractionDigits: 0 })).toBe('$10');
   });
   it('NaN/Infinity → $0.00 (guard)', () => {
-    expect(formatUsd(NaN)).toBe('$0.00');
+    expect(formatUsd(Number.NaN)).toBe('$0.00');
     expect(formatUsd(Infinity)).toBe('$0.00');
   });
 });
@@ -33,7 +33,7 @@ describe('formatNumber', () => {
     expect(formatNumber(1234.5678)).toBe('1,234.5678');
   });
   it('NaN → "0"', () => {
-    expect(formatNumber(NaN)).toBe('0');
+    expect(formatNumber(Number.NaN)).toBe('0');
   });
 });
 
@@ -48,7 +48,7 @@ describe('formatPercent', () => {
     expect(formatPercent(0)).toBe('0.00%');
   });
   it('NaN → "0%"', () => {
-    expect(formatPercent(NaN)).toBe('0%');
+    expect(formatPercent(Number.NaN)).toBe('0%');
   });
 });
 
@@ -69,7 +69,7 @@ describe('formatTokenBalance', () => {
     expect(formatTokenBalance(1500.5)).toBe('1,500.5');
   });
   it('NaN → "0"', () => {
-    expect(formatTokenBalance(NaN)).toBe('0');
+    expect(formatTokenBalance(Number.NaN)).toBe('0');
   });
 });
 
