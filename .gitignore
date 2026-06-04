@@ -48,6 +48,12 @@ coverage/
 
 docs/
 
+# Generated / session docs
+ARCHITECTURE.md
+CODERABBIT_FIXES.md
+QUALITY_REPORT.md
+SESSION_SUMMARY.md
+
 .vercel
 
 yarn.lock
