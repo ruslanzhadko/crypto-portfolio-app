@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ChainAllocation } from '@/lib/services/portfolio';
@@ -10,6 +11,9 @@ interface NetworkAllocationProps {
 }
 
 export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   return (
     <Card>
       <CardHeader>
@@ -18,6 +22,8 @@ export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
       <CardContent className="h-[280px]">
         {chains.length === 0 ? (
           <p className="text-sm text-text-muted">Немає даних</p>
+        ) : !mounted ? (
+          <div className="h-full animate-pulse rounded-lg bg-surface-2" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart

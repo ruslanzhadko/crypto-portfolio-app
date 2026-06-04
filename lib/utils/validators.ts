@@ -66,19 +66,40 @@ export type WalletCreateInput = z.infer<typeof walletCreateSchema>;
 // Тригери
 // ─────────────────────────────────────────
 
-export const triggerCreateSchema = z.object({
+const triggerBase = z.object({
   tokenId: z.string().min(1),
   tokenSymbol: z.string().min(1),
   tokenName: z.string().min(1),
-  threshold: z.number().positive().min(0.1).max(100),
-  direction: z.nativeEnum(TriggerDirection).default('BOTH'),
-  interval: z.number().int().positive().min(15).max(1440),
   isActive: z.boolean().default(true),
 });
 
+const percentTriggerSchema = triggerBase.extend({
+  triggerType: z.literal('PERCENT'),
+  threshold: z.number().int().min(1).max(100),
+  direction: z.nativeEnum(TriggerDirection).default('BOTH'),
+  interval: z.number().int().min(1).max(1440),
+});
+
+const priceTargetTriggerSchema = triggerBase.extend({
+  triggerType: z.literal('PRICE_TARGET'),
+  targetPrice: z.number().positive(),
+  direction: z.enum(['UP', 'DOWN']),
+});
+
+export const triggerCreateSchema = z.discriminatedUnion('triggerType', [
+  percentTriggerSchema,
+  priceTargetTriggerSchema,
+]);
+
 export type TriggerCreateInput = z.infer<typeof triggerCreateSchema>;
 
-export const triggerUpdateSchema = triggerCreateSchema.partial();
+export const triggerUpdateSchema = z.object({
+  isActive: z.boolean().optional(),
+  threshold: z.number().int().min(1).max(100).optional(),
+  direction: z.nativeEnum(TriggerDirection).optional(),
+  interval: z.number().int().min(1).max(1440).optional(),
+  targetPrice: z.number().positive().optional(),
+});
 export type TriggerUpdateInput = z.infer<typeof triggerUpdateSchema>;
 
 // ─────────────────────────────────────────

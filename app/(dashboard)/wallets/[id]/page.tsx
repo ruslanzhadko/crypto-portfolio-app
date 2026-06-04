@@ -9,7 +9,7 @@ import { NetworkBadge } from '@/components/common/network-badge';
 import { TokenBalanceList } from '@/components/wallets/token-balance-list';
 import { TransactionList } from '@/components/wallets/transaction-list';
 import { WalletSyncButton } from '@/components/wallets/wallet-sync-button';
-import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
+import { formatRelative, formatUsd } from '@/lib/utils/format';
 
 export const dynamic = 'force-dynamic';
 

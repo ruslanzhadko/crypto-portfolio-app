@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 const patchSchema = z.object({
   isBlocked: z.boolean().optional(),
+  role: z.enum(['USER', 'ADMIN']).optional(),
 });
 
 export async function PATCH(
@@ -33,14 +34,15 @@ export async function PATCH(
       select: { id: true, role: true },
     });
     if (!target) return apiError('NOT_FOUND', 'Користувача не знайдено');
-    if (target.role === 'ADMIN') {
+
+    if (parsed.data.isBlocked === true && target.role === 'ADMIN') {
       return apiError('FORBIDDEN', 'Не можна блокувати адміністратора');
     }
 
     const updated = await prisma.user.update({
       where: { id: target.id },
       data: parsed.data,
-      select: { id: true, email: true, isBlocked: true },
+      select: { id: true, email: true, isBlocked: true, role: true },
     });
 
     return ok({ user: updated });

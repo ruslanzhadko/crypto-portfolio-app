@@ -1,7 +1,5 @@
 /**
  * Локальний планувальник на основі node-cron для розробки.
- * Запуск: `npm run cron:local`
- *
  * У production цю функцію виконує Vercel Cron Jobs (див. vercel.json).
  */
 import cron from 'node-cron';
@@ -20,7 +18,7 @@ cron.schedule(SCHEDULE, async () => {
   running = true;
   try {
     const result = await runPriceUpdater();
-    console.log('[cron] Виконано:', result);
+    console.log(`[cron] ${new Date().toLocaleTimeString('uk-UA')} Виконано:`, result);
   } catch (err) {
     console.error('[cron] Помилка:', err);
   } finally {

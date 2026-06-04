@@ -2,11 +2,12 @@ import { Network } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import {
   fetchWalletTokens,
-  fetchWalletTransactions,
   MIN_TOKEN_USD,
   type NormalizedToken,
 } from '@/lib/services/moralis';
-import { fetchPricesByIds } from '@/lib/services/coingecko';
+import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
+import { fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
+import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
 
 export interface SyncResult {
@@ -30,12 +31,13 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   });
   if (!wallet) throw new Error('Гаманець не знайдено');
 
-  const [tokens, txs] = await Promise.all([
-    fetchWalletTokens(wallet.address, wallet.network),
-    fetchWalletTransactions(wallet.address, wallet.network, 25).catch(() => []),
-  ]);
+  // Транзакції більше не синхронізуються в БД — підтягуються live з Ankr при перегляді.
+  const isEvm = wallet.network === Network.EVM;
+  const tokens = isEvm
+    ? await fetchEVMBalancesFromAnkr(wallet.address)
+    : await fetchWalletTokens(wallet.address, wallet.network);
 
-  const enriched = await applyCachedPrices(tokens, wallet.network);
+  const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
 
   const spamCount = enriched.filter(
@@ -62,7 +64,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     const existing = await prisma.tokenBalance.count({ where: { walletId } });
     if (existing > 0) {
       await prisma.wallet.update({ where: { id: walletId }, data: { lastSyncAt: new Date() } });
-      return { walletId, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date() };
+      return { walletId, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date()} ;
     }
   }
 
@@ -95,36 +97,6 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
       });
     }
 
-    for (const txItem of txs) {
-      if (!txItem.hash) continue;
-      await tx.walletTransaction.upsert({
-        where: {
-          walletId_chainName_hash: {
-            walletId,
-            chainName: txItem.chainName,
-            hash: txItem.hash,
-          },
-        },
-        create: {
-          walletId,
-          hash: txItem.hash,
-          chainName: txItem.chainName,
-          type: txItem.type,
-          tokenSymbol: txItem.tokenSymbol,
-          tokenName: txItem.tokenName,
-          fromAddress: txItem.fromAddress,
-          toAddress: txItem.toAddress,
-          value: txItem.value,
-          usdValue: txItem.usdValue,
-          gasUsed: txItem.gasUsed,
-          status: txItem.status,
-          blockNumber: txItem.blockNumber,
-          timestamp: txItem.timestamp,
-        },
-        update: {},
-      });
-    }
-
     await tx.wallet.update({
       where: { id: walletId },
       data: { lastSyncAt: new Date() },
@@ -138,7 +110,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   return {
     walletId,
     tokensSynced: toSave.length,
-    transactionsSynced: txs.length,
+    transactionsSynced: 0,
     spamFiltered: spamCount,
     totalUsd,
     syncedAt: new Date(),
@@ -149,61 +121,198 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
 // Підтягування цін для токенів без USD-вартості
 // ─────────────────────────────────────────
 
+/**
+ * Заповнює ціни для токенів, які Moralis повернув без `priceUsd` або з нульовим `usdValue`.
+ *
+ * Pipeline:
+ *  1. price-feed (Binance native + DexScreener за contract address) — головне джерело.
+ *  2. CoinGecko по coingeckoId — fallback для токенів без DEX-листингу.
+ *
+ * CoinGecko результати кешуються у `TokenPrice` (як раніше). DexScreener/Binance
+ * не кешуються — їх дешево перезапитати при наступному sync.
+ */
 async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
-  // Запитуємо CoinGecko для всіх токенів з coingeckoId, де відсутні priceUsd або usdValue.
-  // Це покриває нативні EVM-токени та Solana, у яких Moralis не повертає ціни.
-  const missingIds = Array.from(
-    new Set(
-      tokens
-        .filter((t) => (t.priceUsd === 0 || t.usdValue === 0) && t.coingeckoId)
-        .map((t) => t.coingeckoId!),
-    ),
+  // Ankr повертає priceUsd/usdValue, але не priceChange24h.
+  // Включаємо всі токени з priceChange24h === 0 щоб DexScreener/Binance їх збагатив.
+  const needPricing = tokens.filter(
+    (t) => t.priceUsd === 0 || t.usdValue === 0 || t.priceChange24h === 0 || !t.logoUrl,
   );
-  if (missingIds.length === 0) return;
+  if (needPricing.length === 0) return;
 
-  const prices = await fetchPricesByIds(missingIds).catch(() => new Map());
-  if (prices.size === 0) return;
+  // ── 1. price-feed (Binance + DexScreener) ──
+  const queries: PriceQuery[] = needPricing.map((t) => ({
+    key: priceFeedKey(t),
+    isNative: t.isNative,
+    chainName: t.chainName,
+    contractAddress: t.isNative ? undefined : t.address || undefined,
+  }));
+  const feedPrices = await fetchPrices(queries).catch(() => new Map());
 
-  // Оновлюємо priceUsd / priceChange24h / usdValue в масиві збагачених токенів
-  for (const t of tokens) {
-    if (!t.coingeckoId) continue;
-    const p = prices.get(t.coingeckoId);
+  for (const t of needPricing) {
+    const p = feedPrices.get(priceFeedKey(t));
     if (!p) continue;
-    if (t.priceUsd === 0 && p.price > 0) t.priceUsd = p.price;
-    if (t.priceChange24h === 0 && Number.isFinite(p.change24h)) {
-      t.priceChange24h = p.change24h;
-    }
-    if (t.usdValue === 0 && p.price > 0) t.usdValue = t.balance * p.price;
+    applyPriceToToken(t, p.price, p.change24h, p.logoUrl);
   }
 
-  // Зберігаємо ціни в кеш, щоб наступні синки не потребували живого запиту
+  // Persist logos back to TokenPrice so subsequent syncs read them from cache
+  const withNewLogos = needPricing.filter((t) => t.logoUrl && t.coingeckoId);
+  if (withNewLogos.length > 0) {
+    await Promise.allSettled(
+      withNewLogos.map((t) =>
+        prisma.tokenPrice.updateMany({
+          where: { tokenId: t.coingeckoId!, logoUrl: null },
+          data: { logoUrl: t.logoUrl! },
+        }),
+      ),
+    );
+  }
+
+  // ── 2. CoinGecko fallback (тільки для токенів, що залишились без ціни) ──
+  const stillMissing = needPricing.filter(
+    (t) => (t.priceUsd === 0 || !t.logoUrl) && t.coingeckoId,
+  );
+  if (stillMissing.length > 0) {
+    const cgIds = Array.from(new Set(stillMissing.map((t) => t.coingeckoId!)));
+    const cgPrices = await fetchPricesByIds(cgIds).catch(() => new Map());
+    if (cgPrices.size > 0) {
+      for (const t of stillMissing) {
+        const p = cgPrices.get(t.coingeckoId!);
+        if (!p) continue;
+        applyPriceToToken(t, p.price, p.change24h, p.image ?? undefined);
+      }
+      await saveCoinGeckoPricesToCache(cgPrices);
+    }
+  }
+
+  // ── 3. CoinGecko search для токенів що залишились без лого і без coingeckoId ──
+  await enrichMissingLogos(tokens);
+}
+
+// Persists CoinGecko prices to TokenPrice cache so the cron and market pages can reuse them.
+async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>): Promise<void> {
   const now = new Date();
   await Promise.allSettled(
     Array.from(prices.values()).map((p) =>
-      prisma.tokenPrice.upsert({
-        where: { tokenId: p.id },
-        create: {
-          tokenId: p.id,
-          symbol: p.symbol ?? p.id,
-          name: p.name ?? p.id,
-          currentPrice: p.price,
-          priceChange24h: p.change24h,
-          marketCap: p.marketCap ?? null,
-          volume24h: p.volume24h ?? null,
-          logoUrl: p.image ?? null,
-        },
-        update: {
-          currentPrice: p.price,
-          priceChange24h: p.change24h,
-          marketCap: p.marketCap ?? null,
-          volume24h: p.volume24h ?? null,
-          ...(p.image ? { logoUrl: p.image } : {}),
-        },
-      }).then(() =>
-        prisma.priceHistory.create({ data: { tokenId: p.id, price: p.price, timestamp: now } }),
-      ),
+      prisma.tokenPrice
+        .upsert({
+          where: { tokenId: p.id },
+          create: {
+            tokenId: p.id,
+            symbol: p.symbol ?? p.id,
+            name: p.name ?? p.id,
+            currentPrice: p.price,
+            priceChange24h: p.change24h,
+            marketCap: p.marketCap ?? null,
+            volume24h: p.volume24h ?? null,
+            logoUrl: p.image ?? null,
+          },
+          update: {
+            currentPrice: p.price,
+            priceChange24h: p.change24h,
+            marketCap: p.marketCap ?? null,
+            volume24h: p.volume24h ?? null,
+            ...(p.image ? { logoUrl: p.image } : {}),
+          },
+        })
+        .then(() =>
+          prisma.priceHistory.create({
+            data: { tokenId: p.id, price: p.price, timestamp: now },
+          }),
+        ),
     ),
   );
+}
+
+// Шукає логотипи через CoinGecko search для токенів без лого і без coingeckoId.
+// Зберігає знайдені записи в TokenPrice щоб наступний sync читав з кешу (без запитів).
+async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
+  const needLogo = tokens.filter((t) => !t.logoUrl && !t.coingeckoId && !t.isNative);
+  if (needLogo.length === 0) return;
+
+  // Дедуплікація за символом — один символ може бути на кількох ланцюгах
+  const bySymbol = new Map<string, EnrichedToken>();
+  for (const t of needLogo) {
+    if (!bySymbol.has(t.symbol.toLowerCase())) bySymbol.set(t.symbol.toLowerCase(), t);
+  }
+
+  const found = new Map<string, { id: string; symbol: string; name: string; thumb: string }>();
+
+  // Батчами по 3, щоб не перевантажити CoinGecko (30 req/хв на demo ключі)
+  const entries = Array.from(bySymbol.entries());
+  for (let i = 0; i < entries.length; i += 3) {
+    await Promise.allSettled(
+      entries.slice(i, i + 3).map(async ([symbolKey, t]) => {
+        try {
+          const results = await searchCoins(t.symbol);
+          const best = results
+            .filter((r) => r.symbol.toLowerCase() === symbolKey)
+            .sort((a, b) => {
+              if (a.marketCapRank === null) return 1;
+              if (b.marketCapRank === null) return -1;
+              return a.marketCapRank - b.marketCapRank;
+            })[0];
+          if (best?.thumb) {
+            found.set(symbolKey, {
+              id: best.id,
+              symbol: best.symbol,
+              name: best.name,
+              thumb: best.thumb,
+            });
+          }
+        } catch {
+          // ignore individual search failures
+        }
+      }),
+    );
+  }
+
+  if (found.size === 0) return;
+
+  // Застосовуємо лого та coingeckoId до всіх токенів з відповідним символом
+  for (const t of needLogo) {
+    const match = found.get(t.symbol.toLowerCase());
+    if (match) {
+      t.coingeckoId = match.id;
+      t.logoUrl = match.thumb;
+    }
+  }
+
+  // Зберігаємо в TokenPrice — наступний sync отримає лого з кешу без пошуку
+  await Promise.allSettled(
+    Array.from(found.values()).map(({ id, symbol, name, thumb }) =>
+      prisma.tokenPrice.upsert({
+        where: { tokenId: id },
+        update: { logoUrl: thumb },
+        create: {
+          tokenId: id,
+          symbol,
+          name,
+          currentPrice: 0,
+          priceChange24h: 0,
+          logoUrl: thumb,
+        },
+      }),
+    ),
+  );
+}
+
+function priceFeedKey(t: EnrichedToken): string {
+  return `${t.chainName}::${t.isNative ? 'native' : t.address}::${t.symbol.toLowerCase()}`;
+}
+
+function applyPriceToToken(
+  t: EnrichedToken,
+  price: number,
+  change24h: number,
+  logoUrl?: string,
+): void {
+  if (!t.logoUrl && logoUrl) t.logoUrl = logoUrl;
+  if (!Number.isFinite(price) || price <= 0) return;
+  if (t.priceUsd === 0) t.priceUsd = price;
+  if (t.priceChange24h === 0 && Number.isFinite(change24h)) {
+    t.priceChange24h = Math.max(-99.9, Math.min(change24h, 10_000));
+  }
+  if (t.usdValue === 0) t.usdValue = t.balance * price;
 }
 
 // ─────────────────────────────────────────
@@ -216,7 +325,6 @@ interface EnrichedToken extends NormalizedToken {
 
 async function applyCachedPrices(
   tokens: NormalizedToken[],
-  network: Network,
 ): Promise<EnrichedToken[]> {
   if (tokens.length === 0) return [];
 
@@ -225,7 +333,7 @@ async function applyCachedPrices(
     where: { symbol: { in: symbols, mode: 'insensitive' } },
   });
 
-  const priceBySymbol = new Map<string, { price: number; change24h: number; id: string }>();
+  const priceBySymbol = new Map<string, { price: number; change24h: number; id: string; logoUrl: string | null }>();
   for (const p of cached) {
     const key = p.symbol.toLowerCase();
     if (!priceBySymbol.has(key)) {
@@ -233,6 +341,7 @@ async function applyCachedPrices(
         price: p.currentPrice,
         change24h: p.priceChange24h,
         id: p.tokenId,
+        logoUrl: p.logoUrl ?? null,
       });
     }
   }
@@ -243,10 +352,13 @@ async function applyCachedPrices(
     let usdValue = t.usdValue;
     let priceUsd = t.priceUsd;
     let priceChange24h = t.priceChange24h;
+    let logoUrl = t.logoUrl;
 
     if (t.isNative) {
       const chainInfo = getChainInfo(t.chainName);
       coingeckoId = chainInfo?.coingeckoNativeId ?? null;
+      // Нативний токен — логотип з ChainInfo (Trust Wallet CDN) якщо не прийшов від API
+      if (!logoUrl && chainInfo?.nativeLogoUrl) logoUrl = chainInfo.nativeLogoUrl;
       if (fromCache) {
         if (priceUsd === 0) priceUsd = fromCache.price;
         if (priceChange24h === 0) priceChange24h = fromCache.change24h;
@@ -258,8 +370,9 @@ async function applyCachedPrices(
       if (priceUsd === 0) priceUsd = fromCache.price;
       if (priceChange24h === 0) priceChange24h = fromCache.change24h;
       if (usdValue === 0) usdValue = t.balance * fromCache.price;
+      if (!logoUrl && fromCache.logoUrl) logoUrl = fromCache.logoUrl;
     }
 
-    return { ...t, usdValue, priceUsd, priceChange24h, coingeckoId };
+    return { ...t, usdValue, priceUsd, priceChange24h, coingeckoId, logoUrl };
   });
 }

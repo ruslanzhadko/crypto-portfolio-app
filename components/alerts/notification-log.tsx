@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Bell } from 'lucide-react';
-import type { NotificationLog as NotificationLogModel } from '@prisma/client';
+import type { NotificationLog as NotificationLogModel, TriggerType, TriggerDirection } from '@prisma/client';
+
+type LogWithTrigger = NotificationLogModel & {
+  trigger: { triggerType: TriggerType; direction: TriggerDirection } | null;
+};
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -11,8 +15,16 @@ import { EmptyState } from '@/components/common/empty-state';
 import { PriceChange } from '@/components/common/price-change';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
 
+function PriceTargetBadge({ direction }: { direction: TriggerDirection }) {
+  if (direction === 'UP')
+    return <span className="text-xs font-medium text-success">↑ Ціль досягнута</span>;
+  if (direction === 'DOWN')
+    return <span className="text-xs font-medium text-danger">↓ Ціль досягнута</span>;
+  return <span className="text-xs font-medium text-text-muted">◎ Ціль досягнута</span>;
+}
+
 export function NotificationLog() {
-  const [items, setItems] = useState<NotificationLogModel[] | null>(null);
+  const [items, setItems] = useState<LogWithTrigger[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -21,7 +33,7 @@ export function NotificationLog() {
     const res = await fetch(`/api/alerts/logs?page=${page}&pageSize=20`);
     if (!res.ok) return;
     const data = (await res.json()) as {
-      logs: NotificationLogModel[];
+      logs: LogWithTrigger[];
       pagination: { total: number; totalPages: number };
     };
     setItems(data.logs);
@@ -79,7 +91,11 @@ export function NotificationLog() {
                   <p className="truncate text-xs text-text-muted">{log.message}</p>
                 </div>
                 <div className="text-right">
-                  <PriceChange value={log.deltaPercent} size="sm" />
+                  {log.trigger?.triggerType === 'PRICE_TARGET' ? (
+                    <PriceTargetBadge direction={log.trigger.direction} />
+                  ) : (
+                    <PriceChange value={log.deltaPercent} size="sm" />
+                  )}
                   <p className="text-xs text-text-muted">{formatUsd(log.price)}</p>
                   <p className="text-[10px] text-text-muted">{formatRelative(log.sentAt)}</p>
                 </div>

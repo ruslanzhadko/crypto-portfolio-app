@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { ArrowDownLeft, ArrowUpRight, FileText } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, FileText, ExternalLink } from 'lucide-react';
 import { ChainBadge } from '@/components/common/network-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
 import { formatDate, formatNumber, shortAddress } from '@/lib/utils/format';
 import { Badge } from '@/components/ui/badge';
+import { TokenLogo } from '@/components/common/token-logo';
+import { cn } from '@/lib/utils/cn';
 
 interface TransactionDTO {
   id: string;
@@ -19,15 +21,13 @@ interface TransactionDTO {
   fromAddress: string | null;
   toAddress: string | null;
   value: number | null;
+  sentValue?: number | null;
   status: string;
   timestamp: string;
-}
-
-interface Pagination {
-  page: number;
-  pageSize: number;
-  total: number;
-  totalPages: number;
+  logoUrl: string | null;
+  swapLogoUrl?: string | null;
+  swapOutSymbol?: string | null;
+  swapInSymbol?: string | null;
 }
 
 interface TransactionListProps {
@@ -35,30 +35,84 @@ interface TransactionListProps {
   walletAddress: string;
 }
 
+const EXPLORER: Record<string, string> = {
+  ethereum: 'https://etherscan.io/tx/',
+  bsc:      'https://bscscan.com/tx/',
+  polygon:  'https://polygonscan.com/tx/',
+  avalanche:'https://snowtrace.io/tx/',
+  arbitrum: 'https://arbiscan.io/tx/',
+  optimism: 'https://optimistic.etherscan.io/tx/',
+  base:     'https://basescan.org/tx/',
+  solana:   'https://solscan.io/tx/',
+};
+
+function explorerUrl(chainName: string, hash: string): string | null {
+  const base = EXPLORER[chainName];
+  return base ? `${base}${hash}` : null;
+}
+
+const TX_META: Record<string, { label: string; icon: typeof ArrowDownLeft; color: string; bg: string }> = {
+  receive:  { label: 'Отримання',    icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
+  send:     { label: 'Відправлення', icon: ArrowUpRight,   color: 'text-danger',     bg: 'bg-danger/10'   },
+  swap:     { label: 'Своп',         icon: ArrowLeftRight, color: 'text-primary',    bg: 'bg-primary/10'  },
+  transfer: { label: 'Переказ',      icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
+  contract: { label: 'Контракт',     icon: FileText,       color: 'text-text-muted', bg: 'bg-surface-2'   },
+};
+
+function getTxMeta(type: string, isOutgoing: boolean) {
+  return TX_META[type] ?? (isOutgoing ? TX_META.send! : TX_META.receive!);
+}
+
 export function TransactionList({ walletId, walletAddress }: TransactionListProps) {
   const [items, setItems] = useState<TransactionDTO[] | null>(null);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Масив page-токенів: [undefined, "tok1", "tok2", ...] — undefined = перша сторінка
+  const pageTokensRef = useRef<(string | undefined)[]>([undefined]);
+  const [pageIdx, setPageIdx] = useState(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (idx: number) => {
     setError(null);
-    const res = await fetch(`/api/wallets/${walletId}/transactions?page=${page}&pageSize=20`);
+    setItems(null);
+    const token = pageTokensRef.current[idx];
+    const url = `/api/wallets/${walletId}/transactions?pageSize=20${token ? `&pageToken=${token}` : ''}`;
+    const res = await fetch(url);
     if (!res.ok) {
       setError('Не вдалось завантажити транзакції');
       return;
     }
-    const data = (await res.json()) as {
+    const payload = (await res.json()) as {
       transactions: TransactionDTO[];
-      pagination: Pagination;
+      nextPageToken?: string;
+      hasMore: boolean;
     };
-    setItems(data.transactions);
-    setPagination(data.pagination);
-  }, [walletId, page]);
+    if (!payload?.transactions) { setError('Помилка відповіді'); return; }
 
+    setItems(payload.transactions);
+    setHasMore(payload.hasMore ?? false);
+
+    if (payload.nextPageToken && !pageTokensRef.current[idx + 1]) {
+      pageTokensRef.current[idx + 1] = payload.nextPageToken;
+    }
+  }, [walletId]);
+
+  useEffect(() => { void load(pageIdx); }, [load, pageIdx]);
+
+  // Рефетч після wallet sync
   useEffect(() => {
-    void load();
-  }, [load]);
+    const handler = (e: Event) => {
+      const { walletId: sid } = (e as CustomEvent<{ walletId: string }>).detail;
+      if (sid !== walletId) return;
+      // Скидаємо на першу сторінку
+      pageTokensRef.current = [undefined];
+      setPageIdx(0);
+      void load(0);
+    };
+    window.addEventListener('wallet-synced', handler);
+    return () => window.removeEventListener('wallet-synced', handler);
+  }, [walletId, load]);
+
+  const normalizedSelf = walletAddress.toLowerCase();
 
   if (error) {
     return (
@@ -71,101 +125,136 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
   if (items === null) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Транзакції</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Транзакції</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 rounded-md" />
+            <Skeleton key={i} className="h-14 rounded-md" />
           ))}
         </CardContent>
       </Card>
     );
   }
 
-  if (items.length === 0) {
+  const visible = items.filter(
+    (tx) => tx.tokenSymbol || (tx.value !== null && tx.value > 0),
+  );
+
+  if (visible.length === 0 && pageIdx === 0) {
     return (
       <EmptyState
         icon={FileText}
         title="Транзакції відсутні"
-        description="Можливо, у цьому гаманці ще не було активності або потрібно зробити Sync."
+        description="Можливо, у цьому гаманці ще не було активності або токенів на балансі."
       />
     );
   }
 
-  const normalizedSelf = walletAddress.toLowerCase();
-
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+      <CardHeader>
         <CardTitle>Транзакції</CardTitle>
-        {pagination && (
-          <span className="text-xs text-text-muted">
-            {pagination.total} всього
-          </span>
-        )}
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
-          {items.map((tx) => {
-            const isOutgoing =
-              tx.fromAddress?.toLowerCase() === normalizedSelf;
-            const Icon = isOutgoing ? ArrowUpRight : ArrowDownLeft;
-            const color = isOutgoing ? 'text-danger' : 'text-success';
+          {visible.map((tx) => {
+            if (!tx.tokenSymbol && (!tx.value || tx.value <= 0)) return null;
+
+            const isOutgoing = tx.fromAddress?.toLowerCase() === normalizedSelf && tx.type !== 'receive';
+            const meta = getTxMeta(tx.type, isOutgoing);
+            const Icon = meta.icon;
+            const isSwap = tx.type === 'swap';
+            const isFailed = tx.status !== 'success';
+
+            const txUrl = explorerUrl(tx.chainName, tx.hash);
+            const Row = txUrl ? 'a' : 'div';
+            const rowProps = txUrl
+              ? { href: txUrl, target: '_blank', rel: 'noopener noreferrer' }
+              : {};
+
             return (
-              <div
+              <Row
                 key={tx.id}
-                className="flex items-center gap-4 px-6 py-3 text-sm transition-colors hover:bg-surface-2/50"
+                {...(rowProps as object)}
+                className={cn(
+                  'flex items-center gap-4 px-6 py-4 transition-colors hover:bg-surface-2/50',
+                  txUrl && 'cursor-pointer',
+                  isFailed && 'opacity-60',
+                )}
               >
-                <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-surface-2 ${color}`}>
-                  <Icon className="h-4 w-4" />
+                <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-full', meta.bg, meta.color)}>
+                  <Icon className="h-5 w-5" />
                 </div>
+
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium capitalize">{tx.type}</p>
-                    {tx.chainName && <ChainBadge chainName={tx.chainName} />}
-                  </div>
-                  <p className="font-mono text-xs text-text-muted">
-                    {shortAddress(tx.hash, 8)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  {tx.value !== null && (
-                    <p className="font-medium">
-                      {isOutgoing ? '-' : '+'}
-                      {formatNumber(tx.value, 6)} {tx.tokenSymbol ?? ''}
-                    </p>
-                  )}
-                  <div className="flex items-center justify-end gap-2 text-xs text-text-muted">
-                    <span>{formatDate(tx.timestamp, 'PP')}</span>
-                    {tx.status !== 'success' && (
-                      <Badge variant="danger">{tx.status}</Badge>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-base font-semibold">{meta.label}</p>
+                    {tx.tokenSymbol && (
+                      <span className={cn(
+                        'rounded-md px-2 py-0.5 text-sm font-medium',
+                        isSwap ? 'bg-primary/10 text-primary' : 'bg-surface-2 text-text-muted',
+                      )}>
+                        {tx.tokenSymbol}
+                      </span>
                     )}
+                    <ChainBadge chainName={tx.chainName} />
+                    {isFailed && <Badge variant="danger">failed</Badge>}
+                  </div>
+                  <div className="mt-1 flex items-center gap-1">
+                    <p className="font-mono text-xs text-text-muted">
+                      {shortAddress(tx.hash, 8)}
+                    </p>
+                    {txUrl && <ExternalLink className="h-3 w-3 shrink-0 text-text-muted opacity-50" />}
                   </div>
                 </div>
-              </div>
+
+                <div className="shrink-0 text-right">
+                  {tx.value !== null && tx.value > 0 ? (
+                    isSwap ? (
+                      /* Своп: −sentAmount [outLogo] → [inLogo] +recvAmount */
+                      <div className="flex items-center justify-end gap-1.5">
+                        {tx.sentValue != null &&
+                          tx.sentValue >= 0.001 &&
+                          // Відсікаємо абсурдний курс (неправильні decimals від Ankr)
+                          (tx.value == null || tx.value <= 0 || tx.sentValue / tx.value < 100_000) && (
+                          <span className="text-sm font-semibold tabular-nums text-danger">
+                            −{formatNumber(tx.sentValue, tx.sentValue < 0.01 ? 6 : tx.sentValue < 1 ? 4 : 2)}
+                          </span>
+                        )}
+                        <TokenLogo src={tx.logoUrl} symbol={tx.swapOutSymbol ?? '?'} size={20} />
+                        <span className="text-xs text-text-muted">→</span>
+                        <TokenLogo src={tx.swapLogoUrl} symbol={tx.swapInSymbol ?? '?'} size={20} />
+                        <span className="text-sm font-semibold tabular-nums text-primary">
+                          +{formatNumber(tx.value, tx.value < 0.01 ? 6 : tx.value < 1 ? 4 : 2)}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-end gap-2">
+                        {tx.tokenSymbol && (
+                          <TokenLogo src={tx.logoUrl} symbol={tx.tokenSymbol} size={20} />
+                        )}
+                        <span className={cn('text-sm font-semibold tabular-nums', meta.color)}>
+                          {isOutgoing ? '−' : '+'}
+                          {formatNumber(tx.value, tx.value < 0.01 ? 6 : tx.value < 1 ? 4 : 2)}
+                        </span>
+                      </div>
+                    )
+                  ) : null}
+                  <p className="mt-1 text-sm text-text-muted">{formatDate(tx.timestamp, 'PP')}</p>
+                </div>
+              </Row>
             );
           })}
         </div>
-        {pagination && pagination.totalPages > 1 && (
+
+        {(pageIdx > 0 || hasMore) && (
           <div className="flex items-center justify-between border-t border-border p-4">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
+            <Button variant="outline" size="sm" disabled={pageIdx === 0}
+              onClick={() => setPageIdx((p) => Math.max(0, p - 1))}>
               Попередня
             </Button>
-            <span className="text-xs text-text-muted">
-              Стор. {pagination.page} з {pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= pagination.totalPages}
-              onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-            >
+            <span className="text-xs text-text-muted">Стор. {pageIdx + 1}</span>
+            <Button variant="outline" size="sm" disabled={!hasMore}
+              onClick={() => setPageIdx((p) => p + 1)}>
               Наступна
             </Button>
           </div>

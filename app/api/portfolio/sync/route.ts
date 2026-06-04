@@ -5,7 +5,7 @@ import { syncAllWallets } from '@/lib/services/portfolio-sync';
 
 export const dynamic = 'force-dynamic';
 // 7 EVM-мереж × N гаманців може зайняти час; даємо запас
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 export async function POST(req: NextRequest) {
   try {

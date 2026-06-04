@@ -38,10 +38,19 @@ export async function POST(req: NextRequest) {
       select: { currentPrice: true },
     });
 
+    const data = parsed.data;
     const trigger = await prisma.priceTrigger.create({
       data: {
-        ...parsed.data,
         userId: guard.user.id,
+        tokenId: data.tokenId,
+        tokenSymbol: data.tokenSymbol,
+        tokenName: data.tokenName,
+        isActive: data.isActive,
+        triggerType: data.triggerType,
+        direction: data.direction,
+        threshold: data.triggerType === 'PERCENT' ? data.threshold : 0,
+        interval: data.triggerType === 'PERCENT' ? data.interval : 1,
+        targetPrice: data.triggerType === 'PRICE_TARGET' ? data.targetPrice : null,
         lastPrice: cached?.currentPrice ?? null,
         lastCheckedAt: cached ? new Date() : null,
       },

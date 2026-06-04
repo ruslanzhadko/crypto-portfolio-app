@@ -201,7 +201,9 @@ model PriceTrigger {
   tokenId       String
   tokenSymbol   String
   tokenName     String
-  threshold     Float
+  triggerType   TriggerType      @default(PERCENT)
+  threshold     Float            @default(0)
+  targetPrice   Float?
   direction     TriggerDirection @default(BOTH)
   interval      Int              @default(60)
   isActive      Boolean          @default(true)
@@ -221,6 +223,11 @@ enum TriggerDirection {
   UP
   DOWN
   BOTH
+}
+
+enum TriggerType {
+  PERCENT      // спрацьовує коли зміна ціни за інтервал >= поріг %
+  PRICE_TARGET // спрацьовує коли ціна перетинає задану позначку (одноразово)
 }
 
 // ═══════════════════════════════════════

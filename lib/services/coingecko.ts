@@ -90,9 +90,14 @@ export interface CoinDetail {
   marketCap: number | null;
   volume24h: number | null;
   currentPrice: number;
+  priceChange1h: number;
   priceChange24h: number;
   priceChange7d: number;
   priceChange30d: number;
+  high24h: number | null;
+  low24h: number | null;
+  ath: number | null;
+  athChangePercent: number | null;
   rank: number | null;
   homepage: string | null;
 }
@@ -210,6 +215,11 @@ interface CoinGeckoDetailResponse {
     current_price?: { usd?: number };
     market_cap?: { usd?: number };
     total_volume?: { usd?: number };
+    high_24h?: { usd?: number };
+    low_24h?: { usd?: number };
+    ath?: { usd?: number };
+    ath_change_percentage?: { usd?: number };
+    price_change_percentage_1h_in_currency?: { usd?: number };
     price_change_percentage_24h?: number;
     price_change_percentage_7d?: number;
     price_change_percentage_30d?: number;
@@ -241,6 +251,11 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
     currentPrice: md?.current_price?.usd ?? 0,
     marketCap: md?.market_cap?.usd ?? null,
     volume24h: md?.total_volume?.usd ?? null,
+    high24h: md?.high_24h?.usd ?? null,
+    low24h: md?.low_24h?.usd ?? null,
+    ath: md?.ath?.usd ?? null,
+    athChangePercent: md?.ath_change_percentage?.usd ?? null,
+    priceChange1h: md?.price_change_percentage_1h_in_currency?.usd ?? 0,
     priceChange24h: md?.price_change_percentage_24h ?? 0,
     priceChange7d: md?.price_change_percentage_7d ?? 0,
     priceChange30d: md?.price_change_percentage_30d ?? 0,

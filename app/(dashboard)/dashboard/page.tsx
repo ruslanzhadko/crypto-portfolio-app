@@ -22,7 +22,7 @@ export default async function DashboardPage() {
   if (!session?.user?.id) return null;
   const userId = session.user.id;
 
-  const [overview, wallets, hiddenTokensCount] = await Promise.all([
+  const [overview, wallets, hiddenTokensCount, lastPriceUpdate] = await Promise.all([
     getPortfolioOverview(userId),
     prisma.wallet.findMany({
       where: { userId },
@@ -39,6 +39,11 @@ export default async function DashboardPage() {
     }),
     prisma.tokenBalance.count({
       where: { wallet: { userId }, isHidden: true, isSpam: false },
+    }),
+    prisma.tokenBalance.findFirst({
+      where: { wallet: { userId }, isSpam: false },
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true },
     }),
   ]);
 
@@ -88,9 +93,14 @@ export default async function DashboardPage() {
           <p className="text-sm text-text-muted">Зведений огляд вашого портфеля.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {lastPriceUpdate?.updatedAt && (
+            <span className="text-xs text-text-muted" suppressHydrationWarning>
+              Ціни: {formatRelative(lastPriceUpdate.updatedAt)}
+            </span>
+          )}
           {latestSyncAt && (
-            <span className="text-xs text-text-muted">
-              Оновлено {formatRelative(latestSyncAt)}
+            <span className="text-xs text-text-muted" suppressHydrationWarning>
+              Sync: {formatRelative(latestSyncAt)}
             </span>
           )}
           <SyncAllButton />

@@ -1,4 +1,5 @@
 import { format, formatDistanceToNow } from 'date-fns';
+import { uk } from 'date-fns/locale';
 
 export function formatUsd(value: number, options: { compact?: boolean; minimumFractionDigits?: number } = {}): string {
   const { compact = false, minimumFractionDigits } = options;
@@ -58,7 +59,7 @@ export function formatDate(date: Date | string, pattern = 'PP'): string {
 }
 
 export function formatRelative(date: Date | string | null | undefined): string {
-  if (!date) return 'Never';
+  if (!date) return 'Ніколи';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return formatDistanceToNow(d, { addSuffix: true });
+  return formatDistanceToNow(d, { addSuffix: true, locale: uk });
 }

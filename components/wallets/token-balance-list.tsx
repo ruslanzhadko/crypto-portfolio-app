@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ChevronRight,
   Eye,
@@ -9,6 +10,7 @@ import {
   Coins,
   ExternalLink,
   MoreVertical,
+  Loader2,
 } from 'lucide-react';
 import type { TokenBalance } from '@prisma/client';
 import { TokenLogo } from '@/components/common/token-logo';
@@ -159,9 +161,10 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
     );
   }
 
-  const regularCount = visible.filter(
+  const activeTokens = visible.filter(
     (t) => !t.isSpam && !(localHidden[t.id] ?? t.isHidden),
-  ).length;
+  );
+  const uniqueChainCount = new Set(activeTokens.map((t) => t.chainName)).size;
 
   return (
     <Card>
@@ -169,7 +172,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
         <CardTitle>
           Токени{' '}
           <span className="text-sm font-normal text-text-muted">
-            ({groups.length} · {regularCount} мереж)
+            ({groups.length} · {uniqueChainCount} мереж)
           </span>
         </CardTitle>
         <div className="flex flex-wrap items-center gap-2">
@@ -262,10 +265,43 @@ function TokenGroupRow({
   localHidden: Record<string, boolean>;
   onToggleHide: (token: TokenBalance) => void;
 }) {
+  const router = useRouter();
+  const [searching, setSearching] = useState(false);
   const isMulti = group.chains.length > 1;
   const hasMarket = !!group.coingeckoId;
   const share = walletTotalUsd > 0 ? (group.totalUsd / walletTotalUsd) * 100 : 0;
   const isLowValue = group.totalUsd > 0 && group.totalUsd < MIN_TOKEN_USD;
+
+  async function handleSearchMarket() {
+    if (searching) return;
+    setSearching(true);
+    try {
+      // 1. Search by symbol, pick exact match with best market cap rank
+      const symRes = await fetch(`/api/market/search?q=${encodeURIComponent(group.symbol)}`);
+      if (symRes.ok) {
+        const { results }: {
+          results: Array<{ id: string; symbol: string; marketCapRank: number | null }>;
+        } = await symRes.json();
+        const exact = results
+          .filter((r) => r.symbol.toUpperCase() === group.symbol.toUpperCase())
+          .sort((a, b) => {
+            if (a.marketCapRank === null) return 1;
+            if (b.marketCapRank === null) return -1;
+            return a.marketCapRank - b.marketCapRank;
+          });
+        if (exact[0]) { router.push(`/market/${exact[0].id}`); return; }
+      }
+      // 2. Fallback: search by full token name
+      const nameQ = group.name || group.symbol;
+      const nameRes = await fetch(`/api/market/search?q=${encodeURIComponent(nameQ)}`);
+      if (nameRes.ok) {
+        const { results }: { results: Array<{ id: string }> } = await nameRes.json();
+        if (results[0]) router.push(`/market/${results[0].id}`);
+      }
+    } finally {
+      setSearching(false);
+    }
+  }
 
   // Контент основної області (logo + info + right block) — однаковий для обох випадків
   const mainContent = (
@@ -276,9 +312,11 @@ function TokenGroupRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-medium">{group.symbol}</span>
-          {hasMarket && (
+          {hasMarket ? (
             <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />
-          )}
+          ) : searching ? (
+            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary/70" />
+          ) : null}
           {isLowValue && (
             <Badge variant="secondary" className="text-[10px]">
               {'< '}${MIN_TOKEN_USD}
@@ -354,7 +392,7 @@ function TokenGroupRow({
           <span aria-hidden className="inline-block w-4 shrink-0" />
         )}
 
-        {/* Основна клікабельна зона: Link на market якщо є coingeckoId, інакше div */}
+        {/* Основна клікабельна зона */}
         {hasMarket ? (
           <Link
             href={`/market/${group.coingeckoId}`}
@@ -363,7 +401,14 @@ function TokenGroupRow({
             {mainContent}
           </Link>
         ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-3">{mainContent}</div>
+          <button
+            type="button"
+            onClick={handleSearchMarket}
+            disabled={searching}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:opacity-60"
+          >
+            {mainContent}
+          </button>
         )}
 
         {/* Меню — для single-chain. Для multi-chain — spacer тієї ж ширини щоб
@@ -499,6 +544,28 @@ function RowDropdown({
   onToggleHide: () => void;
   compact?: boolean;
 }) {
+  const router = useRouter();
+  const [searching, setSearching] = useState(false);
+
+  async function handleSearchMarket(e: React.MouseEvent) {
+    e.preventDefault();
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `/api/market/search?q=${encodeURIComponent(token.tokenName || token.tokenSymbol)}`,
+      );
+      if (!res.ok) throw new Error();
+      const { results }: { results: Array<{ id: string }> } = await res.json();
+      if (results[0]) {
+        router.push(`/market/${results[0].id}`);
+      }
+    } catch {
+      // silently fail — user stays on page
+    } finally {
+      setSearching(false);
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -515,12 +582,24 @@ function RowDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {hasMarket && coingeckoId && (
+        {hasMarket && coingeckoId ? (
           <DropdownMenuItem asChild>
             <Link href={`/market/${coingeckoId}`}>
               <ExternalLink className="h-4 w-4" />
               На сторінку токена
             </Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem
+            disabled={searching}
+            onClick={handleSearchMarket}
+          >
+            {searching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <ExternalLink className="h-4 w-4" />
+            )}
+            Знайти на Market
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
