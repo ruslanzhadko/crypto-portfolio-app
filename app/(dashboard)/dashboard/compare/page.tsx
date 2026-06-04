@@ -48,7 +48,7 @@ function accentForWallet(address: string): WalletAccent {
   const seed = address
     .toLowerCase()
     .split('')
-    .reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) >>> 0, 7);
+    .reduce((acc, ch) => (acc * 31 + ch.codePointAt(0)!) >>> 0, 7);
   const idx = seed % WALLET_PALETTE.length;
   const palette = WALLET_PALETTE[idx]!;
   return {

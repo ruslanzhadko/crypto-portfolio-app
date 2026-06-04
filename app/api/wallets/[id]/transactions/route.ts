@@ -421,7 +421,7 @@ async function fetchSolanaTransactionsPage(
     }
 
     // Спам-фільтри (ті ж що й для EVM)
-    const symCheck = tokenSymbol.replace(/→/g, ' ');
+    const symCheck = tokenSymbol.replaceAll(/→/g, ' ');
     if (/[^\x00-\x7F]/.test(symCheck)) continue;
     if (SOLANA_SPAM.test(symCheck)) continue;
     if (value !== null && value < MIN_SOL_AMOUNT) continue;
@@ -453,7 +453,7 @@ export async function GET(
 
     const sp = req.nextUrl.searchParams;
     const pageToken = sp.get('pageToken') ?? undefined;
-    const pageSize = Math.min(parseInt(sp.get('pageSize') ?? '20', 10), 50);
+    const pageSize = Math.min(Number.parseInt(sp.get('pageSize') ?? '20', 10), 50);
 
     const wallet = await prisma.wallet.findFirst({
       where: { id: params.id, userId: guard.user.id },

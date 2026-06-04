@@ -106,7 +106,7 @@ describe('classifyTokenTransfers (net-change)', () => {
       transfer({ transactionHash: '0xB', fromAddress: WALLET, toAddress: '0xx', value: '20' }),
     ]);
     expect(r).toHaveLength(2);
-    const byType = r.map((t) => t.type).sort();
+    const byType = r.map((t) => t.type).sort((a, b) => a.localeCompare(b));
     expect(byType).toEqual(['receive', 'send']);
   });
 });
