@@ -2,6 +2,7 @@ import { Network } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getChainDisplayName, getChainColor } from '@/lib/utils/networks';
 import { fetchMarketChart } from '@/lib/services/coingecko';
+import { computePortfolioValue, computeShare, computePnL } from '@/lib/services/portfolio-math';
 
 export interface WalletTokenBreakdown {
   walletId: string;
@@ -167,14 +168,14 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     }
   }
 
-  const totalUsd = Array.from(tokenMap.values()).reduce((s, t) => s + t.totalUsd, 0);
+  const totalUsd = computePortfolioValue(Array.from(tokenMap.values()).map((t) => t.totalUsd));
 
   for (const t of tokenMap.values()) {
-    t.share = totalUsd > 0 ? (t.totalUsd / totalUsd) * 100 : 0;
+    t.share = computeShare(t.totalUsd, totalUsd);
 
     // Розрахунок share для кожного гаманця всередині токена
     for (const w of t.wallets) {
-      w.share = t.totalUsd > 0 ? (w.usdValue / t.totalUsd) * 100 : 0;
+      w.share = computeShare(w.usdValue, t.totalUsd);
     }
     // Сортуємо breakdown за USD-вартістю
     t.wallets.sort((a, b) => b.usdValue - a.usdValue);
@@ -194,7 +195,7 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
       displayName: getChainDisplayName(chainName),
       color: getChainColor(chainName),
       totalUsd: total,
-      share: totalUsd > 0 ? (total / totalUsd) * 100 : 0,
+      share: computeShare(total, totalUsd),
       tokenCount,
     }))
     .sort((a, b) => b.totalUsd - a.totalUsd);
@@ -260,8 +261,7 @@ export async function getPortfolioPnL(userId: string, periodDays = 30): Promise<
 
   const current = latest?.totalUsd ?? 0;
   const initial = earliest?.totalUsd ?? current;
-  const absolute = current - initial;
-  const percent = initial > 0 ? (absolute / initial) * 100 : 0;
+  const { absolute, percent } = computePnL(current, initial);
 
   return { current, initial, absolute, percent, periodDays };
 }

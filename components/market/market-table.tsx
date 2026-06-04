@@ -13,13 +13,13 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
           <table className="w-full text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="px-4 py-3 text-left">#</th>
-                <th className="px-4 py-3 text-left">Назва</th>
-                <th className="px-4 py-3 text-right">Ціна</th>
-                <th className="hidden px-4 py-3 text-right md:table-cell">24г</th>
-                <th className="hidden px-4 py-3 text-right lg:table-cell">7д</th>
-                <th className="hidden px-4 py-3 text-right md:table-cell">Капіталізація</th>
-                <th className="hidden px-4 py-3 text-right lg:table-cell">Обʼєм 24г</th>
+                <th className="px-4 py-3.5 text-left">#</th>
+                <th className="px-4 py-3.5 text-left">Назва</th>
+                <th className="px-5 py-3 text-right">Ціна</th>
+                <th className="hidden px-5 py-3 text-right md:table-cell">24г</th>
+                <th className="hidden px-5 py-3 text-right lg:table-cell">7д</th>
+                <th className="hidden px-5 py-3 text-right md:table-cell">Капіталізація</th>
+                <th className="hidden px-5 py-3 text-right lg:table-cell">Обʼєм 24г</th>
               </tr>
             </thead>
             <tbody>
@@ -28,8 +28,8 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
                   key={c.id}
                   className="border-b border-border/60 transition-colors hover:bg-surface-2/50"
                 >
-                  <td className="px-4 py-3 text-text-muted">{c.market_cap_rank ?? '—'}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3.5 text-text-muted">{c.market_cap_rank ?? '—'}</td>
+                  <td className="px-4 py-3.5">
                     <Link
                       href={`/market/${c.id}`}
                       className="flex items-center gap-3"
@@ -41,19 +41,19 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
                       </div>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-right font-mono">
+                  <td className="px-5 py-3 text-right font-mono">
                     {formatUsd(c.current_price)}
                   </td>
-                  <td className="hidden px-4 py-3 text-right md:table-cell">
+                  <td className="hidden px-5 py-3 text-right md:table-cell">
                     <PriceChange value={c.price_change_percentage_24h ?? 0} size="sm" />
                   </td>
-                  <td className="hidden px-4 py-3 text-right lg:table-cell">
+                  <td className="hidden px-5 py-3 text-right lg:table-cell">
                     <PriceChange value={c.price_change_percentage_7d_in_currency ?? 0} size="sm" />
                   </td>
-                  <td className="hidden px-4 py-3 text-right text-text-muted md:table-cell">
+                  <td className="hidden px-5 py-3 text-right text-text-muted md:table-cell">
                     {c.market_cap ? formatUsd(c.market_cap, { compact: true }) : '—'}
                   </td>
-                  <td className="hidden px-4 py-3 text-right text-text-muted lg:table-cell">
+                  <td className="hidden px-5 py-3 text-right text-text-muted lg:table-cell">
                     {c.total_volume ? formatUsd(c.total_volume, { compact: true }) : '—'}
                   </td>
                 </tr>

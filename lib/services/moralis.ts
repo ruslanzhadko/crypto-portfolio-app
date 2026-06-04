@@ -1,6 +1,6 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios';
 import { Network } from '@prisma/client';
-import { EVM_CHAINS, SOLANA_CHAIN, type ChainInfo } from '@/lib/utils/networks';
+import { EVM_CHAINS, type ChainInfo } from '@/lib/utils/networks';
 
 const EVM_BASE = 'https://deep-index.moralis.io/api/v2.2';
 const SOLANA_BASE = 'https://solana-gateway.moralis.io';

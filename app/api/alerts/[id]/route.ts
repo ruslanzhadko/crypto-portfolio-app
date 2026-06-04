@@ -26,9 +26,35 @@ export async function PUT(
       return apiError('BAD_REQUEST', 'Помилка валідації', parsed.error.flatten());
     }
 
+    // Reset baseline when re-enabling so stale lastPrice doesn't trigger a false alert
+    const extraData: { lastPrice?: number | null; lastCheckedAt?: Date | null } = {};
+    if (parsed.data.isActive === true) {
+      const existing = await prisma.priceTrigger.findUnique({
+        where: { id: trigger.id },
+        select: { isActive: true, tokenId: true, tokenSymbol: true },
+      });
+      if (existing && !existing.isActive) {
+        const cached = await prisma.tokenPrice.findUnique({
+          where: { tokenId: existing.tokenId },
+          select: { currentPrice: true },
+        });
+        extraData.lastPrice = cached?.currentPrice ?? null;
+        extraData.lastCheckedAt = new Date();
+        console.log(
+          `[alerts] trigger enabled id=${trigger.id} symbol=${existing.tokenSymbol} baselinePrice=${extraData.lastPrice ?? 'n/a'}`,
+        );
+      }
+    } else if (parsed.data.isActive === false) {
+      const existing = await prisma.priceTrigger.findUnique({
+        where: { id: trigger.id },
+        select: { tokenSymbol: true },
+      });
+      console.log(`[alerts] trigger disabled id=${trigger.id} symbol=${existing?.tokenSymbol ?? '?'}`);
+    }
+
     const updated = await prisma.priceTrigger.update({
       where: { id: trigger.id },
-      data: parsed.data,
+      data: { ...parsed.data, ...extraData },
     });
     return ok({ trigger: updated });
   } catch (err) {

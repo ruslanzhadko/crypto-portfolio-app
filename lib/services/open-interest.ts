@@ -78,35 +78,50 @@ async function fetchBybitOI(symbol: string, currentPrice: number): Promise<Excha
 
 async function fetchOkxOI(symbol: string, currentPrice: number): Promise<ExchangeOI | null> {
   const ccy = symbol.toUpperCase();
+  const instId = `${ccy}-USDT-SWAP`;
   try {
-    // rubik stats gives daily snapshots with OI history — no auth required
-    const res = await fetch(
-      `https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-volume?ccy=${ccy}&period=1D`,
-      { next: { revalidate: 300 } },
-    );
-    if (!res.ok) return null;
+    // Fetch current OI (specific instrument) and 24h history (rubik, all contracts) in parallel.
+    // Current value: accurate — only USDT perpetual swap.
+    // Change %: from rubik stats — percentage is directionally correct even on aggregated base.
+    const [currentRes, histRes] = await Promise.all([
+      fetch(
+        `https://www.okx.com/api/v5/public/open-interest?instType=SWAP&instId=${instId}`,
+        { next: { revalidate: 300 } },
+      ),
+      fetch(
+        `https://www.okx.com/api/v5/rubik/stat/contracts/open-interest-volume?ccy=${ccy}&period=1D`,
+        { next: { revalidate: 300 } },
+      ),
+    ]);
 
-    const json: {
+    if (!currentRes.ok) return null;
+
+    const currentJson: {
       code: string;
-      // each entry: [timestamp, oi_in_base_ccy, vol_in_base_ccy, vol_in_usd]
-      data?: Array<[string, string, string, string]>;
-    } = await res.json();
+      data?: Array<{ oiCcy: string }>;
+    } = await currentRes.json();
 
-    if (json.code !== '0' || !json.data?.length) return null;
+    if (currentJson.code !== '0' || !currentJson.data?.length) return null;
+    const entry = currentJson.data[0];
+    if (!entry) return null;
 
-    // OKX returns newest first
-    const current = json.data[0];
-    const previous = json.data[1];
-    if (!current) return null;
-
-    const currentOiCcy = parseFloat(current[1]);
-    const openInterestUsd = currentOiCcy * currentPrice;
+    const openInterestUsd = parseFloat(entry.oiCcy) * currentPrice;
 
     let change24hPct: number | null = null;
-    if (previous) {
-      const prevOiCcy = parseFloat(previous[1]);
-      if (prevOiCcy > 0) {
-        change24hPct = ((currentOiCcy - prevOiCcy) / prevOiCcy) * 100;
+    if (histRes.ok) {
+      const histJson: {
+        code: string;
+        data?: Array<[string, string, string, string]>;
+      } = await histRes.json();
+
+      if (histJson.code === '0' && histJson.data && histJson.data.length >= 2) {
+        const cur = histJson.data[0];
+        const prev = histJson.data[1];
+        if (cur && prev) {
+          const curOi = parseFloat(cur[1]);
+          const prevOi = parseFloat(prev[1]);
+          if (prevOi > 0) change24hPct = ((curOi - prevOi) / prevOi) * 100;
+        }
       }
     }
 

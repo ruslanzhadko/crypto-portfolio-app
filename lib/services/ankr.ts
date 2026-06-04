@@ -43,9 +43,6 @@ const NATIVE_INFO: Record<string, { symbol: string; name: string }> = {
   base: { symbol: 'ETH', name: 'Base' },
 };
 
-// Мінімальна USD-вартість для не-нативного токена (спам/пил-фільтр)
-const MIN_USD = 0.10;
-
 function getEndpoint(): string {
   const key = process.env.ANKR_API_KEY;
   return key
@@ -462,7 +459,7 @@ async function fetchAnkrTokenTransfers(
  * Групує сирі token-transfer події по transactionHash,
  * визначає напрямок відносно walletAddress і повертає NormalizedTransaction[].
  */
-function classifyTokenTransfers(
+export function classifyTokenTransfers(
   wallet: string,
   transfers: AnkrTokenTransfer[],
 ): NormalizedTransaction[] {

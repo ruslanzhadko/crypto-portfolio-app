@@ -45,7 +45,7 @@ function buildStartReply(chatId: number, firstName?: string): string {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   if (!isAuthorized(req)) {
-    // Return 200 to prevent Telegram from retrying — the secret is simply wrong
+    console.warn('[telegram/webhook] unauthorized request — wrong or missing secret');
     return NextResponse.json({ ok: true });
   }
 
@@ -53,8 +53,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     update = (await req.json()) as TelegramUpdate;
   } catch {
+    console.error('[telegram/webhook] failed to parse update body');
     return NextResponse.json({ ok: true });
   }
+
+  console.log(`[telegram/webhook] update_id=${update.update_id} has_message=${!!update.message}`);
 
   const message = update.message;
   if (!message) return NextResponse.json({ ok: true });
@@ -62,12 +65,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const chatId = message.chat.id;
   const text = message.text?.trim() ?? '';
 
+  console.log(`[telegram/webhook] chat_id=${chatId} text="${text}"`);
+
   if (text === '/start' || text.startsWith('/start ')) {
     await replyToUpdate(chatId, buildStartReply(chatId, message.from?.first_name)).catch(
-      () => {},
+      (err) => console.error(`[telegram/webhook] reply failed chat_id=${chatId}`, err),
     );
   } else if (text === '/id' || text === '/chatid') {
-    await replyToUpdate(chatId, `Ваш Chat ID: <code>${chatId}</code>`).catch(() => {});
+    await replyToUpdate(chatId, `Ваш Chat ID: <code>${chatId}</code>`).catch(
+      (err) => console.error(`[telegram/webhook] reply failed chat_id=${chatId}`, err),
+    );
   } else if (text === '/help') {
     await replyToUpdate(
       chatId,
@@ -76,7 +83,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         '/start — показати Chat ID та інструкцію',
         '/id — тільки ваш Chat ID',
       ].join('\n'),
-    ).catch(() => {});
+    ).catch((err) => console.error(`[telegram/webhook] reply failed chat_id=${chatId}`, err));
+  } else {
+    console.log(`[telegram/webhook] unhandled command chat_id=${chatId} text="${text}"`);
   }
 
   return NextResponse.json({ ok: true });

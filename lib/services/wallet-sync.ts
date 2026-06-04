@@ -6,7 +6,7 @@ import {
   type NormalizedToken,
 } from '@/lib/services/moralis';
 import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
-import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko';
+import { fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
 
@@ -37,7 +37,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     ? await fetchEVMBalancesFromAnkr(wallet.address)
     : await fetchWalletTokens(wallet.address, wallet.network);
 
-  const enriched = await applyCachedPrices(tokens, wallet.network);
+  const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
 
   const spamCount = enriched.filter(
@@ -171,19 +171,21 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
   const stillMissing = needPricing.filter(
     (t) => (t.priceUsd === 0 || !t.logoUrl) && t.coingeckoId,
   );
-  if (stillMissing.length === 0) return;
-
-  const cgIds = Array.from(new Set(stillMissing.map((t) => t.coingeckoId!)));
-  const cgPrices = await fetchPricesByIds(cgIds).catch(() => new Map());
-  if (cgPrices.size === 0) return;
-
-  for (const t of stillMissing) {
-    const p = cgPrices.get(t.coingeckoId!);
-    if (!p) continue;
-    applyPriceToToken(t, p.price, p.change24h, p.image ?? undefined);
+  if (stillMissing.length > 0) {
+    const cgIds = Array.from(new Set(stillMissing.map((t) => t.coingeckoId!)));
+    const cgPrices = await fetchPricesByIds(cgIds).catch(() => new Map());
+    if (cgPrices.size > 0) {
+      for (const t of stillMissing) {
+        const p = cgPrices.get(t.coingeckoId!);
+        if (!p) continue;
+        applyPriceToToken(t, p.price, p.change24h, p.image ?? undefined);
+      }
+      await saveCoinGeckoPricesToCache(cgPrices);
+    }
   }
 
-  await saveCoinGeckoPricesToCache(cgPrices);
+  // ── 3. CoinGecko search для токенів що залишились без лого і без coingeckoId ──
+  await enrichMissingLogos(tokens);
 }
 
 // Persists CoinGecko prices to TokenPrice cache so the cron and market pages can reuse them.
@@ -221,6 +223,79 @@ async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>):
   );
 }
 
+// Шукає логотипи через CoinGecko search для токенів без лого і без coingeckoId.
+// Зберігає знайдені записи в TokenPrice щоб наступний sync читав з кешу (без запитів).
+async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
+  const needLogo = tokens.filter((t) => !t.logoUrl && !t.coingeckoId && !t.isNative);
+  if (needLogo.length === 0) return;
+
+  // Дедуплікація за символом — один символ може бути на кількох ланцюгах
+  const bySymbol = new Map<string, EnrichedToken>();
+  for (const t of needLogo) {
+    if (!bySymbol.has(t.symbol.toLowerCase())) bySymbol.set(t.symbol.toLowerCase(), t);
+  }
+
+  const found = new Map<string, { id: string; symbol: string; name: string; thumb: string }>();
+
+  // Батчами по 3, щоб не перевантажити CoinGecko (30 req/хв на demo ключі)
+  const entries = Array.from(bySymbol.entries());
+  for (let i = 0; i < entries.length; i += 3) {
+    await Promise.allSettled(
+      entries.slice(i, i + 3).map(async ([symbolKey, t]) => {
+        try {
+          const results = await searchCoins(t.symbol);
+          const best = results
+            .filter((r) => r.symbol.toLowerCase() === symbolKey)
+            .sort((a, b) => {
+              if (a.marketCapRank === null) return 1;
+              if (b.marketCapRank === null) return -1;
+              return a.marketCapRank - b.marketCapRank;
+            })[0];
+          if (best?.thumb) {
+            found.set(symbolKey, {
+              id: best.id,
+              symbol: best.symbol,
+              name: best.name,
+              thumb: best.thumb,
+            });
+          }
+        } catch {
+          // ignore individual search failures
+        }
+      }),
+    );
+  }
+
+  if (found.size === 0) return;
+
+  // Застосовуємо лого та coingeckoId до всіх токенів з відповідним символом
+  for (const t of needLogo) {
+    const match = found.get(t.symbol.toLowerCase());
+    if (match) {
+      t.coingeckoId = match.id;
+      t.logoUrl = match.thumb;
+    }
+  }
+
+  // Зберігаємо в TokenPrice — наступний sync отримає лого з кешу без пошуку
+  await Promise.allSettled(
+    Array.from(found.values()).map(({ id, symbol, name, thumb }) =>
+      prisma.tokenPrice.upsert({
+        where: { tokenId: id },
+        update: { logoUrl: thumb },
+        create: {
+          tokenId: id,
+          symbol,
+          name,
+          currentPrice: 0,
+          priceChange24h: 0,
+          logoUrl: thumb,
+        },
+      }),
+    ),
+  );
+}
+
 function priceFeedKey(t: EnrichedToken): string {
   return `${t.chainName}::${t.isNative ? 'native' : t.address}::${t.symbol.toLowerCase()}`;
 }
@@ -250,7 +325,6 @@ interface EnrichedToken extends NormalizedToken {
 
 async function applyCachedPrices(
   tokens: NormalizedToken[],
-  network: Network,
 ): Promise<EnrichedToken[]> {
   if (tokens.length === 0) return [];
 

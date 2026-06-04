@@ -27,7 +27,7 @@ export function OpenInterestCard({ data, symbol }: Props) {
       <div className={cardBase}>
         <p className="text-sm font-medium text-text-muted leading-tight">Відкритий інтерес</p>
         <p className="mt-3 text-[1.75rem] font-bold leading-none text-text-muted">—</p>
-        <p className="mt-2 text-xs text-text-muted">Ф'ючерси недоступні</p>
+        <p className="mt-2 text-xs text-text-muted">Ф&apos;ючерси недоступні</p>
       </div>
     );
   }
@@ -43,7 +43,7 @@ export function OpenInterestCard({ data, symbol }: Props) {
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm font-medium text-text-muted leading-tight">Відкритий інтерес</p>
           <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-xs text-text-muted">
-            ф'ючерси
+            ф&apos;ючерси
           </span>
         </div>
 
