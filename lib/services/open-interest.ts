@@ -30,8 +30,8 @@ async function fetchBinanceOI(symbol: string): Promise<ExchangeOI | null> {
     const last = data[data.length - 1];
     const first = data[0];
     if (!last) return null;
-    const current = parseFloat(last.sumOpenInterestValue);
-    const prev = data.length >= 25 && first ? parseFloat(first.sumOpenInterestValue) : null;
+    const current = Number.parseFloat(last.sumOpenInterestValue);
+    const prev = data.length >= 25 && first ? Number.parseFloat(first.sumOpenInterestValue) : null;
     const change = prev && prev > 0 ? ((current - prev) / prev) * 100 : null;
 
     return { exchange: 'Binance', color: '#F0B90B', openInterestUsd: current, change24hPct: change };
@@ -61,8 +61,8 @@ async function fetchBybitOI(symbol: string, currentPrice: number): Promise<Excha
     const head = list[0];
     const tail = list[list.length - 1];
     if (!head) return null;
-    const currentContracts = parseFloat(head.openInterest);
-    const prevContracts = list.length >= 25 && tail ? parseFloat(tail.openInterest) : null;
+    const currentContracts = Number.parseFloat(head.openInterest);
+    const prevContracts = list.length >= 25 && tail ? Number.parseFloat(tail.openInterest) : null;
 
     const currentUsd = currentContracts * currentPrice;
     const change =
@@ -105,7 +105,7 @@ async function fetchOkxOI(symbol: string, currentPrice: number): Promise<Exchang
     const entry = currentJson.data[0];
     if (!entry) return null;
 
-    const openInterestUsd = parseFloat(entry.oiCcy) * currentPrice;
+    const openInterestUsd = Number.parseFloat(entry.oiCcy) * currentPrice;
 
     let change24hPct: number | null = null;
     if (histRes.ok) {
@@ -118,8 +118,8 @@ async function fetchOkxOI(symbol: string, currentPrice: number): Promise<Exchang
         const cur = histJson.data[0];
         const prev = histJson.data[1];
         if (cur && prev) {
-          const curOi = parseFloat(cur[1]);
-          const prevOi = parseFloat(prev[1]);
+          const curOi = Number.parseFloat(cur[1]);
+          const prevOi = Number.parseFloat(prev[1]);
           if (prevOi > 0) change24hPct = ((curOi - prevOi) / prevOi) * 100;
         }
       }

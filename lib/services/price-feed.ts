@@ -128,8 +128,8 @@ async function fetchBinancePrice(symbol: string): Promise<PriceInfo | null> {
     const { data } = await getBinance().get<Binance24hrResponse>('/api/v3/ticker/24hr', {
       params: { symbol },
     });
-    const price = parseFloat(data.lastPrice);
-    const change = parseFloat(data.priceChangePercent);
+    const price = Number.parseFloat(data.lastPrice);
+    const change = Number.parseFloat(data.priceChangePercent);
     if (!Number.isFinite(price) || price <= 0) return null;
     return {
       price,
@@ -210,12 +210,12 @@ async function fetchDexScreenerToken(
     const candidates: Array<{ pair: DexPair; price: number }> = [];
 
     for (const p of baseCandidates) {
-      const price = parseFloat(p.priceUsd ?? '0');
+      const price = Number.parseFloat(p.priceUsd ?? '0');
       if (Number.isFinite(price) && price > 0) candidates.push({ pair: p, price });
     }
     for (const p of quoteCandidates) {
-      const baseUsd = parseFloat(p.priceUsd ?? '0');
-      const baseInQuote = parseFloat(p.priceNative ?? '0');
+      const baseUsd = Number.parseFloat(p.priceUsd ?? '0');
+      const baseInQuote = Number.parseFloat(p.priceNative ?? '0');
       if (
         Number.isFinite(baseUsd) && baseUsd > 0 &&
         Number.isFinite(baseInQuote) && baseInQuote > 0
@@ -228,8 +228,9 @@ async function fetchDexScreenerToken(
     if (candidates.length === 0) return null;
 
     // Пара з найбільшою ліквідністю серед валідних
-    const best = candidates.reduce((a, b) =>
-      (b.pair.liquidity?.usd ?? 0) > (a.pair.liquidity?.usd ?? 0) ? b : a,
+    const best = candidates.reduce(
+      (a, b) => ((b.pair.liquidity?.usd ?? 0) > (a.pair.liquidity?.usd ?? 0) ? b : a),
+      candidates[0]!,
     );
 
     // 24h change показуємо лише для base-пар — для quote-пар change стосується іншого токена
