@@ -33,15 +33,20 @@ npm run cron:local          # читає розклад із CRON_SCHEDULE (де
 
 ### Cron (оновлення цін / тригери / снапшоти)
 
-На проді фон виконує **Vercel Cron** через HTTP-ендпоінт `GET /api/cron/update-prices`
-(захищений `Authorization: Bearer ${CRON_SECRET}`). Розклад — у `vercel.json` (`*/15 * * * *`).
-Та сама логіка (`lib/cron/price-updater.ts`) використовується і локальним `cron:local`.
+Фон виконується через захищений HTTP-ендпоінт `GET /api/cron/update-prices`
+(`Authorization: Bearer ${CRON_SECRET}`). Та сама логіка (`lib/cron/price-updater.ts`)
+використовується і локальним `cron:local`.
 
-> ⚠️ **Hobby-план Vercel виконує cron лише раз на добу** — заявлений `*/15` фактично
-> спрацює раз на день. Для частих перевірок потрібен **Pro-план** або зовнішній планувальник
-> (напр. [cron-job.org](https://cron-job.org)), що раз на 15 хв б'є по
-> `https://<your-app>.vercel.app/api/cron/update-prices` із заголовком
-> `Authorization: Bearer <CRON_SECRET>`.
+Два джерела викликів цього ендпоінта:
+1. **Vercel Cron** (`vercel.json`, `0 6 * * *`) — штатний планувальник, раз на добу.
+   На Hobby-плані Vercel дозволяє лише добову частоту, тому це резервний/демонстраційний канал.
+2. **Зовнішній планувальник** ([cron-job.org](https://cron-job.org)) — основний для частих
+   оновлень: раз на 15 хв робить GET на `https://<your-app>.vercel.app/api/cron/update-prices`
+   із заголовком `Authorization: Bearer <CRON_SECRET>`.
+
+> ⚠️ **Hobby-план Vercel виконує cron лише раз на добу.** Розклад частіше за добовий
+> (`*/15`, `0 * * * *`) Vercel **відхиляє на білді**. Для оновлення кожні 15 хв
+> використовуй зовнішній планувальник (вище) або перейди на **Pro**.
 
 > ℹ️ `node-cron`/`lib/cron/scheduler.ts` — лише для локалки; на Vercel (serverless) постійний
 > процес не запускається, і це нормально.
