@@ -10,8 +10,8 @@ import { syncWallet } from '@/lib/services/wallet-sync';
 // Wallet sync tuning
 // ─────────────────────────────────────────
 
-/** Гаманець синхронізуємо не частіше, ніж раз на годину. */
-const WALLET_SYNC_INTERVAL_MS = 60 * 60 * 1000;
+/** Гаманець синхронізуємо не частіше, ніж раз на 4 години. */
+const WALLET_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;
 /** Скільки гаманців максимум за один запуск (захист квот Moralis/Ankr). */
 const MAX_WALLETS_PER_RUN = 10;
 /** Часовий бюджет на sync, щоб лишити час решті кроків у межах maxDuration=60с. */
