@@ -77,7 +77,8 @@ const percentTriggerSchema = triggerBase.extend({
   triggerType: z.literal('PERCENT'),
   threshold: z.number().int().min(1).max(100),
   direction: z.nativeEnum(TriggerDirection).default('BOTH'),
-  interval: z.number().int().min(1).max(1440),
+  // Мінімум 15 хв — збігається з частотою cron на проді.
+  interval: z.number().int().min(15).max(1440),
 });
 
 const priceTargetTriggerSchema = triggerBase.extend({
@@ -97,7 +98,7 @@ export const triggerUpdateSchema = z.object({
   isActive: z.boolean().optional(),
   threshold: z.number().int().min(1).max(100).optional(),
   direction: z.nativeEnum(TriggerDirection).optional(),
-  interval: z.number().int().min(1).max(1440).optional(),
+  interval: z.number().int().min(15).max(1440).optional(),
   targetPrice: z.number().positive().optional(),
 });
 export type TriggerUpdateInput = z.infer<typeof triggerUpdateSchema>;

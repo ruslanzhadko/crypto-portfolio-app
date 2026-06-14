@@ -34,9 +34,9 @@ interface TriggerFormProps {
 
 type TriggerType = 'PERCENT' | 'PRICE_TARGET';
 
+// Мінімум 15 хв — cron на проді перевіряє тригери раз на 15 хв,
+// менші інтервали не мали б ефекту.
 const INTERVALS = [
-  { label: '1 хвилина', value: 1 },
-  { label: '5 хвилин', value: 5 },
   { label: '15 хвилин', value: 15 },
   { label: '1 година', value: 60 },
   { label: '4 години', value: 240 },
