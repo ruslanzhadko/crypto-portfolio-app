@@ -26,8 +26,6 @@ export interface PriceUpdaterResult {
   pricesUpdated: number;
   balancesRecalculated: number;
   snapshotsCreated: number;
-  triggersChecked: number;
-  notificationsSent: number;
   errors: number;
   durationMs: number;
 }
@@ -556,8 +554,6 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
     pricesUpdated: 0,
     balancesRecalculated: 0,
     snapshotsCreated: 0,
-    triggersChecked: 0,
-    notificationsSent: 0,
     errors: 0,
     durationMs: 0,
   };
@@ -596,15 +592,9 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
     console.error('[price-updater] step 4 (snapshots):', err);
   }
 
-  try {
-    const triggerResult = await checkTriggers(prices);
-    result.triggersChecked = triggerResult.checked;
-    result.notificationsSent = triggerResult.notified;
-    result.errors += triggerResult.errors;
-  } catch (err) {
-    result.errors++;
-    console.error('[price-updater] step 5 (triggers):', err);
-  }
+  // Перевірку цінових тригерів робить окремий легкий ендпоінт
+  // /api/cron/check-triggers (runTriggerCheck) — щоб уникнути дублювання
+  // сповіщень і зайвої роботи у важкому апдейті.
 
   result.durationMs = Date.now() - startedAt;
   return result;
