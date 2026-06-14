@@ -45,7 +45,7 @@ export interface PriceAlertPayload {
 }
 
 export function formatPriceAlert(payload: PriceAlertPayload): string {
-  const direction = payload.deltaPercent > 0 ? '📈' : '📉';
+  const direction = payload.deltaPercent > 0 ? '\u{1F4C8}' : '\u{1F4C9}';
   const sign = payload.deltaPercent > 0 ? '+' : '';
   const intervalLabel =
     payload.intervalMinutes >= 60
@@ -55,13 +55,13 @@ export function formatPriceAlert(payload: PriceAlertPayload): string {
   const prevPrice = payload.price / (1 + payload.deltaPercent / 100);
 
   return [
-    `🚨 <b>Цінова аномалія: ${escapeHtml(payload.tokenSymbol)}</b>`,
+    `\u{1F6A8} <b>Цінова аномалія: ${escapeHtml(payload.tokenSymbol)}</b>`,
     '',
     `${direction} Зміна: <b>${sign}${payload.deltaPercent.toFixed(2)}%</b> за ${escapeHtml(intervalLabel)}`,
-    `💰 Ціна зараз:  <b>$${formatPrice(payload.price)}</b>`,
-    `📌 Ціна раніше: <b>$${formatPrice(prevPrice)}</b>`,
+    `\u{1F4B0} Ціна зараз:  <b>$${formatPrice(payload.price)}</b>`,
+    `\u{1F4CC} Ціна раніше: <b>$${formatPrice(prevPrice)}</b>`,
     '',
-    `⏱ ${new Date().toLocaleString('uk-UA')}`,
+    `\u{23F1} ${new Date().toLocaleString('uk-UA')}`,
   ].join('\n');
 }
 
@@ -95,17 +95,17 @@ export interface PriceTargetPayload {
 }
 
 export function formatPriceTargetAlert(payload: PriceTargetPayload): string {
-  const icon = payload.direction === 'UP' ? '📈' : '📉';
+  const icon = payload.direction === 'UP' ? '\u{1F4C8}' : '\u{1F4C9}';
   const label = payload.direction === 'UP' ? 'вище' : 'нижче';
 
   return [
-    `🎯 <b>Цільова ціна досягнута: ${escapeHtml(payload.tokenSymbol)}</b>`,
+    `\u{1F3AF} <b>Цільова ціна досягнута: ${escapeHtml(payload.tokenSymbol)}</b>`,
     '',
     `${icon} Ціна пішла <b>${label}</b> позначки $${formatPrice(payload.targetPrice)}`,
-    `💰 Поточна ціна: <b>$${formatPrice(payload.currentPrice)}</b>`,
-    `📊 Токен: ${escapeHtml(payload.tokenName)}`,
+    `\u{1F4B0} Поточна ціна: <b>$${formatPrice(payload.currentPrice)}</b>`,
+    `\u{1F4CA} Токен: ${escapeHtml(payload.tokenName)}`,
     '',
-    `⏱ ${new Date().toLocaleString('uk-UA')}`,
+    `\u{23F1} ${new Date().toLocaleString('uk-UA')}`,
     '',
     '<i>Тригер деактивовано після спрацювання.</i>',
   ].join('\n');
@@ -122,7 +122,7 @@ export async function sendPriceTargetAlert(
 export async function sendTestMessage(chatId: string): Promise<void> {
   await sendMessage({
     chatId,
-    text: '✅ <b>CryptoPortfolio</b>\n\nЦе тестове повідомлення. Ваш Telegram налаштовано правильно.',
+    text: '\u{2705} <b>CryptoPortfolio</b>\n\nЦе тестове повідомлення. Ваш Telegram налаштовано правильно.',
     parseMode: 'HTML',
   });
 }

@@ -28,16 +28,18 @@ function buildStartReply(chatId: number, firstName?: string): string {
   const settingsUrl = appUrl ? `${appUrl}/settings` : '/settings';
   const greeting = firstName ? `Привіт, ${escapeHtml(firstName)}!` : 'Привіт!';
 
+  // Емодзі — через \u{...} code-point escape (ASCII у файлі), щоб кодування/збірка
+  // не псували 4-байтні символи (баг: 🤖/📌 надсилались як літеральний \uXXXX-текст).
   return [
-    `👋 ${greeting}`,
+    `\u{1F44B} ${greeting}`,
     '',
-    '🤖 Це бот <b>CryptoPortfolio</b> — надсилає сповіщення про цінові аномалії ваших токенів.',
+    `\u{1F916} Це бот <b>CryptoPortfolio</b> — надсилає сповіщення про цінові аномалії ваших токенів.`,
     '',
-    `📋 Ваш <b>Telegram Chat ID</b>:`,
+    `\u{1F4CB} Ваш <b>Telegram Chat ID</b>:`,
     `<code>${chatId}</code>`,
     '',
-    '📌 Скопіюйте цей ID і вставте у налаштуваннях профілю:',
-    `👉 <a href="${settingsUrl}">${settingsUrl}</a>`,
+    `\u{1F4CC} Скопіюйте цей ID і вставте у налаштуваннях профілю:`,
+    `\u{1F449} <a href="${settingsUrl}">${settingsUrl}</a>`,
     '',
     'Після цього створіть цінові тригери на сторінці <b>Сповіщення</b> і бот почне надсилати алерти сюди.',
   ].join('\n');
