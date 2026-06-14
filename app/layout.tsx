@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Toaster } from '@/components/ui/toaster';
 import { auth } from '@/lib/auth';
 import './globals.css';
@@ -43,6 +44,7 @@ export default async function RootLayout({
           {children}
           <Toaster />
         </SessionProvider>
+        <SpeedInsights />
       </body>
     </html>
   );
