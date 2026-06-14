@@ -609,3 +609,69 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   result.durationMs = Date.now() - startedAt;
   return result;
 }
+
+// ─────────────────────────────────────────
+// Lightweight trigger-only check
+// ─────────────────────────────────────────
+
+export interface TriggerCheckResult {
+  triggersChecked: number;
+  notificationsSent: number;
+  pricesFetched: number;
+  errors: number;
+  durationMs: number;
+}
+
+/** Лише tokenId активних тригерів — на порядок менше, ніж повний collectTokenIds. */
+async function collectTriggerTokenIds(): Promise<string[]> {
+  const triggers = await prisma.priceTrigger.findMany({
+    where: { isActive: true },
+    select: { tokenId: true },
+    distinct: ['tokenId'],
+  });
+  const ids = new Set<string>();
+  for (const t of triggers) if (t.tokenId) ids.add(t.tokenId);
+  return Array.from(ids);
+}
+
+/**
+ * Легка перевірка тригерів для частого виклику (окремий cron).
+ * Тягне ціни ТІЛЬКИ для токенів активних тригерів і перевіряє їх —
+ * без sync гаманців, перерахунку балансів, снапшотів і запису кешу цін.
+ */
+export async function runTriggerCheck(): Promise<TriggerCheckResult> {
+  const startedAt = Date.now();
+  const result: TriggerCheckResult = {
+    triggersChecked: 0,
+    notificationsSent: 0,
+    pricesFetched: 0,
+    errors: 0,
+    durationMs: 0,
+  };
+
+  let prices = new Map<string, SimplePriceItem>();
+
+  try {
+    const tokenIds = await collectTriggerTokenIds();
+    if (tokenIds.length > 0) {
+      prices = await fetchPricesByIds(tokenIds);
+      result.pricesFetched = prices.size;
+    }
+  } catch (err) {
+    result.errors++;
+    console.error('[trigger-check] fetch prices:', err);
+  }
+
+  try {
+    const triggerResult = await checkTriggers(prices);
+    result.triggersChecked = triggerResult.checked;
+    result.notificationsSent = triggerResult.notified;
+    result.errors += triggerResult.errors;
+  } catch (err) {
+    result.errors++;
+    console.error('[trigger-check] check triggers:', err);
+  }
+
+  result.durationMs = Date.now() - startedAt;
+  return result;
+}
