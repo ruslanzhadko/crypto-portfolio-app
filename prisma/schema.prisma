@@ -2,11 +2,19 @@ generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// generator erd {
+//   provider = "prisma-erd-generator"
+//   output   = "./erd.svg"
+// }
+// ↑ Вимкнено для деплою: prisma-erd-generator тягне mermaid-cli/Chromium і падає
+//   на білді Vercel. ERD уже згенеровано локально (prisma/erd.svg).
+//   Для перегенерації локально — тимчасово розкоментуй і запусти `prisma generate`.
 
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")  
+  directUrl = env("DIRECT_URL")   
+}
 // ═══════════════════════════════════════
 // КОРИСТУВАЧІ
 // ═══════════════════════════════════════
