@@ -40,10 +40,12 @@ export function LoginForm() {
         return;
       }
       toast({ title: 'Ласкаво просимо!' });
-      // Фонова синхронізація гаманців саме цього користувача (сервіс throttle-ить
-      // до 30 хв на гаманець). Fire-and-forget — не блокуємо перехід на дашборд.
-      void fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
+      // Переходимо на дашборд одразу, не чекаючи синхронізації.
       router.push(callbackUrl);
+      router.refresh();
+      // Фонова синхронізація гаманців саме цього користувача (сервіс throttle-ить
+      // до 30 хв на гаманець). Коли завершиться — оновлюємо дашборд свіжими даними.
+      await fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
       router.refresh();
     });
   }
