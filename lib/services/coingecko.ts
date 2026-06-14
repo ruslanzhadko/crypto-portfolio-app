@@ -140,25 +140,39 @@ export async function fetchTopMarkets(opts: {
   return Array.isArray(data) ? data : [];
 }
 
-export async function fetchPricesByIds(ids: string[]): Promise<Map<string, SimplePriceItem>> {
+export interface FetchPricesOptions {
+  /** Кількість спроб у withRetry (дефолт 3). */
+  attempts?: number;
+  /** Таймаут одного HTTP-запиту, мс (перекриває дефолтні 15с клієнта). */
+  timeoutMs?: number;
+}
+
+export async function fetchPricesByIds(
+  ids: string[],
+  opts: FetchPricesOptions = {},
+): Promise<Map<string, SimplePriceItem>> {
   if (ids.length === 0) return new Map();
 
+  const { attempts = 3, timeoutMs } = opts;
   const result = new Map<string, SimplePriceItem>();
 
   // Batch by 250 per request (CoinGecko limit for /coins/markets)
   for (let i = 0; i < ids.length; i += 250) {
     const batch = ids.slice(i, i + 250);
-    const { data } = await withRetry(() =>
-      getClient().get<MarketCoin[]>('/coins/markets', {
-        params: {
-          vs_currency: 'usd',
-          ids: batch.join(','),
-          per_page: batch.length,
-          page: 1,
-          sparkline: false,
-          price_change_percentage: '24h',
-        },
-      }),
+    const { data } = await withRetry(
+      () =>
+        getClient().get<MarketCoin[]>('/coins/markets', {
+          params: {
+            vs_currency: 'usd',
+            ids: batch.join(','),
+            per_page: batch.length,
+            page: 1,
+            sparkline: false,
+            price_change_percentage: '24h',
+          },
+          ...(timeoutMs ? { timeout: timeoutMs } : {}),
+        }),
+      attempts,
     );
     for (const coin of data ?? []) {
       result.set(coin.id, {

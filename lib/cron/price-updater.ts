@@ -644,7 +644,10 @@ export async function runTriggerCheck(): Promise<TriggerCheckResult> {
   try {
     const tokenIds = await collectTriggerTokenIds();
     if (tokenIds.length > 0) {
-      prices = await fetchPricesByIds(tokenIds);
+      // Fail-fast: 2 спроби, таймаут 8с → найгірший випадок ~18с, щоб не впертись
+      // у ліміт зовнішнього планувальника (cron-job.org ~30с). Якщо CoinGecko
+      // рейт-лімітить — цей цикл пропускаємо, наступний (через 5 хв) спробує знову.
+      prices = await fetchPricesByIds(tokenIds, { attempts: 2, timeoutMs: 8000 });
       result.pricesFetched = prices.size;
     }
   } catch (err) {
