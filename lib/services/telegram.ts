@@ -61,7 +61,7 @@ export function formatPriceAlert(payload: PriceAlertPayload): string {
     `\u{1F4B0} Ціна зараз:  <b>$${formatPrice(payload.price)}</b>`,
     `\u{1F4CC} Ціна раніше: <b>$${formatPrice(prevPrice)}</b>`,
     '',
-    `\u{23F1} ${new Date().toLocaleString('uk-UA')}`,
+    `\u{23F1} ${formatKyivTime()}`,
   ].join('\n');
 }
 
@@ -69,6 +69,11 @@ function formatPrice(price: number): string {
   if (price >= 1) return price.toFixed(2);
   if (price >= 0.01) return price.toFixed(4);
   return price.toFixed(8);
+}
+
+// Час за київським поясом (UTC+3 влітку / +2 взимку) — серверний рантайм у UTC.
+function formatKyivTime(date = new Date()): string {
+  return date.toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' });
 }
 
 function escapeHtml(text: string): string {
@@ -105,7 +110,7 @@ export function formatPriceTargetAlert(payload: PriceTargetPayload): string {
     `\u{1F4B0} Поточна ціна: <b>$${formatPrice(payload.currentPrice)}</b>`,
     `\u{1F4CA} Токен: ${escapeHtml(payload.tokenName)}`,
     '',
-    `\u{23F1} ${new Date().toLocaleString('uk-UA')}`,
+    `\u{23F1} ${formatKyivTime()}`,
     '',
     '<i>Тригер деактивовано після спрацювання.</i>',
   ].join('\n');
