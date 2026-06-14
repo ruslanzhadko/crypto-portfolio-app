@@ -4,12 +4,25 @@ import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { sendPriceAlert, sendPriceTargetAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
+import { syncWallet } from '@/lib/services/wallet-sync';
+
+// ─────────────────────────────────────────
+// Wallet sync tuning
+// ─────────────────────────────────────────
+
+/** Гаманець синхронізуємо не частіше, ніж раз на годину. */
+const WALLET_SYNC_INTERVAL_MS = 60 * 60 * 1000;
+/** Скільки гаманців максимум за один запуск (захист квот Moralis/Ankr). */
+const MAX_WALLETS_PER_RUN = 10;
+/** Часовий бюджет на sync, щоб лишити час решті кроків у межах maxDuration=60с. */
+const WALLET_SYNC_TIME_BUDGET_MS = 35_000;
 
 // ─────────────────────────────────────────
 // Public types
 // ─────────────────────────────────────────
 
 export interface PriceUpdaterResult {
+  walletsSynced: number;
   pricesUpdated: number;
   balancesRecalculated: number;
   snapshotsCreated: number;
@@ -498,12 +511,48 @@ async function checkTriggers(
 }
 
 // ─────────────────────────────────────────
+// Step 0 — Sync wallet balances (Moralis/Ankr)
+// ─────────────────────────────────────────
+
+/**
+ * Синхронізує баланси гаманців, які не оновлювались понад годину.
+ * Обмежено кількістю та часовим бюджетом, щоб не перевищити maxDuration
+ * serverless-функції та квоти зовнішніх API.
+ */
+async function syncDueWallets(startedAt: number): Promise<number> {
+  const dueBefore = new Date(Date.now() - WALLET_SYNC_INTERVAL_MS);
+  const wallets = await prisma.wallet.findMany({
+    where: {
+      isActive: true,
+      user: { isBlocked: false },
+      OR: [{ lastSyncAt: null }, { lastSyncAt: { lt: dueBefore } }],
+    },
+    orderBy: { lastSyncAt: { sort: 'asc', nulls: 'first' } },
+    take: MAX_WALLETS_PER_RUN,
+    select: { id: true },
+  });
+
+  let synced = 0;
+  for (const w of wallets) {
+    if (Date.now() - startedAt > WALLET_SYNC_TIME_BUDGET_MS) break;
+    try {
+      await syncWallet(w.id);
+      synced++;
+    } catch (err) {
+      console.error(`[price-updater] wallet sync failed walletId=${w.id}`, err);
+    }
+  }
+  return synced;
+}
+
+// ─────────────────────────────────────────
 // Pipeline orchestrator
 // ─────────────────────────────────────────
 
 export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   const startedAt = Date.now();
   const result: PriceUpdaterResult = {
+    walletsSynced: 0,
     pricesUpdated: 0,
     balancesRecalculated: 0,
     snapshotsCreated: 0,
@@ -514,6 +563,13 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   };
 
   let prices = new Map<string, SimplePriceItem>();
+
+  try {
+    result.walletsSynced = await syncDueWallets(startedAt);
+  } catch (err) {
+    result.errors++;
+    console.error('[price-updater] step 0 (wallet sync):', err);
+  }
 
   try {
     const tokenIds = await collectTokenIds();
