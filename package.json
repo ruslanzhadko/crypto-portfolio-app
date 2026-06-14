@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
@@ -64,7 +65,7 @@
     "postcss": "^8.4.0",
     "prettier": "^3.2.0",
     "prisma": "^5.14.0",
-    "prisma-erd-generator": "^2.4.2",
+    "prisma-erd-generator": "^2.4.3",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
     "tsx": "^4.11.0",
