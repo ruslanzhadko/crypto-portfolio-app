@@ -2,11 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Send } from 'lucide-react';
+import { Bot, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+
+const BOT_URL = 'https://t.me/cryptoportfolio_rzhad_bot';
 
 interface ProfileFormProps {
   initialName: string | null;
@@ -20,6 +23,8 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
   const [isPending, startTransition] = useTransition();
   const [testing, startTest] = useTransition();
   const { toast } = useToast();
+
+  const isConnected = !!initialTelegramChatId;
 
   function onSave(e: React.FormEvent) {
     e.preventDefault();
@@ -80,7 +85,12 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="chatId">Telegram Chat ID</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="chatId">Telegram Chat ID</Label>
+          <Badge variant={isConnected ? 'success' : 'secondary'}>
+            {isConnected ? 'Підключено' : 'Не підключено'}
+          </Badge>
+        </div>
         <div className="flex gap-2">
           <Input
             id="chatId"
@@ -101,19 +111,16 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
           </Button>
         </div>
         <p className="text-xs text-text-muted">
-          Відкрийте{' '}
-          <a
-            href="https://t.me/cryptoportfolio_rzhad_bot"
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary hover:underline"
-          >
-            @cryptoportfolio_rzhad_bot
-          </a>{' '}
-          і натисніть <span className="font-mono">/start</span> — бот надішле ваш{' '}
-          <strong>Chat ID</strong>. Вставте його сюди та збережіть, щоб отримувати
-          сповіщення про спрацювання цінових тригерів.
+          Натисніть <span className="font-mono">/start</span> у боті (кнопка нижче) —
+          він надішле ваш <strong>Chat ID</strong>. Вставте його сюди та збережіть,
+          щоб отримувати сповіщення про спрацювання цінових тригерів.
         </p>
+        <Button asChild variant="outline" size="sm">
+          <a href={BOT_URL} target="_blank" rel="noreferrer">
+            <Bot className="h-4 w-4" />
+            Відкрити @cryptoportfolio_rzhad_bot
+          </a>
+        </Button>
       </div>
 
       <Button type="submit" disabled={isPending}>
