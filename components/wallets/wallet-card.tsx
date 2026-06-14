@@ -65,12 +65,15 @@ export function WalletCard({ wallet, lastPriceUpdateAt }: WalletCardProps) {
     });
   }
 
-  function onDelete() {
+  function onDelete(event: Event) {
     if (!confirmDelete) {
+      // Перший клік: не даємо Radix закрити меню, показуємо крок підтвердження
+      event.preventDefault();
       setConfirmDelete(true);
       setTimeout(() => setConfirmDelete(false), 4000);
       return;
     }
+    // Другий клік: меню закривається штатно, виконуємо видалення
     startTransition(async () => {
       const res = await fetch(`/api/wallets/${wallet.id}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -132,7 +135,7 @@ export function WalletCard({ wallet, lastPriceUpdateAt }: WalletCardProps) {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={onDelete}
+                onSelect={onDelete}
                 className="text-danger focus:text-danger"
               >
                 <Trash2 className="h-4 w-4" />

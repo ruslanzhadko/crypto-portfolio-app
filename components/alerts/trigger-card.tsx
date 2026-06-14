@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, Loader2, MoreVertical, Target, Trash2 } from 'lucide-react';
 import { TriggerDirection, TriggerType, type PriceTrigger } from '@prisma/client';
@@ -74,6 +74,20 @@ function TriggerMenu({
   isPending: boolean;
   onDelete: () => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  function handleDelete(event: Event) {
+    if (!confirmDelete) {
+      // Перший клік: не даємо Radix закрити меню, показуємо крок підтвердження
+      event.preventDefault();
+      setConfirmDelete(true);
+      setTimeout(() => setConfirmDelete(false), 4000);
+      return;
+    }
+    // Другий клік: меню закривається штатно, виконуємо видалення
+    onDelete();
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -82,9 +96,9 @@ function TriggerMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={onDelete} className="text-danger focus:text-danger">
+        <DropdownMenuItem onSelect={handleDelete} className="text-danger focus:text-danger">
           <Trash2 className="h-4 w-4" />
-          Видалити
+          {confirmDelete ? 'Підтвердити видалення' : 'Видалити'}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
