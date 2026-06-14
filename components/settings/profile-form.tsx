@@ -101,14 +101,18 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
           </Button>
         </div>
         <p className="text-xs text-text-muted">
-          Створіть бота через{' '}
-          <a href="https://t.me/BotFather" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-            @BotFather
+          Відкрийте{' '}
+          <a
+            href="https://t.me/cryptoportfolio_rzhad_bot"
+            target="_blank"
+            rel="noreferrer"
+            className="text-primary hover:underline"
+          >
+            @cryptoportfolio_rzhad_bot
           </a>{' '}
-          і дізнайтесь ваш Chat ID через{' '}
-          <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer" className="text-primary hover:underline">
-            @userinfobot
-          </a>.
+          і натисніть <span className="font-mono">/start</span> — бот надішле ваш{' '}
+          <strong>Chat ID</strong>. Вставте його сюди та збережіть, щоб отримувати
+          сповіщення про спрацювання цінових тригерів.
         </p>
       </div>
 
