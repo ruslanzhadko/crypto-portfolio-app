@@ -56,7 +56,12 @@ export default async function WalletsPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {data.map((w) => (
-            <WalletCard key={w.id} wallet={w} lastPriceUpdateAt={w.lastPriceUpdateAt} />
+            <WalletCard
+              key={w.id}
+              wallet={w}
+              lastPriceUpdateAt={w.lastPriceUpdateAt}
+              portfolioTotalUsd={data.reduce((s, x) => s + x.totalUsd, 0)}
+            />
           ))}
         </div>
       )}
