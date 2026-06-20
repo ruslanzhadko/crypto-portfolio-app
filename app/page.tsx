@@ -88,13 +88,15 @@ export default async function LandingPage() {
   ];
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden">
-      {/* Background decoration */}
-      <div className="pointer-events-none absolute inset-0" aria-hidden>
-        {/* Top hero glow */}
-        <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[120px]" />
+    <main className="relative min-h-screen overflow-x-hidden text-base">
+      {/* Background decoration — розподілено по всій сторінці */}
+      <div className="pointer-events-none fixed inset-0" aria-hidden>
+        {/* Top center glow */}
+        <div className="absolute left-1/2 top-0 h-[700px] w-[1000px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/10 blur-[130px]" />
+        {/* Mid-left accent */}
+        <div className="absolute left-0 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/6 blur-[120px]" />
         {/* Bottom-right accent */}
-        <div className="absolute -bottom-32 right-0 h-[400px] w-[500px] rounded-full bg-primary/5 blur-[100px]" />
+        <div className="absolute bottom-0 right-0 h-[500px] w-[600px] translate-x-1/4 translate-y-1/4 rounded-full bg-primary/8 blur-[120px]" />
       </div>
       {/* ── Nav ── */}
       <header className="container flex h-16 items-center justify-between">
@@ -146,8 +148,8 @@ export default async function LandingPage() {
       {/* ── How it works ── */}
       <section className="container pb-14">
         <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Як це працює</h2>
-          <p className="mt-2 text-text-muted">Три кроки до повного контролю над портфелем</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Як це працює</h2>
+          <p className="mt-2 text-base text-text-muted">Три кроки до повного контролю над портфелем</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((step) => (
@@ -162,7 +164,7 @@ export default async function LandingPage() {
                   </div>
                 </div>
                 <h3 className="font-semibold">{step.title}</h3>
-                <p className="mt-2 text-sm text-text-muted leading-relaxed">{step.desc}</p>
+                <p className="mt-2 text-base text-text-muted leading-relaxed">{step.desc}</p>
               </CardContent>
             </Card>
           ))}
@@ -173,8 +175,8 @@ export default async function LandingPage() {
       {coins.length > 0 && (
         <section className="container pb-14">
           <div className="mb-8 text-center">
-            <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Ринок прямо зараз</h2>
-            <p className="mt-2 text-text-muted">Актуальні ціни з CoinGecko</p>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Ринок прямо зараз</h2>
+            <p className="mt-2 text-base text-text-muted">Актуальні ціни з CoinGecko</p>
           </div>
           <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-border bg-surface">
             {coins.map((coin) => {
@@ -216,7 +218,7 @@ export default async function LandingPage() {
       {/* ── Features ── */}
       <section className="container pb-14">
         <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Що всередині</h2>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Що всередині</h2>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
@@ -226,7 +228,7 @@ export default async function LandingPage() {
                   <f.icon className="h-5 w-5" />
                 </div>
                 <h3 className="text-base font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm text-text-muted">{f.desc}</p>
+                <p className="mt-2 text-base text-text-muted">{f.desc}</p>
               </CardContent>
             </Card>
           ))}
@@ -236,8 +238,8 @@ export default async function LandingPage() {
       {/* ── Networks ── */}
       <section className="container pb-14">
         <div className="mb-8 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">8 підтримуваних мереж</h2>
-          <p className="mt-2 text-text-muted">Один EVM-гаманець охоплює 7 ланцюгів одночасно</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">8 підтримуваних мереж</h2>
+          <p className="mt-2 text-base text-text-muted">Один EVM-гаманець охоплює 7 ланцюгів одночасно</p>
         </div>
         <div className="mx-auto grid max-w-3xl grid-cols-4 gap-3 sm:grid-cols-8">
           {ALL_CHAINS.map((chain) => (
@@ -269,7 +271,7 @@ export default async function LandingPage() {
                 <Bell className="h-3.5 w-3.5" />
                 Telegram-сповіщення
               </div>
-              <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
+              <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
                 Ніколи не пропустиш<br />цінову аномалію
               </h2>
               <p className="mt-4 text-text-muted leading-relaxed">
@@ -327,7 +329,7 @@ export default async function LandingPage() {
       <section className="container pb-14">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8 text-center">
-            <h2 className="text-2xl font-bold tracking-tight md:text-3xl">Часті питання</h2>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Часті питання</h2>
           </div>
           <Card className="card-gradient">
             <CardContent className="p-6">
@@ -337,31 +339,9 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
-      <section className="container pb-20">
-        <div className="mx-auto max-w-xl rounded-2xl border border-primary/20 bg-primary/5 p-10 text-center">
-          <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
-            Почати безкоштовно
-          </h2>
-          <p className="mt-3 text-text-muted">
-            Реєстрація займає 30 секунд. Жодних карток, жодних підписок.
-          </p>
-          <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Button asChild size="lg">
-              <Link href="/auth/register">
-                Створити акаунт <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="lg">
-              <Link href="/auth/login">Увійти</Link>
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* ── Footer ── */}
-      <footer className="border-t border-border py-8">
-        <div className="container text-center text-xs text-text-muted">
+      <footer className="border-t border-border py-4">
+        <div className="container text-center text-sm text-text-muted">
           Автор:{' '}
           <a
             href="https://t.me/ludoslan"
