@@ -82,7 +82,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
   return (
     <Card>
       <CardHeader
-        className="flex cursor-pointer flex-row items-center justify-between space-y-0 pb-2 select-none"
+        className={cn('flex cursor-pointer flex-row items-center justify-between space-y-0 select-none', open ? 'pb-2' : 'pb-6')}
         onClick={() => setOpen((v) => !v)}
       >
         <div className="flex items-center gap-3">
