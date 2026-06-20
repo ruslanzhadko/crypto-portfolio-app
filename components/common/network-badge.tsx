@@ -1,3 +1,6 @@
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { Network } from '@prisma/client';
 import { getChainColor, getChainDisplayName } from '@/lib/utils/networks';
 import { cn } from '@/lib/utils/cn';
@@ -7,9 +10,9 @@ interface NetworkBadgeProps {
   className?: string;
 }
 
-/** Показує тип гаманця (EVM або Solana) */
 export function NetworkBadge({ network, className }: NetworkBadgeProps) {
-  const label = network === Network.EVM ? 'EVM (7 мереж)' : 'Solana';
+  const t = useTranslations('NetworkBadge');
+  const label = network === Network.EVM ? t('evm') : t('solana');
   const color = network === Network.EVM ? '#6c63ff' : '#14f195';
   return (
     <span
@@ -29,7 +32,6 @@ interface ChainBadgeProps {
   className?: string;
 }
 
-/** Показує конкретний ланцюг (ethereum, bsc, solana тощо) */
 export function ChainBadge({ chainName, className }: ChainBadgeProps) {
   return (
     <span

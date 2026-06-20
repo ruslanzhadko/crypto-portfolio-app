@@ -1,23 +1,30 @@
-import Link from 'next/link';
 import Image from 'next/image';
-import { redirect } from 'next/navigation';
+import { getLocale } from 'next-intl/server';
+import { redirect, Link } from '@/i18n/navigation';
 import {
   ArrowRight, BarChart3, Bell, ShieldCheck, Wallet,
   TrendingUp, TrendingDown,
 } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { auth } from '@/lib/auth';
 import { fetchTopMarkets, type MarketCoin } from '@/lib/services/coingecko';
 import { ALL_CHAINS } from '@/lib/utils/networks';
 import { LandingFaq } from '@/components/landing/landing-faq';
+import { LocaleSwitcher } from '@/components/common/locale-switcher';
 import { cn } from '@/lib/utils/cn';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LandingPage() {
   const session = await auth();
-  if (session?.user) redirect('/dashboard');
+  if (session?.user) {
+    const locale = await getLocale();
+    redirect({ href: '/dashboard', locale });
+  }
+
+  const t = await getTranslations('Landing');
 
   let coins: MarketCoin[] = [];
   try {
@@ -25,79 +32,34 @@ export default async function LandingPage() {
   } catch {}
 
   const steps = [
-    {
-      num: '01',
-      icon: Wallet,
-      title: 'Додай гаманець',
-      desc: 'Вставте публічну адресу будь-якої мережі. Приватні ключі не потрібні.',
-    },
-    {
-      num: '02',
-      icon: BarChart3,
-      title: 'Аналізуй портфель',
-      desc: 'Загальна вартість, PnL за 24г, розподіл по мережах і токенах, графік динаміки.',
-    },
-    {
-      num: '03',
-      icon: Bell,
-      title: 'Отримуй сповіщення',
-      desc: 'Підключи Telegram і налаштуй тригери — бот повідомить про цінові аномалії миттєво.',
-    },
+    { num: '01', icon: Wallet, title: t('step1Title'), desc: t('step1Desc') },
+    { num: '02', icon: BarChart3, title: t('step2Title'), desc: t('step2Desc') },
+    { num: '03', icon: Bell, title: t('step3Title'), desc: t('step3Desc') },
   ];
 
   const features = [
-    {
-      icon: Wallet,
-      title: '8 блокчейн-мереж',
-      desc: 'Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, Solana — лише адреси, без приватних ключів.',
-    },
-    {
-      icon: BarChart3,
-      title: 'Аналітика портфеля',
-      desc: 'PnL, агрегація по гаманцях, розподіл за мережами і токенами, графіки динаміки вартості.',
-    },
-    {
-      icon: Bell,
-      title: 'Telegram-сповіщення',
-      desc: 'Налаштовуйте цінові тригери і отримуйте миттєві повідомлення про відхилення.',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Безпечно і безкоштовно',
-      desc: 'Read-only режим. Жодних транзакцій, жодних підписок.',
-    },
+    { icon: Wallet, title: t('feature1Title'), desc: t('feature1Desc') },
+    { icon: BarChart3, title: t('feature3Title'), desc: t('feature3Desc') },
+    { icon: Bell, title: t('feature2Title'), desc: t('feature2Desc') },
+    { icon: ShieldCheck, title: t('feature4Title'), desc: t('feature4Desc') },
   ];
 
   const faqs = [
-    {
-      q: 'Чи безпечно підключати гаманець?',
-      a: 'Абсолютно. Ви вказуєте лише публічну адресу — ніяких приватних ключів, seed-фраз або підписів. Додаток тільки читає on-chain дані у режимі read-only.',
-    },
-    {
-      q: 'Скільки це коштує?',
-      a: 'Повністю безкоштовно. Ніяких підписок, прихованих платежів або лімітів на кількість гаманців.',
-    },
-    {
-      q: 'Як працюють Telegram-сповіщення?',
-      a: 'Підключіть Telegram у налаштуваннях, задайте тригер (наприклад: зміна ціни BTC > 5% за годину або досягнення цільової ціни) — і бот надішле повідомлення як тільки умова виконається.',
-    },
-    {
-      q: 'Які мережі підтримуються?',
-      a: '8 мереж: Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche і Solana. EVM-гаманець відстежується одночасно на всіх 7 EVM-ланцюгах.',
-    },
+    { q: t('faq1q'), a: t('faq1a') },
+    { q: t('faq2q'), a: t('faq2a') },
+    { q: t('faq3q'), a: t('faq3a') },
+    { q: t('faq4q'), a: t('faq4a') },
   ];
 
   return (
     <main className="relative min-h-screen overflow-x-hidden text-base">
-      {/* Background decoration — розподілено по всій сторінці */}
+      {/* Background decoration */}
       <div className="pointer-events-none fixed inset-0" aria-hidden>
-        {/* Top center glow */}
         <div className="absolute left-1/2 top-0 h-[700px] w-[1000px] -translate-x-1/2 -translate-y-1/3 rounded-full bg-primary/10 blur-[130px]" />
-        {/* Mid-left accent */}
         <div className="absolute left-0 top-1/2 h-[500px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/6 blur-[120px]" />
-        {/* Bottom-right accent */}
         <div className="absolute bottom-0 right-0 h-[500px] w-[600px] translate-x-1/4 translate-y-1/4 rounded-full bg-primary/8 blur-[120px]" />
       </div>
+
       {/* ── Nav ── */}
       <header className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
@@ -113,12 +75,13 @@ export default async function LandingPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <LocaleSwitcher />
           <Button asChild variant="ghost" size="sm">
-            <Link href="/auth/login">Увійти</Link>
+            <Link href="/auth/login">{t('navSignIn')}</Link>
           </Button>
           <Button asChild size="sm">
             <Link href="/auth/register">
-              Реєстрація <ArrowRight className="h-4 w-4" />
+              {t('navGetStarted')} <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
@@ -128,18 +91,18 @@ export default async function LandingPage() {
       <section className="container py-16 md:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-6xl">
-            Моніторинг крипто-портфеля{' '}
-            <span className="gradient-text">в одному місці</span>
+            {t('heroTitle')}{' '}
+            <span className="gradient-text">{t('heroTitleAccent')}</span>
           </h1>
           <p className="mt-6 text-lg text-text-muted md:text-xl">
-            On-chain баланси, біржові ціни, аналітика динаміки і Telegram-сповіщення — для приватного інвестора.
+            {t('heroSubtitle')}
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="/auth/register">Почати безкоштовно</Link>
+              <Link href="/auth/register">{t('heroCreateAccount')}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/auth/login">Вже маю акаунт</Link>
+              <Link href="/auth/login">{t('heroSignIn')}</Link>
             </Button>
           </div>
         </div>
@@ -148,15 +111,15 @@ export default async function LandingPage() {
       {/* ── How it works ── */}
       <section className="container pb-14">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Як це працює</h2>
-          <p className="mt-2 text-base text-text-muted">Три кроки до повного контролю над портфелем</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('howItWorksTitle')}</h2>
+          <p className="mt-2 text-base text-text-muted">{t('howItWorksSubtitle')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((step) => (
             <Card key={step.num} className="card-gradient">
               <CardContent className="p-6">
                 <div className="relative mb-5">
-                  <span className="absolute -top-1 -left-1 text-5xl font-black text-primary/5 select-none leading-none">
+                  <span className="absolute -left-1 -top-1 select-none text-5xl font-black leading-none text-primary/5">
                     {step.num}
                   </span>
                   <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
@@ -164,7 +127,7 @@ export default async function LandingPage() {
                   </div>
                 </div>
                 <h3 className="font-semibold">{step.title}</h3>
-                <p className="mt-2 text-base text-text-muted leading-relaxed">{step.desc}</p>
+                <p className="mt-2 text-base leading-relaxed text-text-muted">{step.desc}</p>
               </CardContent>
             </Card>
           ))}
@@ -175,8 +138,8 @@ export default async function LandingPage() {
       {coins.length > 0 && (
         <section className="container pb-14">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Ринок прямо зараз</h2>
-            <p className="mt-2 text-base text-text-muted">Актуальні ціни з CoinGecko</p>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('liveMarketTitle')}</h2>
+            <p className="mt-2 text-base text-text-muted">{t('liveMarketSubtitle')}</p>
           </div>
           <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-border bg-surface">
             {coins.map((coin) => {
@@ -218,7 +181,8 @@ export default async function LandingPage() {
       {/* ── Features ── */}
       <section className="container pb-14">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Що всередині</h2>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('featuresTitle')}</h2>
+          <p className="mt-2 text-base text-text-muted">{t('featuresSubtitle')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
@@ -238,8 +202,8 @@ export default async function LandingPage() {
       {/* ── Networks ── */}
       <section className="container pb-14">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">8 підтримуваних мереж</h2>
-          <p className="mt-2 text-base text-text-muted">Один EVM-гаманець охоплює 7 ланцюгів одночасно</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('networksTitle')}</h2>
+          <p className="mt-2 text-base text-text-muted">{t('networksSubtitle')}</p>
         </div>
         <div className="mx-auto grid max-w-3xl grid-cols-4 gap-3 sm:grid-cols-8">
           {ALL_CHAINS.map((chain) => (
@@ -269,20 +233,16 @@ export default async function LandingPage() {
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
                 <Bell className="h-3.5 w-3.5" />
-                Telegram-сповіщення
+                {t('telegramTitle')}
               </div>
               <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                Ніколи не пропустиш<br />цінову аномалію
+                {t('telegramSubtitle')}
               </h2>
-              <p className="mt-4 text-text-muted leading-relaxed">
-                Підключи Telegram-бота в налаштуваннях і задай умови спрацювання:
+              <p className="mt-4 leading-relaxed text-text-muted">
+                {t('telegramDesc')}
               </p>
               <ul className="mt-4 space-y-2">
-                {[
-                  'Зміна ціни понад X% за обраний інтервал',
-                  'Досягнення цільової ціни вгору або вниз',
-                  'Підтримка будь-якого токена з вашого портфеля',
-                ].map((item) => (
+                {[t('telegramFeature1'), t('telegramFeature2'), t('telegramFeature3')].map((item) => (
                   <li key={item} className="flex items-start gap-2 text-sm text-text-muted">
                     <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">✓</span>
                     {item}
@@ -303,21 +263,21 @@ export default async function LandingPage() {
                   />
                   <div>
                     <p className="text-sm font-semibold text-white">CryptoPortfolio</p>
-                    <p className="text-xs text-[#8096a7]">бот</p>
+                    <p className="text-xs text-[#8096a7]">bot</p>
                   </div>
                 </div>
                 <div className="mb-2 ml-2 max-w-[90%] rounded-xl rounded-tl-none bg-[#2b5278] px-3.5 py-2.5 text-[13px] text-white">
-                  <p>🚨 <strong>Цінова аномалія: BTC</strong></p>
-                  <p className="mt-1.5">📈 Зміна: <strong>+5.43%</strong> за 1 год</p>
-                  <p>💰 Ціна зараз: <strong>$67,234</strong></p>
-                  <p>📌 Ціна раніше: <strong>$63,778</strong></p>
+                  <p>🚨 <strong>Price alert: BTC</strong></p>
+                  <p className="mt-1.5">📈 Change: <strong>+5.43%</strong> in 1h</p>
+                  <p>💰 Price now: <strong>$67,234</strong></p>
+                  <p>📌 Price before: <strong>$63,778</strong></p>
                   <p className="mt-1.5 text-[11px] text-[#8096a7]">⏱ 21.06.2026, 14:32:15</p>
                 </div>
                 <div className="ml-2 max-w-[90%] rounded-xl rounded-tl-none bg-[#2b5278] px-3.5 py-2.5 text-[13px] text-white">
-                  <p>🎯 <strong>Цільова ціна: ETH</strong></p>
-                  <p className="mt-1.5">📈 Ціна пішла <strong>вище</strong> $3 500</p>
-                  <p>💰 Поточна ціна: <strong>$3,521</strong></p>
-                  <p className="mt-1.5 text-[11px] text-[#8096a7] italic">Тригер деактивовано.</p>
+                  <p>🎯 <strong>Target price: ETH</strong></p>
+                  <p className="mt-1.5">📈 Price went <strong>above</strong> $3,500</p>
+                  <p>💰 Current price: <strong>$3,521</strong></p>
+                  <p className="mt-1.5 text-[11px] italic text-[#8096a7]">Trigger deactivated.</p>
                 </div>
               </div>
             </div>
@@ -329,7 +289,8 @@ export default async function LandingPage() {
       <section className="container pb-14">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Часті питання</h2>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('faqTitle')}</h2>
+            <p className="mt-2 text-base text-text-muted">{t('faqSubtitle')}</p>
           </div>
           <Card className="card-gradient">
             <CardContent className="p-6">
@@ -342,15 +303,18 @@ export default async function LandingPage() {
       {/* ── Footer ── */}
       <footer className="border-t border-border py-4">
         <div className="container text-center text-sm text-text-muted">
-          Автор:{' '}
-          <a
-            href="https://t.me/ludoslan"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            @ludoslan
-          </a>
+          {t.rich('footerAuthor', {
+            link: (chunks) => (
+              <a
+                href="https://t.me/ludoslan"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                @ludoslan
+              </a>
+            ),
+          })}
         </div>
       </footer>
     </main>

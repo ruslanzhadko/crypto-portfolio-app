@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +17,7 @@ export function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const t = useTranslations('Auth');
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -31,20 +33,17 @@ export function LoginForm() {
         redirect: false,
       });
       if (res?.error) {
-        setError('Невірний email або пароль');
+        setError(t('loginErrorMessage'));
         toast({
           variant: 'destructive',
-          title: 'Не вдалось увійти',
-          description: 'Перевірте email та пароль і спробуйте знову.',
+          title: t('loginToastFailTitle'),
+          description: t('loginToastFailDescription'),
         });
         return;
       }
-      toast({ title: 'Ласкаво просимо!' });
-      // Переходимо на дашборд одразу, не чекаючи синхронізації.
+      toast({ title: t('loginToastWelcome') });
       router.push(callbackUrl);
       router.refresh();
-      // Фонова синхронізація гаманців саме цього користувача (сервіс throttle-ить
-      // до 30 хв на гаманець). Коли завершиться — оновлюємо дашборд свіжими даними.
       await fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
       router.refresh();
     });
@@ -53,18 +52,18 @@ export function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('emailLabel')}</Label>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={t('emailPlaceholder')}
           required
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Пароль</Label>
+        <Label htmlFor="password">{t('passwordLabel')}</Label>
         <Input
           id="password"
           name="password"
@@ -76,7 +75,7 @@ export function LoginForm() {
       {error && <p className="text-sm text-danger">{error}</p>}
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Увійти
+        {t('loginButton')}
       </Button>
     </form>
   );

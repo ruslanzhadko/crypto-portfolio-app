@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +15,7 @@ export function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const t = useTranslations('Auth');
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -34,9 +36,9 @@ export function RegisterForm() {
         const body = (await res.json().catch(() => null)) as
           | { error?: { message?: string } }
           | null;
-        const msg = body?.error?.message ?? 'Помилка реєстрації';
+        const msg = body?.error?.message ?? t('registerErrorDefault');
         setError(msg);
-        toast({ variant: 'destructive', title: 'Не вдалось зареєструватись', description: msg });
+        toast({ variant: 'destructive', title: t('registerToastFailTitle'), description: msg });
         return;
       }
 
@@ -46,12 +48,12 @@ export function RegisterForm() {
         redirect: false,
       });
       if (signed?.error) {
-        toast({ title: 'Акаунт створено', description: 'Увійдіть з вашими даними.' });
+        toast({ title: t('accountCreatedTitle'), description: t('accountCreatedLoginDescription') });
         router.push('/auth/login');
         return;
       }
 
-      toast({ title: 'Акаунт створено', description: 'Ласкаво просимо!' });
+      toast({ title: t('accountCreatedTitle'), description: t('accountCreatedWelcomeDescription') });
       router.push('/dashboard');
       router.refresh();
     });
@@ -60,22 +62,22 @@ export function RegisterForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Імʼя (опційно)</Label>
-        <Input id="name" name="name" autoComplete="name" placeholder="Іван" />
+        <Label htmlFor="name">{t('nameLabel')}</Label>
+        <Input id="name" name="name" autoComplete="name" placeholder={t('namePlaceholder')} />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('emailLabel')}</Label>
         <Input
           id="email"
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder={t('emailPlaceholder')}
           required
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Пароль</Label>
+        <Label htmlFor="password">{t('passwordLabel')}</Label>
         <Input
           id="password"
           name="password"
@@ -84,12 +86,12 @@ export function RegisterForm() {
           autoComplete="new-password"
           required
         />
-        <p className="text-xs text-text-muted">Мінімум 8 символів</p>
+        <p className="text-xs text-text-muted">{t('passwordHint')}</p>
       </div>
       {error && <p className="text-sm text-danger">{error}</p>}
       <Button type="submit" className="w-full" disabled={isPending}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Створити акаунт
+        {t('registerButton')}
       </Button>
     </form>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { signOut } from 'next-auth/react';
+import { useTranslations } from 'next-intl';
 import { LogOut, User as UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
@@ -13,6 +14,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import type { Role } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
+import { Link } from '@/i18n/navigation';
+import { LocaleSwitcher } from '@/components/common/locale-switcher';
 
 interface NavbarProps {
   email: string;
@@ -21,6 +24,7 @@ interface NavbarProps {
 }
 
 export function Navbar({ email, name, role }: NavbarProps) {
+  const t = useTranslations('Nav');
   const initials = (name || email || 'U').charAt(0).toUpperCase();
 
   return (
@@ -31,7 +35,8 @@ export function Navbar({ email, name, role }: NavbarProps) {
         </span>
       </div>
       <div className="ml-auto flex items-center gap-3">
-        {role === 'ADMIN' && <Badge variant="outline">Admin</Badge>}
+        <LocaleSwitcher />
+        {role === 'ADMIN' && <Badge variant="outline">{t('adminBadge')}</Badge>}
         <DropdownMenu>
           <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary">
             <Avatar className="h-8 w-8">
@@ -43,22 +48,22 @@ export function Navbar({ email, name, role }: NavbarProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col">
-                <span className="text-sm font-medium">{name ?? 'Користувач'}</span>
+                <span className="text-sm font-medium">{name ?? t('defaultUser')}</span>
                 <span className="text-xs text-text-muted">{email}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <a href="/settings" className="flex items-center gap-2">
-                <UserIcon className="h-4 w-4" /> Профіль
-              </a>
+              <Link href="/settings" className="flex items-center gap-2">
+                <UserIcon className="h-4 w-4" /> {t('profile')}
+              </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => signOut({ callbackUrl: '/auth/login' })}
               className="flex items-center gap-2 text-danger focus:text-danger"
             >
-              <LogOut className="h-4 w-4" /> Вийти
+              <LogOut className="h-4 w-4" /> {t('signOut')}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

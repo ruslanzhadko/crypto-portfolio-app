@@ -1,16 +1,17 @@
 import NextAuth from 'next-auth';
+import createIntlMiddleware from 'next-intl/middleware';
 import { authConfig } from '@/lib/auth/config';
+import { routing } from '@/i18n/routing';
 
-export const { auth: middleware } = NextAuth(authConfig);
+const handleI18nRouting = createIntlMiddleware(routing);
+const { auth } = NextAuth(authConfig);
+
+export default auth((req) => {
+  return handleI18nRouting(req);
+});
 
 export const config = {
   matcher: [
-    /*
-     * Match all routes except:
-     * - static files (_next/static, _next/image)
-     * - favicon
-     * - public images
-     */
     '/((?!_next/static|_next/image|favicon.ico|icons|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

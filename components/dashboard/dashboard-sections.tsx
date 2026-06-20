@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { SlidersHorizontal } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { AllocationChart } from '@/components/dashboard/allocation-chart';
 import { NetworkAllocationChart } from '@/components/dashboard/network-allocation';
@@ -25,12 +26,6 @@ import type { PortfolioOverview } from '@/lib/services/portfolio';
 import type { Network } from '@prisma/client';
 
 type SectionKey = 'topMovers' | 'allocation' | 'networkAllocation';
-
-const SECTION_LABELS: Record<SectionKey, string> = {
-  topMovers: 'Лідери зростання / Падіння',
-  allocation: 'Розподіл активів',
-  networkAllocation: 'Розподіл по мережах',
-};
 
 const DEFAULTS: Record<SectionKey, boolean> = {
   topMovers: true,
@@ -67,6 +62,8 @@ export function DashboardSections({
 }: Props) {
   const [sections, setSections] = useState<Record<SectionKey, boolean>>(DEFAULTS);
   const [mounted, setMounted] = useState(false);
+  const t = useTranslations('Dashboard');
+  const ts = useTranslations('DashboardSections');
 
   useEffect(() => {
     try {
@@ -84,8 +81,13 @@ export function DashboardSections({
     });
   }
 
-  // Use defaults before mount to avoid layout shift
   const show = mounted ? sections : DEFAULTS;
+
+  const sectionLabels: Record<SectionKey, string> = {
+    topMovers: ts('topMovers'),
+    allocation: ts('allocation'),
+    networkAllocation: ts('networkAllocation'),
+  };
 
   return (
     <div className="space-y-6">
@@ -94,37 +96,37 @@ export function DashboardSections({
         <div className="flex flex-wrap items-center gap-2">
           {lastPriceUpdateAt && (
             <span className="text-xs text-text-muted" suppressHydrationWarning>
-              Ціни: {formatRelative(new Date(lastPriceUpdateAt))}
+              {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt))}
             </span>
           )}
           {latestSyncAt && (
             <span className="text-xs text-text-muted" suppressHydrationWarning>
-              Sync: {formatRelative(new Date(latestSyncAt))}
+              {t('syncPrefix')} {formatRelative(new Date(latestSyncAt))}
             </span>
           )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <SyncAllButton />
           <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/compare">Порівняти гаманці</Link>
+            <Link href="/dashboard/compare">{t('compareWallets')}</Link>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <SlidersHorizontal className="h-4 w-4" />
-                <span className="hidden sm:inline">Розділи</span>
+                <span className="hidden sm:inline">{t('sectionsButton')}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuLabel>Показувати розділи</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('showSections')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {(Object.keys(SECTION_LABELS) as SectionKey[]).map((key) => (
+              {(Object.keys(sectionLabels) as SectionKey[]).map((key) => (
                 <DropdownMenuCheckboxItem
                   key={key}
                   checked={show[key]}
                   onCheckedChange={() => toggle(key)}
                 >
-                  {SECTION_LABELS[key]}
+                  {sectionLabels[key]}
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
@@ -139,7 +141,6 @@ export function DashboardSections({
       <div className="flex flex-col gap-6">
         <PortfolioSummary data={overview} />
 
-        {/* PfChart: mobile 2nd, desktop 4th */}
         <div className="sm:order-4">
           <PortfolioChart
             totalUsd={overview.totalUsd}
@@ -148,7 +149,6 @@ export function DashboardSections({
           />
         </div>
 
-        {/* Tokens: mobile 3rd, desktop last */}
         <div className="sm:order-5">
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
@@ -158,14 +158,12 @@ export function DashboardSections({
           </div>
         </div>
 
-        {/* TopMovers: mobile 4th, desktop 2nd */}
         {show.topMovers && (
           <div className="sm:order-1">
             <TopMovers tokens={overview.tokens} />
           </div>
         )}
 
-        {/* Allocation charts: mobile 5th, desktop 3rd */}
         {(show.allocation || show.networkAllocation) && (
           <div className="sm:order-2">
             <div className="grid gap-4 lg:grid-cols-2">

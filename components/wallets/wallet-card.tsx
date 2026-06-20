@@ -1,10 +1,11 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { ExternalLink, MoreVertical, RefreshCw, Trash2, Wallet as WalletIcon } from 'lucide-react';
 import { Network } from '@prisma/client';
+import { Link } from '@/i18n/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -32,10 +33,10 @@ function SyncDot({ lastSyncAt }: { lastSyncAt: string | Date | null }) {
   return <span className="h-2 w-2 rounded-full bg-danger" />;
 }
 
-function tokenWord(count: number) {
-  if (count === 1) return 'токен';
-  if (count >= 2 && count <= 4) return 'токени';
-  return 'токенів';
+function tokenLabel(t: ReturnType<typeof useTranslations<'WalletCard'>>, count: number) {
+  if (count === 1) return t('tokenWord1');
+  if (count >= 2 && count <= 4) return t('tokenWord2_4');
+  return t('tokenWordMany');
 }
 
 interface WalletCardProps {
@@ -58,6 +59,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
+  const t = useTranslations('WalletCard');
 
   useEffect(() => setMounted(true), []);
 
@@ -70,8 +72,8 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           | null;
         toast({
           variant: 'destructive',
-          title: 'Sync не вдався',
-          description: body?.error?.message ?? 'Невідома помилка',
+          title: t('toastSyncFailedTitle'),
+          description: body?.error?.message ?? t('toastSyncFailedUnknown'),
         });
         return;
       }
@@ -79,8 +81,11 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
         result?: { tokensSynced?: number; spamFiltered?: number };
       };
       toast({
-        title: 'Sync завершено',
-        description: `${data.result?.tokensSynced ?? 0} токенів · ${data.result?.spamFiltered ?? 0} спам відфільтровано`,
+        title: t('toastSyncDoneTitle'),
+        description: t('toastSyncDoneDescription', {
+          tokens: data.result?.tokensSynced ?? 0,
+          spam: data.result?.spamFiltered ?? 0,
+        }),
       });
       router.refresh();
     });
@@ -96,10 +101,10 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
     startTransition(async () => {
       const res = await fetch(`/api/wallets/${wallet.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        toast({ variant: 'destructive', title: 'Не вдалось видалити' });
+        toast({ variant: 'destructive', title: t('toastDeleteFailedTitle') });
         return;
       }
-      toast({ title: 'Гаманець видалено' });
+      toast({ title: t('toastDeletedTitle') });
       router.refresh();
     });
   }
@@ -128,7 +133,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
               <WalletIcon className="h-5 w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-semibold">{wallet.label ?? 'Без назви'}</p>
+              <p className="truncate font-semibold">{wallet.label ?? t('noLabel')}</p>
               <p className="font-mono text-xs text-text-muted">{shortAddress(wallet.address)}</p>
             </div>
           </Link>
@@ -140,7 +145,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
             className="hidden h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 sm:flex"
             onClick={onSync}
             disabled={isPending}
-            title="Sync"
+            title={t('syncTitle')}
           >
             <RefreshCw className={cn('h-4 w-4', isPending && 'animate-spin')} />
           </Button>
@@ -158,12 +163,12 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={onSync} disabled={isPending}>
                 <RefreshCw className={cn('h-4 w-4', isPending && 'animate-spin')} />
-                Sync
+                {t('menuSync')}
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={`/wallets/${wallet.id}`}>
                   <ExternalLink className="h-4 w-4" />
-                  Деталі
+                  {t('menuDetails')}
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -171,7 +176,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
                 className="text-danger focus:text-danger"
               >
                 <Trash2 className="h-4 w-4" />
-                {confirmDelete ? 'Підтвердити видалення' : 'Видалити'}
+                {confirmDelete ? t('menuDeleteConfirm') : t('menuDelete')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -184,10 +189,10 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           </p>
           <div className="flex items-center gap-2">
             {share !== null && (
-              <span className="text-xs text-text-muted">{share}% портфеля</span>
+              <span className="text-xs text-text-muted">{t('portfolioShare', { share })}</span>
             )}
             <Badge variant="secondary">
-              {wallet.tokenCount} {tokenWord(wallet.tokenCount)}
+              {wallet.tokenCount} {tokenLabel(t, wallet.tokenCount)}
             </Badge>
           </div>
         </div>
@@ -200,8 +205,8 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
               <SyncDot lastSyncAt={wallet.lastSyncAt} />
               <span className="text-xs text-text-muted">
                 {wallet.lastSyncAt
-                  ? `Sync: ${formatRelative(wallet.lastSyncAt)}`
-                  : 'Не синхронізовано'}
+                  ? t('syncStatus', { time: formatRelative(wallet.lastSyncAt) })
+                  : t('notSynced')}
               </span>
             </div>
           )}

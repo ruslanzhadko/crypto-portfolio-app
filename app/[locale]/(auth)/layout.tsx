@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { Wallet } from 'lucide-react';
+import { getLocale } from 'next-intl/server';
 import { auth } from '@/lib/auth';
+import { redirect, Link } from '@/i18n/navigation';
 
 export default async function AuthLayout({
   children,
@@ -10,7 +10,8 @@ export default async function AuthLayout({
 }) {
   const session = await auth();
   if (session?.user) {
-    redirect('/dashboard');
+    const locale = await getLocale();
+    redirect({ href: '/dashboard', locale });
   }
 
   return (

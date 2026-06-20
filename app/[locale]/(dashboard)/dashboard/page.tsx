@@ -1,5 +1,6 @@
 import { Wallet } from 'lucide-react';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { getPortfolioOverview } from '@/lib/services/portfolio';
@@ -13,6 +14,8 @@ export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
   const userId = session.user.id;
+
+  const t = await getTranslations('Dashboard');
 
   const [overview, wallets, hiddenTokensCount, lastPriceUpdate] = await Promise.all([
     getPortfolioOverview(userId),
@@ -58,14 +61,14 @@ export default async function DashboardPage() {
   if (overview.walletCount === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
         <EmptyState
           icon={Wallet}
-          title="Ще немає гаманців"
-          description="Додайте першу публічну адресу, щоб побачити аналітику портфеля."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
           action={
             <Button asChild>
-              <Link href="/wallets">Додати гаманець</Link>
+              <Link href="/wallets">{t('addWalletButton')}</Link>
             </Button>
           }
         />
@@ -75,7 +78,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
+      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
       <DashboardSections
         overview={overview}
         wallets={walletDtos}

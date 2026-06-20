@@ -1,20 +1,23 @@
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
+import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RegisterForm } from './register-form';
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const t = await getTranslations('Auth');
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Реєстрація</CardTitle>
-        <CardDescription>Створіть акаунт для відстеження портфеля</CardDescription>
+        <CardTitle>{t('registerPageTitle')}</CardTitle>
+        <CardDescription>{t('registerPageDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
         <RegisterForm />
         <p className="mt-6 text-center text-sm text-text-muted">
-          Вже маєте акаунт?{' '}
+          {t('hasAccountPrompt')}{' '}
           <Link className="text-primary hover:underline" href="/auth/login">
-            Увійти
+            {t('loginLink')}
           </Link>
         </p>
       </CardContent>

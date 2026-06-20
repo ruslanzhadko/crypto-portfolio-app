@@ -1,9 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Wallet } from 'lucide-react';
 import type { Role } from '@prisma/client';
+import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
 import { NAV_ITEMS } from './nav-items';
 
@@ -13,6 +14,7 @@ interface SidebarProps {
 
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('Nav');
   const items = NAV_ITEMS.filter((i) => !i.adminOnly || userRole === 'ADMIN');
 
   return (
@@ -43,7 +45,7 @@ export function Sidebar({ userRole }: SidebarProps) {
               )}
             >
               <Icon className="h-4 w-4" />
-              {item.label}
+              {t(item.labelKey as 'dashboard')}
             </Link>
           );
         })}

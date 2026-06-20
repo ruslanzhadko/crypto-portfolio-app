@@ -1,4 +1,5 @@
 import { Wallet } from 'lucide-react';
+import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { AddWalletDialog } from '@/components/wallets/add-wallet-dialog';
@@ -10,6 +11,8 @@ export const dynamic = 'force-dynamic';
 export default async function WalletsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
+
+  const t = await getTranslations('Wallets');
 
   const wallets = await prisma.wallet.findMany({
     where: { userId: session.user.id },
@@ -39,9 +42,9 @@ export default async function WalletsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Гаманці</h1>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
           <p className="text-sm text-text-muted">
-            Управління підключеними публічними адресами ({data.length}).
+            {t('pageDescription', { count: data.length })}
           </p>
         </div>
         <AddWalletDialog />
@@ -50,8 +53,8 @@ export default async function WalletsPage() {
       {data.length === 0 ? (
         <EmptyState
           icon={Wallet}
-          title="Поки що порожньо"
-          description="Додайте першу публічну адресу для відстеження балансів."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
