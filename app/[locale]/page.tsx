@@ -1,6 +1,5 @@
 import Image from 'next/image';
-import { getLocale } from 'next-intl/server';
-import { redirect, Link } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import {
   ArrowRight, BarChart3, Bell, ShieldCheck, Wallet,
   TrendingUp, TrendingDown,
@@ -8,22 +7,13 @@ import {
 import { getTranslations } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { auth } from '@/lib/auth';
 import { fetchTopMarkets, type MarketCoin } from '@/lib/services/coingecko';
 import { ALL_CHAINS } from '@/lib/utils/networks';
 import { LandingFaq } from '@/components/landing/landing-faq';
 import { LocaleSwitcher } from '@/components/common/locale-switcher';
 import { cn } from '@/lib/utils/cn';
 
-export const dynamic = 'force-dynamic';
-
 export default async function LandingPage() {
-  const session = await auth();
-  if (session?.user) {
-    const locale = await getLocale();
-    redirect({ href: '/dashboard', locale });
-  }
-
   const t = await getTranslations('Landing');
 
   let coins: MarketCoin[] = [];

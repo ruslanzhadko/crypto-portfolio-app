@@ -30,16 +30,20 @@ export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const { path, locale } = stripLocalePrefix(pathname);
 
-  if (!isPublicPath(path)) {
-    // next-auth JWT session cookie (HTTP vs HTTPS name)
-    const sessionCookie =
-      req.cookies.get('next-auth.session-token') ??
-      req.cookies.get('__Secure-next-auth.session-token');
+  const sessionCookie =
+    req.cookies.get('next-auth.session-token') ??
+    req.cookies.get('__Secure-next-auth.session-token');
 
-    if (!sessionCookie) {
-      const loginPath = locale ? `/${locale}/auth/login` : '/auth/login';
-      return NextResponse.redirect(new URL(loginPath, req.url));
-    }
+  // Redirect logged-in users away from the landing page
+  if (path === '/' && sessionCookie) {
+    const dashboardPath = locale ? `/${locale}/dashboard` : '/dashboard';
+    return NextResponse.redirect(new URL(dashboardPath, req.url));
+  }
+
+  // Redirect unauthenticated users from protected routes to login
+  if (!isPublicPath(path) && !sessionCookie) {
+    const loginPath = locale ? `/${locale}/auth/login` : '/auth/login';
+    return NextResponse.redirect(new URL(loginPath, req.url));
   }
 
   return handleI18nRouting(req);
