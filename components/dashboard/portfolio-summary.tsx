@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Coins, Layers, TrendingUp, Wallet as WalletIcon } from 'lucide-react';
 import { StatCard } from '@/components/common/stat-card';
 import { formatUsd } from '@/lib/utils/format';
@@ -10,38 +11,75 @@ export function PortfolioSummary({ data }: { data: PortfolioOverview }) {
     .join(', ');
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      <StatCard
-        label="Загальна вартість"
-        value={formatUsd(data.totalUsd, { compact: true })}
-        delta={data.priceChange24h}
-        deltaLabel="за 24г"
-        deltaUsd={data.priceChange24hUsd}
-        icon={TrendingUp}
-        iconColor="bg-primary/10 text-primary"
-      />
-      <StatCard
-        label="Гаманці"
-        value={data.walletCount}
-        icon={WalletIcon}
-        iconColor="bg-sky-500/10 text-sky-400"
-        subtext={data.walletCount > 0 ? `${data.chains.length} активних мереж` : 'Немає гаманців'}
-        href="/wallets"
-      />
-      <StatCard
-        label="Унікальні токени"
-        value={data.tokenCount}
-        icon={Coins}
-        iconColor="bg-amber-500/10 text-amber-400"
-        subtext={data.tokenCount > 0 ? `на ${data.chains.length} ланцюгах` : undefined}
-      />
-      <StatCard
-        label="Ланцюги"
-        value={data.chains.length}
-        icon={Layers}
-        iconColor="bg-emerald-500/10 text-emerald-400"
-        subtext={topChains || undefined}
-      />
-    </div>
+    <>
+      {/* Mobile: hero card + compact 3-stat row */}
+      <div className="sm:hidden space-y-3">
+        <StatCard
+          label="Загальна вартість"
+          value={formatUsd(data.totalUsd, { compact: true })}
+          delta={data.priceChange24h}
+          deltaLabel="за 24г"
+          deltaUsd={data.priceChange24hUsd}
+          icon={TrendingUp}
+          iconColor="bg-primary/10 text-primary"
+        />
+        <div className="rounded-xl border border-border bg-surface px-4 py-3">
+          <div className="grid grid-cols-3 divide-x divide-border">
+            <Link href="/wallets" className="pr-4">
+              <p className="text-xs text-text-muted">Гаманці</p>
+              <p className="mt-0.5 text-2xl font-bold">{data.walletCount}</p>
+              <p className="text-xs text-text-muted">
+                {data.walletCount > 0 ? `${data.chains.length} мереж` : 'Немає'}
+              </p>
+            </Link>
+            <div className="px-4">
+              <p className="text-xs text-text-muted">Токени</p>
+              <p className="mt-0.5 text-2xl font-bold">{data.tokenCount}</p>
+              <p className="text-xs text-text-muted">{data.chains.length} ланцюгів</p>
+            </div>
+            <div className="pl-4">
+              <p className="text-xs text-text-muted">Ланцюги</p>
+              <p className="mt-0.5 text-2xl font-bold">{data.chains.length}</p>
+              <p className="text-xs text-text-muted truncate">{topChains || '—'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: 4-column grid */}
+      <div className="hidden sm:grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Загальна вартість"
+          value={formatUsd(data.totalUsd, { compact: true })}
+          delta={data.priceChange24h}
+          deltaLabel="за 24г"
+          deltaUsd={data.priceChange24hUsd}
+          icon={TrendingUp}
+          iconColor="bg-primary/10 text-primary"
+        />
+        <StatCard
+          label="Гаманці"
+          value={data.walletCount}
+          icon={WalletIcon}
+          iconColor="bg-sky-500/10 text-sky-400"
+          subtext={data.walletCount > 0 ? `${data.chains.length} активних мереж` : 'Немає гаманців'}
+          href="/wallets"
+        />
+        <StatCard
+          label="Унікальні токени"
+          value={data.tokenCount}
+          icon={Coins}
+          iconColor="bg-amber-500/10 text-amber-400"
+          subtext={data.tokenCount > 0 ? `на ${data.chains.length} ланцюгах` : undefined}
+        />
+        <StatCard
+          label="Ланцюги"
+          value={data.chains.length}
+          icon={Layers}
+          iconColor="bg-emerald-500/10 text-emerald-400"
+          subtext={topChains || undefined}
+        />
+      </div>
+    </>
   );
 }
