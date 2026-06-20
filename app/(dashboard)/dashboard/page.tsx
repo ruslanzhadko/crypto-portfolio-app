@@ -90,7 +90,6 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
-          <p className="text-sm text-text-muted">Зведений огляд вашого портфеля.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {lastPriceUpdate?.updatedAt && (
