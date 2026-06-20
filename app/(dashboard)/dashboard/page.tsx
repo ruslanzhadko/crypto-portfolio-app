@@ -1,17 +1,9 @@
-import Link from 'next/link';
 import { Wallet } from 'lucide-react';
+import Link from 'next/link';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { getPortfolioOverview } from '@/lib/services/portfolio';
-import { formatRelative } from '@/lib/utils/format';
-import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
-import { AllocationChart } from '@/components/dashboard/allocation-chart';
-import { NetworkAllocationChart } from '@/components/dashboard/network-allocation';
-import { PortfolioChart } from '@/components/dashboard/portfolio-chart';
-import { TokenTable } from '@/components/dashboard/token-table';
-import { WalletList } from '@/components/dashboard/wallet-list';
-import { TopMovers } from '@/components/dashboard/top-movers';
-import { SyncAllButton } from '@/components/dashboard/sync-all-button';
+import { DashboardSections } from '@/components/dashboard/dashboard-sections';
 import { EmptyState } from '@/components/common/empty-state';
 import { Button } from '@/components/ui/button';
 
@@ -63,14 +55,10 @@ export default async function DashboardPage() {
     return w.lastSyncAt > latest ? w.lastSyncAt : latest;
   }, null);
 
-
   if (overview.walletCount === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
-          <p className="text-sm text-text-muted">Зведений огляд вашого портфеля.</p>
-        </div>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
         <EmptyState
           icon={Wallet}
           title="Ще немає гаманців"
@@ -87,68 +75,14 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {lastPriceUpdate?.updatedAt && (
-            <span className="text-xs text-text-muted" suppressHydrationWarning>
-              Ціни: {formatRelative(lastPriceUpdate.updatedAt)}
-            </span>
-          )}
-          {latestSyncAt && (
-            <span className="text-xs text-text-muted" suppressHydrationWarning>
-              Sync: {formatRelative(latestSyncAt)}
-            </span>
-          )}
-          <SyncAllButton />
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/compare">Порівняти гаманці</Link>
-          </Button>
-        </div>
-      </div>
-
-      {/*
-        Mobile order:  Stats → PfChart → Tokens → TopMovers → AllocCharts
-        Desktop order: Stats → TopMovers → AllocCharts → PfChart → Tokens
-        DOM order drives mobile; sm:order-* overrides for desktop.
-      */}
-      <div className="flex flex-col gap-6">
-        <PortfolioSummary data={overview} />
-
-        {/* PfChart: DOM pos 2 → mobile 2nd, desktop 4th (sm:order-4) */}
-        <div className="sm:order-4">
-          <PortfolioChart
-            totalUsd={overview.totalUsd}
-            priceChange24h={overview.priceChange24h}
-            hiddenTokensCount={hiddenTokensCount}
-          />
-        </div>
-
-        {/* Tokens: DOM pos 3 → mobile 3rd, desktop last (sm:order-5) */}
-        <div className="sm:order-5">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <TokenTable tokens={overview.tokens} />
-            </div>
-            <WalletList wallets={walletDtos} />
-          </div>
-        </div>
-
-        {/* TopMovers: DOM pos 4 → mobile 4th, desktop 2nd (sm:order-1) */}
-        <div className="sm:order-1">
-          <TopMovers tokens={overview.tokens} />
-        </div>
-
-        {/* Allocation charts: DOM pos 5 → mobile 5th, desktop 3rd (sm:order-2) */}
-        <div className="sm:order-2">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <AllocationChart tokens={overview.tokens} />
-            <NetworkAllocationChart chains={overview.chains} />
-          </div>
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Dashboard</h1>
+      <DashboardSections
+        overview={overview}
+        wallets={walletDtos}
+        hiddenTokensCount={hiddenTokensCount}
+        lastPriceUpdateAt={lastPriceUpdate?.updatedAt?.toISOString() ?? null}
+        latestSyncAt={latestSyncAt?.toISOString() ?? null}
+      />
     </div>
   );
 }
