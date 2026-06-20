@@ -111,15 +111,23 @@ export default async function DashboardPage() {
       </div>
 
       {/*
-        Mobile order:  Stats → Tokens → TopMovers → Charts → PfChart
-        Desktop order: Stats → TopMovers → Charts → PfChart → Tokens
-        Achieved with sm:order-* on a flex-col container.
-        Items without an explicit order default to 0 and follow DOM order on mobile.
+        Mobile order:  Stats → PfChart → Tokens → TopMovers → AllocCharts
+        Desktop order: Stats → TopMovers → AllocCharts → PfChart → Tokens
+        DOM order drives mobile; sm:order-* overrides for desktop.
       */}
       <div className="flex flex-col gap-6">
         <PortfolioSummary data={overview} />
 
-        {/* Tokens: DOM pos 2 → mobile 2nd, desktop last (order 5) */}
+        {/* PfChart: DOM pos 2 → mobile 2nd, desktop 4th (sm:order-4) */}
+        <div className="sm:order-4">
+          <PortfolioChart
+            totalUsd={overview.totalUsd}
+            priceChange24h={overview.priceChange24h}
+            hiddenTokensCount={hiddenTokensCount}
+          />
+        </div>
+
+        {/* Tokens: DOM pos 3 → mobile 3rd, desktop last (sm:order-5) */}
         <div className="sm:order-5">
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-2">
@@ -129,26 +137,17 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* TopMovers: DOM pos 3 → mobile 3rd, desktop 2nd (order 1) */}
+        {/* TopMovers: DOM pos 4 → mobile 4th, desktop 2nd (sm:order-1) */}
         <div className="sm:order-1">
           <TopMovers tokens={overview.tokens} />
         </div>
 
-        {/* Allocation charts: DOM pos 4 → mobile 4th, desktop 3rd (order 2) */}
+        {/* Allocation charts: DOM pos 5 → mobile 5th, desktop 3rd (sm:order-2) */}
         <div className="sm:order-2">
           <div className="grid gap-4 lg:grid-cols-2">
             <AllocationChart tokens={overview.tokens} />
             <NetworkAllocationChart chains={overview.chains} />
           </div>
-        </div>
-
-        {/* Portfolio chart: DOM pos 5 → mobile 5th, desktop 4th (order 3) */}
-        <div className="sm:order-3">
-          <PortfolioChart
-            totalUsd={overview.totalUsd}
-            priceChange24h={overview.priceChange24h}
-            hiddenTokensCount={hiddenTokensCount}
-          />
         </div>
       </div>
     </div>
