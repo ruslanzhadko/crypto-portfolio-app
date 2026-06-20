@@ -1,14 +1,49 @@
-import NextAuth from 'next-auth';
 import createIntlMiddleware from 'next-intl/middleware';
-import { authConfig } from '@/lib/auth/config';
 import { routing } from '@/i18n/routing';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const handleI18nRouting = createIntlMiddleware(routing);
-const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
+// Locales that appear as path prefix (en is default — no prefix with 'as-needed')
+const PREFIXED_LOCALES = ['uk', 'ru'] as const;
+
+function stripLocalePrefix(pathname: string): { path: string; locale: string | null } {
+  for (const locale of PREFIXED_LOCALES) {
+    if (pathname.startsWith(`/${locale}/`)) return { path: pathname.slice(locale.length + 1), locale };
+    if (pathname === `/${locale}`) return { path: '/', locale };
+  }
+  return { path: pathname, locale: null };
+}
+
+function isPublicPath(path: string): boolean {
+  return (
+    path === '/' ||
+    path.startsWith('/auth') ||
+    path.startsWith('/api/auth') ||
+    path.startsWith('/api/health') ||
+    path.startsWith('/api/cron') ||
+    path === '/api/telegram/webhook'
+  );
+}
+
+export default function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const { path, locale } = stripLocalePrefix(pathname);
+
+  if (!isPublicPath(path)) {
+    // next-auth JWT session cookie (HTTP vs HTTPS name)
+    const sessionCookie =
+      req.cookies.get('next-auth.session-token') ??
+      req.cookies.get('__Secure-next-auth.session-token');
+
+    if (!sessionCookie) {
+      const loginPath = locale ? `/${locale}/auth/login` : '/auth/login';
+      return NextResponse.redirect(new URL(loginPath, req.url));
+    }
+  }
+
   return handleI18nRouting(req);
-});
+}
 
 export const config = {
   matcher: [

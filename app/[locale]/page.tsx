@@ -304,7 +304,7 @@ export default async function LandingPage() {
       <footer className="border-t border-border py-4">
         <div className="container text-center text-sm text-text-muted">
           {t.rich('footerAuthor', {
-            link: (chunks) => (
+            link: () => (
               <a
                 href="https://t.me/ludoslan"
                 target="_blank"
