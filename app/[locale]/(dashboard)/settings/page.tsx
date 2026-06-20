@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,18 +23,20 @@ export default async function SettingsPage() {
   });
   if (!user) return null;
 
+  const t = await getTranslations('Settings');
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Налаштування</h1>
-        <p className="text-sm text-text-muted">Профіль, Telegram інтеграція та безпека.</p>
+        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+        <p className="text-sm text-text-muted">{t('pageDescription')}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Профіль</CardTitle>
+          <CardTitle>{t('profileCardTitle')}</CardTitle>
           <CardDescription>
-            Email: <span className="font-mono">{user.email}</span> · Роль: {user.role}
+            {t('profileCardDescription', { email: user.email, role: user.role })}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -46,8 +49,8 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Безпека</CardTitle>
-          <CardDescription>Зміна пароля акаунту.</CardDescription>
+          <CardTitle>{t('securityCardTitle')}</CardTitle>
+          <CardDescription>{t('securityCardDescription')}</CardDescription>
         </CardHeader>
         <CardContent>
           <PasswordForm />

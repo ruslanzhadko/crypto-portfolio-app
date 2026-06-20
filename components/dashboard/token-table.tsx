@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, Fragment } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowUpDown, ChevronRight, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,6 +28,7 @@ interface WalletGroup {
 }
 
 export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
+  const t = useTranslations('TokenTable');
   const [sortKey, setSortKey] = useState<SortKey>('value');
   const [desc, setDesc] = useState(true);
   // Окремі множини для розгорнутих токенів і розгорнутих гаманців (ключі: tokenKey та tokenKey::walletId)
@@ -75,32 +77,32 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Токени</CardTitle>
+        <CardTitle>{t('cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="px-4 py-3 text-left">Токен</th>
-                <th className="hidden px-4 py-3 text-left md:table-cell">Мережі</th>
+                <th className="px-4 py-3 text-left">{t('colToken')}</th>
+                <th className="hidden px-4 py-3 text-left md:table-cell">{t('colNetworks')}</th>
                 <th className="px-4 py-3 text-right">
                   <SortButton active={sortKey === 'balance'} desc={desc} onClick={() => toggleSort('balance')}>
-                    Баланс
+                    {t('colBalance')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right md:table-cell">Ціна</th>
+                <th className="hidden px-4 py-3 text-right md:table-cell">{t('colPrice')}</th>
                 <th className="px-4 py-3 text-right">
                   <SortButton active={sortKey === 'value'} desc={desc} onClick={() => toggleSort('value')}>
-                    USD
+                    {t('colUsd')}
                   </SortButton>
                 </th>
                 <th className="hidden px-4 py-3 text-right lg:table-cell">
                   <SortButton active={sortKey === 'change'} desc={desc} onClick={() => toggleSort('change')}>
-                    24г
+                    {t('col24h')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right md:table-cell">%</th>
+                <th className="hidden px-4 py-3 text-right md:table-cell">{t('colShare')}</th>
               </tr>
             </thead>
             <tbody>
@@ -201,7 +203,7 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
-                    Немає токенів. Додайте гаманець та зробіть Sync.
+                    {t('emptyText')}
                   </td>
                 </tr>
               )}
@@ -253,6 +255,7 @@ function WalletBreakdown({
   openWallets: Set<string>;
   onToggleWallet: (walletKey: string) => void;
 }) {
+  const t = useTranslations('TokenTable');
   return (
     <div className="ml-6 space-y-1">
       {groups.map((g) => {
@@ -285,7 +288,7 @@ function WalletBreakdown({
 
               <div className="flex min-w-0 items-center gap-2">
                 <WalletIcon className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
-                <span className="truncate font-medium">{g.walletLabel ?? 'Гаманець'}</span>
+                <span className="truncate font-medium">{g.walletLabel ?? t('walletFallback')}</span>
                 <span className="hidden font-mono text-[10px] text-text-muted md:inline">
                   {shortAddress(g.walletAddress, 4)}
                 </span>
@@ -334,7 +337,7 @@ function WalletBreakdown({
       })}
       {hiddenCount > 0 && (
         <div className="pl-2 pt-1 text-[11px] text-text-muted">
-          + {hiddenCount} запис(ів) приховано (&lt; $0.01)
+          {t('hiddenDust', { count: hiddenCount })}
         </div>
       )}
     </div>
@@ -381,6 +384,7 @@ function SortButton({
   onClick: () => void;
   children: React.ReactNode;
 }) {
+  const t = useTranslations('TokenTable');
   return (
     <Button
       variant="ghost"
@@ -390,7 +394,7 @@ function SortButton({
     >
       {children}
       <ArrowUpDown className={`h-3 w-3 ${active ? 'text-primary' : 'opacity-50'}`} />
-      {active && <span className="sr-only">{desc ? 'спадання' : 'зростання'}</span>}
+      {active && <span className="sr-only">{desc ? t('sortDescSr') : t('sortAscSr')}</span>}
     </Button>
   );
 }

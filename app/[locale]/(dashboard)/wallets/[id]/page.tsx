@@ -1,6 +1,7 @@
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,13 +17,15 @@ export const dynamic = 'force-dynamic';
 export default async function WalletDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) return null;
 
+  const { id } = await params;
+
   const wallet = await prisma.wallet.findFirst({
-    where: { id: params.id, userId: session.user.id },
+    where: { id, userId: session.user.id },
     include: {
       // Завантажуємо всі токени (для списку), але totalUsd — лише видимі
       balances: { orderBy: { usdValue: 'desc' } },
@@ -31,7 +34,8 @@ export default async function WalletDetailPage({
 
   if (!wallet) notFound();
 
-  // Рахуємо лише не-приховані і не-спам токени
+  const t = await getTranslations('WalletDetail');
+
   const totalUsd = wallet.balances
     .filter((b) => !b.isSpam && !b.isHidden)
     .reduce((s, b) => s + b.usdValue, 0);
@@ -42,7 +46,7 @@ export default async function WalletDetailPage({
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link href="/wallets">
             <ChevronLeft className="h-4 w-4" />
-            До списку гаманців
+            {t('backToWallets')}
           </Link>
         </Button>
       </div>
@@ -53,7 +57,7 @@ export default async function WalletDetailPage({
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold md:text-3xl">
-                  {wallet.label ?? 'Без назви'}
+                  {wallet.label ?? t('noLabel')}
                 </h1>
                 <NetworkBadge network={wallet.network} />
               </div>
@@ -62,12 +66,12 @@ export default async function WalletDetailPage({
               </p>
               <p className="text-xs text-text-muted">
                 {wallet.lastSyncAt
-                  ? `Останній sync: ${formatRelative(wallet.lastSyncAt)}`
-                  : 'Ще не синхронізовано'}
+                  ? t('lastSync', { time: formatRelative(wallet.lastSyncAt) })
+                  : t('notSynced')}
               </p>
             </div>
             <div className="md:text-right">
-              <p className="text-xs text-text-muted">Вартість</p>
+              <p className="text-xs text-text-muted">{t('valueLabel')}</p>
               <p className="text-3xl font-bold">{formatUsd(totalUsd)}</p>
               <WalletSyncButton walletId={wallet.id} className="mt-3" />
             </div>

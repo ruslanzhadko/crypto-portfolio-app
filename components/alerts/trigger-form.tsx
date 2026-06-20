@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { Loader2, Bell, Target } from 'lucide-react';
 import { TriggerDirection } from '@prisma/client';
 import { Button } from '@/components/ui/button';
@@ -34,19 +35,18 @@ interface TriggerFormProps {
 
 type TriggerType = 'PERCENT' | 'PRICE_TARGET';
 
-// Мінімум 15 хв — cron на проді перевіряє тригери раз на 15 хв,
-// менші інтервали не мали б ефекту.
-const INTERVALS = [
-  { label: '15 хвилин', value: 15 },
-  { label: '1 година', value: 60 },
-  { label: '4 години', value: 240 },
-  { label: '24 години', value: 1440 },
-];
-
 export function TriggerForm({ initial = null }: TriggerFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const t = useTranslations('TriggerForm');
+
+  const intervals = [
+    { label: t('interval15m'), value: 15 },
+    { label: t('interval1h'), value: 60 },
+    { label: t('interval4h'), value: 240 },
+    { label: t('interval24h'), value: 1440 },
+  ];
 
   const [selectedToken, setSelectedToken] = useState<InitialToken | null>(initial);
   const [search, setSearch] = useState('');
@@ -111,15 +111,15 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedToken) {
-      toast({ variant: 'destructive', title: 'Оберіть токен' });
+      toast({ variant: 'destructive', title: t('toastSelectToken') });
       return;
     }
     if (triggerType === 'PRICE_TARGET' && (!targetPrice || Number(targetPrice) <= 0)) {
-      toast({ variant: 'destructive', title: 'Введіть цільову ціну' });
+      toast({ variant: 'destructive', title: t('toastEnterTargetPrice') });
       return;
     }
     if (triggerType === 'PRICE_TARGET' && tokenCurrentPrice === null) {
-      toast({ variant: 'destructive', title: 'Поточна ціна недоступна', description: 'Спробуйте оновити сторінку' });
+      toast({ variant: 'destructive', title: t('toastPriceUnavailableTitle'), description: t('toastPriceUnavailableDescription') });
       return;
     }
 
@@ -158,12 +158,12 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
           | null;
         toast({
           variant: 'destructive',
-          title: 'Не вдалось створити тригер',
-          description: data?.error?.message ?? 'Спробуйте пізніше',
+          title: t('toastCreateFailedTitle'),
+          description: data?.error?.message ?? t('toastCreateFailedDescription'),
         });
         return;
       }
-      toast({ title: 'Тригер створено' });
+      toast({ title: t('toastCreatedTitle') });
       router.push('/alerts');
       router.refresh();
     });
@@ -173,7 +173,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
     <form onSubmit={onSubmit} className="space-y-6">
       {/* Type selector */}
       <div className="space-y-2">
-        <Label>Тип тригера</Label>
+        <Label>{t('triggerTypeLabel')}</Label>
         <div className="grid grid-cols-2 gap-2">
           <button
             type="button"
@@ -187,8 +187,8 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
           >
             <Bell className="h-5 w-5 shrink-0" />
             <div>
-              <p className="font-medium">Зміна %</p>
-              <p className="text-xs opacity-70">Реагує на різкий рух</p>
+              <p className="font-medium">{t('percentType')}</p>
+              <p className="text-xs opacity-70">{t('percentTypeSubtext')}</p>
             </div>
           </button>
           <button
@@ -203,8 +203,8 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
           >
             <Target className="h-5 w-5 shrink-0" />
             <div>
-              <p className="font-medium">Цільова ціна</p>
-              <p className="text-xs opacity-70">Спрацьовує один раз</p>
+              <p className="font-medium">{t('priceTargetType')}</p>
+              <p className="text-xs opacity-70">{t('priceTargetTypeSubtext')}</p>
             </div>
           </button>
         </div>
@@ -212,7 +212,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
 
       {/* Token selector */}
       <div className="space-y-2">
-        <Label>Токен</Label>
+        <Label>{t('tokenLabel')}</Label>
         {selectedToken ? (
           <div className="space-y-2">
             <div className="flex items-center justify-between rounded-lg border border-border bg-surface-2 p-3">
@@ -229,15 +229,14 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
                 size="sm"
                 onClick={() => { setSelectedToken(null); setSearch(''); setTokenCurrentPrice(null); setTargetPrice(''); }}
               >
-                Змінити
+                {t('changeTokenButton')}
               </Button>
             </div>
-            {/* Current price block */}
             {priceLoading ? (
-              <p className="text-xs text-text-muted">Завантаження ціни…</p>
+              <p className="text-xs text-text-muted">{t('loadingPrice')}</p>
             ) : tokenCurrentPrice != null ? (
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-border/50 bg-surface-2/50 px-3 py-2 text-sm">
-                <span className="text-text-muted">Поточна ціна:</span>
+                <span className="text-text-muted">{t('currentPriceLabel')}</span>
                 <span className="font-semibold tabular-nums">{formatUsd(tokenCurrentPrice)}</span>
               </div>
             ) : null}
@@ -247,10 +246,10 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Пошук токену (мінімум 2 символи)..."
+              placeholder={t('tokenSearchPlaceholder')}
               autoFocus
             />
-            {searching && <p className="text-xs text-text-muted">Пошук...</p>}
+            {searching && <p className="text-xs text-text-muted">{t('searching')}</p>}
             {searchResults.length > 0 && (
               <div className="max-h-60 overflow-auto rounded-lg border border-border bg-popover">
                 {searchResults.map((r) => (
@@ -284,7 +283,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
       {triggerType === 'PERCENT' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="threshold">Поріг Δ% (1–100)</Label>
+            <Label htmlFor="threshold">{t('thresholdLabel')}</Label>
             <Input
               id="threshold"
               type="number"
@@ -294,33 +293,31 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
               value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
             />
-            <p className="text-xs text-text-muted">
-              Сповіщення надійде коли ціна зміниться на вказаний % за обраний інтервал.
-            </p>
+            <p className="text-xs text-text-muted">{t('thresholdHint')}</p>
           </div>
 
           <div className="space-y-2">
-            <Label>Напрямок</Label>
+            <Label>{t('directionLabel')}</Label>
             <Select value={direction} onValueChange={(v) => setDirection(v as TriggerDirection)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={TriggerDirection.BOTH}>↑↓ Зростання або падіння</SelectItem>
-                <SelectItem value={TriggerDirection.UP}>↑ Лише зростання</SelectItem>
-                <SelectItem value={TriggerDirection.DOWN}>↓ Лише падіння</SelectItem>
+                <SelectItem value={TriggerDirection.BOTH}>{t('directionBoth')}</SelectItem>
+                <SelectItem value={TriggerDirection.UP}>{t('directionUp')}</SelectItem>
+                <SelectItem value={TriggerDirection.DOWN}>{t('directionDown')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label>Інтервал перевірки</Label>
+            <Label>{t('intervalLabel')}</Label>
             <Select value={String(interval)} onValueChange={(v) => setInterval(Number(v))}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {INTERVALS.map((i) => (
+                {intervals.map((i) => (
                   <SelectItem key={i.value} value={String(i.value)}>
                     {i.label}
                   </SelectItem>
@@ -335,7 +332,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
       {triggerType === 'PRICE_TARGET' && (
         <>
           <div className="space-y-2">
-            <Label htmlFor="targetPrice">Цільова ціна (USD)</Label>
+            <Label htmlFor="targetPrice">{t('targetPriceLabel')}</Label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-muted">$</span>
               <Input
@@ -345,29 +342,27 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
                 step="any"
                 value={targetPrice}
                 onChange={(e) => setTargetPrice(e.target.value)}
-                placeholder="0.00"
+                placeholder={t('targetPricePlaceholder')}
                 className="pl-7"
               />
             </div>
           </div>
 
-          <p className="text-xs text-text-muted">
-            Напрямок визначається автоматично. Тригер спрацює один раз і деактивується.
-          </p>
+          <p className="text-xs text-text-muted">{t('targetPriceHint')}</p>
         </>
       )}
 
       <div className="flex items-center justify-between rounded-lg border border-border p-3">
         <div>
-          <Label htmlFor="active">Активний</Label>
-          <p className="text-xs text-text-muted">Вимкнений тригер не надсилає сповіщень.</p>
+          <Label htmlFor="active">{t('activeLabel')}</Label>
+          <p className="text-xs text-text-muted">{t('activeHint')}</p>
         </div>
         <Switch id="active" checked={isActive} onCheckedChange={setIsActive} />
       </div>
 
       <Button type="submit" disabled={isPending || !selectedToken} className="w-full">
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Створити тригер
+        {t('submitButton')}
       </Button>
     </form>
   );

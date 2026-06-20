@@ -1,5 +1,6 @@
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { ChevronLeft, Sparkles, Wallet as WalletIcon } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { Button } from '@/components/ui/button';
@@ -145,19 +146,21 @@ export default async function ComparePage() {
     },
   });
 
+  const t = await getTranslations('Compare');
+
   if (wallets.length === 0) {
     return (
       <div className="space-y-6">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link href="/dashboard">
             <ChevronLeft className="h-4 w-4" />
-            До Dashboard
+            {t('backToDashboard')}
           </Link>
         </Button>
         <EmptyState
           icon={WalletIcon}
-          title="Немає гаманців"
-          description="Додайте кілька гаманців для порівняння."
+          title={t('emptyTitle')}
+          description={t('emptyDescription')}
         />
       </div>
     );
@@ -205,13 +208,11 @@ export default async function ComparePage() {
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link href="/dashboard">
             <ChevronLeft className="h-4 w-4" />
-            До Dashboard
+            {t('backToDashboard')}
           </Link>
         </Button>
-        <h1 className="mt-2 text-2xl font-bold md:text-3xl">Порівняння гаманців</h1>
-        <p className="text-sm text-text-muted">
-          Розподіл вартості, концентрація активів і динаміка кожного гаманця.
-        </p>
+        <h1 className="mt-2 text-2xl font-bold md:text-3xl">{t('pageTitle')}</h1>
+        <p className="text-sm text-text-muted">{t('pageDescription')}</p>
       </div>
 
       {/* ─── Summary panel ─────────────────────────────────────── */}
@@ -219,7 +220,7 @@ export default async function ComparePage() {
         <CardContent className="space-y-6 p-6">
           <div>
             <p className="text-xs uppercase tracking-wide text-text-muted">
-              Загальна вартість
+              {t('totalValueLabel')}
             </p>
             <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
               <span className="text-3xl font-bold tabular-nums">
@@ -229,7 +230,7 @@ export default async function ComparePage() {
                 <PriceChange value={portfolioChangePct} />
               )}
               <span className="text-xs text-text-muted">
-                {enriched.length} гаманц(ів) · {totalTokens} токенів
+                {t('walletsTokensSummary', { wallets: enriched.length, tokens: totalTokens })}
               </span>
             </div>
           </div>
@@ -293,7 +294,7 @@ export default async function ComparePage() {
               {isLargest && (
                 <div className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
                   <Sparkles className="h-3 w-3" aria-hidden />
-                  Найбільший
+                  {t('largestBadge')}
                 </div>
               )}
 
@@ -309,7 +310,7 @@ export default async function ComparePage() {
                   </div>
                   <div className="min-w-0 flex-1 pr-20">
                     <h3 className="truncate text-lg font-bold leading-tight">
-                      {w.label ?? 'Без назви'}
+                      {w.label ?? t('noLabel')}
                     </h3>
                     <div className="mt-1 flex items-center gap-2">
                       <p className="truncate font-mono text-xs text-text-muted">
@@ -329,8 +330,7 @@ export default async function ComparePage() {
                     {w.change24hPct !== 0 && <PriceChange value={w.change24hPct} />}
                   </div>
                   <p className="mt-1.5 text-xs text-text-muted">
-                    <span className="font-medium text-text">{share.toFixed(1)}%</span>{' '}
-                    портфеля · {w.balances.length} токенів · {w.chains.length} мереж
+                    {t('walletShareSummary', { share: share.toFixed(1), tokens: w.balances.length, networks: w.chains.length })}
                   </p>
                 </div>
 
@@ -338,7 +338,7 @@ export default async function ComparePage() {
                 {top.length > 0 && w.totalUsd > 0 && (
                   <div>
                     <p className="mb-2.5 text-[11px] uppercase tracking-wide text-text-muted">
-                      Топ токенів
+                      {t('topTokensHeading')}
                     </p>
                     <ul className="space-y-1">
                       {top.map((t, i) => {
@@ -383,7 +383,7 @@ export default async function ComparePage() {
                               style={{ backgroundColor: REST_COLOR }}
                             />
                             <span className="truncate">
-                              Інші ({w.balances.length - top.length})
+                              {t('otherTokens', { count: w.balances.length - top.length })}
                             </span>
                           </div>
                           <span className="tabular-nums">
@@ -409,7 +409,7 @@ export default async function ComparePage() {
 
                 {/* Footer: sync time */}
                 <p className="text-[11px] text-text-muted">
-                  Останній sync: {formatRelative(w.lastSyncAt)}
+                  {t('lastSync', { time: formatRelative(w.lastSyncAt) })}
                 </p>
               </CardContent>
             </Card>

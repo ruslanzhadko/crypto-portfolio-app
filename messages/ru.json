@@ -311,6 +311,13 @@
     "emptyTitle": "Нет кошельков",
     "emptyDescription": "Добавьте несколько кошельков для сравнения."
   },
+  "WalletDetail": {
+    "backToWallets": "К списку кошельков",
+    "noLabel": "Без названия",
+    "valueLabel": "Стоимость",
+    "lastSync": "Последний sync: {time}",
+    "notSynced": "Ещё не синхронизировано"
+  },
   "Auth": {
     "loginPageTitle": "Вход",
     "loginPageDescription": "Введите email и пароль для входа",

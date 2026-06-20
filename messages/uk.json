@@ -311,6 +311,13 @@
     "emptyTitle": "Немає гаманців",
     "emptyDescription": "Додайте кілька гаманців для порівняння."
   },
+  "WalletDetail": {
+    "backToWallets": "До списку гаманців",
+    "noLabel": "Без назви",
+    "valueLabel": "Вартість",
+    "lastSync": "Останній sync: {time}",
+    "notSynced": "Ще не синхронізовано"
+  },
   "Auth": {
     "loginPageTitle": "Вхід",
     "loginPageDescription": "Введіть email та пароль для входу в акаунт",

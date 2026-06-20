@@ -1,5 +1,6 @@
-import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { Link } from '@/i18n/navigation';
 import { ChevronLeft, ExternalLink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,19 +19,21 @@ export const dynamic = 'force-dynamic';
 export default async function TokenDetailPage({
   params,
 }: {
-  params: { tokenId: string };
+  params: Promise<{ tokenId: string }>;
 }) {
+  const t = await getTranslations('TokenDetail');
+  const { tokenId } = await params;
   let coin: CoinDetail | null = null;
   let fetchError: string | null = null;
 
   try {
-    coin = await fetchCoinDetail(params.tokenId);
+    coin = await fetchCoinDetail(tokenId);
   } catch (err) {
     if (err instanceof CoinGeckoError) {
       if (err.status === 404) notFound();
-      fetchError = `Дані CoinGecko тимчасово недоступні: ${err.message}`;
+      fetchError = t('errorCoinGecko', { message: err.message });
     } else {
-      fetchError = 'Не вдалось завантажити дані токена';
+      fetchError = t('errorLoadFailed');
     }
   }
 
@@ -44,17 +47,17 @@ export default async function TokenDetailPage({
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link href="/market">
             <ChevronLeft className="h-4 w-4" />
-            До Market
+            {t('backToMarket')}
           </Link>
         </Button>
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="flex items-start gap-3 p-6">
             <AlertTriangle className="mt-0.5 h-5 w-5 text-warning" />
             <div>
-              <p className="font-medium">Інформація про токен недоступна</p>
+              <p className="font-medium">{t('errorTitle')}</p>
               <p className="mt-1 text-sm text-text-muted">{fetchError}</p>
               <p className="mt-2 text-xs text-text-muted">
-                Ідентифікатор токена: <code className="font-mono">{params.tokenId}</code>
+                {t('errorTokenId')} <code className="font-mono">{tokenId}</code>
               </p>
             </div>
           </CardContent>
@@ -70,7 +73,7 @@ export default async function TokenDetailPage({
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/market">
           <ChevronLeft className="h-4 w-4" />
-          До Market
+          {t('backToMarket')}
         </Link>
       </Button>
 
@@ -98,7 +101,7 @@ export default async function TokenDetailPage({
                   {coin.homepage && (
                     <Button asChild variant="outline" size="sm">
                       <a href={coin.homepage} target="_blank" rel="noreferrer">
-                        Website <ExternalLink className="h-3 w-3" />
+                        {t('websiteButton')} <ExternalLink className="h-3 w-3" />
                       </a>
                     </Button>
                   )}
@@ -121,24 +124,23 @@ export default async function TokenDetailPage({
       {/* Ряд 1 — ринкові показники */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Капіталізація"
+          label={t('statMarketCap')}
           value={coin.marketCap !== null ? formatUsd(coin.marketCap, { compact: true }) : '—'}
           delta={coin.priceChange24h}
-          deltaLabel="за 24г"
+          deltaLabel={t('deltaLabel')}
         />
         <StatCard
-          label="Обʼєм 24г"
+          label={t('statVolume24h')}
           value={coin.volume24h !== null ? formatUsd(coin.volume24h, { compact: true }) : '—'}
           subtext={
             coin.volume24h !== null && coin.marketCap
-              ? `${((coin.volume24h / coin.marketCap) * 100).toFixed(1)}% від капіталізації`
+              ? t('volumeOfMarketCap', { percent: ((coin.volume24h / coin.marketCap) * 100).toFixed(1) })
               : undefined
           }
         />
-        {/* Merged High/Low into single Range card */}
         <div className="group relative overflow-hidden rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          <p className="relative text-sm font-medium text-text-muted leading-tight">Діапазон 24г</p>
+          <p className="relative text-sm font-medium text-text-muted leading-tight">{t('statRange24h')}</p>
           <div className="relative mt-3 space-y-1.5">
             <div className="flex items-center gap-2">
               <span className="text-base font-semibold text-success">↑</span>
@@ -160,32 +162,32 @@ export default async function TokenDetailPage({
       {/* Ряд 2 — динаміка цін */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="1г"
+          label={t('stat1h')}
           value={formatPercent(coin.priceChange1h)}
           valueClassName={coin.priceChange1h >= 0 ? 'text-success' : 'text-danger'}
-          subtext="за годину"
+          subtext={t('stat1hSubtext')}
         />
         <StatCard
-          label="7д"
+          label={t('stat7d')}
           value={formatPercent(coin.priceChange7d)}
           valueClassName={coin.priceChange7d >= 0 ? 'text-success' : 'text-danger'}
-          subtext="за тиждень"
+          subtext={t('stat7dSubtext')}
         />
         <StatCard
-          label="30д"
+          label={t('stat30d')}
           value={formatPercent(coin.priceChange30d)}
           valueClassName={coin.priceChange30d >= 0 ? 'text-success' : 'text-danger'}
-          subtext="за місяць"
+          subtext={t('stat30dSubtext')}
         />
         <StatCard
-          label="Від ATH"
+          label={t('statAth')}
           value={coin.athChangePercent !== null ? formatPercent(coin.athChangePercent) : '—'}
           valueClassName={
             coin.athChangePercent !== null
               ? coin.athChangePercent >= 0 ? 'text-success' : 'text-danger'
               : undefined
           }
-          subtext={coin.ath !== null ? `ATH: ${formatUsd(coin.ath)}` : undefined}
+          subtext={coin.ath !== null ? t('athSubtext', { value: formatUsd(coin.ath) }) : undefined}
         />
       </div>
 

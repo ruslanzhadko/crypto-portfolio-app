@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,7 @@ export function SyncAllButton({
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
   const autoTriggeredRef = useRef(false);
+  const t = useTranslations('SyncAllButton');
 
   function runSync(opts: { force?: boolean; silent?: boolean } = {}) {
     const { force = false, silent = false } = opts;
@@ -45,8 +47,8 @@ export function SyncAllButton({
         if (!silent) {
           toast({
             variant: 'destructive',
-            title: 'Sync не вдався',
-            description: body?.error?.message ?? 'Спробуйте пізніше',
+            title: t('toastSyncFailedTitle'),
+            description: body?.error?.message ?? t('toastSyncFailedDescription'),
           });
         }
         return;
@@ -61,20 +63,20 @@ export function SyncAllButton({
         if (synced.length === 0 && skipped.length > 0) {
           const next = Math.min(...skipped.map((s) => s.nextSyncInSeconds));
           toast({
-            title: 'Дані ще свіжі',
-            description: `Спробуйте через ${Math.ceil(next / 60)} хв або натисніть ще раз для примусового sync.`,
+            title: t('toastDataFreshTitle'),
+            description: t('toastDataFreshDescription', { minutes: Math.ceil(next / 60) }),
           });
         } else {
           const descParts: string[] = [];
           if (tokensTotal > 0) {
-            descParts.push(`${tokensTotal} токенів`);
+            descParts.push(t('toastTokensCount', { count: tokensTotal }));
           } else if (synced.length > 0) {
-            descParts.push('Дані актуальні (API не повернув змін)');
+            descParts.push(t('toastDataActual'));
           }
-          if (skipped.length > 0) descParts.push(`${skipped.length} пропущено`);
-          if (errors.length > 0) descParts.push(`${errors.length} з помилкою`);
+          if (skipped.length > 0) descParts.push(t('toastSkipped', { count: skipped.length }));
+          if (errors.length > 0) descParts.push(t('toastErrors', { count: errors.length }));
           toast({
-            title: `Sync завершено · ${synced.length} гаманц(ів)`,
+            title: t('toastSyncDoneTitle', { count: synced.length }),
             description: descParts.join(' · '),
             variant: errors.length > 0 ? 'destructive' : 'default',
           });
@@ -108,7 +110,7 @@ export function SyncAllButton({
       size="sm"
       onClick={() => runSync()}
       disabled={isPending}
-      title="Натисніть Shift+Click для примусового sync (ігнорує throttle)"
+      title={t('title')}
       onClickCapture={(e) => {
         if (e.shiftKey) {
           e.preventDefault();
@@ -118,7 +120,7 @@ export function SyncAllButton({
       }}
     >
       <RefreshCw className={cn('h-4 w-4', isPending && 'animate-spin')} />
-      {isPending ? 'Синхронізую…' : 'Синхронізувати'}
+      {isPending ? t('syncing') : t('sync')}
     </Button>
   );
 }

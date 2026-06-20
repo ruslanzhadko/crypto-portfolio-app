@@ -311,6 +311,13 @@
     "emptyTitle": "No wallets",
     "emptyDescription": "Add a few wallets to compare."
   },
+  "WalletDetail": {
+    "backToWallets": "Back to wallets",
+    "noLabel": "Unnamed",
+    "valueLabel": "Value",
+    "lastSync": "Last sync: {time}",
+    "notSynced": "Not synced yet"
+  },
   "Auth": {
     "loginPageTitle": "Sign in",
     "loginPageDescription": "Enter your email and password to sign in",
