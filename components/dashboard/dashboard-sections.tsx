@@ -9,6 +9,7 @@ import { AllocationChart } from '@/components/dashboard/allocation-chart';
 import { NetworkAllocationChart } from '@/components/dashboard/network-allocation';
 import { PortfolioChart } from '@/components/dashboard/portfolio-chart';
 import { TokenTable } from '@/components/dashboard/token-table';
+import { WalletList } from '@/components/dashboard/wallet-list';
 import { TopMovers } from '@/components/dashboard/top-movers';
 import { SyncAllButton } from '@/components/dashboard/sync-all-button';
 import { Button } from '@/components/ui/button';
@@ -23,7 +24,6 @@ import {
 import { formatRelative } from '@/lib/utils/format';
 import type { PortfolioOverview } from '@/lib/services/portfolio';
 import type { Network } from '@prisma/client';
-import type { ReactNode } from 'react';
 
 type SectionKey = 'topMovers' | 'allocation' | 'networkAllocation';
 
@@ -40,14 +40,14 @@ export interface WalletDto {
   address: string;
   network: Network;
   label: string | null;
-  lastSyncAt: Date | null;
+  lastSyncAt: string | null;
   totalUsd: number;
   tokenCount: number;
 }
 
 interface Props {
   overview: PortfolioOverview;
-  walletList: ReactNode;
+  wallets: WalletDto[];
   hiddenTokensCount: number;
   lastPriceUpdateAt: string | null;
   latestSyncAt: string | null;
@@ -55,7 +55,7 @@ interface Props {
 
 export function DashboardSections({
   overview,
-  walletList,
+  wallets,
   hiddenTokensCount,
   lastPriceUpdateAt,
   latestSyncAt,
@@ -154,7 +154,7 @@ export function DashboardSections({
             <div className="lg:col-span-2">
               <TokenTable tokens={overview.tokens} />
             </div>
-            {walletList}
+            <WalletList wallets={wallets} />
           </div>
         </div>
 

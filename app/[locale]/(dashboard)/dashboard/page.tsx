@@ -5,7 +5,6 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { getPortfolioOverview } from '@/lib/services/portfolio';
 import { DashboardSections } from '@/components/dashboard/dashboard-sections';
-import { WalletList } from '@/components/dashboard/wallet-list';
 import { EmptyState } from '@/components/common/empty-state';
 import { Button } from '@/components/ui/button';
 
@@ -48,7 +47,7 @@ export default async function DashboardPage() {
     address: w.address,
     network: w.network,
     label: w.label,
-    lastSyncAt: w.lastSyncAt,
+    lastSyncAt: w.lastSyncAt?.toISOString() ?? null,
     totalUsd: w.balances.reduce((s, b) => s + b.usdValue, 0),
     tokenCount: w._count.balances,
   }));
@@ -82,7 +81,7 @@ export default async function DashboardPage() {
       <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
       <DashboardSections
         overview={overview}
-        walletList={<WalletList wallets={walletDtos} />}
+        wallets={walletDtos}
         hiddenTokensCount={hiddenTokensCount}
         lastPriceUpdateAt={lastPriceUpdate?.updatedAt?.toISOString() ?? null}
         latestSyncAt={latestSyncAt?.toISOString() ?? null}

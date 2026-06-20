@@ -1,4 +1,6 @@
-import { getTranslations } from 'next-intl/server';
+'use client';
+
+import { useTranslations } from 'next-intl';
 import { ArrowRight, Wallet as WalletIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,13 +14,13 @@ interface WalletDTO {
   address: string;
   network: Network;
   label: string | null;
-  lastSyncAt: string | Date | null;
+  lastSyncAt: string | null;
   totalUsd: number;
   tokenCount: number;
 }
 
-export async function WalletList({ wallets }: { wallets: WalletDTO[] }) {
-  const t = await getTranslations('WalletList');
+export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
+  const t = useTranslations('WalletList');
 
   return (
     <Card>
