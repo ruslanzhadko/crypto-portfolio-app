@@ -88,7 +88,14 @@ export default async function LandingPage() {
   ];
 
   return (
-    <main className="min-h-screen">
+    <main className="relative min-h-screen overflow-x-hidden">
+      {/* Background decoration */}
+      <div className="pointer-events-none absolute inset-0" aria-hidden>
+        {/* Top hero glow */}
+        <div className="absolute left-1/2 top-0 h-[600px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[120px]" />
+        {/* Bottom-right accent */}
+        <div className="absolute -bottom-32 right-0 h-[400px] w-[500px] rounded-full bg-primary/5 blur-[100px]" />
+      </div>
       {/* ── Nav ── */}
       <header className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
@@ -239,7 +246,7 @@ export default async function LandingPage() {
               className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface p-3 text-center transition-colors hover:border-primary/30"
             >
               <Image
-                src={chain.nativeLogoUrl}
+                src={chain.chainLogoUrl}
                 alt={chain.displayName}
                 width={32}
                 height={32}
