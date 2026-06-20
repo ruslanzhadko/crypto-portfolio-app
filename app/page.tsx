@@ -95,7 +95,15 @@ export default async function LandingPage() {
 
       <footer className="border-t border-border py-8">
         <div className="container text-center text-xs text-text-muted">
-          Дипломний проєкт · КПІ ім. Ігоря Сікорського · Спеціальність 121 «Інженерія програмного забезпечення»
+          Автор:{' '}
+          <a
+            href="https://t.me/ludoslan"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            @ludoslan
+          </a>
         </div>
       </footer>
     </main>
