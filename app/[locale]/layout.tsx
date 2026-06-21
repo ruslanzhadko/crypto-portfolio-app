@@ -6,7 +6,6 @@ import { getMessages } from 'next-intl/server';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 import { Toaster } from '@/components/ui/toaster';
-import { auth } from '@/lib/auth';
 import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import '../globals.css';
@@ -51,14 +50,13 @@ export default async function LocaleLayout({
     notFound();
   }
 
-  const session = await auth();
   const messages = await getMessages();
 
   return (
     <html lang={locale} className={`dark ${inter.variable} ${mono.variable}`}>
       <body className="min-h-screen bg-background font-sans text-text antialiased">
         <NextIntlClientProvider messages={messages}>
-          <SessionProvider session={session}>
+          <SessionProvider>
             {children}
             <Toaster />
           </SessionProvider>
