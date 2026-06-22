@@ -18,14 +18,14 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
 
   const top = tokens.slice(0, 7);
   const rest = tokens.slice(7);
-  const restUsd = rest.reduce((s, t) => s + t.totalUsd, 0);
-  const restShare = rest.reduce((s, t) => s + t.share, 0);
+  const restUsd = rest.reduce((s, tok) => s + tok.totalUsd, 0);
+  const restShare = rest.reduce((s, tok) => s + tok.share, 0);
 
   const data = [
-    ...top.map((t, i) => ({
-      name: t.symbol,
-      value: t.totalUsd,
-      share: t.share,
+    ...top.map((tok, i) => ({
+      name: tok.symbol,
+      value: tok.totalUsd,
+      share: tok.share,
       color: COLORS[i % COLORS.length] ?? '#6c63ff',
     })),
     ...(rest.length > 0

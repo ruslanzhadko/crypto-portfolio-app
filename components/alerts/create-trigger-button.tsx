@@ -1,6 +1,7 @@
 'use client';
 
-import Link from 'next/link';
+import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -15,16 +16,13 @@ export function CreateTriggerButton({
   tokenSymbol,
   tokenName,
 }: CreateTriggerButtonProps) {
-  const params = new URLSearchParams({
-    tokenId,
-    tokenSymbol,
-    tokenName,
-  });
+  const t = useTranslations('Alerts');
+  const params = new URLSearchParams({ tokenId, tokenSymbol, tokenName });
   return (
     <Button asChild>
       <Link href={`/alerts/new?${params.toString()}`}>
         <Bell className="h-4 w-4" />
-        Створити тригер
+        {t('createTriggerButton')}
       </Link>
     </Button>
   );
