@@ -4,7 +4,7 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
-// Locales that appear as path prefix (en is default — no prefix with 'as-needed')
+// Non-default locales that appear as path prefix with 'as-needed'
 const PREFIXED_LOCALES = ['uk', 'ru'] as const;
 
 function stripLocalePrefix(pathname: string): { path: string; locale: string | null } {
@@ -12,6 +12,10 @@ function stripLocalePrefix(pathname: string): { path: string; locale: string | n
     if (pathname.startsWith(`/${locale}/`)) return { path: pathname.slice(locale.length + 1), locale };
     if (pathname === `/${locale}`) return { path: '/', locale };
   }
+  // /en/* is non-canonical (next-intl will redirect to /*) but must pass auth check first.
+  // Return locale: null so redirect paths are built without a prefix (English default).
+  if (pathname === '/en') return { path: '/', locale: null };
+  if (pathname.startsWith('/en/')) return { path: pathname.slice(3), locale: null };
   return { path: pathname, locale: null };
 }
 
