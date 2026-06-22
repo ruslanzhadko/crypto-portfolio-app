@@ -31,8 +31,8 @@ export default function middleware(req: NextRequest) {
   const { path, locale } = stripLocalePrefix(pathname);
 
   const sessionCookie =
-    req.cookies.get('next-auth.session-token') ??
-    req.cookies.get('__Secure-next-auth.session-token');
+    req.cookies.get('authjs.session-token') ??
+    req.cookies.get('__Secure-authjs.session-token');
 
   // Redirect logged-in users away from the landing page
   if (path === '/' && sessionCookie) {
