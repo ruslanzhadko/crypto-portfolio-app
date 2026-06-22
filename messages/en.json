@@ -403,7 +403,7 @@
     "faq3a": "Go to Settings, enter your Telegram Chat ID, then create a trigger with your desired threshold. You'll receive a message when the condition is met.",
     "faq4q": "How often are prices updated?",
     "faq4a": "Prices update automatically every 15 minutes via CoinGecko. Wallet balances are updated on manual sync or via the Sync All button.",
-    "footerAuthor": "Author: {link}",
+    "footerAuthor": "Author: <link>@ludoslan</link>",
     "footerRights": "All rights reserved."
   }
 }

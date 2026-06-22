@@ -296,14 +296,14 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       <footer className="border-t border-border py-4">
         <div className="container text-center text-sm text-text-muted">
           {t.rich('footerAuthor', {
-            link: () => (
+            link: (chunks) => (
               <a
                 href="https://t.me/ludoslan"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:underline"
               >
-                @ludoslan
+                {chunks}
               </a>
             ),
           })}
