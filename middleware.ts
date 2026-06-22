@@ -46,6 +46,12 @@ export default function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(loginPath, req.url));
   }
 
+  // API routes don't need locale prefixes — skip i18n routing to prevent
+  // next-intl from redirecting e.g. /api/auth/error → /ru/api/auth/error
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   return handleI18nRouting(req);
 }
 

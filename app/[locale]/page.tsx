@@ -4,7 +4,7 @@ import {
   ArrowRight, BarChart3, Bell, ShieldCheck, Wallet,
   TrendingUp, TrendingDown,
 } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { fetchTopMarkets, type MarketCoin } from '@/lib/services/coingecko';
@@ -13,7 +13,9 @@ import { LandingFaq } from '@/components/landing/landing-faq';
 import { LocaleSwitcher } from '@/components/common/locale-switcher';
 import { cn } from '@/lib/utils/cn';
 
-export default async function LandingPage() {
+export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const t = await getTranslations('Landing');
 
   let coins: MarketCoin[] = [];
