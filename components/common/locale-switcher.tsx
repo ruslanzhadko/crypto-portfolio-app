@@ -23,12 +23,12 @@ export function LocaleSwitcher() {
   const pathname = usePathname();
 
   function switchLocale(next: string) {
-    // pathname is e.g. /uk/dashboard or /dashboard (en, as-needed prefix)
-    // Strip existing locale prefix if any
-    const withoutLocale = pathname.replace(/^\/(uk|ru)(\/|$)/, '/');
-    const newPath = next === 'en' ? withoutLocale : `/${next}${withoutLocale}`;
-    router.push(newPath);
-    router.refresh();
+    // Always navigate via explicit locale prefix so next-intl updates the
+    // NEXT_LOCALE cookie. Without this, /en resolves as the current locale
+    // from the cookie (e.g. uk) and the language never changes.
+    const stripped = pathname.replace(/^\/(en|uk|ru)(\/|$)/, '/');
+    const suffix = stripped === '/' ? '' : stripped;
+    router.push(`/${next}${suffix}`);
   }
 
   const current = LOCALES.find((l) => l.code === locale);
