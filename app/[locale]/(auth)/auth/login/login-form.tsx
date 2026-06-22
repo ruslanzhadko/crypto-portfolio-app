@@ -15,7 +15,9 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const locale = useLocale();
   const defaultDashboard = locale === 'en' ? '/dashboard' : `/${locale}/dashboard`;
-  const callbackUrl = searchParams.get('callbackUrl') ?? defaultDashboard;
+  const rawCallbackUrl = searchParams.get('callbackUrl');
+  // Only use relative URLs from search params to prevent open redirects and wrong-locale hops
+  const callbackUrl = (rawCallbackUrl?.startsWith('/') ? rawCallbackUrl : null) ?? defaultDashboard;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -29,12 +31,22 @@ export function LoginForm() {
 
     setError(null);
     startTransition(async () => {
-      const res = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-      if (res?.error) {
+      try {
+        const res = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        });
+        if (res?.error) {
+          setError(t('loginErrorMessage'));
+          toast({
+            variant: 'destructive',
+            title: t('loginToastFailTitle'),
+            description: t('loginToastFailDescription'),
+          });
+          return;
+        }
+      } catch {
         setError(t('loginErrorMessage'));
         toast({
           variant: 'destructive',
@@ -45,8 +57,8 @@ export function LoginForm() {
       }
       toast({ title: t('loginToastWelcome') });
       router.push(callbackUrl);
-      await fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
-      router.refresh();
+      // Fire-and-forget: sync wallets in background without blocking navigation
+      fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
     });
   }
 
