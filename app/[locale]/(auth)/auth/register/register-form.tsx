@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function RegisterForm() {
   const router = useRouter();
+  const locale = useLocale();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -42,20 +43,25 @@ export function RegisterForm() {
         return;
       }
 
-      const signed = await signIn('credentials', {
-        email,
-        password,
-        redirect: false,
-      });
-      if (signed?.error) {
+      try {
+        const signed = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+        });
+        if (signed?.error) {
+          toast({ title: t('accountCreatedTitle'), description: t('accountCreatedLoginDescription') });
+          router.push(`/${locale}/auth/login`);
+          return;
+        }
+      } catch {
         toast({ title: t('accountCreatedTitle'), description: t('accountCreatedLoginDescription') });
-        router.push('/auth/login');
+        router.push(`/${locale}/auth/login`);
         return;
       }
 
       toast({ title: t('accountCreatedTitle'), description: t('accountCreatedWelcomeDescription') });
-      router.push('/dashboard');
-      router.refresh();
+      router.push(`/${locale}/dashboard`);
     });
   }
 

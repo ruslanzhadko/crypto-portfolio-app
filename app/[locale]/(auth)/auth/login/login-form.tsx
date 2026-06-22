@@ -14,7 +14,7 @@ export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
-  const defaultDashboard = locale === 'en' ? '/dashboard' : `/${locale}/dashboard`;
+  const defaultDashboard = `/${locale}/dashboard`;
   const rawCallbackUrl = searchParams.get('callbackUrl');
   // Only use relative URLs from search params to prevent open redirects and wrong-locale hops
   const callbackUrl = (rawCallbackUrl?.startsWith('/') ? rawCallbackUrl : null) ?? defaultDashboard;

@@ -4,18 +4,14 @@ import { type NextRequest, NextResponse } from 'next/server';
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
-// Non-default locales that appear as path prefix with 'as-needed'
-const PREFIXED_LOCALES = ['uk', 'ru'] as const;
+// All locales require a URL prefix with localePrefix: 'always'
+const PREFIXED_LOCALES = ['en', 'uk', 'ru'] as const;
 
 function stripLocalePrefix(pathname: string): { path: string; locale: string | null } {
   for (const locale of PREFIXED_LOCALES) {
     if (pathname.startsWith(`/${locale}/`)) return { path: pathname.slice(locale.length + 1), locale };
     if (pathname === `/${locale}`) return { path: '/', locale };
   }
-  // /en/* is non-canonical (next-intl will redirect to /*) but must pass auth check first.
-  // Return locale: null so redirect paths are built without a prefix (English default).
-  if (pathname === '/en') return { path: '/', locale: null };
-  if (pathname.startsWith('/en/')) return { path: pathname.slice(3), locale: null };
   return { path: pathname, locale: null };
 }
 
@@ -40,18 +36,17 @@ export default function middleware(req: NextRequest) {
 
   // Redirect logged-in users away from the landing page
   if (path === '/' && sessionCookie) {
-    const dashboardPath = locale ? `/${locale}/dashboard` : '/dashboard';
+    const dashboardPath = locale ? `/${locale}/dashboard` : '/en/dashboard';
     return NextResponse.redirect(new URL(dashboardPath, req.url));
   }
 
   // Redirect unauthenticated users from protected routes to login
   if (!isPublicPath(path) && !sessionCookie) {
-    const loginPath = locale ? `/${locale}/auth/login` : '/auth/login';
+    const loginPath = locale ? `/${locale}/auth/login` : '/en/auth/login';
     return NextResponse.redirect(new URL(loginPath, req.url));
   }
 
-  // API routes don't need locale prefixes — skip i18n routing to prevent
-  // next-intl from redirecting e.g. /api/auth/error → /ru/api/auth/error
+  // API routes don't need locale prefixes — skip i18n routing
   if (pathname.startsWith('/api/')) {
     return NextResponse.next();
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { signOut } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { LogOut, User as UserIcon } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ interface NavbarProps {
 
 export function Navbar({ email, name, role }: NavbarProps) {
   const t = useTranslations('Nav');
+  const locale = useLocale();
   const initials = (name || email || 'U').charAt(0).toUpperCase();
 
   return (
@@ -60,7 +61,7 @@ export function Navbar({ email, name, role }: NavbarProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => signOut({ callbackUrl: '/auth/login' })}
+              onClick={() => signOut({ callbackUrl: `/${locale}/auth/login` })}
               className="flex items-center gap-2 text-danger focus:text-danger"
             >
               <LogOut className="h-4 w-4" /> {t('signOut')}

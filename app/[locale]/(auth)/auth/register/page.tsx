@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,9 @@ export default async function RegisterPage() {
         <CardDescription>{t('registerPageDescription')}</CardDescription>
       </CardHeader>
       <CardContent>
-        <RegisterForm />
+        <Suspense>
+          <RegisterForm />
+        </Suspense>
         <p className="mt-6 text-center text-sm text-text-muted">
           {t('hasAccountPrompt')}{' '}
           <Link className="text-primary hover:underline" href="/auth/login">
