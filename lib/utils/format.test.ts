@@ -92,12 +92,12 @@ describe('formatDate', () => {
 });
 
 describe('formatRelative', () => {
-  it('null/undefined → "Ніколи"', () => {
-    expect(formatRelative(null)).toBe('Ніколи');
-    expect(formatRelative(undefined)).toBe('Ніколи');
+  it('null/undefined → "—"', () => {
+    expect(formatRelative(null)).toBe('—');
+    expect(formatRelative(undefined)).toBe('—');
   });
-  it('порожній рядок → "Ніколи"', () => {
-    expect(formatRelative('')).toBe('Ніколи');
+  it('порожній рядок → "—"', () => {
+    expect(formatRelative('')).toBe('—');
   });
   it('валідна дата → повертає рядок', () => {
     expect(typeof formatRelative(new Date('2020-01-01T00:00:00.000Z'))).toBe('string');

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { ExternalLink, MoreVertical, RefreshCw, Trash2, Wallet as WalletIcon } from 'lucide-react';
 import { Network } from '@prisma/client';
 import { Link } from '@/i18n/navigation';
@@ -60,6 +60,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
   const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
   const t = useTranslations('WalletCard');
+  const locale = useLocale();
 
   useEffect(() => setMounted(true), []);
 
@@ -205,7 +206,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
               <SyncDot lastSyncAt={wallet.lastSyncAt} />
               <span className="text-xs text-text-muted">
                 {wallet.lastSyncAt
-                  ? t('syncStatus', { time: formatRelative(wallet.lastSyncAt) })
+                  ? t('syncStatus', { time: formatRelative(wallet.lastSyncAt, locale) })
                   : t('notSynced')}
               </span>
             </div>

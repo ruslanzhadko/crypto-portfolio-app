@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { SlidersHorizontal } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
@@ -64,6 +64,7 @@ export function DashboardSections({
   const [mounted, setMounted] = useState(false);
   const t = useTranslations('Dashboard');
   const ts = useTranslations('DashboardSections');
+  const locale = useLocale();
 
   useEffect(() => {
     try {
@@ -96,12 +97,12 @@ export function DashboardSections({
         <div className="flex flex-wrap items-center gap-2">
           {lastPriceUpdateAt && (
             <span className="text-xs text-text-muted" suppressHydrationWarning>
-              {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt))}
+              {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt), locale)}
             </span>
           )}
           {latestSyncAt && (
             <span className="text-xs text-text-muted" suppressHydrationWarning>
-              {t('syncPrefix')} {formatRelative(new Date(latestSyncAt))}
+              {t('syncPrefix')} {formatRelative(new Date(latestSyncAt), locale)}
             </span>
           )}
         </div>

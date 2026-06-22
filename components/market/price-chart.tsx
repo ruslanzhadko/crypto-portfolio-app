@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Area,
   AreaChart,
@@ -26,19 +27,23 @@ interface PriceChartProps {
   initialDays?: number;
 }
 
-const RANGES = [
-  { label: '1Д', value: 1 },
-  { label: '7Д', value: 7 },
-  { label: '30Д', value: 30 },
-  { label: '90Д', value: 90 },
-  { label: '1Р', value: 365 },
-] as const;
+const RANGE_VALUES = [1, 7, 30, 90, 365] as const;
+type RangeValue = (typeof RANGE_VALUES)[number];
 
 export function PriceChart({ tokenId, initialDays = 7 }: PriceChartProps) {
+  const t = useTranslations('TokenDetail');
   const [mounted, setMounted] = useState(false);
-  const [days, setDays] = useState<number>(initialDays);
+  const [days, setDays] = useState<RangeValue>(initialDays as RangeValue);
   const [points, setPoints] = useState<PricePoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const ranges = [
+    { label: t('range1d'), value: 1 as RangeValue },
+    { label: t('range7d'), value: 7 as RangeValue },
+    { label: t('range30d'), value: 30 as RangeValue },
+    { label: t('range90d'), value: 90 as RangeValue },
+    { label: t('range1y'), value: 365 as RangeValue },
+  ];
 
   useEffect(() => setMounted(true), []);
 
@@ -48,26 +53,26 @@ export function PriceChart({ tokenId, initialDays = 7 }: PriceChartProps) {
     setError(null);
     fetch(`/api/market/${tokenId}/history?days=${days}`)
       .then(async (res) => {
-        if (!res.ok) throw new Error('Не вдалось завантажити графік');
+        if (!res.ok) throw new Error(t('priceChartError'));
         const data = (await res.json()) as { points: PricePoint[] };
         if (!cancelled) setPoints(data.points);
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Помилка завантаження');
+          setError(err instanceof Error ? err.message : t('priceChartError'));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [tokenId, days]);
+  }, [tokenId, days, t]);
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Динаміка ціни</CardTitle>
+        <CardTitle>{t('priceChartTitle')}</CardTitle>
         <div className="flex gap-1">
-          {RANGES.map((r) => (
+          {ranges.map((r) => (
             <Button
               key={r.value}
               variant={days === r.value ? 'default' : 'ghost'}

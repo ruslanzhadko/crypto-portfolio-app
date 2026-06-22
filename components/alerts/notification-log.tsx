@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Bell } from 'lucide-react';
 import type { NotificationLog as NotificationLogModel, TriggerType, TriggerDirection } from '@prisma/client';
 
@@ -15,15 +16,17 @@ import { EmptyState } from '@/components/common/empty-state';
 import { PriceChange } from '@/components/common/price-change';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
 
-function PriceTargetBadge({ direction }: { direction: TriggerDirection }) {
+function PriceTargetBadge({ direction, label }: { direction: TriggerDirection; label: string }) {
   if (direction === 'UP')
-    return <span className="text-xs font-medium text-success">↑ Ціль досягнута</span>;
+    return <span className="text-xs font-medium text-success">↑ {label}</span>;
   if (direction === 'DOWN')
-    return <span className="text-xs font-medium text-danger">↓ Ціль досягнута</span>;
-  return <span className="text-xs font-medium text-text-muted">◎ Ціль досягнута</span>;
+    return <span className="text-xs font-medium text-danger">↓ {label}</span>;
+  return <span className="text-xs font-medium text-text-muted">◎ {label}</span>;
 }
 
 export function NotificationLog() {
+  const t = useTranslations('Alerts');
+  const locale = useLocale();
   const [items, setItems] = useState<LogWithTrigger[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -49,7 +52,7 @@ export function NotificationLog() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Журнал сповіщень</CardTitle>
+          <CardTitle>{t('logTitle')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -63,16 +66,16 @@ export function NotificationLog() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>Журнал сповіщень</CardTitle>
-        {total > 0 && <span className="text-xs text-text-muted">{total} всього</span>}
+        <CardTitle>{t('logTitle')}</CardTitle>
+        {total > 0 && <span className="text-xs text-text-muted">{t('logTotal', { count: total })}</span>}
       </CardHeader>
       <CardContent className="p-0">
         {items.length === 0 ? (
           <div className="p-6">
             <EmptyState
               icon={Bell}
-              title="Поки що жодного сповіщення"
-              description="Створіть тригер, щоб отримувати повідомлення про цінові аномалії в Telegram."
+              title={t('logEmptyTitle')}
+              description={t('logEmptyDescription')}
             />
           </div>
         ) : (
@@ -92,12 +95,12 @@ export function NotificationLog() {
                 </div>
                 <div className="text-right">
                   {log.trigger?.triggerType === 'PRICE_TARGET' ? (
-                    <PriceTargetBadge direction={log.trigger.direction} />
+                    <PriceTargetBadge direction={log.trigger.direction} label={t('logTargetReached')} />
                   ) : (
                     <PriceChange value={log.deltaPercent} size="sm" />
                   )}
                   <p className="text-xs text-text-muted">{formatUsd(log.price)}</p>
-                  <p className="text-[10px] text-text-muted">{formatRelative(log.sentAt)}</p>
+                  <p className="text-[10px] text-text-muted">{formatRelative(log.sentAt, locale)}</p>
                 </div>
               </div>
             ))}
@@ -111,10 +114,10 @@ export function NotificationLog() {
               disabled={page <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
             >
-              Попередня
+              {t('logPrevPage')}
             </Button>
             <span className="text-xs text-text-muted">
-              Стор. {page} з {totalPages}
+              {t('logPageOf', { page, total: totalPages })}
             </span>
             <Button
               variant="outline"
@@ -122,7 +125,7 @@ export function NotificationLog() {
               disabled={page >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             >
-              Наступна
+              {t('logNextPage')}
             </Button>
           </div>
         )}

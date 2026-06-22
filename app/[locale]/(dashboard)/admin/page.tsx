@@ -40,6 +40,7 @@ export default async function AdminPage() {
   });
 
   const t = await getTranslations('Admin');
+  const locale = await getLocale();
 
   return (
     <div className="space-y-6">
@@ -117,7 +118,7 @@ export default async function AdminPage() {
                   <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'} className="text-[10px]">
                     {u.role}
                   </Badge>
-                  <span className="text-xs text-text-muted">{formatRelative(u.createdAt)}</span>
+                  <span className="text-xs text-text-muted">{formatRelative(u.createdAt, locale)}</span>
                 </div>
               </div>
             ))}

@@ -1,5 +1,11 @@
 import { format, formatDistanceToNow } from 'date-fns';
-import { uk } from 'date-fns/locale';
+import { enUS, ru, uk } from 'date-fns/locale';
+
+function dateFnsLocale(locale?: string) {
+  if (locale === 'en') return enUS;
+  if (locale === 'ru') return ru;
+  return uk;
+}
 
 export function formatUsd(value: number, options: { compact?: boolean; minimumFractionDigits?: number } = {}): string {
   const { compact = false, minimumFractionDigits } = options;
@@ -58,8 +64,8 @@ export function formatDate(date: Date | string, pattern = 'PP'): string {
   return format(d, pattern);
 }
 
-export function formatRelative(date: Date | string | null | undefined): string {
-  if (!date) return 'Ніколи';
+export function formatRelative(date: Date | string | null | undefined, locale?: string): string {
+  if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return formatDistanceToNow(d, { addSuffix: true, locale: uk });
+  return formatDistanceToNow(d, { addSuffix: true, locale: dateFnsLocale(locale) });
 }

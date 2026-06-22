@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { ChevronLeft } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
@@ -35,6 +35,7 @@ export default async function WalletDetailPage({
   if (!wallet) notFound();
 
   const t = await getTranslations('WalletDetail');
+  const locale = await getLocale();
 
   const totalUsd = wallet.balances
     .filter((b) => !b.isSpam && !b.isHidden)
@@ -66,7 +67,7 @@ export default async function WalletDetailPage({
               </p>
               <p className="text-xs text-text-muted">
                 {wallet.lastSyncAt
-                  ? t('lastSync', { time: formatRelative(wallet.lastSyncAt) })
+                  ? t('lastSync', { time: formatRelative(wallet.lastSyncAt, locale) })
                   : t('notSynced')}
               </p>
             </div>

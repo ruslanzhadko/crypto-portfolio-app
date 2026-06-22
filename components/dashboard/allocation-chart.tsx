@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { AggregatedToken } from '@/lib/services/portfolio';
@@ -11,6 +12,7 @@ import { PieChart as PieIcon } from 'lucide-react';
 const COLORS = ['#6c63ff', '#a855f7', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#14f195', '#f3ba2f'];
 
 export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
+  const t = useTranslations('AllocationChart');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -27,7 +29,7 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
       color: COLORS[i % COLORS.length] ?? '#6c63ff',
     })),
     ...(rest.length > 0
-      ? [{ name: `Інші (${rest.length})`, value: restUsd, share: restShare, color: '#3a3a4a' }]
+      ? [{ name: t('othersLabel', { count: rest.length }), value: restUsd, share: restShare, color: '#3a3a4a' }]
       : []),
   ];
 
@@ -35,13 +37,13 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Розподіл активів</CardTitle>
+          <CardTitle>{t('cardTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
           <EmptyState
             icon={PieIcon}
-            title="Немає даних"
-            description="Додайте гаманець та зробіть Sync."
+            title={t('emptyTitle')}
+            description={t('emptyDescription')}
           />
         </CardContent>
       </Card>
@@ -51,10 +53,9 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Розподіл активів</CardTitle>
+        <CardTitle>{t('cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-4 pb-4">
-        {/* Pie має фіксовану висоту, легенда росте знизу */}
         <div className="h-[220px]">
           {mounted ? (
             <ResponsiveContainer width="100%" height="100%">
@@ -80,7 +81,6 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
           )}
         </div>
 
-        {/* Легенда: flex-grid з мінімальною шириною елемента, переноситься на нові рядки */}
         <ul className="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-x-3 gap-y-1.5 text-xs">
           {data.map((d, i) => (
             <li key={i} className="flex min-w-0 items-center gap-2">

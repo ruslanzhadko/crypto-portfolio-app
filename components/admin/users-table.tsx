@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { formatRelative } from '@/lib/utils/format';
+import { useLocale } from 'next-intl';
 
 interface UserDTO {
   id: string;
@@ -22,6 +23,7 @@ interface UserDTO {
 }
 
 export function UsersTable() {
+  const locale = useLocale();
   const [users, setUsers] = useState<UserDTO[] | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -192,7 +194,7 @@ export function UsersTable() {
                         {u._count.triggers}
                       </td>
                       <td className="hidden px-4 py-3 text-xs text-text-muted lg:table-cell">
-                        {formatRelative(u.createdAt)}
+                        {formatRelative(u.createdAt, locale)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">

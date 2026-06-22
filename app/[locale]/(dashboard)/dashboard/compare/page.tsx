@@ -1,4 +1,4 @@
-import { getTranslations } from 'next-intl/server';
+import { getTranslations, getLocale } from 'next-intl/server';
 import { ChevronLeft, Sparkles, Wallet as WalletIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
@@ -147,6 +147,7 @@ export default async function ComparePage() {
   });
 
   const t = await getTranslations('Compare');
+  const locale = await getLocale();
 
   if (wallets.length === 0) {
     return (
@@ -409,7 +410,7 @@ export default async function ComparePage() {
 
                 {/* Footer: sync time */}
                 <p className="text-[11px] text-text-muted">
-                  {t('lastSync', { time: formatRelative(w.lastSyncAt) })}
+                  {t('lastSync', { time: formatRelative(w.lastSyncAt, locale) })}
                 </p>
               </CardContent>
             </Card>

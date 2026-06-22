@@ -1,6 +1,6 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { ArrowRight, Wallet as WalletIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +21,7 @@ interface WalletDTO {
 
 export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
   const t = useTranslations('WalletList');
+  const locale = useLocale();
 
   return (
     <Card>
@@ -51,7 +52,7 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{w.label ?? t('walletFallback')}</p>
                   <p className="font-mono text-xs text-text-muted">
-                    {shortAddress(w.address)} · {formatRelative(w.lastSyncAt)}
+                    {shortAddress(w.address)} · {formatRelative(w.lastSyncAt, locale)}
                   </p>
                 </div>
                 <div className="text-right">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
 export function PasswordForm() {
+  const t = useTranslations('Settings');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -30,12 +32,12 @@ export function PasswordForm() {
           | null;
         toast({
           variant: 'destructive',
-          title: 'Не вдалось змінити пароль',
-          description: body?.error?.message ?? 'Спробуйте ще раз',
+          title: t('toastPasswordFailedTitle'),
+          description: body?.error?.message ?? t('toastPasswordFailedDefault'),
         });
         return;
       }
-      toast({ title: 'Пароль оновлено' });
+      toast({ title: t('toastPasswordChangedTitle') });
       setCurrent('');
       setNext('');
     });
@@ -44,7 +46,7 @@ export function PasswordForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="current">Поточний пароль</Label>
+        <Label htmlFor="current">{t('currentPasswordLabel')}</Label>
         <Input
           id="current"
           type="password"
@@ -55,7 +57,7 @@ export function PasswordForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="new">Новий пароль</Label>
+        <Label htmlFor="new">{t('newPasswordLabel')}</Label>
         <Input
           id="new"
           type="password"
@@ -65,11 +67,11 @@ export function PasswordForm() {
           autoComplete="new-password"
           required
         />
-        <p className="text-xs text-text-muted">Мінімум 8 символів</p>
+        <p className="text-xs text-text-muted">{t('passwordMinHint')}</p>
       </div>
       <Button type="submit" disabled={isPending || !current || next.length < 8}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Змінити пароль
+        {t('changePasswordButton')}
       </Button>
     </form>
   );

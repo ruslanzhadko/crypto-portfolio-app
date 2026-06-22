@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Bell, Loader2, MoreVertical, Target, Trash2 } from 'lucide-react';
 import { TriggerDirection, TriggerType, type PriceTrigger } from '@prisma/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -124,6 +124,7 @@ function PercentTriggerCard({
   onDelete: () => void;
 }) {
   const t = useTranslations('TriggerCard');
+  const locale = useLocale();
 
   const directionLabel =
     trigger.direction === TriggerDirection.UP
@@ -168,7 +169,7 @@ function PercentTriggerCard({
           </div>
           <div>
             <p className="text-xs text-text-muted">{t('checkedLabel')}</p>
-            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt)}</p>
+            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt, locale)}</p>
           </div>
         </div>
 
@@ -201,6 +202,7 @@ function PriceTargetCard({
   onDelete: () => void;
 }) {
   const t = useTranslations('TriggerCard');
+  const locale = useLocale();
   const fired = !trigger.isActive && !!trigger.lastCheckedAt;
 
   const price = currentPrice ?? trigger.lastPrice ?? null;
@@ -260,7 +262,7 @@ function PriceTargetCard({
           </div>
           <div>
             <p className="text-xs text-text-muted">{t('checkedLabel')}</p>
-            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt)}</p>
+            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt, locale)}</p>
           </div>
         </div>
 

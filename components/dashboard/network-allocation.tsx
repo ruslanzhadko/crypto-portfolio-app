@@ -1,27 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ChainAllocation } from '@/lib/services/portfolio';
 import { formatUsd } from '@/lib/utils/format';
+
+type TFn = ReturnType<typeof useTranslations<'NetworkAllocationChart'>>;
 
 interface NetworkAllocationProps {
   chains: ChainAllocation[];
 }
 
 export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
+  const t = useTranslations('NetworkAllocationChart');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Розподіл по мережах</CardTitle>
+        <CardTitle>{t('cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="h-[280px]">
         {chains.length === 0 ? (
-          <p className="text-sm text-text-muted">Немає даних</p>
+          <p className="text-sm text-text-muted">{t('noData')}</p>
         ) : !mounted ? (
           <div className="h-full animate-pulse rounded-lg bg-surface-2" />
         ) : (
@@ -40,7 +44,7 @@ export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
                 width={84}
               />
               <Tooltip
-                content={<ChainTooltip />}
+                content={<ChainTooltip t={t} />}
                 cursor={{ fill: 'rgba(108,99,255,0.08)' }}
               />
               <Bar dataKey="totalUsd" radius={[0, 6, 6, 0]}>
@@ -56,7 +60,7 @@ export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
   );
 }
 
-function ChainTooltip({ active, payload }: TooltipProps<number, string>) {
+function ChainTooltip({ active, payload, t }: TooltipProps<number, string> & { t: TFn }) {
   if (!active || !payload?.length) return null;
   const p = payload[0]?.payload as ChainAllocation | undefined;
   if (!p) return null;
@@ -65,7 +69,7 @@ function ChainTooltip({ active, payload }: TooltipProps<number, string>) {
       <p className="font-medium">{p.displayName}</p>
       <p className="text-text-muted">{formatUsd(p.totalUsd)}</p>
       <p className="text-text-muted">
-        {p.share.toFixed(2)}% · {p.tokenCount} токенів
+        {p.share.toFixed(2)}% · {t('tooltipTokens', { count: p.tokenCount })}
       </p>
     </div>
   );
