@@ -27,8 +27,7 @@ interface PriceChartProps {
   initialDays?: number;
 }
 
-const RANGE_VALUES = [1, 7, 30, 90, 365] as const;
-type RangeValue = (typeof RANGE_VALUES)[number];
+type RangeValue = 1 | 7 | 30 | 90 | 365;
 
 export function PriceChart({ tokenId, initialDays = 7 }: PriceChartProps) {
   const t = useTranslations('TokenDetail');
