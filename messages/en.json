@@ -9,7 +9,8 @@
     "profile": "Profile",
     "signOut": "Sign out",
     "defaultUser": "User",
-    "adminBadge": "Admin"
+    "adminBadge": "Admin",
+    "footerBy": "By"
   },
   "Dashboard": {
     "pageTitle": "Dashboard",

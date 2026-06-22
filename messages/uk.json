@@ -9,7 +9,8 @@
     "profile": "Профіль",
     "signOut": "Вийти",
     "defaultUser": "Користувач",
-    "adminBadge": "Admin"
+    "adminBadge": "Admin",
+    "footerBy": "Автор"
   },
   "Dashboard": {
     "pageTitle": "Dashboard",

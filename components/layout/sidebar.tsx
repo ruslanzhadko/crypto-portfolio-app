@@ -56,7 +56,18 @@ export function Sidebar({ userRole }: SidebarProps) {
       </nav>
 
       <div className="border-t border-border p-4 text-xs text-text-muted">
-        © {new Date().getFullYear()} CryptoPortfolio
+        <p>© {new Date().getFullYear()} CryptoPortfolio</p>
+        <p className="mt-0.5">
+          {t('footerBy')}{' '}
+          <a
+            href="https://t.me/ludoslan"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline"
+          >
+            @ludoslan
+          </a>
+        </p>
       </div>
     </aside>
   );
