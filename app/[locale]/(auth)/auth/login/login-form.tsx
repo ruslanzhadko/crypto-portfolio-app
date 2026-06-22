@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,7 +13,9 @@ import { useToast } from '@/hooks/use-toast';
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard';
+  const locale = useLocale();
+  const defaultDashboard = locale === 'en' ? '/dashboard' : `/${locale}/dashboard`;
+  const callbackUrl = searchParams.get('callbackUrl') ?? defaultDashboard;
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -43,7 +45,6 @@ export function LoginForm() {
       }
       toast({ title: t('loginToastWelcome') });
       router.push(callbackUrl);
-      router.refresh();
       await fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
       router.refresh();
     });
