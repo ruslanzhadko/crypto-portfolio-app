@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { signOut } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
 import { LogOut, User as UserIcon } from 'lucide-react';
@@ -30,7 +31,14 @@ export function Navbar({ email, name, role }: NavbarProps) {
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur md:px-8">
-      <div className="md:hidden">
+      <div className="flex items-center gap-2 md:hidden">
+        <Image
+          src="/logo.png"
+          alt="CryptoPortfolio"
+          width={28}
+          height={28}
+          className="rounded-lg object-cover"
+        />
         <span className="font-semibold tracking-tight">
           Crypto<span className="gradient-text">Portfolio</span>
         </span>

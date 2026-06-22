@@ -1,8 +1,8 @@
 'use client';
 
+import Image from 'next/image';
 import { usePathname } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import { Wallet } from 'lucide-react';
 import type { Role } from '@prisma/client';
 import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
@@ -20,9 +20,13 @@ export function Sidebar({ userRole }: SidebarProps) {
   return (
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-surface/50 backdrop-blur md:flex md:flex-col">
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-          <Wallet className="h-4 w-4 text-white" />
-        </div>
+        <Image
+          src="/logo.png"
+          alt="CryptoPortfolio"
+          width={32}
+          height={32}
+          className="rounded-lg object-cover"
+        />
         <span className="font-semibold tracking-tight">
           Crypto<span className="gradient-text">Portfolio</span>
         </span>
