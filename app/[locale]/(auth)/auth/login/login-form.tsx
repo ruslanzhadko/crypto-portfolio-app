@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const locale = useLocale();
   const defaultDashboard = `/${locale}/dashboard`;
@@ -56,9 +55,10 @@ export function LoginForm() {
         return;
       }
       toast({ title: t('loginToastWelcome') });
-      router.push(callbackUrl);
-      // Fire-and-forget: sync wallets in background without blocking navigation
+      // Hard navigation clears the Next.js router cache so the middleware
+      // sees the fresh session cookie instead of a stale unauthenticated redirect.
       fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});
+      window.location.href = callbackUrl;
     });
   }
 
