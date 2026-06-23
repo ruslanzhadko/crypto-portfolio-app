@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { usePrize } from '@/contexts/prize-context';
 
 const BOT_URL = 'https://t.me/cryptoportfolio_rzhad_bot';
 
@@ -25,6 +26,7 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
   const [isPending, startTransition] = useTransition();
   const [testing, startTest] = useTransition();
   const { toast } = useToast();
+  const { triggerPrize } = usePrize();
 
   const isConnected = !!initialTelegramChatId;
 
@@ -51,6 +53,10 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
         return;
       }
       toast({ title: t('toastSavedTitle') });
+      // Award prize when user connects Telegram for the first time
+      if (!isConnected && chatId.trim()) {
+        triggerPrize('TELEGRAM');
+      }
       router.refresh();
     });
   }

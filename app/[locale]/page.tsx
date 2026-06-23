@@ -56,7 +56,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       <header className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2">
           <Image
-            src="/logo.png"
+            src="/logo2.png"
             alt="CryptoPortfolio"
             width={32}
             height={32}
@@ -247,7 +247,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
               <div className="w-full max-w-[320px] rounded-2xl bg-[#1c2733] p-4 shadow-2xl ring-1 ring-white/5">
                 <div className="mb-4 flex items-center gap-3 border-b border-white/10 pb-3">
                   <Image
-                    src="/logo.png"
+                    src="/logo2.png"
                     alt="CryptoPortfolio bot"
                     width={36}
                     height={36}

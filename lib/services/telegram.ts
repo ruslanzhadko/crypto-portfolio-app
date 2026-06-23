@@ -21,7 +21,7 @@ interface TelegramResponse {
 
 async function sendMessage(opts: TelegramSendOptions): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не встановлено');
+  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
   const { data } = await axios.post<TelegramResponse>(url, {
@@ -32,7 +32,7 @@ async function sendMessage(opts: TelegramSendOptions): Promise<void> {
   }, { timeout: 10000 });
 
   if (!data.ok) {
-    throw new TelegramError(data.description ?? 'Telegram API повернув помилку');
+    throw new TelegramError(data.description ?? 'Telegram API вернул ошибку');
   }
 }
 
@@ -49,17 +49,17 @@ export function formatPriceAlert(payload: PriceAlertPayload): string {
   const sign = payload.deltaPercent > 0 ? '+' : '';
   const intervalLabel =
     payload.intervalMinutes >= 60
-      ? `${(payload.intervalMinutes / 60).toFixed(1).replace(/\.0$/, '')} год`
-      : `${payload.intervalMinutes} хв`;
+      ? `${(payload.intervalMinutes / 60).toFixed(1).replace(/\.0$/, '')} ч`
+      : `${payload.intervalMinutes} мин`;
 
   const prevPrice = payload.price / (1 + payload.deltaPercent / 100);
 
   return [
-    `\u{1F6A8} <b>Цінова аномалія: ${escapeHtml(payload.tokenSymbol)}</b>`,
+    `\u{1F6A8} <b>Ценовая аномалия: ${escapeHtml(payload.tokenSymbol)}</b>`,
     '',
-    `${direction} Зміна: <b>${sign}${payload.deltaPercent.toFixed(2)}%</b> за ${escapeHtml(intervalLabel)}`,
-    `\u{1F4B0} Ціна зараз:  <b>$${formatPrice(payload.price)}</b>`,
-    `\u{1F4CC} Ціна раніше: <b>$${formatPrice(prevPrice)}</b>`,
+    `${direction} Изменение: <b>${sign}${payload.deltaPercent.toFixed(2)}%</b> за ${escapeHtml(intervalLabel)}`,
+    `\u{1F4B0} Цена сейчас:  <b>$${formatPrice(payload.price)}</b>`,
+    `\u{1F4CC} Цена ранее:   <b>$${formatPrice(prevPrice)}</b>`,
     '',
     `\u{23F1} ${formatKyivTime()}`,
   ].join('\n');
@@ -71,9 +71,8 @@ function formatPrice(price: number): string {
   return price.toFixed(8);
 }
 
-// Час за київським поясом (UTC+3 влітку / +2 взимку) — серверний рантайм у UTC.
 function formatKyivTime(date = new Date()): string {
-  return date.toLocaleString('uk-UA', { timeZone: 'Europe/Kyiv' });
+  return date.toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv' });
 }
 
 function escapeHtml(text: string): string {
@@ -101,18 +100,18 @@ export interface PriceTargetPayload {
 
 export function formatPriceTargetAlert(payload: PriceTargetPayload): string {
   const icon = payload.direction === 'UP' ? '\u{1F4C8}' : '\u{1F4C9}';
-  const label = payload.direction === 'UP' ? 'вище' : 'нижче';
+  const label = payload.direction === 'UP' ? 'выше' : 'ниже';
 
   return [
-    `\u{1F3AF} <b>Цільова ціна досягнута: ${escapeHtml(payload.tokenSymbol)}</b>`,
+    `\u{1F3AF} <b>Целевая цена достигнута: ${escapeHtml(payload.tokenSymbol)}</b>`,
     '',
-    `${icon} Ціна пішла <b>${label}</b> позначки $${formatPrice(payload.targetPrice)}`,
-    `\u{1F4B0} Поточна ціна: <b>$${formatPrice(payload.currentPrice)}</b>`,
+    `${icon} Цена пошла <b>${label}</b> отметки $${formatPrice(payload.targetPrice)}`,
+    `\u{1F4B0} Текущая цена: <b>$${formatPrice(payload.currentPrice)}</b>`,
     `\u{1F4CA} Токен: ${escapeHtml(payload.tokenName)}`,
     '',
     `\u{23F1} ${formatKyivTime()}`,
     '',
-    '<i>Тригер деактивовано після спрацювання.</i>',
+    '<i>Триггер деактивирован после срабатывания.</i>',
   ].join('\n');
 }
 
@@ -127,7 +126,7 @@ export async function sendPriceTargetAlert(
 export async function sendTestMessage(chatId: string): Promise<void> {
   await sendMessage({
     chatId,
-    text: '\u{2705} <b>CryptoPortfolio</b>\n\nЦе тестове повідомлення. Ваш Telegram налаштовано правильно.',
+    text: '\u{2705} <b>CryptoPortfolio</b>\n\nЭто тестовое сообщение. Ваш Telegram настроен правильно.',
     parseMode: 'HTML',
   });
 }
@@ -146,7 +145,7 @@ export interface WebhookInfo {
 
 export async function setWebhook(webhookUrl: string, secretToken: string): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не встановлено');
+  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
 
   const { data } = await axios.post<TelegramResponse>(
     `https://api.telegram.org/bot${token}/setWebhook`,
@@ -158,7 +157,7 @@ export async function setWebhook(webhookUrl: string, secretToken: string): Promi
 
 export async function getWebhookInfo(): Promise<WebhookInfo> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не встановлено');
+  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
 
   const { data } = await axios.get<{ ok: boolean; result: WebhookInfo }>(
     `https://api.telegram.org/bot${token}/getWebhookInfo`,

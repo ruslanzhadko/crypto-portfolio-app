@@ -59,6 +59,7 @@ export function RegisterForm() {
       }
 
       toast({ title: t('accountCreatedTitle'), description: t('accountCreatedWelcomeDescription') });
+      localStorage.setItem('pending_prize', 'REGISTER');
       window.location.href = `/${locale}/dashboard`;
     });
   }

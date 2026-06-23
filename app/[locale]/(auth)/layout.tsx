@@ -18,7 +18,7 @@ export default async function AuthLayout({
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
       <Link href="/" className="mb-8 flex items-center gap-2">
         <Image
-          src="/logo.png"
+          src="/logo2.png"
           alt="CryptoPortfolio"
           width={32}
           height={32}

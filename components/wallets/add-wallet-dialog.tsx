@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { isValidAddressForNetwork } from '@/lib/utils/validators';
 import { useToast } from '@/hooks/use-toast';
+import { usePrize } from '@/contexts/prize-context';
 
 export function AddWalletDialog() {
   const router = useRouter();
@@ -30,6 +31,7 @@ export function AddWalletDialog() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { triggerPrize } = usePrize();
   const t = useTranslations('AddWalletDialog');
 
   const walletTypes = [
@@ -93,6 +95,16 @@ export function AddWalletDialog() {
 
       setOpen(false);
       reset();
+
+      // Check wallet count to potentially award the 2-wallets prize
+      const listRes = await fetch('/api/wallets');
+      if (listRes.ok) {
+        const listData = (await listRes.json()) as { wallets?: unknown[] };
+        if ((listData.wallets?.length ?? 0) >= 2) {
+          triggerPrize('TWO_WALLETS');
+        }
+      }
+
       router.refresh();
 
       toast({

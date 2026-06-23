@@ -33,13 +33,13 @@ export function Navbar({ email, name, role }: NavbarProps) {
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-background/80 px-4 backdrop-blur md:px-8">
       <div className="flex items-center gap-2 md:hidden">
         <Image
-          src="/logo.png"
+          src="/logo2.png"
           alt="CryptoPortfolio"
-          width={28}
-          height={28}
+          width={34}
+          height={34}
           className="rounded-lg object-cover"
         />
-        <span className="font-semibold tracking-tight">
+        <span className="text-lg font-semibold tracking-tight">
           Crypto<span className="gradient-text">Portfolio</span>
         </span>
       </div>

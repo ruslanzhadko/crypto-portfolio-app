@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { TokenLogo } from '@/components/common/token-logo';
 import { useToast } from '@/hooks/use-toast';
+import { usePrize } from '@/contexts/prize-context';
 import { cn } from '@/lib/utils/cn';
 import { formatUsd } from '@/lib/utils/format';
 import type { SearchResult } from '@/lib/services/coingecko';
@@ -39,6 +40,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const { triggerPrize } = usePrize();
   const t = useTranslations('TriggerForm');
 
   const intervals = [
@@ -164,6 +166,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
         return;
       }
       toast({ title: t('toastCreatedTitle') });
+      triggerPrize('TRIGGER');
       router.push('/alerts');
       router.refresh();
     });

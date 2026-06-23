@@ -6,6 +6,7 @@ import { getMessages, setRequestLocale } from 'next-intl/server';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/next';
 import { Toaster } from '@/components/ui/toaster';
+import { PrizeProvider } from '@/contexts/prize-context';
 import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import '../globals.css';
@@ -59,8 +60,10 @@ export default async function LocaleLayout({
       <body className="min-h-screen bg-background font-sans text-text antialiased">
         <NextIntlClientProvider messages={messages}>
           <SessionProvider>
-            {children}
-            <Toaster />
+            <PrizeProvider>
+              {children}
+              <Toaster />
+            </PrizeProvider>
           </SessionProvider>
         </NextIntlClientProvider>
         <SpeedInsights />

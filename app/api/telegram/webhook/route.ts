@@ -26,22 +26,20 @@ function isAuthorized(req: NextRequest): boolean {
 function buildStartReply(chatId: number, firstName?: string): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? '';
   const settingsUrl = appUrl ? `${appUrl}/settings` : '/settings';
-  const greeting = firstName ? `Привіт, ${escapeHtml(firstName)}!` : 'Привіт!';
+  const greeting = firstName ? `Привет, ${escapeHtml(firstName)}!` : 'Привет!';
 
-  // Емодзі — через \u{...} code-point escape (ASCII у файлі), щоб кодування/збірка
-  // не псували 4-байтні символи (баг: 🤖/📌 надсилались як літеральний \uXXXX-текст).
   return [
     `\u{1F44B} ${greeting}`,
     '',
-    `\u{1F916} Це бот <b>CryptoPortfolio</b> — надсилає сповіщення про цінові аномалії ваших токенів.`,
+    `\u{1F916} Это бот <b>CryptoPortfolio</b> — отправляет уведомления о ценовых аномалиях ваших токенов.`,
     '',
     `\u{1F4CB} Ваш <b>Telegram Chat ID</b>:`,
     `<code>${chatId}</code>`,
     '',
-    `\u{1F4CC} Скопіюйте цей ID і вставте у налаштуваннях профілю:`,
+    `\u{1F4CC} Скопируйте этот ID и вставьте в настройках профиля:`,
     `\u{1F449} <a href="${settingsUrl}">${settingsUrl}</a>`,
     '',
-    'Після цього створіть цінові тригери на сторінці <b>Сповіщення</b> і бот почне надсилати алерти сюди.',
+    'После этого создайте ценовые триггеры на странице <b>Уведомления</b> и бот начнёт отправлять алерты сюда.',
   ].join('\n');
 }
 
@@ -81,9 +79,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     await replyToUpdate(
       chatId,
       [
-        '📖 <b>Команди:</b>',
-        '/start — показати Chat ID та інструкцію',
-        '/id — тільки ваш Chat ID',
+        '\u{1F4D6} <b>Команды:</b>',
+        '/start — показать Chat ID и инструкцию',
+        '/id — только ваш Chat ID',
       ].join('\n'),
     ).catch((err) => console.error(`[telegram/webhook] reply failed chat_id=${chatId}`, err));
   } else {

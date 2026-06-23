@@ -55,6 +55,7 @@ export function LoginForm() {
         return;
       }
       toast({ title: t('loginToastWelcome') });
+      localStorage.setItem('pending_prize', 'LOGIN');
       // Hard navigation clears the Next.js router cache so the middleware
       // sees the fresh session cookie instead of a stale unauthenticated redirect.
       fetch('/api/portfolio/sync', { method: 'POST' }).catch(() => {});

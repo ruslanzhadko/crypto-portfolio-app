@@ -21,13 +21,13 @@ export function Sidebar({ userRole }: SidebarProps) {
     <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-surface/50 backdrop-blur md:flex md:flex-col">
       <div className="flex h-16 items-center gap-2 border-b border-border px-6">
         <Image
-          src="/logo.png"
+          src="/logo2.png"
           alt="CryptoPortfolio"
-          width={32}
-          height={32}
+          width={36}
+          height={36}
           className="rounded-lg object-cover"
         />
-        <span className="font-semibold tracking-tight">
+        <span className="text-lg font-semibold tracking-tight">
           Crypto<span className="gradient-text">Portfolio</span>
         </span>
       </div>
