@@ -1,7 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { PrizeModal } from '@/components/prizes/prize-modal';
+import { createContext, useContext, useEffect, useRef } from 'react';
 
 export type PrizeType = 'REGISTER' | 'LOGIN' | 'TWO_WALLETS' | 'TELEGRAM' | 'TRIGGER';
 
@@ -16,43 +15,20 @@ export function usePrize() {
 }
 
 export function PrizeProvider({ children }: { children: React.ReactNode }) {
-  const [activePrize, setActivePrize] = useState<PrizeType | null>(null);
-  const [mounted, setMounted] = useState(false);
   const checked = useRef(false);
 
-  const triggerPrize = useCallback((type: PrizeType) => {
-    if (localStorage.getItem(`prize_claimed_${type}`)) return;
-    setActivePrize(type);
-  }, []);
-
-  const handleClaim = useCallback(() => {
-    if (activePrize) {
-      localStorage.setItem(`prize_claimed_${activePrize}`, 'true');
-    }
-    setActivePrize(null);
-  }, [activePrize]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const triggerPrize = (_type: PrizeType) => {};
 
   useEffect(() => {
-    setMounted(true);
     if (checked.current) return;
     checked.current = true;
-    const pending = localStorage.getItem('pending_prize') as PrizeType | null;
-    if (pending) {
-      localStorage.removeItem('pending_prize');
-      triggerPrize(pending);
-    }
-  }, [triggerPrize]);
+    localStorage.removeItem('pending_prize');
+  }, []);
 
   return (
     <PrizeContext.Provider value={{ triggerPrize }}>
       {children}
-      {mounted && activePrize && (
-        <PrizeModal
-          type={activePrize}
-          onClose={() => setActivePrize(null)}
-          onClaim={handleClaim}
-        />
-      )}
     </PrizeContext.Provider>
   );
 }
