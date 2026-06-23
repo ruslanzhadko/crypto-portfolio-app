@@ -21,22 +21,22 @@ test.describe('registration', () => {
   });
 
   test('register with already-registered email → inline error shown', async ({ page }) => {
-    // First registration
+    // Register the same email twice; second attempt must show the server error
     await page.goto('/en/auth/register');
     await page.getByLabel('Email').fill(REG_EMAIL);
     await page.getByLabel('Password').fill(REG_PASSWORD);
     await page.getByRole('button', { name: 'Create account' }).click();
-    // This might succeed or fail depending on test run order — we just wait a bit
+    // Brief pause to let the first registration complete
     await page.waitForTimeout(2000);
 
-    // Second registration with same email
+    // Second registration with the same email
     await page.goto('/en/auth/register');
     await page.getByLabel('Email').fill(REG_EMAIL);
     await page.getByLabel('Password').fill(REG_PASSWORD);
     await page.getByRole('button', { name: 'Create account' }).click();
 
-    // Must stay on the register page with an error
-    await expect(page.locator('.text-danger')).toBeVisible({ timeout: 8_000 });
+    // Use p.text-danger to avoid strict-mode clash with destructive toast <li>
+    await expect(page.locator('p.text-danger')).toBeVisible({ timeout: 8_000 });
     await expect(page).toHaveURL(/\/en\/auth\/register/);
   });
 });
@@ -61,7 +61,8 @@ test.describe('login', () => {
     await page.getByLabel('Password').fill('wrong-password');
     await page.getByRole('button', { name: 'Sign in' }).click();
 
-    await expect(page.locator('.text-danger')).toContainText('Invalid email or password', {
+    // Use p.text-danger to avoid strict-mode clash with destructive toast <li>
+    await expect(page.locator('p.text-danger')).toContainText('Invalid email or password', {
       timeout: 8_000,
     });
     await expect(page).toHaveURL(/\/en\/auth\/login/);

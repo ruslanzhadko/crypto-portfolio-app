@@ -64,7 +64,7 @@ test.describe('wallets page', () => {
     await page.locator('#address').fill('not-an-evm-address');
     await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add' }).click();
 
-    await expect(page.locator('.text-danger')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('p.text-danger')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('[data-testid="add-wallet-dialog"]')).toBeVisible();
   });
 });
