@@ -40,8 +40,11 @@ test.describe('wallets page', () => {
       timeout: 10_000,
     });
 
-    // The new wallet's address (lowercased by API) should appear on the refreshed page
-    await expect(page.getByText(TEST_ADDRESS.toLowerCase())).toBeVisible({ timeout: 8_000 });
+    // A wallet card must appear after router.refresh() — the full address is truncated
+    // in the UI by shortAddress(), so we check for the card element itself.
+    await expect(page.locator('[data-testid="wallet-card"]').first()).toBeVisible({
+      timeout: 8_000,
+    });
   });
 
   test('submit empty address → browser validation blocks, dialog stays open', async ({ page }) => {

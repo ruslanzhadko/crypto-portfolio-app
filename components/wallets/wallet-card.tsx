@@ -116,7 +116,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
       : null;
 
   return (
-    <Card className="group card-gradient relative overflow-hidden transition-shadow hover:shadow-glow">
+    <Card className="group card-gradient relative overflow-hidden transition-shadow hover:shadow-glow" data-testid="wallet-card">
       {/* Network accent strip */}
       <div
         className="absolute inset-y-0 left-0 w-[3px]"
