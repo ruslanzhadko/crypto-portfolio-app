@@ -1,13 +1,15 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import type { Role } from '@prisma/client';
+import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
 import { NAV_ITEMS } from './nav-items';
 
 export function MobileNav({ userRole }: { userRole: Role }) {
   const pathname = usePathname();
+  const t = useTranslations('Nav');
   const items = NAV_ITEMS.filter((i) => !i.adminOnly || userRole === 'ADMIN').slice(0, 5);
 
   return (
@@ -27,7 +29,7 @@ export function MobileNav({ userRole }: { userRole: Role }) {
             )}
           >
             <Icon className="h-5 w-5" />
-            <span className="truncate">{item.label}</span>
+            <span className="truncate">{t(item.labelKey as 'dashboard')}</span>
           </Link>
         );
       })}

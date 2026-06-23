@@ -53,9 +53,11 @@ export const authConfig = {
     },
     authorized({ auth, request }) {
       const { pathname } = request.nextUrl;
-      const isAuthPath = pathname.startsWith('/auth');
+      // Strip locale prefix so /uk/auth/login and /ru/auth/login are treated correctly
+      const path = pathname.replace(/^\/(en|uk|ru)(\/|$)/, '/') || '/';
+      const isAuthPath = path.startsWith('/auth');
       const isPublic =
-        pathname === '/' ||
+        path === '/' ||
         pathname.startsWith('/api/auth') ||
         pathname.startsWith('/api/health') ||
         pathname.startsWith('/api/cron') ||

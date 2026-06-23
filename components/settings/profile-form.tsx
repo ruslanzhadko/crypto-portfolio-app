@@ -2,12 +2,14 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Bot, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { usePrize } from '@/contexts/prize-context';
 
 const BOT_URL = 'https://t.me/cryptoportfolio_rzhad_bot';
 
@@ -18,11 +20,13 @@ interface ProfileFormProps {
 
 export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormProps) {
   const router = useRouter();
+  const t = useTranslations('Settings');
   const [name, setName] = useState(initialName ?? '');
   const [chatId, setChatId] = useState(initialTelegramChatId ?? '');
   const [isPending, startTransition] = useTransition();
   const [testing, startTest] = useTransition();
   const { toast } = useToast();
+  const { triggerPrize } = usePrize();
 
   const isConnected = !!initialTelegramChatId;
 
@@ -43,12 +47,16 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
           | null;
         toast({
           variant: 'destructive',
-          title: 'Не вдалось зберегти',
-          description: body?.error?.message ?? 'Спробуйте ще раз',
+          title: t('toastSaveFailedTitle'),
+          description: body?.error?.message ?? t('toastSaveFailedDefault'),
         });
         return;
       }
-      toast({ title: 'Профіль збережено' });
+      toast({ title: t('toastSavedTitle') });
+      // Award prize when user connects Telegram for the first time
+      if (!isConnected && chatId.trim()) {
+        triggerPrize('TELEGRAM');
+      }
       router.refresh();
     });
   }
@@ -62,24 +70,24 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
           | null;
         toast({
           variant: 'destructive',
-          title: 'Не вдалось надіслати',
-          description: body?.error?.message ?? 'Перевірте Chat ID і токен бота',
+          title: t('toastTestFailedTitle'),
+          description: body?.error?.message ?? t('toastTestFailedDefault'),
         });
         return;
       }
-      toast({ title: 'Тестове повідомлення надіслано' });
+      toast({ title: t('toastTestSentTitle') });
     });
   }
 
   return (
     <form onSubmit={onSave} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Імʼя</Label>
+        <Label htmlFor="name">{t('nameLabel')}</Label>
         <Input
           id="name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Ваше імʼя"
+          placeholder={t('namePlaceholder')}
           maxLength={100}
         />
       </div>
@@ -88,7 +96,7 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
         <div className="flex items-center justify-between">
           <Label htmlFor="chatId">Telegram Chat ID</Label>
           <Badge variant={isConnected ? 'success' : 'secondary'}>
-            {isConnected ? 'Підключено' : 'Не підключено'}
+            {isConnected ? t('telegramConnected') : t('telegramDisconnected')}
           </Badge>
         </div>
         <div className="flex gap-2">
@@ -107,25 +115,23 @@ export function ProfileForm({ initialName, initialTelegramChatId }: ProfileFormP
             disabled={!chatId.trim() || testing}
           >
             {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Тест
+            {t('testButton')}
           </Button>
         </div>
         <p className="text-xs text-text-muted">
-          Натисніть <span className="font-mono">/start</span> у боті (кнопка нижче) —
-          він надішле ваш <strong>Chat ID</strong>. Вставте його сюди та збережіть,
-          щоб отримувати сповіщення про спрацювання цінових тригерів.
+          {t('telegramHint')}
         </p>
         <Button asChild variant="outline" size="sm">
           <a href={BOT_URL} target="_blank" rel="noreferrer">
             <Bot className="h-4 w-4" />
-            Відкрити @cryptoportfolio_rzhad_bot
+            {t('openBotButton')}
           </a>
         </Button>
       </div>
 
       <Button type="submit" disabled={isPending}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-        Зберегти
+        {t('saveButton')}
       </Button>
     </form>
   );

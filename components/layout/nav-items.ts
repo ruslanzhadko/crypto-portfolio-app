@@ -10,16 +10,16 @@ import {
 
 export interface NavItem {
   href: string;
-  label: string;
+  labelKey: string;
   icon: LucideIcon;
   adminOnly?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/wallets', label: 'Гаманці', icon: Wallet },
-  { href: '/market', label: 'Market', icon: TrendingUp },
-  { href: '/alerts', label: 'Сповіщення', icon: Bell },
-  { href: '/settings', label: 'Налаштування', icon: Settings },
-  { href: '/admin', label: 'Адмін', icon: ShieldCheck, adminOnly: true },
+  { href: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
+  { href: '/wallets', labelKey: 'wallets', icon: Wallet },
+  { href: '/market', labelKey: 'market', icon: TrendingUp },
+  { href: '/alerts', labelKey: 'alerts', icon: Bell },
+  { href: '/settings', labelKey: 'settings', icon: Settings },
+  { href: '/admin', labelKey: 'admin', icon: ShieldCheck, adminOnly: true },
 ];

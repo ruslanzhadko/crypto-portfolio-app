@@ -1,5 +1,8 @@
-import Link from 'next/link';
+'use client';
+
+import { useTranslations, useLocale } from 'next-intl';
 import { ArrowRight, Wallet as WalletIcon } from 'lucide-react';
+import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NetworkBadge } from '@/components/common/network-badge';
 import { Button } from '@/components/ui/button';
@@ -11,26 +14,29 @@ interface WalletDTO {
   address: string;
   network: Network;
   label: string | null;
-  lastSyncAt: string | Date | null;
+  lastSyncAt: string | null;
   totalUsd: number;
   tokenCount: number;
 }
 
 export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
+  const t = useTranslations('WalletList');
+  const locale = useLocale();
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle>Гаманці</CardTitle>
+        <CardTitle>{t('cardTitle')}</CardTitle>
         <Button asChild variant="ghost" size="sm">
           <Link href="/wallets">
-            Усі <ArrowRight className="h-3 w-3" />
+            {t('viewAll')} <ArrowRight className="h-3 w-3" />
           </Link>
         </Button>
       </CardHeader>
       <CardContent className="p-0">
         {wallets.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-text-muted">
-            Гаманців ще не додано.
+            {t('noWallets')}
           </p>
         ) : (
           <div className="divide-y divide-border">
@@ -44,9 +50,9 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
                   <WalletIcon className="h-4 w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{w.label ?? 'Без назви'}</p>
+                  <p className="truncate font-medium">{w.label ?? t('walletFallback')}</p>
                   <p className="font-mono text-xs text-text-muted">
-                    {shortAddress(w.address)} · {formatRelative(w.lastSyncAt)}
+                    {shortAddress(w.address)} · {formatRelative(w.lastSyncAt, locale)}
                   </p>
                 </div>
                 <div className="text-right">

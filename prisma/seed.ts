@@ -26,6 +26,18 @@ async function main() {
   });
 
   console.log(`✓ Admin user seeded: ${admin.email}`);
+
+  const e2eEmail = process.env.E2E_EMAIL ?? 'e2e@test.local';
+  const e2ePassword = process.env.E2E_PASSWORD ?? 'E2ePassword123!';
+  const e2eHash = await bcrypt.hash(e2ePassword, 12);
+
+  const e2eUser = await prisma.user.upsert({
+    where: { email: e2eEmail },
+    update: { passwordHash: e2eHash, isBlocked: false },
+    create: { email: e2eEmail, name: 'E2E User', passwordHash: e2eHash },
+  });
+
+  console.log(`✓ E2E user seeded: ${e2eUser.email}`);
 }
 
 main()

@@ -1,3 +1,4 @@
+import { getTranslations } from 'next-intl/server';
 import { ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 import { formatUsd } from '@/lib/utils/format';
@@ -18,16 +19,18 @@ interface Props {
   symbol: string;
 }
 
-export function OpenInterestCard({ data, symbol }: Props) {
+export async function OpenInterestCard({ data, symbol }: Props) {
+  const t = await getTranslations('TokenDetail');
+
   const cardBase =
     'group relative overflow-hidden rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]';
 
   if (!data) {
     return (
       <div className={cardBase}>
-        <p className="text-sm font-medium text-text-muted leading-tight">Відкритий інтерес</p>
+        <p className="text-sm font-medium text-text-muted leading-tight">{t('openInterestTitle')}</p>
         <p className="mt-3 text-[1.75rem] font-bold leading-none text-text-muted">—</p>
-        <p className="mt-2 text-xs text-text-muted">Ф&apos;ючерси недоступні</p>
+        <p className="mt-2 text-xs text-text-muted">{t('futuresUnavailable')}</p>
       </div>
     );
   }
@@ -41,9 +44,9 @@ export function OpenInterestCard({ data, symbol }: Props) {
 
       <div className="relative">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium text-text-muted leading-tight">Відкритий інтерес</p>
+          <p className="text-sm font-medium text-text-muted leading-tight">{t('openInterestTitle')}</p>
           <span className="shrink-0 rounded-full bg-surface-2 px-1.5 py-0.5 text-xs text-text-muted">
-            ф&apos;ючерси
+            {t('futuresBadge')}
           </span>
         </div>
 

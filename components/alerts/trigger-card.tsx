@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
 import { Bell, Loader2, MoreVertical, Target, Trash2 } from 'lucide-react';
 import { TriggerDirection, TriggerType, type PriceTrigger } from '@prisma/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +27,7 @@ export function TriggerCard({ trigger, currentPrice }: TriggerCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const t = useTranslations('TriggerCard');
 
   function onToggle(active: boolean) {
     startTransition(async () => {
@@ -35,7 +37,7 @@ export function TriggerCard({ trigger, currentPrice }: TriggerCardProps) {
         body: JSON.stringify({ isActive: active }),
       });
       if (!res.ok) {
-        toast({ variant: 'destructive', title: 'Не вдалось оновити' });
+        toast({ variant: 'destructive', title: t('toastUpdateFailedTitle') });
         return;
       }
       router.refresh();
@@ -46,10 +48,10 @@ export function TriggerCard({ trigger, currentPrice }: TriggerCardProps) {
     startTransition(async () => {
       const res = await fetch(`/api/alerts/${trigger.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        toast({ variant: 'destructive', title: 'Не вдалось видалити' });
+        toast({ variant: 'destructive', title: t('toastDeleteFailedTitle') });
         return;
       }
-      toast({ title: 'Тригер видалено' });
+      toast({ title: t('toastDeletedTitle') });
       router.refresh();
     });
   }
@@ -75,6 +77,7 @@ function TriggerMenu({
   onDelete: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const t = useTranslations('TriggerCard');
 
   function handleDelete(event: Event) {
     if (!confirmDelete) {
@@ -98,7 +101,7 @@ function TriggerMenu({
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={handleDelete} className="text-danger focus:text-danger">
           <Trash2 className="h-4 w-4" />
-          {confirmDelete ? 'Підтвердити видалення' : 'Видалити'}
+          {confirmDelete ? t('menuDeleteConfirm') : t('menuDelete')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -120,17 +123,20 @@ function PercentTriggerCard({
   onToggle: (v: boolean) => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations('TriggerCard');
+  const locale = useLocale();
+
   const directionLabel =
     trigger.direction === TriggerDirection.UP
-      ? '↑ зростання'
+      ? t('directionUp')
       : trigger.direction === TriggerDirection.DOWN
-        ? '↓ падіння'
-        : '↑↓ обидва';
+        ? t('directionDown')
+        : t('directionBoth');
 
   const intervalLabel =
     trigger.interval >= 60
-      ? `${(trigger.interval / 60).toFixed(0)}г`
-      : `${trigger.interval}хв`;
+      ? `${(trigger.interval / 60).toFixed(0)}h`
+      : `${trigger.interval}m`;
 
   return (
     <Card className="card-gradient">
@@ -150,26 +156,26 @@ function PercentTriggerCard({
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
           <div>
-            <p className="text-xs text-text-muted">Поріг</p>
+            <p className="text-xs text-text-muted">{t('thresholdLabel')}</p>
             <p className="font-medium">±{trigger.threshold}%</p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">Напрямок</p>
+            <p className="text-xs text-text-muted">{t('directionLabel')}</p>
             <p className="font-medium">{directionLabel}</p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">Інтервал</p>
+            <p className="text-xs text-text-muted">{t('intervalLabel')}</p>
             <p className="font-medium">{intervalLabel}</p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">Перевірено</p>
-            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt)}</p>
+            <p className="text-xs text-text-muted">{t('checkedLabel')}</p>
+            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt, locale)}</p>
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
           <Badge variant={trigger.isActive ? 'success' : 'secondary'}>
-            {trigger.isActive ? 'Активний' : 'Вимкнено'}
+            {trigger.isActive ? t('badgeActive') : t('badgeInactive')}
           </Badge>
           <Switch checked={trigger.isActive} disabled={isPending} onCheckedChange={onToggle} />
         </div>
@@ -195,6 +201,8 @@ function PriceTargetCard({
   onToggle: (v: boolean) => void;
   onDelete: () => void;
 }) {
+  const t = useTranslations('TriggerCard');
+  const locale = useLocale();
   const fired = !trigger.isActive && !!trigger.lastCheckedAt;
 
   const price = currentPrice ?? trigger.lastPrice ?? null;
@@ -235,35 +243,35 @@ function PriceTargetCard({
 
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
           <div>
-            <p className="text-xs text-text-muted">Ціль</p>
+            <p className="text-xs text-text-muted">{t('targetLabel')}</p>
             <p className="font-semibold text-warning">
               {trigger.targetPrice != null ? formatUsd(trigger.targetPrice) : '—'}
             </p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">До цілі</p>
+            <p className="text-xs text-text-muted">{t('distanceLabel')}</p>
             <p className={`font-semibold ${distanceColor}`}>
               {distanceLabel ?? '—'}
             </p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">Ціна зараз</p>
+            <p className="text-xs text-text-muted">{t('currentPriceLabel')}</p>
             <p className="font-medium">
               {price != null ? formatUsd(price) : '—'}
             </p>
           </div>
           <div>
-            <p className="text-xs text-text-muted">Перевірено</p>
-            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt)}</p>
+            <p className="text-xs text-text-muted">{t('checkedLabel')}</p>
+            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt, locale)}</p>
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
           {fired ? (
-            <Badge variant="warning">Спрацював</Badge>
+            <Badge variant="warning">{t('badgeFired')}</Badge>
           ) : (
             <Badge variant={trigger.isActive ? 'success' : 'secondary'}>
-              {trigger.isActive ? 'Очікує' : 'Вимкнено'}
+              {trigger.isActive ? t('badgeWaiting') : t('badgeInactive')}
             </Badge>
           )}
           <Switch checked={trigger.isActive} disabled={isPending} onCheckedChange={onToggle} />

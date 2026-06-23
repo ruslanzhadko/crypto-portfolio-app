@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PriceChange } from '@/components/common/price-change';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
+import { useLocale } from 'next-intl';
 
 interface LogDTO {
   id: string;
@@ -23,6 +24,7 @@ interface LogDTO {
 type StatusFilter = 'all' | 'sent' | 'failed';
 
 export function AdminLogsTable() {
+  const locale = useLocale();
   const [items, setItems] = useState<LogDTO[] | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -135,7 +137,7 @@ export function AdminLogsTable() {
                         <p className="truncate text-xs text-text-muted">{log.message}</p>
                       </td>
                       <td className="px-4 py-3 text-right text-xs text-text-muted">
-                        {formatRelative(log.sentAt)}
+                        {formatRelative(log.sentAt, locale)}
                       </td>
                     </tr>
                   ))}

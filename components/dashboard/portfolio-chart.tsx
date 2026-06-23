@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,11 +11,6 @@ import { formatDate, formatUsd, formatPercent } from '@/lib/utils/format';
 import { TrendingUp, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
-const RANGES = [
-  { label: '1Д', value: 1 },
-  { label: '7Д', value: 7 },
-  { label: '30Д', value: 30 },
-] as const;
 
 interface SnapshotPoint {
   timestamp: number;
@@ -30,10 +26,17 @@ interface PortfolioChartProps {
 }
 
 export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0 }: PortfolioChartProps) {
+  const t = useTranslations('PortfolioChart');
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [days, setDays] = useState<number>(30);
+
+  const ranges = [
+    { label: t('range1d'), value: 1 as const },
+    { label: t('range7d'), value: 7 as const },
+    { label: t('range30d'), value: 30 as const },
+  ];
   const [points, setPoints] = useState<SnapshotPoint[] | null>(null);
   const [source, setSource] = useState<SnapshotSource>('empty');
 
@@ -82,11 +85,11 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
   return (
     <Card>
       <CardHeader
-        className="flex cursor-pointer flex-row items-center justify-between space-y-0 pb-2 select-none"
+        className={cn('flex cursor-pointer flex-row items-center justify-between space-y-0 select-none', open ? 'pb-2' : 'pb-6')}
         onClick={() => setOpen((v) => !v)}
       >
         <div className="flex items-center gap-3">
-          <CardTitle>Вартість портфеля</CardTitle>
+          <CardTitle>{t('cardTitle')}</CardTitle>
           <span className="font-mono text-sm font-semibold text-text">
             {formatUsd(totalUsd, { compact: true })}
           </span>
@@ -96,15 +99,15 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
           {open && (source === 'reconstructed' || source === 'mixed') && (
             <span
               className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning"
-              title="Графік реконструйовано з історії цін CoinGecko на основі поточних балансів. Не враховує реальних змін балансу у часі."
+              title={t('estimateTooltip')}
             >
-              ≈ оцінка
+              {t('estimateBadge')}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           {open &&
-            RANGES.map((r) => (
+            ranges.map((r) => (
               <Button
                 key={r.value}
                 variant={days === r.value ? 'default' : 'ghost'}
@@ -126,8 +129,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
       {open && hiddenTokensCount > 0 && (
         <div className="flex items-center justify-between border-b border-border px-6 py-2">
           <p className="text-xs text-text-muted">
-            {hiddenTokensCount} прихованих токен(ів) виключено зі статистики.
-            Якщо ви нещодавно приховали токен з великою вартістю — скиньте історію.
+            {t('hiddenTokensNote', { count: hiddenTokensCount })}
           </p>
           <Button
             variant="ghost"
@@ -136,7 +138,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
             disabled={resetting}
             onClick={(e) => { e.stopPropagation(); void resetHistory(); }}
           >
-            {resetting ? 'Скидання…' : 'Скинути історію'}
+            {resetting ? t('resetting') : t('resetHistory')}
           </Button>
         </div>
       )}
@@ -146,8 +148,8 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
           {points && points.length === 0 && (
             <EmptyState
               icon={TrendingUp}
-              title="Історія недоступна"
-              description="Жоден з ваших токенів не має coingeckoId — реконструкція історії з CoinGecko неможлива. Зробіть Sync щоб підвантажити ринкові метадані."
+              title={t('emptyTitle')}
+              description={t('emptyDescription')}
             />
           )}
           {points && points.length > 0 && mounted && (
