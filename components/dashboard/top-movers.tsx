@@ -29,15 +29,21 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
 
   if (tk.coingeckoId) {
     return (
-      <Link
-        href={`/market/${tk.coingeckoId}`}
-        className="block transition-colors hover:bg-muted/40"
-      >
+      <Link href={`/market/${tk.coingeckoId}`} className="block transition-colors hover:bg-muted/40">
         {inner}
       </Link>
     );
   }
-  return <div>{inner}</div>;
+  return (
+    <a
+      href={`https://www.coingecko.com/en/search?query=${encodeURIComponent(tk.symbol)}`}
+      target="_blank"
+      rel="noreferrer"
+      className="block transition-colors hover:bg-muted/40"
+    >
+      {inner}
+    </a>
+  );
 }
 
 function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyText: string }) {
