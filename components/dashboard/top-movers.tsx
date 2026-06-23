@@ -1,18 +1,45 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TokenLogo } from '@/components/common/token-logo';
 import { PriceChange } from '@/components/common/price-change';
-import { Link } from '@/i18n/navigation';
+import { Link, useRouter } from '@/i18n/navigation';
 import { formatUsd } from '@/lib/utils/format';
 import type { AggregatedToken } from '@/lib/services/portfolio';
 
 const MIN_USD = 1;
 
 function MoverRow({ tk }: { tk: AggregatedToken }) {
+  const router = useRouter();
+  const [searching, setSearching] = useState(false);
+
+  async function handleSearchClick() {
+    if (searching) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/market/search?q=${encodeURIComponent(tk.symbol)}`);
+      if (res.ok) {
+        const { results }: { results: Array<{ id: string; symbol: string; marketCapRank: number | null }> } =
+          await res.json();
+        const exact = results
+          .filter((r) => r.symbol.toUpperCase() === tk.symbol.toUpperCase())
+          .sort((a, b) => {
+            if (a.marketCapRank === null) return 1;
+            if (b.marketCapRank === null) return -1;
+            return a.marketCapRank - b.marketCapRank;
+          });
+        const match = exact[0] ?? results[0];
+        if (match) router.push(`/market/${match.id}`);
+      }
+    } finally {
+      setSearching(false);
+    }
+  }
+
   const inner = (
     <div className="flex items-center gap-3 px-4 py-2.5">
       <TokenLogo src={tk.logoUrl} symbol={tk.symbol} size={28} />
@@ -21,8 +48,14 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
         <p className="truncate text-xs text-text-muted">{tk.name}</p>
       </div>
       <div className="text-right">
-        <PriceChange value={tk.priceChange24h} />
-        <p className="text-xs text-text-muted">{formatUsd(tk.totalUsd, { compact: true })}</p>
+        {searching ? (
+          <Loader2 className="ml-auto h-4 w-4 animate-spin text-text-muted" />
+        ) : (
+          <>
+            <PriceChange value={tk.priceChange24h} />
+            <p className="text-xs text-text-muted">{formatUsd(tk.totalUsd, { compact: true })}</p>
+          </>
+        )}
       </div>
     </div>
   );
@@ -35,14 +68,13 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
     );
   }
   return (
-    <a
-      href={`https://www.coingecko.com/en/search?query=${encodeURIComponent(tk.symbol)}`}
-      target="_blank"
-      rel="noreferrer"
-      className="block transition-colors hover:bg-muted/40"
+    <button
+      type="button"
+      onClick={handleSearchClick}
+      className="block w-full text-left transition-colors hover:bg-muted/40"
     >
       {inner}
-    </a>
+    </button>
   );
 }
 
