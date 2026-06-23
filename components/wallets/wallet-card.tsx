@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { NetworkBadge } from '@/components/common/network-badge';
+import { PriceChange } from '@/components/common/price-change';
 import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
@@ -51,9 +52,11 @@ interface WalletCardProps {
   };
   lastPriceUpdateAt?: Date | string | null;
   portfolioTotalUsd?: number;
+  change24hUsd?: number;
+  change24hPct?: number;
 }
 
-export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
+export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hPct }: WalletCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -185,9 +188,20 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
 
         {/* Value row */}
         <div className="mt-4 flex items-baseline justify-between gap-2">
-          <p className="text-2xl font-bold tracking-tight">
-            {formatUsd(wallet.totalUsd, { compact: true })}
-          </p>
+          <div>
+            <p className="text-2xl font-bold tracking-tight">
+              {formatUsd(wallet.totalUsd, { compact: true })}
+            </p>
+            {wallet.totalUsd > 0 && change24hPct !== undefined && change24hUsd !== undefined && (
+              <div className="mt-0.5 flex items-center gap-1.5">
+                <PriceChange value={change24hPct} size="sm" />
+                <span className="text-xs text-text-muted">
+                  {change24hUsd >= 0 ? '+' : ''}
+                  {formatUsd(change24hUsd, { compact: true })}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {share !== null && (
               <span className="text-xs text-text-muted">{t('portfolioShare', { share })}</span>

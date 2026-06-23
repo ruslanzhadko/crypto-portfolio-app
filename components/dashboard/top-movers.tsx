@@ -6,8 +6,39 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TokenLogo } from '@/components/common/token-logo';
 import { PriceChange } from '@/components/common/price-change';
+import { Link } from '@/i18n/navigation';
 import { formatUsd } from '@/lib/utils/format';
 import type { AggregatedToken } from '@/lib/services/portfolio';
+
+const MIN_USD = 1;
+
+function MoverRow({ tk }: { tk: AggregatedToken }) {
+  const inner = (
+    <div className="flex items-center gap-3 px-4 py-2.5">
+      <TokenLogo src={tk.logoUrl} symbol={tk.symbol} size={28} />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">{tk.symbol}</p>
+        <p className="truncate text-xs text-text-muted">{tk.name}</p>
+      </div>
+      <div className="text-right">
+        <PriceChange value={tk.priceChange24h} />
+        <p className="text-xs text-text-muted">{formatUsd(tk.totalUsd, { compact: true })}</p>
+      </div>
+    </div>
+  );
+
+  if (tk.coingeckoId) {
+    return (
+      <Link
+        href={`/market/${tk.coingeckoId}`}
+        className="block transition-colors hover:bg-muted/40"
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return <div>{inner}</div>;
+}
 
 function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyText: string }) {
   if (tokens.length === 0) {
@@ -15,18 +46,8 @@ function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyTex
   }
   return (
     <div className="divide-y divide-border">
-      {tokens.map((t) => (
-        <div key={t.key} className="flex items-center gap-3 px-4 py-2.5">
-          <TokenLogo src={t.logoUrl} symbol={t.symbol} size={28} />
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">{t.symbol}</p>
-            <p className="truncate text-xs text-text-muted">{t.name}</p>
-          </div>
-          <div className="text-right">
-            <PriceChange value={t.priceChange24h} />
-            <p className="text-xs text-text-muted">{formatUsd(t.totalUsd, { compact: true })}</p>
-          </div>
-        </div>
+      {tokens.map((tk) => (
+        <MoverRow key={tk.key} tk={tk} />
       ))}
     </div>
   );
@@ -35,7 +56,10 @@ function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyTex
 export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
   const t = useTranslations('TopMovers');
 
-  const withChange = tokens.filter((tk) => Number.isFinite(tk.priceChange24h) && tk.priceChange24h !== 0);
+  // Only include tokens worth more than $1 (avoids spam/dust noise)
+  const withChange = tokens
+    .filter((tk) => tk.totalUsd >= MIN_USD)
+    .filter((tk) => Number.isFinite(tk.priceChange24h) && tk.priceChange24h !== 0);
 
   const trueGainers = withChange
     .filter((tk) => tk.priceChange24h > 0)
