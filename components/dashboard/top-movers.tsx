@@ -76,7 +76,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
           .filter((tk) => tk.priceChange24h < 0)
           .sort((a, b) => b.priceChange24h - a.priceChange24h);
 
-  const gainersTitle = trueGainers.length > 0 ? t('gainersTitle') : t('gainersTitle');
+  const gainersTitle = t('gainersTitle');
 
   return (
     <>
