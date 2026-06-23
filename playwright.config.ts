@@ -13,7 +13,27 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // Global setup: log in once and save auth state
+    {
+      name: 'setup',
+      testMatch: /global\.setup\.ts/,
+    },
+    // Tests that require an authenticated session
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'tests/e2e/.auth/user.json',
+      },
+      testMatch: /app\.spec\.ts/,
+      dependencies: ['setup'],
+    },
+    // Tests that must run WITHOUT a session (auth flows, redirect checks)
+    {
+      name: 'chromium-no-auth',
+      use: { ...devices['Desktop Chrome'] },
+      testMatch: /(auth|protected)\.spec\.ts/,
+    },
   ],
   webServer: {
     command: 'npm run dev',

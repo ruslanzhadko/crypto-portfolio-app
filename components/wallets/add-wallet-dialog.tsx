@@ -144,13 +144,13 @@ export function AddWalletDialog() {
           {t('triggerButton')}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent data-testid="add-wallet-dialog">
         <DialogHeader>
           <DialogTitle>{t('dialogTitle')}</DialogTitle>
           <DialogDescription>{t('dialogDescription')}</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={onSubmit} className="space-y-4">
+        <form onSubmit={onSubmit} className="space-y-4" data-testid="add-wallet-form">
           <div className="space-y-2">
             <Label>{t('addressTypeLabel')}</Label>
             <div className="grid gap-2 sm:grid-cols-2">
