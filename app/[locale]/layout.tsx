@@ -24,7 +24,7 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'CryptoPortfolio — crypto portfolio monitor',
+  title: 'CryptoPortfolio',
   description: 'Track your crypto portfolio across 8 networks with real-time price analytics.',
 };
 
