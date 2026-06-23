@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import {
   ChevronRight,
   Eye,
@@ -87,6 +88,7 @@ function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
 }
 
 export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceListProps) {
+  const t = useTranslations('TokenBalanceList');
   const [showSpam, setShowSpam] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [localHidden, setLocalHidden] = useState<Record<string, boolean>>({});
@@ -141,12 +143,14 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
       });
       if (!res.ok) {
         setLocalHidden((prev) => ({ ...prev, [token.id]: currentHidden }));
-        toast({ variant: 'destructive', title: 'Не вдалось оновити' });
+        toast({ variant: 'destructive', title: t('toastUpdateFailed') });
         return;
       }
       toast({
-        title: nextHidden ? 'Токен приховано' : 'Токен відображено',
-        description: `${token.tokenSymbol} ${nextHidden ? 'виключено з балансу' : 'включено в баланс'}`,
+        title: nextHidden ? t('toastTokenHidden') : t('toastTokenShown'),
+        description: nextHidden
+          ? t('toastHiddenDesc', { symbol: token.tokenSymbol })
+          : t('toastShownDesc', { symbol: token.tokenSymbol }),
       });
     });
   }
@@ -155,8 +159,8 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
     return (
       <EmptyState
         icon={Coins}
-        title="Токенів не знайдено"
-        description="Натисніть Sync для завантаження балансів з блокчейну."
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
       />
     );
   }
@@ -170,9 +174,9 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
     <Card>
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle>
-          Токени{' '}
+          {t('cardTitle')}{' '}
           <span className="text-sm font-normal text-text-muted">
-            ({groups.length} · {uniqueChainCount} мереж)
+            ({groups.length} · {t('networksCount', { count: uniqueChainCount })})
           </span>
         </CardTitle>
         <div className="flex flex-wrap items-center gap-2">
@@ -188,9 +192,9 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
               className="h-7 gap-1 text-xs"
             >
               {showHidden ? (
-                <><EyeOff className="h-3 w-3" />Сховати приховані ({manuallyHidden.length})</>
+                <><EyeOff className="h-3 w-3" />{t('hideHidden', { count: manuallyHidden.length })}</>
               ) : (
-                <><Eye className="h-3 w-3" />Приховані ({manuallyHidden.length})</>
+                <><Eye className="h-3 w-3" />{t('showHidden', { count: manuallyHidden.length })}</>
               )}
             </Button>
           )}
@@ -203,9 +207,9 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
               className="h-7 gap-1 text-xs"
             >
               {showSpam ? (
-                <><EyeOff className="h-3 w-3" />Сховати спам ({spamTokens.length})</>
+                <><EyeOff className="h-3 w-3" />{t('hideSpam', { count: spamTokens.length })}</>
               ) : (
-                <><Eye className="h-3 w-3" />Спам ({spamTokens.length})</>
+                <><Eye className="h-3 w-3" />{t('showSpam', { count: spamTokens.length })}</>
               )}
             </Button>
           )}
@@ -229,14 +233,14 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
 
         {groups.length === 0 && (
           <p className="px-6 py-8 text-center text-sm text-text-muted">
-            Нічого не відображається.{' '}
+            {t('nothingVisible')}{' '}
             {spamTokens.length > 0 && !showSpam && (
               <button
                 type="button"
                 className="text-primary hover:underline"
                 onClick={() => setShowSpam(true)}
               >
-                Показати спам ({spamTokens.length})
+                {t('showSpamButton', { count: spamTokens.length })}
               </button>
             )}
           </p>
@@ -265,6 +269,7 @@ function TokenGroupRow({
   localHidden: Record<string, boolean>;
   onToggleHide: (token: TokenBalance) => void;
 }) {
+  const t = useTranslations('TokenBalanceList');
   const router = useRouter();
   const [searching, setSearching] = useState(false);
   const isMulti = group.chains.length > 1;
@@ -325,7 +330,7 @@ function TokenGroupRow({
           {isMulti && (
             <span
               className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-muted"
-              title="Кількість мереж"
+              title={t('networkCount')}
             >
               {group.chains.length} мереж
             </span>
@@ -377,7 +382,7 @@ function TokenGroupRow({
           <button
             type="button"
             onClick={onToggleExpand}
-            aria-label={expanded ? 'Згорнути мережі' : 'Розгорнути мережі'}
+            aria-label={expanded ? t('collapseNetworks') : t('expandNetworks')}
             className="flex h-7 w-4 shrink-0 items-center justify-center rounded text-text-muted hover:text-text"
           >
             <ChevronRight
@@ -544,6 +549,7 @@ function RowDropdown({
   onToggleHide: () => void;
   compact?: boolean;
 }) {
+  const t = useTranslations('TokenBalanceList');
   const router = useRouter();
   const [searching, setSearching] = useState(false);
 
@@ -586,7 +592,7 @@ function RowDropdown({
           <DropdownMenuItem asChild>
             <Link href={`/market/${coingeckoId}`}>
               <ExternalLink className="h-4 w-4" />
-              На сторінку токена
+              {t('toMarketPage')}
             </Link>
           </DropdownMenuItem>
         ) : (
@@ -599,7 +605,7 @@ function RowDropdown({
             ) : (
               <ExternalLink className="h-4 w-4" />
             )}
-            Знайти на Market
+            {t('findOnMarket')}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
@@ -609,9 +615,9 @@ function RowDropdown({
           }}
         >
           {isHidden ? (
-            <><Eye className="h-4 w-4" />Показати в балансі</>
+            <><Eye className="h-4 w-4" />{t('showInBalance')}</>
           ) : (
-            <><EyeOff className="h-4 w-4" />Приховати з балансу</>
+            <><EyeOff className="h-4 w-4" />{t('hideFromBalance')}</>
           )}
         </DropdownMenuItem>
       </DropdownMenuContent>

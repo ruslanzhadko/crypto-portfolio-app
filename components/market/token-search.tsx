@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { TokenLogo } from '@/components/common/token-logo';
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils/cn';
 
 export function TokenSearch() {
   const router = useRouter();
+  const t = useTranslations('Market');
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -57,7 +59,7 @@ export function TokenSearch() {
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
-        placeholder="Пошук токену (наприклад: bitcoin)..."
+        placeholder={t('tokenSearchPlaceholder')}
         className="pl-9"
       />
       {loading && (
@@ -66,7 +68,7 @@ export function TokenSearch() {
       {open && query.length >= 2 && (
         <div className="absolute left-0 right-0 top-full z-30 mt-1 max-h-80 overflow-auto rounded-lg border border-border bg-popover shadow-card">
           {results.length === 0 && !loading && (
-            <div className="p-4 text-sm text-text-muted">Нічого не знайдено</div>
+            <div className="p-4 text-sm text-text-muted">{t('tokenSearchEmpty')}</div>
           )}
           {results.map((r) => (
             <button

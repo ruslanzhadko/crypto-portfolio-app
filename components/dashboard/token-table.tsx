@@ -106,23 +106,23 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
               </tr>
             </thead>
             <tbody>
-              {sorted.map((t) => {
-                const isOpen = openTokens.has(t.key);
+              {sorted.map((tok) => {
+                const isOpen = openTokens.has(tok.key);
                 // Приховуємо dust (< $0.01) у розгорнутому вигляді
-                const visibleWallets = t.wallets.filter((w) => w.usdValue >= 0.01);
-                const hiddenCount = t.wallets.length - visibleWallets.length;
+                const visibleWallets = tok.wallets.filter((w) => w.usdValue >= 0.01);
+                const hiddenCount = tok.wallets.length - visibleWallets.length;
                 const groups = groupByWallet(visibleWallets);
                 const hasBreakdown = groups.length > 0;
                 const isMulti = groups.length > 1;
                 return (
-                  <Fragment key={t.key}>
+                  <Fragment key={tok.key}>
                     <tr
                       className={cn(
                         'border-b border-border/60 transition-colors',
                         hasBreakdown && 'cursor-pointer hover:bg-surface-2/50',
                         isOpen && 'bg-surface-2/40',
                       )}
-                      onClick={() => hasBreakdown && toggle(openTokens, setOpenTokens, t.key)}
+                      onClick={() => hasBreakdown && toggle(openTokens, setOpenTokens, tok.key)}
                     >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -137,15 +137,15 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                           ) : (
                             <span aria-hidden className="inline-block w-4" />
                           )}
-                          <TokenLogo src={t.logoUrl} symbol={t.symbol} size={28} />
+                          <TokenLogo src={tok.logoUrl} symbol={tok.symbol} size={28} />
                           <div className="min-w-0">
-                            <p className="font-medium">{t.symbol}</p>
+                            <p className="font-medium">{tok.symbol}</p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">
-                              <span className="truncate">{t.name}</span>
+                              <span className="truncate">{tok.name}</span>
                               {isMulti && (
                                 <span
                                   className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-muted"
-                                  title="Кількість гаманців"
+                                  title={t('countWallets')}
                                 >
                                   <WalletIcon className="h-2.5 w-2.5" aria-hidden />
                                   {groups.length}
@@ -157,29 +157,29 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                       </td>
                       <td className="hidden px-4 py-3 md:table-cell">
                         <div className="flex flex-wrap gap-1">
-                          {t.chains.map((chainName) => (
+                          {tok.chains.map((chainName) => (
                             <ChainBadge key={chainName} chainName={chainName} />
                           ))}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-xs">
-                        {formatTokenBalance(t.totalBalance)}
+                        {formatTokenBalance(tok.totalBalance)}
                       </td>
                       <td className="hidden px-4 py-3 text-right md:table-cell">
-                        {t.currentPrice ? formatUsd(t.currentPrice) : '—'}
+                        {tok.currentPrice ? formatUsd(tok.currentPrice) : '—'}
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
-                        {formatUsd(t.totalUsd)}
+                        {formatUsd(tok.totalUsd)}
                       </td>
                       <td className="hidden px-4 py-3 text-right lg:table-cell">
-                        {t.priceChange24h !== 0 ? (
-                          <PriceChange value={t.priceChange24h} size="sm" />
+                        {tok.priceChange24h !== 0 ? (
+                          <PriceChange value={tok.priceChange24h} size="sm" />
                         ) : (
                           <span className="text-text-muted">—</span>
                         )}
                       </td>
                       <td className="hidden px-4 py-3 text-right text-text-muted md:table-cell">
-                        {t.share.toFixed(1)}%
+                        {tok.share.toFixed(1)}%
                       </td>
                     </tr>
 
@@ -187,9 +187,9 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                       <tr className="border-b border-border/60 bg-surface-2/20">
                         <td colSpan={7} className="px-2 py-3 md:px-4">
                           <WalletBreakdown
-                            tokenKey={t.key}
+                            tokenKey={tok.key}
                             groups={groups}
-                            totalUsd={t.totalUsd}
+                            totalUsd={tok.totalUsd}
                             hiddenCount={hiddenCount}
                             openWallets={openWallets}
                             onToggleWallet={(walletKey) => toggle(openWallets, setOpenWallets, walletKey)}
@@ -295,7 +295,7 @@ function WalletBreakdown({
                 {hasMultipleChains ? (
                   <span
                     className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-muted"
-                    title="Кількість мереж"
+                    title={t('countNetworks')}
                   >
                     <NetworkIcon className="h-2.5 w-2.5" aria-hidden />
                     {g.chains.length}
