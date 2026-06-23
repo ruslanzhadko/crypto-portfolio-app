@@ -62,7 +62,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   console.log(`[telegram/webhook] update_id=${update.update_id} has_message=${!!update.message}`);
 
   const message = update.message;
-  if (!message) return NextResponse.json({ ok: true });
+  if (!message?.chat?.id) return NextResponse.json({ ok: true });
 
   const chatId = message.chat.id;
   const text = message.text?.trim() ?? '';
