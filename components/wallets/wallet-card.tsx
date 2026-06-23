@@ -187,11 +187,20 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         </div>
 
         {/* Value row */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-2xl font-bold tracking-tight">
-              {formatUsd(wallet.totalUsd, { compact: true })}
-            </p>
+        <div className="mt-4 flex items-start justify-between gap-2">
+          <p className="text-2xl font-bold tracking-tight">
+            {formatUsd(wallet.totalUsd, { compact: true })}
+          </p>
+          <div className="flex flex-col items-end gap-1">
+            {wallet.totalUsd > 0 && change24hPct !== undefined && change24hUsd !== undefined && (
+              <div className="flex items-center gap-1.5">
+                <PriceChange value={change24hPct} size="sm" />
+                <span className="text-xs text-text-muted">
+                  {change24hUsd >= 0 ? '+' : ''}
+                  {formatUsd(change24hUsd, { compact: true })}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               {share !== null && (
                 <span className="text-xs text-text-muted">{t('portfolioShare', { share })}</span>
@@ -201,15 +210,6 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
               </Badge>
             </div>
           </div>
-          {wallet.totalUsd > 0 && change24hPct !== undefined && change24hUsd !== undefined && (
-            <div className="mt-1 flex items-center gap-1.5">
-              <PriceChange value={change24hPct} size="sm" />
-              <span className="text-xs text-text-muted">
-                {change24hUsd >= 0 ? '+' : ''}
-                {formatUsd(change24hUsd, { compact: true })}
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Footer: network + sync status */}
