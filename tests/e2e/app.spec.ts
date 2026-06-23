@@ -33,7 +33,7 @@ test.describe('wallets page', () => {
     await page.locator('#address').fill(TEST_ADDRESS);
 
     // Click the submit button inside the dialog (text "Add")
-    await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add' }).click();
+    await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add', exact: true }).click();
 
     // Dialog should close after successful submission
     await expect(page.locator('[data-testid="add-wallet-dialog"]')).not.toBeVisible({
@@ -51,7 +51,7 @@ test.describe('wallets page', () => {
     await expect(page.locator('[data-testid="add-wallet-dialog"]')).toBeVisible();
 
     // Submit without filling in the required address field
-    await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add' }).click();
+    await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add', exact: true }).click();
 
     // Dialog must stay open (browser required validation prevents submission)
     await expect(page.locator('[data-testid="add-wallet-dialog"]')).toBeVisible();
@@ -62,7 +62,7 @@ test.describe('wallets page', () => {
 
     await page.getByRole('button', { name: 'Add wallet' }).click();
     await page.locator('#address').fill('not-an-evm-address');
-    await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add' }).click();
+    await page.locator('[data-testid="add-wallet-form"]').getByRole('button', { name: 'Add', exact: true }).click();
 
     await expect(page.locator('p.text-danger')).toBeVisible({ timeout: 5_000 });
     await expect(page.locator('[data-testid="add-wallet-dialog"]')).toBeVisible();
