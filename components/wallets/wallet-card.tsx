@@ -187,7 +187,7 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         </div>
 
         {/* Value row */}
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="mt-3 flex items-center justify-between gap-2 sm:mt-4">
           <div className="flex items-baseline gap-2">
             <p className="text-xl font-bold tracking-tight">
               {formatUsd(wallet.totalUsd, { compact: true })}
@@ -213,7 +213,7 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         </div>
 
         {/* Footer: network + sync status */}
-        <div className="mt-3 flex items-center justify-between gap-2">
+        <div className="mt-3 flex items-center justify-between gap-2 sm:mt-4">
           <NetworkBadge network={wallet.network} />
           {mounted && (
             <div className="flex items-center gap-1.5" suppressHydrationWarning>

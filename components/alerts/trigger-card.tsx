@@ -154,7 +154,7 @@ function PercentTriggerCard({
           <TriggerMenu isPending={isPending} onDelete={onDelete} />
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm">
+        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:mt-4 sm:gap-2">
           <div>
             <p className="text-xs text-text-muted">{t('thresholdLabel')}</p>
             <p className="font-medium">±{trigger.threshold}%</p>
@@ -173,7 +173,7 @@ function PercentTriggerCard({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-2 sm:mt-4 sm:pt-3">
           <Badge variant={trigger.isActive ? 'success' : 'secondary'}>
             {trigger.isActive ? t('badgeActive') : t('badgeInactive')}
           </Badge>
@@ -241,7 +241,7 @@ function PriceTargetCard({
           <TriggerMenu isPending={isPending} onDelete={onDelete} />
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm">
+        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:mt-4 sm:gap-2">
           <div>
             <p className="text-xs text-text-muted">{t('targetLabel')}</p>
             <p className="font-semibold text-warning">
@@ -266,7 +266,7 @@ function PriceTargetCard({
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-2 sm:mt-4 sm:pt-3">
           {fired ? (
             <Badge variant="warning">{t('badgeFired')}</Badge>
           ) : (
