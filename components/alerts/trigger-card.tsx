@@ -140,11 +140,11 @@ function PercentTriggerCard({
 
   return (
     <Card className="card-gradient">
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Bell className="h-4 w-4" />
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary sm:h-10 sm:w-10">
+              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold">{trigger.tokenSymbol}</p>
@@ -227,11 +227,11 @@ function PriceTargetCard({
 
   return (
     <Card className="card-gradient border-warning/20">
-      <CardContent className="p-4">
+      <CardContent className="p-4 sm:p-5">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
-              <Target className="h-4 w-4" />
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning sm:h-10 sm:w-10">
+              <Target className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold">{trigger.tokenSymbol}</p>
