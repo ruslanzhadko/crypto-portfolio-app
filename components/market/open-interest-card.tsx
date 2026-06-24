@@ -23,13 +23,13 @@ export async function OpenInterestCard({ data, symbol }: Props) {
   const t = await getTranslations('TokenDetail');
 
   const cardBase =
-    'group relative overflow-hidden rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]';
+    'group relative overflow-hidden rounded-xl border border-border bg-surface p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]';
 
   if (!data) {
     return (
       <div className={cardBase}>
         <p className="text-sm font-medium text-text-muted leading-tight">{t('openInterestTitle')}</p>
-        <p className="mt-3 text-[1.75rem] font-bold leading-none text-text-muted">—</p>
+        <p className="mt-3 text-xl sm:text-[1.75rem] font-bold leading-none text-text-muted">—</p>
         <p className="mt-2 text-xs text-text-muted">{t('futuresUnavailable')}</p>
       </div>
     );
@@ -51,7 +51,7 @@ export async function OpenInterestCard({ data, symbol }: Props) {
         </div>
 
         <div className="mt-3 flex items-baseline gap-2 leading-none">
-          <span className="text-[1.75rem] font-bold tracking-tight">
+          <span className="text-xl sm:text-[1.75rem] font-bold tracking-tight">
             {formatUsd(totalUsd, { compact: true })}
           </span>
           {totalChange24hPct !== null && (

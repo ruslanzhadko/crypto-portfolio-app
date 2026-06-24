@@ -78,13 +78,13 @@ export default async function TokenDetailPage({
       </Button>
 
       <Card className="card-gradient">
-        <CardContent className="p-6">
-          <div className="flex items-start gap-4">
-            <TokenLogo src={coin.image} symbol={coin.symbol} size={56} />
+        <CardContent className="p-4 sm:p-6">
+          <div className="flex items-start gap-3 sm:gap-4">
+            <TokenLogo src={coin.image} symbol={coin.symbol} size={48} className="shrink-0" />
             <div className="flex-1 min-w-0">
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <h1 className="text-2xl font-bold md:text-3xl truncate">{coin.name}</h1>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
+                  <h1 className="text-xl font-bold sm:text-3xl truncate">{coin.name}</h1>
                   <span className="rounded-full bg-surface-2 px-2 py-0.5 text-sm font-medium uppercase text-text-muted shrink-0">
                     {coin.symbol}
                   </span>
@@ -92,7 +92,7 @@ export default async function TokenDetailPage({
                     <span className="text-sm text-text-muted shrink-0">#{coin.rank}</span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <CreateTriggerButton
                     tokenId={coin.id}
                     tokenSymbol={coin.symbol}
@@ -101,18 +101,19 @@ export default async function TokenDetailPage({
                   {coin.homepage && (
                     <Button asChild variant="outline" size="sm">
                       <a href={coin.homepage} target="_blank" rel="noreferrer">
-                        {t('websiteButton')} <ExternalLink className="h-3 w-3" />
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{t('websiteButton')}</span>
                       </a>
                     </Button>
                   )}
                 </div>
               </div>
               <div className="mt-2 flex items-baseline gap-3">
-                <span className="text-3xl font-bold">{formatUsd(coin.currentPrice)}</span>
+                <span className="text-2xl font-bold sm:text-3xl">{formatUsd(coin.currentPrice)}</span>
                 <PriceChange value={coin.priceChange24h} />
               </div>
               {coin.description && (
-                <p className="mt-2.5 text-sm text-text-muted line-clamp-2">
+                <p className="mt-2 text-sm text-text-muted line-clamp-2">
                   {coin.description}
                 </p>
               )}
@@ -122,7 +123,7 @@ export default async function TokenDetailPage({
       </Card>
 
       {/* Ряд 1 — ринкові показники */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard
           label={t('statMarketCap')}
           value={coin.marketCap !== null ? formatUsd(coin.marketCap, { compact: true }) : '—'}
@@ -138,29 +139,31 @@ export default async function TokenDetailPage({
               : undefined
           }
         />
-        <div className="group relative overflow-hidden rounded-xl border border-border bg-surface p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]">
+        <div className="col-span-2 lg:col-span-1 group relative overflow-hidden rounded-xl border border-border bg-surface p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <p className="relative text-sm font-medium text-text-muted leading-tight">{t('statRange24h')}</p>
-          <div className="relative mt-3 space-y-1.5">
-            <div className="flex items-center gap-2">
+          <div className="relative mt-3 flex items-center gap-6 sm:block sm:space-y-1.5">
+            <div className="flex items-center gap-1.5">
               <span className="text-base font-semibold text-success">↑</span>
-              <span className="text-[1.75rem] font-bold tabular-nums leading-tight">
+              <span className="text-xl sm:text-[1.75rem] font-bold tabular-nums leading-tight">
                 {coin.high24h !== null ? formatUsd(coin.high24h) : '—'}
               </span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span className="text-base font-semibold text-danger">↓</span>
-              <span className="text-[1.75rem] font-bold tabular-nums leading-tight text-text-muted">
+              <span className="text-xl sm:text-[1.75rem] font-bold tabular-nums leading-tight text-text-muted">
                 {coin.low24h !== null ? formatUsd(coin.low24h) : '—'}
               </span>
             </div>
           </div>
         </div>
-        <OpenInterestCard data={openInterest} symbol={coin.symbol} />
+        <div className="col-span-2 lg:col-span-1">
+          <OpenInterestCard data={openInterest} symbol={coin.symbol} />
+        </div>
       </div>
 
       {/* Ряд 2 — динаміка цін */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard
           label={t('stat1h')}
           value={formatPercent(coin.priceChange1h)}

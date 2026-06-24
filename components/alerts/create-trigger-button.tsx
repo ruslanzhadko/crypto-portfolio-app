@@ -19,10 +19,10 @@ export function CreateTriggerButton({
   const t = useTranslations('Alerts');
   const params = new URLSearchParams({ tokenId, tokenSymbol, tokenName });
   return (
-    <Button asChild>
+    <Button asChild size="sm">
       <Link href={`/alerts/new?${params.toString()}`}>
         <Bell className="h-4 w-4" />
-        {t('createTriggerButton')}
+        <span className="hidden sm:inline">{t('createTriggerButton')}</span>
       </Link>
     </Button>
   );
