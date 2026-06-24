@@ -13,10 +13,10 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
           <table className="w-full text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="px-4 py-3.5 text-left">#</th>
-                <th className="px-4 py-3.5 text-left">Назва</th>
-                <th className="px-5 py-3 text-right">Ціна</th>
-                <th className="hidden px-5 py-3 text-right md:table-cell">24г</th>
+                <th className="px-3 py-3 text-left sm:px-4 sm:py-3.5">#</th>
+                <th className="px-3 py-3 text-left sm:px-4 sm:py-3.5">Назва</th>
+                <th className="px-3 py-3 text-right sm:px-5">Ціна</th>
+                <th className="px-3 py-3 text-right sm:px-5">24г</th>
                 <th className="hidden px-5 py-3 text-right lg:table-cell">7д</th>
                 <th className="hidden px-5 py-3 text-right md:table-cell">Капіталізація</th>
                 <th className="hidden px-5 py-3 text-right lg:table-cell">Обʼєм 24г</th>
@@ -28,23 +28,23 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
                   key={c.id}
                   className="border-b border-border/60 transition-colors hover:bg-surface-2/50"
                 >
-                  <td className="px-4 py-3.5 text-text-muted">{c.market_cap_rank ?? '—'}</td>
-                  <td className="px-4 py-3.5">
+                  <td className="px-3 py-3 text-text-muted sm:px-4 sm:py-3.5">{c.market_cap_rank ?? '—'}</td>
+                  <td className="px-3 py-3 sm:px-4 sm:py-3.5">
                     <Link
                       href={`/market/${c.id}`}
-                      className="flex items-center gap-3"
+                      className="flex items-center gap-2 sm:gap-3"
                     >
-                      <TokenLogo src={c.image} symbol={c.symbol} size={28} />
+                      <TokenLogo src={c.image} symbol={c.symbol} size={32} />
                       <div className="min-w-0">
-                        <p className="truncate font-medium">{c.name}</p>
+                        <p className="truncate text-sm font-semibold sm:text-base">{c.name}</p>
                         <p className="text-xs uppercase text-text-muted">{c.symbol}</p>
                       </div>
                     </Link>
                   </td>
-                  <td className="px-5 py-3 text-right font-mono">
+                  <td className="px-3 py-3 text-right font-mono text-sm sm:px-5 sm:text-base">
                     {formatUsd(c.current_price)}
                   </td>
-                  <td className="hidden px-5 py-3 text-right md:table-cell">
+                  <td className="px-3 py-3 text-right sm:px-5">
                     <PriceChange value={c.price_change_percentage_24h ?? 0} size="sm" />
                   </td>
                   <td className="hidden px-5 py-3 text-right lg:table-cell">

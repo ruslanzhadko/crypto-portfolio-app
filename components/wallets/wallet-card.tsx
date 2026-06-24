@@ -126,15 +126,15 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         style={{ backgroundColor: NETWORK_ACCENT[wallet.network] }}
       />
 
-      <CardContent className="p-5 pl-6">
+      <CardContent className="p-4 pl-5">
         {/* Header row */}
         <div className="flex items-start justify-between gap-2">
           <Link
             href={`/wallets/${wallet.id}`}
             className="flex min-w-0 flex-1 items-center gap-3"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <WalletIcon className="h-5 w-5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <WalletIcon className="h-4 w-4" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-semibold">{wallet.label ?? t('noLabel')}</p>
@@ -187,9 +187,9 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         </div>
 
         {/* Value row */}
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-3 flex items-center justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <p className="text-2xl font-bold tracking-tight">
+            <p className="text-xl font-bold tracking-tight">
               {formatUsd(wallet.totalUsd, { compact: true })}
             </p>
             {wallet.totalUsd > 0 && change24hPct !== undefined && change24hUsd !== undefined && (
@@ -213,7 +213,7 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         </div>
 
         {/* Footer: network + sync status */}
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="mt-3 flex items-center justify-between gap-2">
           <NetworkBadge network={wallet.network} />
           {mounted && (
             <div className="flex items-center gap-1.5" suppressHydrationWarning>
