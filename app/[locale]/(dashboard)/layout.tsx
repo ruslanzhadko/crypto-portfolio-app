@@ -29,7 +29,7 @@ export default async function DashboardLayout({
           name={session!.user.name}
           role={session!.user.role}
         />
-        <main className="flex-1 px-4 pb-20 pt-6 md:px-8 md:pb-8">
+        <main className="flex-1 px-3 pb-20 pt-4 sm:px-4 sm:pt-6 md:px-8 md:pb-8">
           {children}
         </main>
       </div>

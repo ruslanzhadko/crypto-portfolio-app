@@ -24,7 +24,7 @@ export default async function MarketPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+          <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
           <p className="text-sm text-text-muted">{t('pageDescription')}</p>
         </div>
         <div className="w-full md:w-80">

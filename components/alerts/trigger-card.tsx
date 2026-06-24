@@ -140,11 +140,11 @@ function PercentTriggerCard({
 
   return (
     <Card className="card-gradient">
-      <CardContent className="p-5">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Bell className="h-5 w-5" />
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Bell className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold">{trigger.tokenSymbol}</p>
@@ -154,7 +154,7 @@ function PercentTriggerCard({
           <TriggerMenu isPending={isPending} onDelete={onDelete} />
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm">
           <div>
             <p className="text-xs text-text-muted">{t('thresholdLabel')}</p>
             <p className="font-medium">±{trigger.threshold}%</p>
@@ -173,7 +173,7 @@ function PercentTriggerCard({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
           <Badge variant={trigger.isActive ? 'success' : 'secondary'}>
             {trigger.isActive ? t('badgeActive') : t('badgeInactive')}
           </Badge>
@@ -227,11 +227,11 @@ function PriceTargetCard({
 
   return (
     <Card className="card-gradient border-warning/20">
-      <CardContent className="p-5">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10 text-warning">
-              <Target className="h-5 w-5" />
+          <div className="flex items-start gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning">
+              <Target className="h-4 w-4" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold">{trigger.tokenSymbol}</p>
@@ -241,7 +241,7 @@ function PriceTargetCard({
           <TriggerMenu isPending={isPending} onDelete={onDelete} />
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm">
           <div>
             <p className="text-xs text-text-muted">{t('targetLabel')}</p>
             <p className="font-semibold text-warning">
@@ -266,7 +266,7 @@ function PriceTargetCard({
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
           {fired ? (
             <Badge variant="warning">{t('badgeFired')}</Badge>
           ) : (
