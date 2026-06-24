@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { Bot, CheckCircle2, XCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,6 +15,7 @@ interface WebhookInfo {
 }
 
 export function TelegramWebhookCard() {
+  const t = useTranslations('TelegramWebhook');
   const [info, setInfo] = useState<WebhookInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -43,10 +45,10 @@ export function TelegramWebhookCard() {
       const res = await fetch('/api/admin/telegram', { method: 'POST' });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-        toast({ variant: 'destructive', title: 'Помилка', description: body?.error?.message });
+        toast({ variant: 'destructive', title: t('toastErrorTitle'), description: body?.error?.message });
         return;
       }
-      toast({ title: 'Webhook зареєстровано' });
+      toast({ title: t('toastRegistered') });
       void fetchStatus();
     });
   }
@@ -59,7 +61,7 @@ export function TelegramWebhookCard() {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="flex items-center gap-2">
           <Bot className="h-4 w-4" />
-          Telegram Webhook
+          {t('cardTitle')}
         </CardTitle>
         <Button variant="ghost" size="sm" onClick={() => void fetchStatus()} disabled={loading}>
           <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
@@ -68,7 +70,7 @@ export function TelegramWebhookCard() {
       <CardContent className="space-y-3 text-sm">
         <div className="flex items-center gap-2">
           {loading ? (
-            <span className="text-text-muted">Завантаження…</span>
+            <span className="text-text-muted">{t('loading')}</span>
           ) : isActive ? (
             <>
               {hasError ? (
@@ -77,13 +79,13 @@ export function TelegramWebhookCard() {
                 <CheckCircle2 className="h-4 w-4 text-success" />
               )}
               <Badge variant={hasError ? 'danger' : 'success'}>
-                {hasError ? 'Помилка' : 'Активний'}
+                {hasError ? t('statusError') : t('statusActive')}
               </Badge>
             </>
           ) : (
             <>
               <XCircle className="h-4 w-4 text-text-muted" />
-              <Badge variant="secondary">Не зареєстровано</Badge>
+              <Badge variant="secondary">{t('statusNotRegistered')}</Badge>
             </>
           )}
         </div>
@@ -98,7 +100,7 @@ export function TelegramWebhookCard() {
 
         {isActive && (
           <p className="text-xs text-text-muted">
-            Очікує оновлень: {info?.pending_update_count ?? 0}
+            {t('pendingUpdates', { count: info?.pending_update_count ?? 0 })}
           </p>
         )}
 
@@ -113,12 +115,13 @@ export function TelegramWebhookCard() {
           ) : (
             <Bot className="h-3 w-3" />
           )}
-          {isActive ? 'Перереєструвати' : 'Зареєструвати webhook'}
+          {isActive ? t('btnReregister') : t('btnRegister')}
         </Button>
 
         {!isActive && (
           <p className="text-xs text-text-muted">
-            Потрібні змінні: <code className="text-primary">TELEGRAM_BOT_TOKEN</code>,{' '}
+            {t('envVarsPrefix')}{' '}
+            <code className="text-primary">TELEGRAM_BOT_TOKEN</code>,{' '}
             <code className="text-primary">TELEGRAM_WEBHOOK_SECRET</code>,{' '}
             <code className="text-primary">NEXT_PUBLIC_APP_URL</code> (HTTPS)
           </p>

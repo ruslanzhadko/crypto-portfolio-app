@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, FileText, ExternalLink } from 'lucide-react';
 import { ChainBadge } from '@/components/common/network-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,19 +52,20 @@ function explorerUrl(chainName: string, hash: string): string | null {
   return base ? `${base}${hash}` : null;
 }
 
-const TX_META: Record<string, { label: string; icon: typeof ArrowDownLeft; color: string; bg: string }> = {
-  receive:  { label: 'Отримання',    icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
-  send:     { label: 'Відправлення', icon: ArrowUpRight,   color: 'text-danger',     bg: 'bg-danger/10'   },
-  swap:     { label: 'Своп',         icon: ArrowLeftRight, color: 'text-primary',    bg: 'bg-primary/10'  },
-  transfer: { label: 'Переказ',      icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
-  contract: { label: 'Контракт',     icon: FileText,       color: 'text-text-muted', bg: 'bg-surface-2'   },
+const TX_STYLE: Record<string, { icon: typeof ArrowDownLeft; color: string; bg: string }> = {
+  receive:  { icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
+  send:     { icon: ArrowUpRight,   color: 'text-danger',     bg: 'bg-danger/10'   },
+  swap:     { icon: ArrowLeftRight, color: 'text-primary',    bg: 'bg-primary/10'  },
+  transfer: { icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
+  contract: { icon: FileText,       color: 'text-text-muted', bg: 'bg-surface-2'   },
 };
 
-function getTxMeta(type: string, isOutgoing: boolean) {
-  return TX_META[type] ?? (isOutgoing ? TX_META.send! : TX_META.receive!);
+function getTxStyle(type: string, isOutgoing: boolean) {
+  return TX_STYLE[type] ?? (isOutgoing ? TX_STYLE.send! : TX_STYLE.receive!);
 }
 
 export function TransactionList({ walletId, walletAddress }: TransactionListProps) {
+  const t = useTranslations('TransactionList');
   const [items, setItems] = useState<TransactionDTO[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
     const url = `/api/wallets/${walletId}/transactions?pageSize=20${token ? `&pageToken=${token}` : ''}`;
     const res = await fetch(url);
     if (!res.ok) {
-      setError('Не вдалось завантажити транзакції');
+      setError(t('errorLoad'));
       return;
     }
     const payload = (await res.json()) as {
@@ -86,7 +88,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
       nextPageToken?: string;
       hasMore: boolean;
     };
-    if (!payload?.transactions) { setError('Помилка відповіді'); return; }
+    if (!payload?.transactions) { setError(t('errorResponse')); return; }
 
     setItems(payload.transactions);
     setHasMore(payload.hasMore ?? false);
@@ -94,7 +96,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
     if (payload.nextPageToken && !pageTokensRef.current[idx + 1]) {
       pageTokensRef.current[idx + 1] = payload.nextPageToken;
     }
-  }, [walletId]);
+  }, [walletId, t]);
 
   useEffect(() => { void load(pageIdx); }, [load, pageIdx]);
 
@@ -114,6 +116,14 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
 
   const normalizedSelf = walletAddress.toLowerCase();
 
+  const txLabels: Record<string, string> = {
+    receive: t('txReceive'),
+    send: t('txSend'),
+    swap: t('txSwap'),
+    transfer: t('txTransfer'),
+    contract: t('txContract'),
+  };
+
   if (error) {
     return (
       <Card>
@@ -125,7 +135,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
   if (items === null) {
     return (
       <Card>
-        <CardHeader><CardTitle>Транзакції</CardTitle></CardHeader>
+        <CardHeader><CardTitle>{t('cardTitle')}</CardTitle></CardHeader>
         <CardContent className="space-y-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-14 rounded-md" />
@@ -143,8 +153,8 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
     return (
       <EmptyState
         icon={FileText}
-        title="Транзакції відсутні"
-        description="Можливо, у цьому гаманці ще не було активності або токенів на балансі."
+        title={t('emptyTitle')}
+        description={t('emptyDescription')}
       />
     );
   }
@@ -152,7 +162,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Транзакції</CardTitle>
+        <CardTitle>{t('cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
@@ -160,8 +170,9 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
             if (!tx.tokenSymbol && (!tx.value || tx.value <= 0)) return null;
 
             const isOutgoing = tx.fromAddress?.toLowerCase() === normalizedSelf && tx.type !== 'receive';
-            const meta = getTxMeta(tx.type, isOutgoing);
+            const meta = getTxStyle(tx.type, isOutgoing);
             const Icon = meta.icon;
+            const label = txLabels[tx.type] ?? (isOutgoing ? txLabels.send : txLabels.receive);
             const isSwap = tx.type === 'swap';
             const isFailed = tx.status !== 'success';
 
@@ -187,7 +198,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-base font-semibold">{meta.label}</p>
+                    <p className="text-base font-semibold">{label}</p>
                     {tx.tokenSymbol && (
                       <span className={cn(
                         'rounded-md px-2 py-0.5 text-sm font-medium',
@@ -250,12 +261,12 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
           <div className="flex items-center justify-between border-t border-border p-4">
             <Button variant="outline" size="sm" disabled={pageIdx === 0}
               onClick={() => setPageIdx((p) => Math.max(0, p - 1))}>
-              Попередня
+              {t('prevPage')}
             </Button>
-            <span className="text-xs text-text-muted">Стор. {pageIdx + 1}</span>
+            <span className="text-xs text-text-muted">{t('pageLabel', { page: pageIdx + 1 })}</span>
             <Button variant="outline" size="sm" disabled={!hasMore}
               onClick={() => setPageIdx((p) => p + 1)}>
-              Наступна
+              {t('nextPage')}
             </Button>
           </div>
         )}

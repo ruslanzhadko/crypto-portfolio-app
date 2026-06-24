@@ -34,7 +34,7 @@ export function StatCard({
     <div
       className={cn(
         'group relative overflow-hidden rounded-xl border border-border bg-surface',
-        'p-5 transition-all duration-200',
+        'p-3 sm:p-5 transition-all duration-200',
         href && 'cursor-pointer',
         'hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]',
         className,
@@ -57,7 +57,7 @@ export function StatCard({
         )}
       </div>
 
-      <p className={cn('relative mt-3 text-[1.75rem] font-bold tracking-tight leading-none', valueClassName)}>
+      <p className={cn('relative mt-3 text-xl sm:text-[1.75rem] font-bold tracking-tight leading-none', valueClassName)}>
         {value}
       </p>
 

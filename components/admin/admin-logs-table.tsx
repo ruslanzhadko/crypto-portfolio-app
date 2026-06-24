@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Bell } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -8,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PriceChange } from '@/components/common/price-change';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
-import { useLocale } from 'next-intl';
 
 interface LogDTO {
   id: string;
@@ -24,6 +24,7 @@ interface LogDTO {
 type StatusFilter = 'all' | 'sent' | 'failed';
 
 export function AdminLogsTable() {
+  const t = useTranslations('AdminLogsTable');
   const locale = useLocale();
   const [items, setItems] = useState<LogDTO[] | null>(null);
   const [page, setPage] = useState(1);
@@ -56,9 +57,9 @@ export function AdminLogsTable() {
   }, [load]);
 
   const filterButtons: { label: string; value: StatusFilter }[] = [
-    { label: 'Всі', value: 'all' },
-    { label: 'Успішні', value: 'sent' },
-    { label: 'Невдалі', value: 'failed' },
+    { label: t('filterAll'), value: 'all' },
+    { label: t('filterSent'), value: 'sent' },
+    { label: t('filterFailed'), value: 'failed' },
   ];
 
   return (
@@ -78,7 +79,7 @@ export function AdminLogsTable() {
           </Button>
         ))}
         {total > 0 && (
-          <span className="ml-auto text-xs text-text-muted">{total} записів</span>
+          <span className="ml-auto text-xs text-text-muted">{t('totalRecords', { count: total })}</span>
         )}
       </div>
 
@@ -93,20 +94,20 @@ export function AdminLogsTable() {
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 p-12 text-text-muted">
               <Bell className="h-8 w-8 opacity-40" />
-              <p className="text-sm">Сповіщень не знайдено</p>
+              <p className="text-sm">{t('emptyTitle')}</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-xs uppercase text-text-muted">
                   <tr>
-                    <th className="px-4 py-3 text-left">Токен</th>
-                    <th className="hidden px-4 py-3 text-left md:table-cell">Користувач</th>
+                    <th className="px-4 py-3 text-left">{t('colToken')}</th>
+                    <th className="hidden px-4 py-3 text-left md:table-cell">{t('colUser')}</th>
                     <th className="px-4 py-3 text-right">Δ%</th>
-                    <th className="hidden px-4 py-3 text-right md:table-cell">Ціна</th>
-                    <th className="px-4 py-3 text-left">Статус</th>
-                    <th className="hidden px-4 py-3 text-left lg:table-cell">Повідомлення</th>
-                    <th className="px-4 py-3 text-right">Час</th>
+                    <th className="hidden px-4 py-3 text-right md:table-cell">USD</th>
+                    <th className="px-4 py-3 text-left">{t('colStatus')}</th>
+                    <th className="hidden px-4 py-3 text-left lg:table-cell">{t('colMessage')}</th>
+                    <th className="px-4 py-3 text-right">{t('colTime')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -130,7 +131,7 @@ export function AdminLogsTable() {
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant={log.status === 'sent' ? 'success' : 'danger'}>
-                          {log.status === 'sent' ? 'Надіслано' : 'Помилка'}
+                          {log.status === 'sent' ? t('statusSent') : t('statusFailed')}
                         </Badge>
                       </td>
                       <td className="hidden max-w-[200px] px-4 py-3 lg:table-cell">
@@ -156,10 +157,10 @@ export function AdminLogsTable() {
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Попередня
+            {t('prevPage')}
           </Button>
           <span className="text-xs text-text-muted">
-            Стор. {page} з {totalPages}
+            {t('pageOf', { page, total: totalPages })}
           </span>
           <Button
             variant="outline"
@@ -167,7 +168,7 @@ export function AdminLogsTable() {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
-            Наступна
+            {t('nextPage')}
           </Button>
         </div>
       )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useTransition } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { Loader2, Search, ShieldOff, ShieldCheck, Trash2, UserCog } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { formatRelative } from '@/lib/utils/format';
-import { useLocale } from 'next-intl';
 
 interface UserDTO {
   id: string;
@@ -23,6 +23,7 @@ interface UserDTO {
 }
 
 export function UsersTable() {
+  const t = useTranslations('AdminUsersTable');
   const locale = useLocale();
   const [users, setUsers] = useState<UserDTO[] | null>(null);
   const [search, setSearch] = useState('');
@@ -67,15 +68,15 @@ export function UsersTable() {
         const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
         toast({
           variant: 'destructive',
-          title: 'Помилка',
-          description: data?.error?.message ?? 'Щось пішло не так',
+          title: t('toastErrorTitle'),
+          description: data?.error?.message ?? t('toastErrorDefault'),
         });
         return false;
       }
       toast({ title: successMsg });
       return true;
     } catch {
-      toast({ variant: 'destructive', title: 'Помилка мережі', description: 'Спробуйте ще раз.' });
+      toast({ variant: 'destructive', title: t('toastNetworkError'), description: t('toastNetworkErrorDesc') });
       return false;
     }
   }
@@ -85,7 +86,7 @@ export function UsersTable() {
       const ok = await patch(
         user.id,
         { isBlocked: !user.isBlocked },
-        user.isBlocked ? 'Акаунт розблоковано' : 'Акаунт заблоковано',
+        user.isBlocked ? t('toastUnblocked') : t('toastBlocked'),
       );
       if (ok) void load();
     });
@@ -95,7 +96,9 @@ export function UsersTable() {
     const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
     if (
       !confirm(
-        `${newRole === 'ADMIN' ? 'Підвищити' : 'Понизити'} ${user.email} до ролі ${newRole}?`,
+        newRole === 'ADMIN'
+          ? t('confirmPromote', { email: user.email })
+          : t('confirmDemote', { email: user.email }),
       )
     )
       return;
@@ -103,24 +106,22 @@ export function UsersTable() {
       const ok = await patch(
         user.id,
         { role: newRole },
-        `Роль змінено на ${newRole}`,
+        t('toastRoleChanged', { role: newRole }),
       );
       if (ok) void load();
     });
   }
 
   function onDelete(user: UserDTO) {
-    if (
-      !confirm(`Видалити ${user.email}? Усі дані буде видалено каскадно.`)
-    )
+    if (!confirm(t('confirmDelete', { email: user.email })))
       return;
     startTransition(async () => {
       const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        toast({ variant: 'destructive', title: 'Не вдалось видалити' });
+        toast({ variant: 'destructive', title: t('toastDeleteFailed') });
         return;
       }
-      toast({ title: 'Користувача видалено' });
+      toast({ title: t('toastDeleted') });
       void load();
     });
   }
@@ -130,7 +131,7 @@ export function UsersTable() {
       <div className="relative max-w-md">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
         <Input
-          placeholder="Пошук за email або імʼям..."
+          placeholder={t('searchPlaceholder')}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
@@ -149,19 +150,19 @@ export function UsersTable() {
               ))}
             </div>
           ) : users.length === 0 ? (
-            <p className="p-6 text-sm text-text-muted">Користувачів не знайдено.</p>
+            <p className="p-6 text-sm text-text-muted">{t('notFound')}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-border text-xs uppercase text-text-muted">
                   <tr>
                     <th className="px-4 py-3 text-left">Email</th>
-                    <th className="hidden px-4 py-3 text-left md:table-cell">Імʼя</th>
-                    <th className="px-4 py-3 text-left">Роль</th>
-                    <th className="hidden px-4 py-3 text-center md:table-cell">Гаманці</th>
-                    <th className="hidden px-4 py-3 text-center md:table-cell">Тригери</th>
-                    <th className="hidden px-4 py-3 text-left lg:table-cell">Реєстрація</th>
-                    <th className="px-4 py-3 text-right">Дії</th>
+                    <th className="hidden px-4 py-3 text-left md:table-cell">{t('colName')}</th>
+                    <th className="px-4 py-3 text-left">{t('colRole')}</th>
+                    <th className="hidden px-4 py-3 text-center md:table-cell">{t('colWallets')}</th>
+                    <th className="hidden px-4 py-3 text-center md:table-cell">{t('colTriggers')}</th>
+                    <th className="hidden px-4 py-3 text-left lg:table-cell">{t('colRegistered')}</th>
+                    <th className="px-4 py-3 text-right">{t('colActions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -201,8 +202,8 @@ export function UsersTable() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            title={u.role === 'ADMIN' ? 'Понизити до USER' : 'Підвищити до ADMIN'}
-                            aria-label={u.role === 'ADMIN' ? 'Понизити до USER' : 'Підвищити до ADMIN'}
+                            title={u.role === 'ADMIN' ? t('btnDemote') : t('btnPromote')}
+                            aria-label={u.role === 'ADMIN' ? t('btnDemote') : t('btnPromote')}
                             onClick={() => onToggleRole(u)}
                             disabled={isPending}
                           >
@@ -213,7 +214,7 @@ export function UsersTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                aria-label={u.isBlocked ? 'Розблокувати' : 'Заблокувати'}
+                                aria-label={u.isBlocked ? t('btnUnblock') : t('btnBlock')}
                                 onClick={() => onToggleBlock(u)}
                                 disabled={isPending}
                               >
@@ -223,13 +224,13 @@ export function UsersTable() {
                                   <ShieldOff className="h-4 w-4 text-warning" />
                                 )}
                                 <span className="hidden md:inline">
-                                  {u.isBlocked ? 'Розблокувати' : 'Заблокувати'}
+                                  {u.isBlocked ? t('btnUnblock') : t('btnBlock')}
                                 </span>
                               </Button>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                aria-label="Видалити користувача"
+                                aria-label={t('btnDeleteAria')}
                                 onClick={() => onDelete(u)}
                                 disabled={isPending}
                                 className="text-danger hover:text-danger"
@@ -257,10 +258,10 @@ export function UsersTable() {
             disabled={page <= 1 || isPending}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
-            Попередня
+            {t('prevPage')}
           </Button>
           <span className="text-xs text-text-muted">
-            Стор. {page} з {totalPages}
+            {t('pageOf', { page, total: totalPages })}
             {isPending && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
           </span>
           <Button
@@ -269,7 +270,7 @@ export function UsersTable() {
             disabled={page >= totalPages || isPending}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
-            Наступна
+            {t('nextPage')}
           </Button>
         </div>
       )}
