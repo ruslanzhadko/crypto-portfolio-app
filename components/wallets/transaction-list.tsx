@@ -96,7 +96,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
     if (payload.nextPageToken && !pageTokensRef.current[idx + 1]) {
       pageTokensRef.current[idx + 1] = payload.nextPageToken;
     }
-  }, [walletId]);
+  }, [walletId, t]);
 
   useEffect(() => { void load(pageIdx); }, [load, pageIdx]);
 
