@@ -61,7 +61,7 @@ export default async function DashboardPage() {
   if (overview.walletCount === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+        <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
         <EmptyState
           icon={Wallet}
           title={t('emptyTitle')}
@@ -78,7 +78,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+      <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
       <DashboardSections
         overview={overview}
         wallets={walletDtos}
