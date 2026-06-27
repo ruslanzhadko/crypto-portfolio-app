@@ -408,6 +408,7 @@
     "nothingVisible": "Нічого не відображається.",
     "showSpamButton": "Показати спам ({count})",
     "networkCount": "Кількість мереж",
+    "networkCountBadge": "{count} мереж",
     "collapseNetworks": "Згорнути мережі",
     "expandNetworks": "Розгорнути мережі",
     "toMarketPage": "На сторінку токена",

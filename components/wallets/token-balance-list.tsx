@@ -332,7 +332,7 @@ function TokenGroupRow({
               className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-muted"
               title={t('networkCount')}
             >
-              {group.chains.length} мереж
+              {t('networkCountBadge', { count: group.chains.length })}
             </span>
           )}
         </div>

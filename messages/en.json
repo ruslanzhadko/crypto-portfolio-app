@@ -408,6 +408,7 @@
     "nothingVisible": "Nothing to show.",
     "showSpamButton": "Show spam ({count})",
     "networkCount": "Network count",
+    "networkCountBadge": "{count} networks",
     "collapseNetworks": "Collapse networks",
     "expandNetworks": "Expand networks",
     "toMarketPage": "Go to token page",

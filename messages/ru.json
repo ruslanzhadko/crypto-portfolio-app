@@ -408,6 +408,7 @@
     "nothingVisible": "Ничего не отображается.",
     "showSpamButton": "Показать спам ({count})",
     "networkCount": "Количество сетей",
+    "networkCountBadge": "{count} сетей",
     "collapseNetworks": "Свернуть сети",
     "expandNetworks": "Развернуть сети",
     "toMarketPage": "На страницу токена",
