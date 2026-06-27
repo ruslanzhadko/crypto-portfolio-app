@@ -13,10 +13,14 @@ interface NetworkAllocationProps {
   chains: ChainAllocation[];
 }
 
+const MIN_CHAIN_USD = 0.05;
+
 export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
   const t = useTranslations('NetworkAllocationChart');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+
+  const visibleChains = chains.filter((c) => c.totalUsd >= MIN_CHAIN_USD);
 
   return (
     <Card>
@@ -24,14 +28,14 @@ export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
         <CardTitle>{t('cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="h-[280px]">
-        {chains.length === 0 ? (
+        {visibleChains.length === 0 ? (
           <p className="text-sm text-text-muted">{t('noData')}</p>
         ) : !mounted ? (
           <div className="h-full animate-pulse rounded-lg bg-surface-2" />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
-              data={chains}
+              data={visibleChains}
               layout="vertical"
               margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
             >
@@ -48,7 +52,7 @@ export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
                 cursor={{ fill: 'rgba(108,99,255,0.08)' }}
               />
               <Bar dataKey="totalUsd" radius={[0, 6, 6, 0]}>
-                {chains.map((c, i) => (
+                {visibleChains.map((c, i) => (
                   <Cell key={i} fill={c.color} />
                 ))}
               </Bar>
