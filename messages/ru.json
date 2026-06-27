@@ -496,7 +496,7 @@
     "envVarsPrefix": "Необходимые переменные:"
   },
   "NetworkBadge": {
-    "evm": "EVM (7 сетей)",
+    "evm": "EVM (8 сетей)",
     "solana": "Solana"
   },
   "Landing": {
