@@ -45,7 +45,7 @@ export function isValidSolanaAddress(address: string): boolean {
 
 export function isValidAddressForNetwork(address: string, network: Network): boolean {
   if (network === Network.SOLANA) return isValidSolanaAddress(address);
-  return isValidEvmAddress(address); // EVM — одна адреса для всіх 7 мереж
+  return isValidEvmAddress(address); // EVM — одна адреса для всіх 8 мереж
 }
 
 export const walletCreateSchema = z

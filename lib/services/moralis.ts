@@ -119,7 +119,7 @@ export interface NormalizedTransaction {
 }
 
 // ─────────────────────────────────────────
-// EVM — один запит на кожну з 7 мереж
+// EVM — один запит на кожну з 8 мереж
 // ─────────────────────────────────────────
 
 interface EvmTokenItem {
@@ -480,7 +480,7 @@ async function fetchSolanaTransactions(
 // ─────────────────────────────────────────
 
 /**
- * Для EVM — паралельно запитуємо всі 7 мереж по одній адресі.
+ * Для EVM — паралельно запитуємо всі 8 мереж по одній адресі.
  * Для SOLANA — окремий ендпоінт.
  */
 export async function fetchWalletTokens(
@@ -491,7 +491,7 @@ export async function fetchWalletTokens(
     return fetchSolanaTokens(address).catch(() => []);
   }
 
-  // EVM: всі 7 ланцюгів паралельно
+  // EVM: всі 8 ланцюгів паралельно
   const chainResults = await Promise.allSettled(
     EVM_CHAINS.map((chain) => fetchOneEvmChain(address, chain)),
   );
@@ -512,7 +512,7 @@ export async function fetchWalletTransactions(
     return fetchSolanaTransactions(address, limitPerChain);
   }
 
-  // EVM: транзакції з усіх 7 ланцюгів, сортуємо по timestamp
+  // EVM: транзакції з усіх 8 ланцюгів, сортуємо по timestamp
   const chainResults = await Promise.allSettled(
     EVM_CHAINS.map((chain) =>
       fetchEvmTransactionsForChain(address, chain, limitPerChain),

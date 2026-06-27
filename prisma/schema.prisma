@@ -89,7 +89,7 @@ model Wallet {
   id         String    @id @default(cuid())
   userId     String
   address    String
-  network    Network   // EVM = одна адреса для всіх 7 EVM-мереж; SOLANA = окремо
+  network    Network   // EVM = одна адреса для всіх 8 EVM-мереж; SOLANA = окремо
   label      String?
   isActive   Boolean   @default(true)
   lastSyncAt DateTime?
@@ -104,7 +104,7 @@ model Wallet {
   @@index([userId])
 }
 
-// EVM — одна адреса покриває всі EVM-мережі (Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche)
+// EVM — одна адреса покриває всі EVM-мережі (Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer)
 // SOLANA — окремо
 enum Network {
   EVM
@@ -120,7 +120,7 @@ model TokenBalance {
   walletId     String
   tokenSymbol  String
   tokenName    String
-  // chainName — конкретна блокчейн-мережа: "ethereum","bsc","polygon","arbitrum","optimism","base","avalanche","solana"
+  // chainName — конкретна блокчейн-мережа: "ethereum","bsc","polygon","arbitrum","optimism","base","avalanche","xlayer","solana"
   chainName    String   @default("")
   tokenAddress String   @default("") // "" для нативних токенів
   decimals     Int      @default(18)
