@@ -317,11 +317,11 @@ function TokenGroupRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-medium">{group.symbol}</span>
-          {hasMarket ? (
-            <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />
-          ) : searching ? (
+          {searching ? (
             <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary/70" />
-          ) : null}
+          ) : (
+            <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />
+          )}
           {isLowValue && (
             <Badge variant="secondary" className="text-[10px]">
               {'< '}${MIN_TOKEN_USD}
