@@ -280,7 +280,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
             <p className="mt-2 text-base text-text-muted">{t('faqSubtitle')}</p>
           </div>
           <Card className="card-gradient">
-            <CardContent className="p-6">
+            <CardContent className="p-6 pt-6 sm:pt-6">
               <LandingFaq items={faqs} />
             </CardContent>
           </Card>
