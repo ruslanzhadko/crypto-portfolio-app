@@ -139,7 +139,7 @@ export default async function TokenDetailPage({
               : undefined
           }
         />
-        <div className="col-span-2 lg:col-span-1 group relative overflow-hidden rounded-xl border border-border bg-surface p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]">
+        <div className="col-span-2 lg:col-span-1 group relative overflow-hidden rounded-xl border border-border bg-surface flex flex-col justify-center p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]">
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
           <p className="relative text-sm font-medium text-text-muted leading-tight">{t('statRange24h')}</p>
           <div className="relative mt-3 flex items-center gap-6 sm:block sm:space-y-1.5">
