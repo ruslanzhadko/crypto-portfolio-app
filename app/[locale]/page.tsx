@@ -109,14 +109,9 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((step) => (
             <Card key={step.num} className="card-gradient">
-              <CardContent className="p-6">
-                <div className="relative mb-5">
-                  <span className="absolute -left-1 -top-1 select-none text-5xl font-black leading-none text-primary/5">
-                    {step.num}
-                  </span>
-                  <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-                    <step.icon className="h-6 w-6 text-primary" />
-                  </div>
+              <CardContent className="p-6 pt-6 sm:pt-6">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+                  <step.icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-semibold">{step.title}</h3>
                 <p className="mt-2 text-base leading-relaxed text-text-muted">{step.desc}</p>
@@ -179,7 +174,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
             <Card key={f.title} className="card-gradient">
-              <CardContent className="p-6">
+              <CardContent className="p-6 pt-6 sm:pt-6">
                 <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <f.icon className="h-5 w-5" />
                 </div>
