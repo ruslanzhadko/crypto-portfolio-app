@@ -197,7 +197,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('networksTitle')}</h2>
           <p className="mt-2 text-base text-text-muted">{t('networksSubtitle')}</p>
         </div>
-        <div className="mx-auto grid max-w-3xl grid-cols-4 gap-3 sm:grid-cols-8">
+        <div className="mx-auto grid max-w-5xl grid-cols-3 gap-3 sm:grid-cols-9">
           {ALL_CHAINS.map((chain) => (
             <div
               key={chain.chainName}
