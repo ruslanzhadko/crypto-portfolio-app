@@ -124,9 +124,9 @@ export const EVM_CHAINS: ChainInfo[] = [
     moralisId: 'xlayer',
     coingeckoPlatform: null,
     coingeckoNativeId: 'okb',
-    nativeLogoUrl: 'https://assets.coingecko.com/coins/images/4463/small/okb_token.png',
-    chainLogoUrl: 'https://assets.coingecko.com/coins/images/4463/small/okb_token.png',
-    color: '#f97316',
+    nativeLogoUrl: 'https://icons.llamao.fi/icons/chains/rsz_xlayer.jpg',
+    chainLogoUrl: 'https://icons.llamao.fi/icons/chains/rsz_xlayer.jpg',
+    color: '#ffffff',
     network: Network.EVM,
   },
 ];
