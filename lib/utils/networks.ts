@@ -116,6 +116,19 @@ export const EVM_CHAINS: ChainInfo[] = [
     color: '#e84142',
     network: Network.EVM,
   },
+  {
+    chainName: 'xlayer',
+    displayName: 'X Layer',
+    symbol: 'OKB',
+    chainId: '0xc4',
+    moralisId: 'xlayer',
+    coingeckoPlatform: null,
+    coingeckoNativeId: 'okb',
+    nativeLogoUrl: '/okx-logo-black-and-white.png',
+    chainLogoUrl: '/okx-logo-black-and-white.png',
+    color: '#ffffff',
+    network: Network.EVM,
+  },
 ];
 
 export const SOLANA_CHAIN: ChainInfo = {

@@ -45,6 +45,7 @@ const EXPLORER: Record<string, string> = {
   optimism: 'https://optimistic.etherscan.io/tx/',
   base:     'https://basescan.org/tx/',
   solana:   'https://solscan.io/tx/',
+  xlayer:   'https://explorer.xlayer.xyz/tx/',
 };
 
 function explorerUrl(chainName: string, hash: string): string | null {

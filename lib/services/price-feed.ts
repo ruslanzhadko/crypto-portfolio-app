@@ -82,6 +82,7 @@ const DEXSCREENER_CHAIN_ID: Record<string, string> = {
   base: 'base',
   avalanche: 'avalanche',
   solana: 'solana',
+  xlayer: 'xlayer',
 };
 
 // ──────────────────────────────────────────────────────────────

@@ -18,6 +18,7 @@ const ANKR_CHAINS = [
   'arbitrum',
   'optimism',
   'base',
+  'xlayer',
 ] as const;
 
 // Ankr blockchain name → наш внутрішній chainName
@@ -29,6 +30,7 @@ const ANKR_TO_CHAIN: Record<string, string> = {
   arbitrum: 'arbitrum',
   optimism: 'optimism',
   base: 'base',
+  xlayer: 'xlayer',
 };
 
 // Канонічна інформація про нативний токен кожного ланцюга.
@@ -41,6 +43,7 @@ const NATIVE_INFO: Record<string, { symbol: string; name: string }> = {
   arbitrum: { symbol: 'ETH', name: 'Arbitrum' },
   optimism: { symbol: 'ETH', name: 'Optimism' },
   base: { symbol: 'ETH', name: 'Base' },
+  xlayer: { symbol: 'OKB', name: 'X Layer' },
 };
 
 function getEndpoint(): string {
