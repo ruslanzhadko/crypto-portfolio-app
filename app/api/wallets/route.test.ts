@@ -1,3 +1,4 @@
+import type { Session } from 'next-auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Network } from '@prisma/client';
 
@@ -20,10 +21,11 @@ import { auth } from '@/lib/auth';
 const mockFindMany = vi.mocked(prisma.wallet.findMany);
 const mockFindUnique = vi.mocked(prisma.wallet.findUnique);
 const mockCreate = vi.mocked(prisma.wallet.create);
-const mockAuth = vi.mocked(auth);
+// Select the zero-argument server-session overload, not the middleware overload.
+const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
-const AUTHED_SESSION = { user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
-const BLOCKED_SESSION = { user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: true } };
+const AUTHED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
+const BLOCKED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: true } };
 
 const EVM_ADDRESS = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
 const SOL_ADDRESS = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
@@ -54,7 +56,7 @@ function makeWallet(overrides = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue(AUTHED_SESSION as never);
+  mockAuth.mockResolvedValue(AUTHED_SESSION);
   mockFindMany.mockResolvedValue([]);
   mockFindUnique.mockResolvedValue(null);
   mockCreate.mockResolvedValue({ id: 'w1', address: EVM_ADDRESS.toLowerCase(), network: Network.EVM } as never);
@@ -102,7 +104,7 @@ describe('GET /api/wallets', () => {
   });
 
   it('blocked user → 403 FORBIDDEN', async () => {
-    mockAuth.mockResolvedValue(BLOCKED_SESSION as never);
+    mockAuth.mockResolvedValue(BLOCKED_SESSION);
 
     const res = await GET();
     expect(res.status).toBe(403);
@@ -194,7 +196,7 @@ describe('POST /api/wallets', () => {
   });
 
   it('blocked user → 403, no DB write', async () => {
-    mockAuth.mockResolvedValue(BLOCKED_SESSION as never);
+    mockAuth.mockResolvedValue(BLOCKED_SESSION);
 
     const res = await POST(postRequest({ address: EVM_ADDRESS, network: 'EVM' }) as never);
 

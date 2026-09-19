@@ -1,3 +1,4 @@
+import type { Session } from 'next-auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/db/prisma', () => ({
@@ -17,10 +18,11 @@ import { auth } from '@/lib/auth';
 
 const mockFindFirst = vi.mocked(prisma.wallet.findFirst);
 const mockDelete = vi.mocked(prisma.wallet.delete);
-const mockAuth = vi.mocked(auth);
+// Select the zero-argument server-session overload, not the middleware overload.
+const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
-const AUTHED_SESSION = { user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
-const BLOCKED_SESSION = { user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: true } };
+const AUTHED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
+const BLOCKED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: true } };
 
 const PARAMS = { params: { id: 'w1' } };
 
@@ -46,7 +48,7 @@ const WALLET_WITH_BALANCES = {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockAuth.mockResolvedValue(AUTHED_SESSION as never);
+  mockAuth.mockResolvedValue(AUTHED_SESSION);
   mockFindFirst.mockResolvedValue(null);
   mockDelete.mockResolvedValue({ id: 'w1' } as never);
 });
@@ -109,7 +111,7 @@ describe('GET /api/wallets/[id]', () => {
   });
 
   it('blocked user → 403 FORBIDDEN', async () => {
-    mockAuth.mockResolvedValue(BLOCKED_SESSION as never);
+    mockAuth.mockResolvedValue(BLOCKED_SESSION);
 
     const res = await GET(new Request('http://localhost'), PARAMS);
 
@@ -184,7 +186,7 @@ describe('DELETE /api/wallets/[id]', () => {
   });
 
   it('blocked user → 403, delete not called', async () => {
-    mockAuth.mockResolvedValue(BLOCKED_SESSION as never);
+    mockAuth.mockResolvedValue(BLOCKED_SESSION);
 
     const res = await DELETE(new Request('http://localhost'), PARAMS);
 

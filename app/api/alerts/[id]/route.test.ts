@@ -1,3 +1,4 @@
+import type { Session } from 'next-auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/db/prisma', () => ({
@@ -25,10 +26,11 @@ const mockFindUnique = vi.mocked(prisma.priceTrigger.findUnique);
 const mockUpdate = vi.mocked(prisma.priceTrigger.update);
 const mockDelete = vi.mocked(prisma.priceTrigger.delete);
 const mockTokenPrice = vi.mocked(prisma.tokenPrice.findUnique);
-const mockAuth = vi.mocked(auth);
+// Select the zero-argument server-session overload, not the middleware overload.
+const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
-const AUTHED = { user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: false } };
-const BLOCKED = { user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: true } };
+const AUTHED: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: false } };
+const BLOCKED: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: true } };
 const PARAMS = { params: { id: 't1' } };
 
 function putReq(body: unknown): Request {
@@ -42,7 +44,7 @@ function putReq(body: unknown): Request {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'log').mockImplementation(() => {});
-  mockAuth.mockResolvedValue(AUTHED as never);
+  mockAuth.mockResolvedValue(AUTHED);
   // Default: ownership check passes
   mockFindFirst.mockResolvedValue({ id: 't1' } as never);
   // Default: trigger was active (no baseline reset on re-enable)
@@ -168,7 +170,7 @@ describe('PUT /api/alerts/[id]', () => {
     });
 
     it('blocked user → 403, update not called', async () => {
-      mockAuth.mockResolvedValue(BLOCKED as never);
+      mockAuth.mockResolvedValue(BLOCKED);
       const res = await PUT(putReq({ isActive: true }) as never, PARAMS);
       expect(res.status).toBe(403);
       expect(mockUpdate).not.toHaveBeenCalled();
@@ -246,7 +248,7 @@ describe('DELETE /api/alerts/[id]', () => {
   });
 
   it('blocked user → 403, delete not called', async () => {
-    mockAuth.mockResolvedValue(BLOCKED as never);
+    mockAuth.mockResolvedValue(BLOCKED);
     const res = await DELETE(new Request('http://localhost'), PARAMS);
     expect(res.status).toBe(403);
     expect(mockDelete).not.toHaveBeenCalled();

@@ -493,7 +493,7 @@ export async function fetchWalletTokens(
 
   // EVM: всі 8 ланцюгів паралельно
   const chainResults = await Promise.allSettled(
-    EVM_CHAINS.map((chain) => fetchOneEvmChain(address, chain)),
+    EVM_CHAINS.filter((chain) => chain.moralisId !== null).map((chain) => fetchOneEvmChain(address, chain)),
   );
 
   const all: NormalizedToken[] = [];
@@ -514,7 +514,7 @@ export async function fetchWalletTransactions(
 
   // EVM: транзакції з усіх 8 ланцюгів, сортуємо по timestamp
   const chainResults = await Promise.allSettled(
-    EVM_CHAINS.map((chain) =>
+    EVM_CHAINS.filter((chain) => chain.moralisId !== null).map((chain) =>
       fetchEvmTransactionsForChain(address, chain, limitPerChain),
     ),
   );

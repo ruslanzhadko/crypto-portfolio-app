@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { fetchTransactionsPage } from '@/lib/services/ankr';
+import { fetchRobinhoodTransactions, parseRobinhoodCursor } from '@/lib/services/robinhood';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -453,6 +454,12 @@ export async function GET(
 
     const sp = req.nextUrl.searchParams;
     const pageToken = sp.get('pageToken') ?? undefined;
+    const chain = sp.get('chain');
+    if (chain && chain !== 'robinhood') return apiError('BAD_REQUEST', 'Невідома мережа');
+    if (chain === 'robinhood' && pageToken) {
+      try { parseRobinhoodCursor(pageToken); }
+      catch { return apiError('BAD_REQUEST', 'Некоректна сторінка транзакцій'); }
+    }
     const pageSize = Math.min(Number.parseInt(sp.get('pageSize') ?? '20', 10), 50);
 
     const wallet = await prisma.wallet.findFirst({
@@ -460,9 +467,10 @@ export async function GET(
       select: { id: true, address: true, network: true },
     });
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
+    if (chain === 'robinhood' && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
 
     // Кеш-ключ для обох мереж
-    const cacheKey = `${wallet.address}::${pageToken ?? ''}::${pageSize}`;
+    const cacheKey = `${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
     type PagePayload = { transactions: object[]; nextPageToken?: string; hasMore: boolean };
 
     const cached = cacheGet<PagePayload>(cacheKey);
@@ -479,7 +487,9 @@ export async function GET(
       return ok(solResult);
     }
 
-    const { transactions, nextPageToken } = await fetchTransactionsPage(
+    const { transactions, nextPageToken } = chain === 'robinhood'
+      ? await fetchRobinhoodTransactions(wallet.address, pageToken)
+      : await fetchTransactionsPage(
       wallet.address,
       pageToken,
       pageSize,
@@ -517,7 +527,7 @@ export async function GET(
       const symbols = t.tokenSymbol ? parseSwapSymbols(t.tokenSymbol) : [];
       const chain = t.chainName ?? '';
       return {
-        id: t.hash,
+        id: 'id' in t ? String(t.id) : `${t.chainName}:${t.hash}`,
         hash: t.hash,
         chainName: t.chainName,
         type: t.type,

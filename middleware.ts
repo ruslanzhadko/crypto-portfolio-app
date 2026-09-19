@@ -18,6 +18,7 @@ function stripLocalePrefix(pathname: string): { path: string; locale: string | n
 function isPublicPath(path: string): boolean {
   return (
     path === '/' ||
+    path === '/api/public/market' ||
     path.startsWith('/auth') ||
     path.startsWith('/api/auth') ||
     path.startsWith('/api/health') ||

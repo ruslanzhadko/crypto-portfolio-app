@@ -63,6 +63,7 @@ const NATIVE_BINANCE_SYMBOL: Record<string, string> = {
   arbitrum: 'ETHUSDT',
   optimism: 'ETHUSDT',
   base: 'ETHUSDT',
+  robinhood: 'ETHUSDT',
   bsc: 'BNBUSDT',
   polygon: 'POLUSDT',
   avalanche: 'AVAXUSDT',

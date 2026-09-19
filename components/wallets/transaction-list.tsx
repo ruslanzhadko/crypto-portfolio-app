@@ -34,6 +34,7 @@ interface TransactionDTO {
 interface TransactionListProps {
   walletId: string;
   walletAddress: string;
+  chain?: 'robinhood';
 }
 
 const EXPLORER: Record<string, string> = {
@@ -46,6 +47,7 @@ const EXPLORER: Record<string, string> = {
   base:     'https://basescan.org/tx/',
   solana:   'https://solscan.io/tx/',
   xlayer:   'https://explorer.xlayer.xyz/tx/',
+  robinhood: 'https://robinhoodchain.blockscout.com/tx/',
 };
 
 function explorerUrl(chainName: string, hash: string): string | null {
@@ -65,7 +67,7 @@ function getTxStyle(type: string, isOutgoing: boolean) {
   return TX_STYLE[type] ?? (isOutgoing ? TX_STYLE.send! : TX_STYLE.receive!);
 }
 
-export function TransactionList({ walletId, walletAddress }: TransactionListProps) {
+export function TransactionList({ walletId, walletAddress, chain }: TransactionListProps) {
   const t = useTranslations('TransactionList');
   const [items, setItems] = useState<TransactionDTO[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -78,7 +80,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
     setError(null);
     setItems(null);
     const token = pageTokensRef.current[idx];
-    const url = `/api/wallets/${walletId}/transactions?pageSize=20${token ? `&pageToken=${token}` : ''}`;
+    const url = `/api/wallets/${walletId}/transactions?pageSize=20${chain ? `&chain=${chain}` : ''}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`;
     const res = await fetch(url);
     if (!res.ok) {
       setError(t('errorLoad'));
@@ -97,7 +99,7 @@ export function TransactionList({ walletId, walletAddress }: TransactionListProp
     if (payload.nextPageToken && !pageTokensRef.current[idx + 1]) {
       pageTokensRef.current[idx + 1] = payload.nextPageToken;
     }
-  }, [walletId, t]);
+  }, [walletId, chain, t]);
 
   useEffect(() => { void load(pageIdx); }, [load, pageIdx]);
 

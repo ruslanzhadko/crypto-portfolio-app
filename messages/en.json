@@ -105,7 +105,8 @@
     "toastSkipped": "{count} skipped",
     "toastErrors": "{count} with errors",
     "toastSyncDoneTitle": "Sync done · {count} wallet(s)",
-    "toastTokensCount": "{count} tokens"
+    "toastTokensCount": "{count} tokens",
+    "robinhoodUnavailable": "Robinhood Chain is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
   },
   "Wallets": {
     "pageTitle": "Wallets",
@@ -131,7 +132,8 @@
     "toastSyncDoneTitle": "Sync complete",
     "toastSyncDoneDescription": "{tokens} tokens · {spam} spam filtered",
     "toastDeleteFailedTitle": "Failed to delete",
-    "toastDeletedTitle": "Wallet deleted"
+    "toastDeletedTitle": "Wallet deleted",
+    "robinhoodUnavailable": "Robinhood Chain is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
   },
   "AddWalletDialog": {
     "triggerButton": "Add wallet",
@@ -139,7 +141,7 @@
     "dialogDescription": "Read-only mode — no private keys needed.",
     "addressTypeLabel": "Address type",
     "evmLabel": "EVM address",
-    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer",
+    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain",
     "evmPlaceholder": "0x...",
     "solanaLabel": "Solana address",
     "solanaDesc": "Solana network (separate address)",
@@ -154,12 +156,13 @@
     "addFailedDefault": "Failed to add wallet",
     "toastErrorTitle": "Error",
     "toastAddedTitle": "Wallet added",
-    "toastSyncStartedEvm": "Syncing 7 networks, this may take a few seconds...",
+    "toastSyncStartedEvm": "Syncing 9 networks, this may take a few seconds...",
     "toastSyncStartedSolana": "Sync started...",
     "toastSyncDoneTitle": "Sync complete",
     "toastSyncDoneDescription": "{tokens} tokens found ({spam} spam filtered)",
     "toastSyncFailedTitle": "Sync failed",
-    "toastSyncFailedDescription": "Try syncing manually"
+    "toastSyncFailedDescription": "Try syncing manually",
+    "robinhoodUnavailable": "Robinhood Chain is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
   },
   "Alerts": {
     "pageTitle": "Alerts",
@@ -434,7 +437,9 @@
     "txSend": "Send",
     "txSwap": "Swap",
     "txTransfer": "Transfer",
-    "txContract": "Contract"
+    "txContract": "Contract",
+    "networkFilter": "Transaction network",
+    "otherEvmNetworks": "Other EVM networks"
   },
   "AdminLogsTable": {
     "filterAll": "All",
@@ -497,7 +502,7 @@
     "envVarsPrefix": "Required variables:"
   },
   "NetworkBadge": {
-    "evm": "EVM (7 networks)",
+    "evm": "EVM (9 networks)",
     "solana": "Solana"
   },
   "Landing": {
@@ -505,7 +510,7 @@
     "navGetStarted": "Get started",
     "heroTitle": "Your crypto portfolio",
     "heroTitleAccent": "under control",
-    "heroSubtitle": "Track balances, prices, and alerts across 9 networks — all in one place. No private keys needed.",
+    "heroSubtitle": "Track balances, prices, and alerts across 10 networks — all in one place. No private keys needed.",
     "heroSignIn": "Sign in",
     "heroCreateAccount": "Create account",
     "liveMarketTitle": "Live market",
@@ -515,13 +520,13 @@
     "step1Title": "Add your address",
     "step1Desc": "Paste any public EVM or Solana address. No registration of private keys — read-only access.",
     "step2Title": "Sync balances",
-    "step2Desc": "We fetch token balances via Moralis across all 9 networks and filter out spam tokens automatically.",
+    "step2Desc": "We fetch balances from Ankr, Moralis, and Blockscout across 10 networks and automatically filter spam tokens.",
     "step3Title": "Track & get alerts",
     "step3Desc": "Monitor price changes, set Telegram alerts, and compare wallets with each other.",
     "featuresTitle": "Key features",
     "featuresSubtitle": "Everything you need to monitor your portfolio",
     "feature1Title": "Multi-network",
-    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer and Solana.",
+    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain and Solana.",
     "feature2Title": "Price alerts",
     "feature2Desc": "Telegram notifications when the price changes by the set % or reaches a target.",
     "feature3Title": "Portfolio analytics",
@@ -529,7 +534,7 @@
     "feature4Title": "No private keys",
     "feature4Desc": "Read-only mode. Add any public address without any risk.",
     "networksTitle": "Supported networks",
-    "networksSubtitle": "9 blockchains, one dashboard",
+    "networksSubtitle": "10 blockchains, one dashboard",
     "telegramTitle": "Telegram alerts",
     "telegramSubtitle": "Get instant notifications directly in messenger",
     "telegramDesc": "Set price triggers and receive alerts in Telegram when the market moves. No need to constantly monitor charts.",
@@ -542,12 +547,14 @@
     "faq1q": "Is it safe to add a public address?",
     "faq1a": "Absolutely. We only use public blockchain data. No private keys or signatures are required — we cannot make any transactions.",
     "faq2q": "Which networks are supported?",
-    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer (all EVM) and Solana. Support for more networks is planned.",
+    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain (all EVM) and Solana. Support for more networks is planned.",
     "faq3q": "How do Telegram alerts work?",
     "faq3a": "Go to Settings, enter your Telegram Chat ID, then create a trigger with your desired threshold. You'll receive a message when the condition is met.",
     "faq4q": "How often are prices updated?",
     "faq4a": "Prices update automatically every 15 minutes via CoinGecko. Wallet balances are updated on manual sync or via the Sync All button.",
     "footerAuthor": "Author: <link>@ludoslan</link>",
-    "footerRights": "All rights reserved."
+    "footerRights": "All rights reserved.",
+    "marketRefresh": "CoinGecko · refreshes every minute",
+    "marketUnavailable": "Price updates are temporarily unavailable. Displayed data may be outdated."
   }
 }

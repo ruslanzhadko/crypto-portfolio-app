@@ -117,11 +117,11 @@ export function AddWalletDialog() {
         const syncRes = await fetch(`/api/wallets/${walletId}/sync`, { method: 'POST' });
         if (syncRes.ok) {
           const syncData = (await syncRes.json()) as {
-            result?: { tokensSynced?: number; spamFiltered?: number };
+            result?: { tokensSynced?: number; spamFiltered?: number; unavailableChains?: string[] };
           };
           toast({
             title: t('toastSyncDoneTitle'),
-            description: t('toastSyncDoneDescription', {
+            description: syncData.result?.unavailableChains?.length ? t('robinhoodUnavailable') : t('toastSyncDoneDescription', {
               tokens: syncData.result?.tokensSynced ?? 0,
               spam: syncData.result?.spamFiltered ?? 0,
             }),

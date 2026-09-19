@@ -1,3 +1,4 @@
+import type { Session } from 'next-auth';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/lib/db/prisma', () => ({
@@ -19,10 +20,11 @@ const mockUserCount = vi.mocked(prisma.user.count);
 const mockWalletCount = vi.mocked(prisma.wallet.count);
 const mockTriggerCount = vi.mocked(prisma.priceTrigger.count);
 const mockNotifCount = vi.mocked(prisma.notificationLog.count);
-const mockAuth = vi.mocked(auth);
+// Select the zero-argument server-session overload, not the middleware overload.
+const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
-const ADMIN_SESSION = { user: { id: 'a1', email: 'admin@test.com', role: 'ADMIN', isBlocked: false } };
-const USER_SESSION = { user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
+const ADMIN_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'a1', email: 'admin@test.com', role: 'ADMIN', isBlocked: false } };
+const USER_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
 
 function setupCountMocks(values: {
   totalUsers: number;
@@ -54,7 +56,7 @@ const DEFAULT_COUNTS = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.useFakeTimers();
-  mockAuth.mockResolvedValue(ADMIN_SESSION as never);
+  mockAuth.mockResolvedValue(ADMIN_SESSION);
   setupCountMocks(DEFAULT_COUNTS);
 });
 
@@ -81,7 +83,7 @@ describe('GET /api/admin/stats', () => {
     });
 
     it('non-admin user → 403 FORBIDDEN', async () => {
-      mockAuth.mockResolvedValue(USER_SESSION as never);
+      mockAuth.mockResolvedValue(USER_SESSION);
 
       expect((await GET()).status).toBe(403);
     });
@@ -116,7 +118,7 @@ describe('GET /api/admin/stats', () => {
       vi.setSystemTime(NOW);
       // Re-setup mocks after timer change
       vi.clearAllMocks();
-      mockAuth.mockResolvedValue(ADMIN_SESSION as never);
+      mockAuth.mockResolvedValue(ADMIN_SESSION);
       setupCountMocks(DEFAULT_COUNTS);
 
       await GET();
