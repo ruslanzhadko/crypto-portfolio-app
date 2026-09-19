@@ -1,3 +1,5 @@
+import type { Prisma } from '@prisma/client';
+import type { Session } from 'next-auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/db/prisma', () => ({
@@ -16,15 +18,21 @@ import { GET } from './route';
 import { prisma } from '@/lib/db/prisma';
 import { auth } from '@/lib/auth';
 
-const mockFindMany = vi.mocked(prisma.user.findMany);
+type SelectedUserArgs = Omit<Prisma.UserFindManyArgs, 'select' | 'include'> & { select: {
+  id: true; email: true; name: true; role: true; isBlocked: true;
+  createdAt: true; telegramChatId: true;
+  _count: { select: { wallets: true; triggers: true } };
+} };
+const mockFindMany = vi.mocked(prisma.user.findMany<SelectedUserArgs>);
 const mockCount = vi.mocked(prisma.user.count);
-const mockAuth = vi.mocked(auth);
+// Select the zero-argument server-session overload, not the middleware overload.
+const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
-const ADMIN_SESSION = { user: { id: 'a1', email: 'admin@test.com', role: 'ADMIN', isBlocked: false } };
-const USER_SESSION = { user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
-const BLOCKED_SESSION = { user: { id: 'a1', email: 'admin@test.com', role: 'ADMIN', isBlocked: true } };
+const ADMIN_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'a1', email: 'admin@test.com', role: 'ADMIN', isBlocked: false } };
+const USER_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
+const BLOCKED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'a1', email: 'admin@test.com', role: 'ADMIN', isBlocked: true } };
 
-const SAMPLE_USER = {
+const SAMPLE_USER: Prisma.UserGetPayload<SelectedUserArgs> = {
   id: 'u1',
   email: 'test@test.com',
   name: 'Test',

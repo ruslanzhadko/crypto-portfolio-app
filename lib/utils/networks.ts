@@ -10,7 +10,7 @@ export interface ChainInfo {
   displayName: string;
   symbol: string;
   chainId: string | null;
-  moralisId: string;
+  moralisId: string | null;
   coingeckoPlatform: string | null;
   coingeckoNativeId: string;
   /** Логотип нативного токена — Trust Wallet CDN, стабільні URL */
@@ -25,6 +25,19 @@ const TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockcha
 const ETH_LOGO = `${TW}/ethereum/info/logo.png`;
 
 export const EVM_CHAINS: ChainInfo[] = [
+  {
+    chainName: 'robinhood',
+    displayName: 'Robinhood Chain',
+    symbol: 'ETH',
+    chainId: '0x1237',
+    moralisId: null, // Balances and history use Blockscout, not Moralis/Ankr.
+    coingeckoPlatform: null,
+    coingeckoNativeId: 'ethereum',
+    nativeLogoUrl: ETH_LOGO,
+    chainLogoUrl: '/robinhood-logo.png',
+    color: '#ccff00',
+    network: Network.EVM,
+  },
   {
     chainName: 'ethereum',
     displayName: 'Ethereum',

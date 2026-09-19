@@ -1,3 +1,4 @@
+import type { Session } from 'next-auth';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/db/prisma', () => ({
@@ -23,10 +24,11 @@ import { auth } from '@/lib/auth';
 const mockFindMany = vi.mocked(prisma.priceTrigger.findMany);
 const mockCreate = vi.mocked(prisma.priceTrigger.create);
 const mockTokenPrice = vi.mocked(prisma.tokenPrice.findUnique);
-const mockAuth = vi.mocked(auth);
+// Select the zero-argument server-session overload, not the middleware overload.
+const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
-const AUTHED = { user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: false } };
-const BLOCKED = { user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: true } };
+const AUTHED: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: false } };
+const BLOCKED: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: true } };
 
 const PERCENT_PAYLOAD = {
   triggerType: 'PERCENT',
@@ -57,7 +59,7 @@ function postReq(body: unknown): Request {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(console, 'log').mockImplementation(() => {});
-  mockAuth.mockResolvedValue(AUTHED as never);
+  mockAuth.mockResolvedValue(AUTHED);
   mockFindMany.mockResolvedValue([]);
   mockTokenPrice.mockResolvedValue(null);
   mockCreate.mockResolvedValue({ id: 't1' } as never);
@@ -92,7 +94,7 @@ describe('GET /api/alerts', () => {
   });
 
   it('blocked user → 403 FORBIDDEN', async () => {
-    mockAuth.mockResolvedValue(BLOCKED as never);
+    mockAuth.mockResolvedValue(BLOCKED);
     expect((await GET()).status).toBe(403);
   });
 
@@ -214,7 +216,7 @@ describe('POST /api/alerts', () => {
     });
 
     it('blocked → 403, no write', async () => {
-      mockAuth.mockResolvedValue(BLOCKED as never);
+      mockAuth.mockResolvedValue(BLOCKED);
       const res = await POST(postReq(PERCENT_PAYLOAD) as never);
       expect(res.status).toBe(403);
       expect(mockCreate).not.toHaveBeenCalled();

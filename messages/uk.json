@@ -105,7 +105,8 @@
     "toastSkipped": "{count} пропущено",
     "toastErrors": "{count} з помилкою",
     "toastSyncDoneTitle": "Sync завершено · {count} гаманц(ів)",
-    "toastTokensCount": "{count} токенів"
+    "toastTokensCount": "{count} токенів",
+    "robinhoodUnavailable": "Robinhood Chain тимчасово недоступна. Попередні баланси збережено; дані цієї мережі не оновлено."
   },
   "Wallets": {
     "pageTitle": "Гаманці",
@@ -131,7 +132,8 @@
     "toastSyncDoneTitle": "Sync завершено",
     "toastSyncDoneDescription": "{tokens} токенів · {spam} спам відфільтровано",
     "toastDeleteFailedTitle": "Не вдалось видалити",
-    "toastDeletedTitle": "Гаманець видалено"
+    "toastDeletedTitle": "Гаманець видалено",
+    "robinhoodUnavailable": "Robinhood Chain тимчасово недоступна. Попередні баланси збережено; дані цієї мережі не оновлено."
   },
   "AddWalletDialog": {
     "triggerButton": "Додати гаманець",
@@ -139,7 +141,7 @@
     "dialogDescription": "Read-only режим — приватні ключі не потрібні.",
     "addressTypeLabel": "Тип адреси",
     "evmLabel": "EVM-адреса",
-    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer",
+    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain",
     "evmPlaceholder": "0x...",
     "solanaLabel": "Solana-адреса",
     "solanaDesc": "Мережа Solana (окрема адреса)",
@@ -154,12 +156,13 @@
     "addFailedDefault": "Не вдалось додати гаманець",
     "toastErrorTitle": "Помилка",
     "toastAddedTitle": "Гаманець додано",
-    "toastSyncStartedEvm": "Синхронізація 8 мереж розпочата, це займе кілька секунд...",
+    "toastSyncStartedEvm": "Синхронізація 9 мереж розпочата, це займе кілька секунд...",
     "toastSyncStartedSolana": "Синхронізація розпочата...",
     "toastSyncDoneTitle": "Sync завершено",
     "toastSyncDoneDescription": "{tokens} токенів знайдено ({spam} спам відфільтровано)",
     "toastSyncFailedTitle": "Sync не вдався",
-    "toastSyncFailedDescription": "Спробуйте натиснути Sync вручну"
+    "toastSyncFailedDescription": "Спробуйте натиснути Sync вручну",
+    "robinhoodUnavailable": "Robinhood Chain тимчасово недоступна. Попередні баланси збережено; дані цієї мережі не оновлено."
   },
   "Alerts": {
     "pageTitle": "Сповіщення",
@@ -434,7 +437,9 @@
     "txSend": "Відправлення",
     "txSwap": "Своп",
     "txTransfer": "Переказ",
-    "txContract": "Контракт"
+    "txContract": "Контракт",
+    "networkFilter": "Мережа транзакцій",
+    "otherEvmNetworks": "Інші EVM-мережі"
   },
   "AdminLogsTable": {
     "filterAll": "Всі",
@@ -497,7 +502,7 @@
     "envVarsPrefix": "Потрібні змінні:"
   },
   "NetworkBadge": {
-    "evm": "EVM (8 мереж)",
+    "evm": "EVM (9 мереж)",
     "solana": "Solana"
   },
   "Landing": {
@@ -505,7 +510,7 @@
     "navGetStarted": "Почати",
     "heroTitle": "Ваш крипто-портфель",
     "heroTitleAccent": "під контролем",
-    "heroSubtitle": "Відстежуйте баланси, ціни та сповіщення по 9 мережах — в одному місці. Приватні ключі не потрібні.",
+    "heroSubtitle": "Відстежуйте баланси, ціни та сповіщення по 10 мережах — в одному місці. Приватні ключі не потрібні.",
     "heroSignIn": "Увійти",
     "heroCreateAccount": "Створити акаунт",
     "liveMarketTitle": "Live Market",
@@ -515,13 +520,13 @@
     "step1Title": "Додайте адресу",
     "step1Desc": "Вставте будь-яку публічну EVM або Solana адресу. Реєстрація приватних ключів не потрібна — тільки read-only доступ.",
     "step2Title": "Синхронізуйте баланси",
-    "step2Desc": "Ми отримуємо баланси токенів через Moralis по всіх 9 мережах та автоматично фільтруємо спам-токени.",
+    "step2Desc": "Отримуємо баланси з Ankr, Moralis та Blockscout у 10 мережах і автоматично фільтруємо спам-токени.",
     "step3Title": "Відстежуйте та налаштуйте сповіщення",
     "step3Desc": "Моніторте зміни цін, встановлюйте Telegram-сповіщення та порівнюйте гаманці між собою.",
     "featuresTitle": "Ключові можливості",
     "featuresSubtitle": "Все необхідне для моніторингу портфеля",
     "feature1Title": "Мультимережевий",
-    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer та Solana.",
+    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain та Solana.",
     "feature2Title": "Цінові сповіщення",
     "feature2Desc": "Telegram-повідомлення коли ціна змінюється на задані % або досягає цільового значення.",
     "feature3Title": "Аналітика портфеля",
@@ -529,7 +534,7 @@
     "feature4Title": "Без приватних ключів",
     "feature4Desc": "Read-only режим. Додайте будь-яку публічну адресу без жодного ризику.",
     "networksTitle": "Підтримувані мережі",
-    "networksSubtitle": "9 блокчейнів, один дашборд",
+    "networksSubtitle": "10 блокчейнів, один дашборд",
     "telegramTitle": "Telegram-сповіщення",
     "telegramSubtitle": "Отримуйте миттєві повідомлення прямо в месенджер",
     "telegramDesc": "Встановіть цінові тригери та отримуйте сповіщення в Telegram коли ринок рухається. Не потрібно постійно моніторити графіки.",
@@ -542,12 +547,14 @@
     "faq1q": "Чи безпечно додавати публічну адресу?",
     "faq1a": "Абсолютно. Ми використовуємо лише публічні дані блокчейну. Приватні ключі та підписи не потрібні — ми не можемо здійснювати жодних транзакцій.",
     "faq2q": "Які мережі підтримуються?",
-    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer (всі EVM) та Solana. Підтримка нових мереж планується.",
+    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain (всі EVM) та Solana. Підтримка нових мереж планується.",
     "faq3q": "Як працюють Telegram-сповіщення?",
     "faq3a": "Перейдіть у Налаштування, введіть ваш Telegram Chat ID, потім створіть тригер з потрібним порогом. Ви отримаєте повідомлення коли умова виконається.",
     "faq4q": "Як часто оновлюються ціни?",
     "faq4a": "Ціни оновлюються автоматично кожні 15 хвилин через CoinGecko. Баланси гаманців оновлюються при ручному sync або через кнопку Sync All.",
     "footerAuthor": "Автор: <link>@ludoslan</link>",
-    "footerRights": "Усі права захищені."
+    "footerRights": "Усі права захищені.",
+    "marketRefresh": "CoinGecko · оновлення щохвилини",
+    "marketUnavailable": "Оновлення цін тимчасово недоступне. Показані дані можуть бути застарілими."
   }
 }

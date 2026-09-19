@@ -6,11 +6,13 @@ import {
   type NormalizedToken,
 } from '@/lib/services/moralis';
 import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
+import { fetchRobinhoodBalances } from '@/lib/services/robinhood';
 import { fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
 
 export interface SyncResult {
+  unavailableChains?: string[];
   walletId: string;
   tokensSynced: number;
   transactionsSynced: number;
@@ -33,9 +35,20 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
 
   // Транзакції більше не синхронізуються в БД — підтягуються live з Ankr при перегляді.
   const isEvm = wallet.network === Network.EVM;
+  let robinhoodSynced = false;
   const tokens = isEvm
     ? await fetchEVMBalancesFromAnkr(wallet.address)
     : await fetchWalletTokens(wallet.address, wallet.network);
+  if (isEvm) {
+    try {
+      tokens.push(...await fetchRobinhoodBalances(wallet.address));
+      robinhoodSynced = true;
+    } catch {
+      // Preserve this chain's stored balances on provider failure.
+      console.warn('[wallet-sync] Robinhood unavailable; keeping its previous balances');
+    }
+  }
+  const unavailableChains = isEvm && !robinhoodSynced ? ['robinhood'] : [];
 
   const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
@@ -63,13 +76,19 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   if (toSave.length === 0) {
     const existing = await prisma.tokenBalance.count({ where: { walletId } });
     if (existing > 0) {
+      // A successfully fetched empty Robinhood chain must still be cleared.
+      if (isEvm && robinhoodSynced) {
+        await prisma.tokenBalance.deleteMany({ where: { walletId, chainName: 'robinhood' } });
+      }
       await prisma.wallet.update({ where: { id: walletId }, data: { lastSyncAt: new Date() } });
-      return { walletId, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date()} ;
+      return { walletId, unavailableChains, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date()} ;
     }
   }
 
   await prisma.$transaction(async (tx) => {
-    await tx.tokenBalance.deleteMany({ where: { walletId } });
+    await tx.tokenBalance.deleteMany({
+      where: { walletId, ...(isEvm && !robinhoodSynced ? { chainName: { not: 'robinhood' } } : {}) },
+    });
 
     if (toSave.length > 0) {
       await tx.tokenBalance.createMany({
@@ -108,6 +127,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     .reduce((s, t) => s + t.usdValue, 0);
 
   return {
+    unavailableChains,
     walletId,
     tokensSynced: toSave.length,
     transactionsSynced: 0,
@@ -226,7 +246,7 @@ async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>):
 // Шукає логотипи через CoinGecko search для токенів без лого і без coingeckoId.
 // Зберігає знайдені записи в TokenPrice щоб наступний sync читав з кешу (без запитів).
 async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
-  const needLogo = tokens.filter((t) => !t.logoUrl && !t.coingeckoId && !t.isNative);
+  const needLogo = tokens.filter((t) => !t.logoUrl && !t.coingeckoId && !t.isNative && t.chainName !== 'robinhood');
   if (needLogo.length === 0) return;
 
   // Дедуплікація за символом — один символ може бути на кількох ланцюгах
@@ -364,7 +384,7 @@ async function applyCachedPrices(
         if (priceChange24h === 0) priceChange24h = fromCache.change24h;
         if (usdValue === 0) usdValue = t.balance * fromCache.price;
       }
-    } else if (fromCache) {
+    } else if (fromCache && t.chainName !== 'robinhood') {
       // Для не-нативних EVM/Solana токенів — лише як fallback за символом
       coingeckoId = fromCache.id;
       if (priceUsd === 0) priceUsd = fromCache.price;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
+import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +16,7 @@ export function WalletSyncButton({
   className?: string;
 }) {
   const router = useRouter();
+  const t = useTranslations('WalletCard');
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
@@ -33,11 +35,11 @@ export function WalletSyncButton({
         return;
       }
       const data = (await res.json()) as {
-        result?: { tokensSynced?: number; transactionsSynced?: number };
+        result?: { tokensSynced?: number; transactionsSynced?: number; unavailableChains?: string[] };
       };
       toast({
         title: 'Sync завершено',
-        description: `${data.result?.tokensSynced ?? 0} токенів · ${data.result?.transactionsSynced ?? 0} транзакцій`,
+        description: data.result?.unavailableChains?.length ? t('robinhoodUnavailable') : `${data.result?.tokensSynced ?? 0} токенів · ${data.result?.transactionsSynced ?? 0} транзакцій`,
       });
       // Сигналізуємо клієнтським компонентам (TransactionList тощо) про оновлення
       window.dispatchEvent(new CustomEvent('wallet-synced', { detail: { walletId } }));

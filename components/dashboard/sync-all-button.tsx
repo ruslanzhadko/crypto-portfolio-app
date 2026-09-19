@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils/cn';
 
 interface SyncResponse {
   data?: {
-    synced?: Array<{ walletId: string; tokensSynced: number }>;
+    synced?: Array<{ walletId: string; tokensSynced: number; unavailableChains?: string[] }>;
     skipped?: Array<{ label: string | null; nextSyncInSeconds: number }>;
     errors?: Array<{ label: string | null; message: string }>;
     durationMs?: number;
@@ -68,6 +68,9 @@ export function SyncAllButton({
           });
         } else {
           const descParts: string[] = [];
+          if (synced.some((result) => result.unavailableChains?.includes('robinhood'))) {
+            descParts.push(t('robinhoodUnavailable'));
+          }
           if (tokensTotal > 0) {
             descParts.push(t('toastTokensCount', { count: tokensTotal }));
           } else if (synced.length > 0) {

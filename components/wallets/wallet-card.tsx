@@ -82,11 +82,11 @@ export function WalletCard({ wallet, portfolioTotalUsd, change24hUsd, change24hP
         return;
       }
       const data = (await res.json()) as {
-        result?: { tokensSynced?: number; spamFiltered?: number };
+        result?: { tokensSynced?: number; spamFiltered?: number; unavailableChains?: string[] };
       };
       toast({
         title: t('toastSyncDoneTitle'),
-        description: t('toastSyncDoneDescription', {
+        description: data.result?.unavailableChains?.length ? t('robinhoodUnavailable') : t('toastSyncDoneDescription', {
           tokens: data.result?.tokensSynced ?? 0,
           spam: data.result?.spamFiltered ?? 0,
         }),

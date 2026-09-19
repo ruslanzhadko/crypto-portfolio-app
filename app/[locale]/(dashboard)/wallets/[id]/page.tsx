@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { NetworkBadge } from '@/components/common/network-badge';
 import { TokenBalanceList } from '@/components/wallets/token-balance-list';
-import { TransactionList } from '@/components/wallets/transaction-list';
+import { WalletTransactions } from '@/components/wallets/wallet-transactions';
 import { WalletSyncButton } from '@/components/wallets/wallet-sync-button';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
 
@@ -82,7 +82,7 @@ export default async function WalletDetailPage({
 
       <TokenBalanceList walletId={wallet.id} tokens={wallet.balances} totalUsd={totalUsd} />
 
-      <TransactionList walletId={wallet.id} walletAddress={wallet.address} />
+      <WalletTransactions walletId={wallet.id} walletAddress={wallet.address} network={wallet.network} />
     </div>
   );
 }

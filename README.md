@@ -2,6 +2,29 @@
 
 Моніторинг крипто-портфеля: Next.js 14 (App Router), TypeScript, Prisma, NextAuth.js (Auth.js v5), Tailwind.
 
+## Підтримувані мережі
+
+10 мереж: Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche,
+X Layer, **Robinhood Chain** (9 EVM) та Solana. Для Robinhood використовується
+та сама EVM-адреса — додайте EVM-гаманець або синхронізуйте наявний.
+
+Robinhood Chain mainnet: chain ID `4663` (`0x1237`), нативна монета ETH,
+[explorer](https://robinhoodchain.blockscout.com),
+[офіційні параметри мережі](https://docs.robinhood.com/chain/connecting/).
+Баланси ETH та ERC-20 отримуються окремо через Blockscout з пагінацією.
+Без ключа використовується публічний API; опційний `ROBINHOOD_BLOCKSCOUT_API_KEY`
+вмикає Blockscout PRO API. У разі збою попередні баланси цієї мережі зберігаються.
+Публічний API може блокувати серверні запити (HTTP 403). Для production додайте
+ключ із [Blockscout Developer Portal](https://dev.blockscout.com) у змінні середовища
+Vercel як `ROBINHOOD_BLOCKSCOUT_API_KEY` та виконайте redeploy. Без доступного API
+інтерфейс повідомляє, що дані Robinhood не оновлено.
+
+Історію Robinhood відкриває перемикач над транзакціями гаманця: нативні транзакції
+та ERC-20 transfer-події показуються окремими записами з посиланнями на explorer.
+Свопи Robinhood поки не класифікуються. ETH оцінюється через Binance/CoinGecko;
+ціни ERC-20 надходять із Blockscout при синхронізації балансів. Токени без ціни
+можуть приховуватися наявним фільтром спаму. Логотип: `public/robinhood-logo.png`.
+
 ## Локальний запуск
 
 ```bash

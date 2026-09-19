@@ -2,25 +2,25 @@ import Image from 'next/image';
 import { Link } from '@/i18n/navigation';
 import {
   ArrowRight, BarChart3, Bell, ShieldCheck, Wallet,
-  TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { fetchTopMarkets, type MarketCoin } from '@/lib/services/coingecko';
+import { fetchLandingMarket, type LandingCoin } from '@/lib/services/landing-market';
+import { LiveMarket } from '@/components/landing/live-market';
 import { ALL_CHAINS } from '@/lib/utils/networks';
 import { LandingFaq } from '@/components/landing/landing-faq';
 import { LocaleSwitcher } from '@/components/common/locale-switcher';
-import { cn } from '@/lib/utils/cn';
+
 
 export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('Landing');
 
-  let coins: MarketCoin[] = [];
+  let coins: LandingCoin[] = [];
   try {
-    coins = await fetchTopMarkets({ perPage: 6 });
+    coins = await fetchLandingMarket();
   } catch {}
 
   const steps = [
@@ -122,48 +122,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       </section>
 
       {/* ── Live market ── */}
-      {coins.length > 0 && (
-        <section className="container pb-14">
-          <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('liveMarketTitle')}</h2>
-            <p className="mt-2 text-base text-text-muted">{t('liveMarketSubtitle')}</p>
-          </div>
-          <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-border bg-surface">
-            {coins.map((coin) => {
-              const change = coin.price_change_percentage_24h ?? 0;
-              const positive = change >= 0;
-              return (
-                <div
-                  key={coin.id}
-                  className="flex items-center gap-4 border-b border-border px-5 py-3 last:border-0"
-                >
-                  <span className="w-5 text-right text-xs text-text-muted">
-                    {coin.market_cap_rank}
-                  </span>
-                  {coin.image ? (
-                    <Image src={coin.image} alt={coin.symbol} width={28} height={28} className="rounded-full" />
-                  ) : (
-                    <div className="h-7 w-7 rounded-full bg-surface-2" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <span className="font-semibold">{coin.symbol.toUpperCase()}</span>
-                    <span className="ml-2 text-xs text-text-muted">{coin.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-mono text-sm font-medium">
-                      ${coin.current_price.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-                    </p>
-                    <p className={cn('flex items-center justify-end gap-0.5 text-xs', positive ? 'text-success' : 'text-danger')}>
-                      {positive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                      {positive ? '+' : ''}{change.toFixed(2)}%
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <LiveMarket initialCoins={coins} />
 
       {/* ── Features ── */}
       <section className="container pb-14">
@@ -192,7 +151,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('networksTitle')}</h2>
           <p className="mt-2 text-base text-text-muted">{t('networksSubtitle')}</p>
         </div>
-        <div className="mx-auto grid max-w-5xl grid-cols-3 gap-3 sm:grid-cols-9">
+        <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-5 lg:grid-cols-10">
           {ALL_CHAINS.map((chain) => (
             <div
               key={chain.chainName}
