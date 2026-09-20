@@ -240,6 +240,13 @@ interface CoinGeckoDetailResponse {
   };
 }
 
+// CoinGecko records ZEC's launch peak as $3,191.93, while the broader market
+// record used by CoinMarketCap and Coinbase is $5,941.80 (2016-10-29).
+// Keep narrowly-scoped corrections here instead of changing generic API data.
+const VERIFIED_ATH_USD: Record<string, number> = {
+  zcash: 5_941.8,
+};
+
 export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
   const { data } = await withRetry(() =>
     getClient().get<CoinGeckoDetailResponse>(`/coins/${id}`, {
@@ -254,6 +261,11 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
   );
   const md = data.market_data;
   const homepage = data.links?.homepage?.find((u) => u && u.length > 0) ?? null;
+  const currentPrice = md?.current_price?.usd ?? 0;
+  const ath = VERIFIED_ATH_USD[data.id] ?? md?.ath?.usd ?? null;
+  const athChangePercent = ath && currentPrice > 0
+    ? ((currentPrice - ath) / ath) * 100
+    : md?.ath_change_percentage?.usd ?? null;
   return {
     id: data.id,
     symbol: data.symbol,
@@ -262,13 +274,13 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
     image: data.image?.large ?? data.image?.small ?? null,
     rank: data.market_cap_rank ?? null,
     homepage,
-    currentPrice: md?.current_price?.usd ?? 0,
+    currentPrice,
     marketCap: md?.market_cap?.usd ?? null,
     volume24h: md?.total_volume?.usd ?? null,
     high24h: md?.high_24h?.usd ?? null,
     low24h: md?.low_24h?.usd ?? null,
-    ath: md?.ath?.usd ?? null,
-    athChangePercent: md?.ath_change_percentage?.usd ?? null,
+    ath,
+    athChangePercent,
     priceChange1h: md?.price_change_percentage_1h_in_currency?.usd ?? 0,
     priceChange24h: md?.price_change_percentage_24h ?? 0,
     priceChange7d: md?.price_change_percentage_7d ?? 0,

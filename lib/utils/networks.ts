@@ -26,7 +26,7 @@ const ETH_LOGO = `${TW}/ethereum/info/logo.png`;
 export const EVM_CHAINS: ChainInfo[] = [
   {
     chainName: 'robinhood',
-    displayName: 'Robinhood Chain',
+    displayName: 'Robinhood',
     symbol: 'ETH',
     chainId: '0x1237',
     coingeckoPlatform: null,

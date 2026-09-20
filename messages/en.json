@@ -106,7 +106,7 @@
     "toastErrors": "{count} with errors",
     "toastSyncDoneTitle": "Sync done · {count} wallet(s)",
     "toastTokensCount": "{count} tokens",
-    "robinhoodUnavailable": "Robinhood Chain is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
+    "robinhoodUnavailable": "Robinhood is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
   },
   "Wallets": {
     "pageTitle": "Wallets",
@@ -133,7 +133,7 @@
     "toastSyncDoneDescription": "{tokens} tokens · {spam} spam filtered",
     "toastDeleteFailedTitle": "Failed to delete",
     "toastDeletedTitle": "Wallet deleted",
-    "robinhoodUnavailable": "Robinhood Chain is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
+    "robinhoodUnavailable": "Robinhood is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
   },
   "AddWalletDialog": {
     "triggerButton": "Add wallet",
@@ -141,7 +141,7 @@
     "dialogDescription": "Read-only mode — no private keys needed.",
     "addressTypeLabel": "Address type",
     "evmLabel": "EVM address",
-    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain",
+    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood",
     "evmPlaceholder": "0x...",
     "solanaLabel": "Solana address",
     "solanaDesc": "Solana network (separate address)",
@@ -162,7 +162,7 @@
     "toastSyncDoneDescription": "{tokens} tokens found ({spam} spam filtered)",
     "toastSyncFailedTitle": "Sync failed",
     "toastSyncFailedDescription": "Try syncing manually",
-    "robinhoodUnavailable": "Robinhood Chain is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
+    "robinhoodUnavailable": "Robinhood is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
   },
   "Alerts": {
     "pageTitle": "Alerts",
@@ -416,6 +416,9 @@
     "expandNetworks": "Expand networks",
     "toMarketPage": "Go to token page",
     "findOnMarket": "Find on Market",
+    "copyContract": "Copy contract",
+    "viewContract": "Verify contract",
+    "contractCopied": "Contract address copied",
     "showInBalance": "Show in balance",
     "hideFromBalance": "Hide from balance",
     "toastUpdateFailed": "Failed to update",
@@ -526,7 +529,7 @@
     "featuresTitle": "Key features",
     "featuresSubtitle": "Everything you need to monitor your portfolio",
     "feature1Title": "Multi-network",
-    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain and Solana.",
+    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood and Solana.",
     "feature2Title": "Price alerts",
     "feature2Desc": "Telegram notifications when the price changes by the set % or reaches a target.",
     "feature3Title": "Portfolio analytics",
@@ -547,7 +550,7 @@
     "faq1q": "Is it safe to add a public address?",
     "faq1a": "Absolutely. We only use public blockchain data. No private keys or signatures are required — we cannot make any transactions.",
     "faq2q": "Which networks are supported?",
-    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain (all EVM) and Solana. Support for more networks is planned.",
+    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood (all EVM) and Solana. Support for more networks is planned.",
     "faq3q": "How do Telegram alerts work?",
     "faq3a": "Go to Settings, enter your Telegram Chat ID, then create a trigger with your desired threshold. You'll receive a message when the condition is met.",
     "faq4q": "How often are prices updated?",

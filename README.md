@@ -5,10 +5,10 @@
 ## Підтримувані мережі
 
 10 мереж: Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche,
-X Layer, **Robinhood Chain** (9 EVM) та Solana. Для Robinhood використовується
+X Layer, **Robinhood** (9 EVM) та Solana. Для Robinhood використовується
 та сама EVM-адреса — додайте EVM-гаманець або синхронізуйте наявний.
 
-Robinhood Chain mainnet: chain ID `4663` (`0x1237`), нативна монета ETH,
+Robinhood mainnet: chain ID `4663` (`0x1237`), нативна монета ETH,
 [explorer](https://robinhoodchain.blockscout.com),
 [офіційні параметри мережі](https://docs.robinhood.com/chain/connecting/).
 Баланси ETH та ERC-20 отримуються окремо через Blockscout з пагінацією.

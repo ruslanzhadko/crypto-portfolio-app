@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import {
   ChevronRight,
@@ -11,7 +10,7 @@ import {
   Coins,
   ExternalLink,
   MoreVertical,
-  Loader2,
+  Copy,
 } from 'lucide-react';
 import type { TokenBalance } from '@prisma/client';
 import { TokenLogo } from '@/components/common/token-logo';
@@ -51,10 +50,38 @@ interface BalanceGroup {
   chains: TokenBalance[]; // тільки видимі (після filters)
 }
 
+const SOLANA_MARKET_IDS: Record<string, string> = {
+  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'usd-coin',
+  Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: 'tether',
+  DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263: 'bonk',
+  JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN: 'jupiter-exchange-solana',
+};
+
+function verifiedMarketId(token: TokenBalance): string | null {
+  if (token.chainName !== 'solana' || token.tokenAddress === '') return token.coingeckoId;
+  return SOLANA_MARKET_IDS[token.tokenAddress] ?? null;
+}
+
+function explorerUrl(token: TokenBalance): string | null {
+  if (!token.tokenAddress) return null;
+  if (token.chainName === 'solana') return `https://solscan.io/token/${token.tokenAddress}`;
+  const bases: Record<string, string> = {
+    ethereum: 'https://etherscan.io/token/', bsc: 'https://bscscan.com/token/',
+    polygon: 'https://polygonscan.com/token/', arbitrum: 'https://arbiscan.io/token/',
+    optimism: 'https://optimistic.etherscan.io/token/', base: 'https://basescan.org/token/',
+    avalanche: 'https://snowtrace.io/token/', xlayer: 'https://www.oklink.com/x-layer/address/',
+  };
+  return bases[token.chainName] ? `${bases[token.chainName]}${token.tokenAddress}` : null;
+}
+
 function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
   const map = new Map<string, BalanceGroup>();
   for (const t of tokens) {
-    const key = t.tokenSymbol.toLowerCase();
+    const marketId = verifiedMarketId(t);
+    // Aggregate only when identity is verified. A ticker is not an identifier.
+    const key = marketId
+      ? `market:${marketId}`
+      : `${t.chainName}:${t.tokenAddress || `native:${t.tokenSymbol.toLowerCase()}`}`;
     const existing = map.get(key);
     if (existing) {
       existing.totalBalance += t.balance;
@@ -64,7 +91,7 @@ function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
       if (!existing.priceChange24h && t.priceChange24h !== 0) {
         existing.priceChange24h = t.priceChange24h;
       }
-      if (!existing.coingeckoId && t.coingeckoId) existing.coingeckoId = t.coingeckoId;
+      if (!existing.coingeckoId && marketId) existing.coingeckoId = marketId;
       if (!existing.logoUrl && t.logoUrl) existing.logoUrl = t.logoUrl;
     } else {
       map.set(key, {
@@ -72,7 +99,7 @@ function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
         symbol: t.tokenSymbol,
         name: t.tokenName,
         logoUrl: t.logoUrl,
-        coingeckoId: t.coingeckoId,
+        coingeckoId: marketId,
         totalBalance: t.balance,
         totalUsd: t.usdValue,
         priceUsd: t.priceUsd,
@@ -270,43 +297,10 @@ function TokenGroupRow({
   onToggleHide: (token: TokenBalance) => void;
 }) {
   const t = useTranslations('TokenBalanceList');
-  const router = useRouter();
-  const [searching, setSearching] = useState(false);
   const isMulti = group.chains.length > 1;
   const hasMarket = !!group.coingeckoId;
   const share = walletTotalUsd > 0 ? (group.totalUsd / walletTotalUsd) * 100 : 0;
   const isLowValue = group.totalUsd > 0 && group.totalUsd < MIN_TOKEN_USD;
-
-  async function handleSearchMarket() {
-    if (searching) return;
-    setSearching(true);
-    try {
-      // 1. Search by symbol, pick exact match with best market cap rank
-      const symRes = await fetch(`/api/market/search?q=${encodeURIComponent(group.symbol)}`);
-      if (symRes.ok) {
-        const { results }: {
-          results: Array<{ id: string; symbol: string; marketCapRank: number | null }>;
-        } = await symRes.json();
-        const exact = results
-          .filter((r) => r.symbol.toUpperCase() === group.symbol.toUpperCase())
-          .sort((a, b) => {
-            if (a.marketCapRank === null) return 1;
-            if (b.marketCapRank === null) return -1;
-            return a.marketCapRank - b.marketCapRank;
-          });
-        if (exact[0]) { router.push(`/market/${exact[0].id}`); return; }
-      }
-      // 2. Fallback: search by full token name
-      const nameQ = group.name || group.symbol;
-      const nameRes = await fetch(`/api/market/search?q=${encodeURIComponent(nameQ)}`);
-      if (nameRes.ok) {
-        const { results }: { results: Array<{ id: string }> } = await nameRes.json();
-        if (results[0]) router.push(`/market/${results[0].id}`);
-      }
-    } finally {
-      setSearching(false);
-    }
-  }
 
   // Контент основної області (logo + info + right block) — однаковий для обох випадків
   const mainContent = (
@@ -317,9 +311,7 @@ function TokenGroupRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-medium">{group.symbol}</span>
-          {searching ? (
-            <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary/70" />
-          ) : (
+          {hasMarket && (
             <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />
           )}
           {isLowValue && (
@@ -406,14 +398,9 @@ function TokenGroupRow({
             {mainContent}
           </Link>
         ) : (
-          <button
-            type="button"
-            onClick={handleSearchMarket}
-            disabled={searching}
-            className="flex min-w-0 flex-1 items-center gap-3 text-left disabled:opacity-60"
-          >
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             {mainContent}
-          </button>
+          </div>
         )}
 
         {/* Меню — для single-chain. Для multi-chain — spacer тієї ж ширини щоб
@@ -550,26 +537,13 @@ function RowDropdown({
   compact?: boolean;
 }) {
   const t = useTranslations('TokenBalanceList');
-  const router = useRouter();
-  const [searching, setSearching] = useState(false);
+  const { toast } = useToast();
+  const explorer = explorerUrl(token);
 
-  async function handleSearchMarket(e: React.MouseEvent) {
-    e.preventDefault();
-    setSearching(true);
-    try {
-      const res = await fetch(
-        `/api/market/search?q=${encodeURIComponent(token.tokenName || token.tokenSymbol)}`,
-      );
-      if (!res.ok) throw new Error();
-      const { results }: { results: Array<{ id: string }> } = await res.json();
-      if (results[0]) {
-        router.push(`/market/${results[0].id}`);
-      }
-    } catch {
-      // silently fail — user stays on page
-    } finally {
-      setSearching(false);
-    }
+  async function copyContract() {
+    if (!token.tokenAddress) return;
+    await navigator.clipboard.writeText(token.tokenAddress);
+    toast({ title: t('contractCopied'), description: token.tokenAddress });
   }
 
   return (
@@ -595,17 +569,19 @@ function RowDropdown({
               {t('toMarketPage')}
             </Link>
           </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem
-            disabled={searching}
-            onClick={handleSearchMarket}
-          >
-            {searching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+        ) : null}
+        {token.tokenAddress && (
+          <DropdownMenuItem onClick={copyContract} title={token.tokenAddress}>
+            <Copy className="h-4 w-4" />
+            {t('copyContract')} · {shortAddress(token.tokenAddress, 5)}
+          </DropdownMenuItem>
+        )}
+        {explorer && (
+          <DropdownMenuItem asChild>
+            <a href={explorer} target="_blank" rel="noreferrer">
               <ExternalLink className="h-4 w-4" />
-            )}
-            {t('findOnMarket')}
+              {t('viewContract')}
+            </a>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem

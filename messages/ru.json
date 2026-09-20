@@ -106,7 +106,7 @@
     "toastErrors": "{count} с ошибкой",
     "toastSyncDoneTitle": "Sync завершён · {count} кошельк(ов)",
     "toastTokensCount": "{count} токенов",
-    "robinhoodUnavailable": "Robinhood Chain временно недоступна. Предыдущие балансы сохранены; данные этой сети не обновлены."
+    "robinhoodUnavailable": "Robinhood временно недоступна. Предыдущие балансы сохранены; данные этой сети не обновлены."
   },
   "Wallets": {
     "pageTitle": "Кошельки",
@@ -133,7 +133,7 @@
     "toastSyncDoneDescription": "{tokens} токенов · {spam} спам отфильтровано",
     "toastDeleteFailedTitle": "Не удалось удалить",
     "toastDeletedTitle": "Кошелёк удалён",
-    "robinhoodUnavailable": "Robinhood Chain временно недоступна. Предыдущие балансы сохранены; данные этой сети не обновлены."
+    "robinhoodUnavailable": "Robinhood временно недоступна. Предыдущие балансы сохранены; данные этой сети не обновлены."
   },
   "AddWalletDialog": {
     "triggerButton": "Добавить кошелёк",
@@ -141,7 +141,7 @@
     "dialogDescription": "Read-only режим — приватные ключи не нужны.",
     "addressTypeLabel": "Тип адреса",
     "evmLabel": "EVM-адрес",
-    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain",
+    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood",
     "evmPlaceholder": "0x...",
     "solanaLabel": "Solana-адрес",
     "solanaDesc": "Сеть Solana (отдельный адрес)",
@@ -162,7 +162,7 @@
     "toastSyncDoneDescription": "{tokens} токенов найдено ({spam} спам отфильтровано)",
     "toastSyncFailedTitle": "Sync не удался",
     "toastSyncFailedDescription": "Попробуйте нажать Sync вручную",
-    "robinhoodUnavailable": "Robinhood Chain временно недоступна. Предыдущие балансы сохранены; данные этой сети не обновлены."
+    "robinhoodUnavailable": "Robinhood временно недоступна. Предыдущие балансы сохранены; данные этой сети не обновлены."
   },
   "Alerts": {
     "pageTitle": "Уведомления",
@@ -416,6 +416,9 @@
     "expandNetworks": "Развернуть сети",
     "toMarketPage": "На страницу токена",
     "findOnMarket": "Найти на Market",
+    "copyContract": "Копировать контракт",
+    "viewContract": "Проверить контракт",
+    "contractCopied": "Адрес контракта скопирован",
     "showInBalance": "Показать в балансе",
     "hideFromBalance": "Скрыть из баланса",
     "toastUpdateFailed": "Не удалось обновить",
@@ -526,7 +529,7 @@
     "featuresTitle": "Ключевые возможности",
     "featuresSubtitle": "Всё необходимое для мониторинга портфеля",
     "feature1Title": "Мультисетевой",
-    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain и Solana.",
+    "feature1Desc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood и Solana.",
     "feature2Title": "Ценовые уведомления",
     "feature2Desc": "Telegram-сообщения когда цена изменяется на заданные % или достигает целевого значения.",
     "feature3Title": "Аналитика портфеля",
@@ -547,7 +550,7 @@
     "faq1q": "Безопасно ли добавлять публичный адрес?",
     "faq1a": "Абсолютно. Мы используем только публичные данные блокчейна. Приватные ключи и подписи не нужны — мы не можем совершать никаких транзакций.",
     "faq2q": "Какие сети поддерживаются?",
-    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood Chain (все EVM) и Solana. Поддержка новых сетей планируется.",
+    "faq2a": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood (все EVM) и Solana. Поддержка новых сетей планируется.",
     "faq3q": "Как работают Telegram-уведомления?",
     "faq3a": "Перейдите в Настройки, введите ваш Telegram Chat ID, затем создайте триггер с нужным порогом. Вы получите сообщение когда условие выполнится.",
     "faq4q": "Как часто обновляются цены?",

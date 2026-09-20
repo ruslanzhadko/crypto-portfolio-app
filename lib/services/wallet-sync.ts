@@ -243,7 +243,12 @@ async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>):
 // Шукає логотипи через CoinGecko search для токенів без лого і без coingeckoId.
 // Зберігає знайдені записи в TokenPrice щоб наступний sync читав з кешу (без запитів).
 async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
-  const needLogo = tokens.filter((t) => !t.logoUrl && !t.coingeckoId && !t.isNative && t.chainName !== 'robinhood');
+  // Solana metadata comes from Helius by mint. A CoinGecko symbol search is unsafe:
+  // unrelated tokens frequently share the same ticker (for example CATE).
+  const needLogo = tokens.filter(
+    (t) => !t.logoUrl && !t.coingeckoId && !t.isNative &&
+      t.chainName !== 'robinhood' && t.chainName !== 'solana',
+  );
   if (needLogo.length === 0) return;
 
   // Дедуплікація за символом — один символ може бути на кількох ланцюгах
@@ -351,21 +356,27 @@ async function applyCachedPrices(
   });
 
   const priceBySymbol = new Map<string, { price: number; change24h: number; id: string; logoUrl: string | null }>();
+  const priceById = new Map<string, { price: number; change24h: number; id: string; logoUrl: string | null }>();
   for (const p of cached) {
+    const value = {
+      price: p.currentPrice,
+      change24h: p.priceChange24h,
+      id: p.tokenId,
+      logoUrl: p.logoUrl ?? null,
+    };
+    priceById.set(p.tokenId, value);
     const key = p.symbol.toLowerCase();
     if (!priceBySymbol.has(key)) {
-      priceBySymbol.set(key, {
-        price: p.currentPrice,
-        change24h: p.priceChange24h,
-        id: p.tokenId,
-        logoUrl: p.logoUrl ?? null,
-      });
+      priceBySymbol.set(key, value);
     }
   }
 
   return tokens.map((t): EnrichedToken => {
-    const fromCache = priceBySymbol.get(t.symbol.toLowerCase());
-    let coingeckoId: string | null = null;
+    const verifiedId = t.coingeckoId ?? null;
+    const fromCache = verifiedId
+      ? priceById.get(verifiedId)
+      : t.chainName === 'solana' ? undefined : priceBySymbol.get(t.symbol.toLowerCase());
+    let coingeckoId: string | null = verifiedId;
     let usdValue = t.usdValue;
     let priceUsd = t.priceUsd;
     let priceChange24h = t.priceChange24h;
@@ -382,8 +393,8 @@ async function applyCachedPrices(
         if (usdValue === 0) usdValue = t.balance * fromCache.price;
       }
     } else if (fromCache && t.chainName !== 'robinhood') {
-      // Для не-нативних EVM/Solana токенів — лише як fallback за символом
-      coingeckoId = fromCache.id;
+      // EVM may use the legacy symbol fallback. Solana only uses mint-verified IDs.
+      if (t.chainName !== 'solana') coingeckoId = fromCache.id;
       if (priceUsd === 0) priceUsd = fromCache.price;
       if (priceChange24h === 0) priceChange24h = fromCache.change24h;
       if (usdValue === 0) usdValue = t.balance * fromCache.price;

@@ -17,7 +17,7 @@ export function WalletTransactions({ walletId, walletAddress, network }: {
         {t('otherEvmNetworks')}
       </Button>
       <Button variant={chain ? 'default' : 'outline'} size="sm" aria-pressed={!!chain} onClick={() => setChain('robinhood')}>
-        <TokenLogo src="/robinhood-logo.png" symbol="Robinhood Chain" size={18} /> Robinhood Chain
+        <TokenLogo src="/robinhood-logo.png" symbol="Robinhood" size={18} /> Robinhood
       </Button>
     </div>}
     <TransactionList key={chain ?? 'default'} walletId={walletId} walletAddress={walletAddress} chain={chain} />

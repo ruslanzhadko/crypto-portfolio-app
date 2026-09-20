@@ -13,6 +13,8 @@ export interface NormalizedToken {
   isNative: boolean;
   chainName: string;
   isSpam: boolean;
+  /** Provider-verified CoinGecko id. Never infer this from ticker alone. */
+  coingeckoId?: string | null;
 }
 
 export interface NormalizedTransaction {

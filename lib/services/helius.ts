@@ -3,6 +3,12 @@ import type { NormalizedToken } from './token-types';
 const HELIUS_RPC_BASE = 'https://mainnet.helius-rpc.com/';
 const PAGE_SIZE = 1000;
 const FUNGIBLE_INTERFACES = new Set(['FungibleToken', 'FungibleAsset']);
+const COINGECKO_ID_BY_MINT: Record<string, string> = {
+  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'usd-coin',
+  Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: 'tether',
+  DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263: 'bonk',
+  JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN: 'jupiter-exchange-solana',
+};
 
 interface HeliusAsset {
   id?: string;
@@ -10,7 +16,7 @@ interface HeliusAsset {
   content?: {
     metadata?: { name?: string; symbol?: string };
     links?: { image?: string };
-    files?: Array<{ uri?: string; mime?: string }>;
+    files?: Array<{ uri?: string; cdn_uri?: string; mime?: string }>;
   };
   token_info?: {
     balance?: number;
@@ -58,8 +64,8 @@ function finitePositive(value: unknown): number {
 }
 
 function assetLogo(asset: HeliusAsset): string | null {
-  if (asset.content?.links?.image) return asset.content.links.image;
-  return asset.content?.files?.find((file) => file.mime?.startsWith('image/'))?.uri ?? null;
+  const image = asset.content?.files?.find((file) => file.mime?.startsWith('image/'));
+  return image?.cdn_uri ?? image?.uri ?? asset.content?.links?.image ?? null;
 }
 
 async function getAssetsPage(
@@ -154,6 +160,7 @@ export async function fetchSolanaBalances(address: string): Promise<NormalizedTo
         isNative: false,
         chainName: 'solana',
         isSpam: false,
+        coingeckoId: COINGECKO_ID_BY_MINT[asset.id] ?? null,
       });
     }
 

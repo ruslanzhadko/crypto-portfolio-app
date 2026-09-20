@@ -41,7 +41,7 @@ export function ChainBadge({ chainName, className }: ChainBadgeProps) {
         className,
       )}
     >
-      {chainName === 'robinhood' ? <TokenLogo src={getChainInfo(chainName)?.chainLogoUrl} symbol="Robinhood Chain" size={12} /> : <span
+      {chainName === 'robinhood' ? <TokenLogo src={getChainInfo(chainName)?.chainLogoUrl} symbol="Robinhood" size={12} /> : <span
         aria-hidden
         className="h-1.5 w-1.5 rounded-full"
         style={{ backgroundColor: getChainColor(chainName) }}
