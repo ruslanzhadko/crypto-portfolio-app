@@ -328,7 +328,9 @@ function applyPriceToToken(
   change24h: number,
   logoUrl?: string,
 ): void {
-  if (!t.logoUrl && logoUrl) t.logoUrl = logoUrl;
+  // For Solana, DexScreener's CDN is generally more browser-friendly than
+  // arbitrary metadata origins (many block hotlinking or expire).
+  if (logoUrl && (!t.logoUrl || t.chainName === 'solana')) t.logoUrl = logoUrl;
   if (!Number.isFinite(price) || price <= 0) return;
   if (t.priceUsd === 0) t.priceUsd = price;
   if (t.priceChange24h === 0 && Number.isFinite(change24h)) {

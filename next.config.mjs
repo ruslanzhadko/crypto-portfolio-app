@@ -11,6 +11,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'coin-images.coingecko.com' },
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
       { protocol: 'https', hostname: 'cdn.helius-rpc.com' },
+      { protocol: 'https', hostname: 'cdn.dexscreener.com' },
     ],
   },
   experimental: {

@@ -74,6 +74,15 @@ function explorerUrl(token: TokenBalance): string | null {
   return bases[token.chainName] ? `${bases[token.chainName]}${token.tokenAddress}` : null;
 }
 
+function tokenPageUrl(token: TokenBalance): string | null {
+  const marketId = verifiedMarketId(token);
+  if (marketId) return `/market/${marketId}`;
+  if (token.chainName === 'solana' && token.tokenAddress) {
+    return `https://dexscreener.com/solana/${token.tokenAddress}`;
+  }
+  return null;
+}
+
 function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
   const map = new Map<string, BalanceGroup>();
   for (const t of tokens) {
@@ -299,6 +308,8 @@ function TokenGroupRow({
   const t = useTranslations('TokenBalanceList');
   const isMulti = group.chains.length > 1;
   const hasMarket = !!group.coingeckoId;
+  const tokenPage = group.chains[0] ? tokenPageUrl(group.chains[0]) : null;
+  const isExternalTokenPage = tokenPage?.startsWith('https://') ?? false;
   const share = walletTotalUsd > 0 ? (group.totalUsd / walletTotalUsd) * 100 : 0;
   const isLowValue = group.totalUsd > 0 && group.totalUsd < MIN_TOKEN_USD;
 
@@ -311,7 +322,7 @@ function TokenGroupRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="font-medium">{group.symbol}</span>
-          {hasMarket && (
+          {tokenPage && (
             <ExternalLink className="h-3 w-3 shrink-0 text-primary/70" />
           )}
           {isLowValue && (
@@ -390,13 +401,24 @@ function TokenGroupRow({
         )}
 
         {/* Основна клікабельна зона */}
-        {hasMarket ? (
+        {tokenPage ? (
+          isExternalTokenPage ? (
+            <a
+              href={tokenPage}
+              target="_blank"
+              rel="noreferrer"
+              className="flex min-w-0 flex-1 items-center gap-3"
+            >
+              {mainContent}
+            </a>
+          ) : (
           <Link
-            href={`/market/${group.coingeckoId}`}
+            href={tokenPage}
             className="flex min-w-0 flex-1 items-center gap-3"
           >
             {mainContent}
           </Link>
+          )
         ) : (
           <div className="flex min-w-0 flex-1 items-center gap-3">
             {mainContent}
