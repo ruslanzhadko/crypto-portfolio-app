@@ -21,6 +21,8 @@ export interface AggregatedToken {
   name: string;
   logoUrl: string | null;
   coingeckoId: string | null;
+  chainName: string;
+  tokenAddress: string;
   totalBalance: number;
   totalUsd: number;
   share: number;
@@ -81,7 +83,11 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
 
   for (const w of wallets) {
     for (const b of w.balances) {
-      const key = b.tokenSymbol.toLowerCase();
+      // A ticker is not a token identity. Group contract tokens by chain+address;
+      // only native assets may use a shared verified CoinGecko identity.
+      const key = b.tokenAddress
+        ? `${b.chainName}:${b.tokenAddress.toLowerCase()}`
+        : b.coingeckoId ? `market:${b.coingeckoId}` : `${b.chainName}:native:${b.tokenSymbol.toLowerCase()}`;
       const cached = priceCache.get(key);
 
       // Fallback: priceUsd → з балансу, інакше з кешу, інакше з usdValue/balance
@@ -135,6 +141,8 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
           name: b.tokenName,
           logoUrl: b.logoUrl,
           coingeckoId: b.coingeckoId,
+          chainName: b.chainName,
+          tokenAddress: b.tokenAddress,
           totalBalance: b.balance,
           totalUsd: b.usdValue,
           share: 0,

@@ -137,7 +137,13 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                           ) : (
                             <span aria-hidden className="inline-block w-4" />
                           )}
-                          <TokenLogo src={tok.logoUrl} symbol={tok.symbol} size={28} />
+                          <TokenLogo
+                            src={tok.logoUrl}
+                            symbol={tok.symbol}
+                            size={28}
+                            chainName={tok.chainName}
+                            tokenAddress={tok.tokenAddress}
+                          />
                           <div className="min-w-0">
                             <p className="font-medium">{tok.symbol}</p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">

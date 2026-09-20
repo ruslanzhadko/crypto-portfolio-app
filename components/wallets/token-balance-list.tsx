@@ -30,6 +30,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { MIN_TOKEN_USD } from '@/lib/services/token-types';
 import { cn } from '@/lib/utils/cn';
+import { getTokenPageUrl } from '@/lib/utils/token-links';
 
 interface TokenBalanceListProps {
   walletId: string;
@@ -50,16 +51,9 @@ interface BalanceGroup {
   chains: TokenBalance[]; // тільки видимі (після filters)
 }
 
-const SOLANA_MARKET_IDS: Record<string, string> = {
-  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'usd-coin',
-  Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: 'tether',
-  DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263: 'bonk',
-  JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN: 'jupiter-exchange-solana',
-};
-
 function verifiedMarketId(token: TokenBalance): string | null {
-  if (token.chainName !== 'solana' || token.tokenAddress === '') return token.coingeckoId;
-  return SOLANA_MARKET_IDS[token.tokenAddress] ?? null;
+  // Contract tokens navigate by exact address through DexScreener.
+  return token.tokenAddress === '' ? token.coingeckoId : null;
 }
 
 function explorerUrl(token: TokenBalance): string | null {
@@ -72,15 +66,6 @@ function explorerUrl(token: TokenBalance): string | null {
     avalanche: 'https://snowtrace.io/token/', xlayer: 'https://www.oklink.com/x-layer/address/',
   };
   return bases[token.chainName] ? `${bases[token.chainName]}${token.tokenAddress}` : null;
-}
-
-function tokenPageUrl(token: TokenBalance): string | null {
-  const marketId = verifiedMarketId(token);
-  if (marketId) return `/market/${marketId}`;
-  if (token.chainName === 'solana' && token.tokenAddress) {
-    return `https://dexscreener.com/solana/${token.tokenAddress}`;
-  }
-  return null;
 }
 
 function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
@@ -308,15 +293,20 @@ function TokenGroupRow({
   const t = useTranslations('TokenBalanceList');
   const isMulti = group.chains.length > 1;
   const hasMarket = !!group.coingeckoId;
-  const tokenPage = group.chains[0] ? tokenPageUrl(group.chains[0]) : null;
-  const isExternalTokenPage = tokenPage?.startsWith('https://') ?? false;
+  const tokenPage = group.chains[0] ? getTokenPageUrl(group.chains[0]) : null;
   const share = walletTotalUsd > 0 ? (group.totalUsd / walletTotalUsd) * 100 : 0;
   const isLowValue = group.totalUsd > 0 && group.totalUsd < MIN_TOKEN_USD;
 
   // Контент основної області (logo + info + right block) — однаковий для обох випадків
   const mainContent = (
     <>
-      <TokenLogo src={group.logoUrl} symbol={group.symbol} size={36} />
+      <TokenLogo
+        src={group.logoUrl}
+        symbol={group.symbol}
+        size={36}
+        chainName={group.chains[0]?.chainName}
+        tokenAddress={group.chains[0]?.tokenAddress}
+      />
 
       {/* Info column (flex-1) — symbol + name + meta (price/change inline) */}
       <div className="min-w-0 flex-1">
@@ -402,9 +392,9 @@ function TokenGroupRow({
 
         {/* Основна клікабельна зона */}
         {tokenPage ? (
-          isExternalTokenPage ? (
+          tokenPage.external ? (
             <a
-              href={tokenPage}
+              href={tokenPage.href}
               target="_blank"
               rel="noreferrer"
               className="flex min-w-0 flex-1 items-center gap-3"
@@ -413,7 +403,7 @@ function TokenGroupRow({
             </a>
           ) : (
           <Link
-            href={tokenPage}
+            href={tokenPage.href}
             className="flex min-w-0 flex-1 items-center gap-3"
           >
             {mainContent}
