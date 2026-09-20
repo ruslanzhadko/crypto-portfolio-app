@@ -96,8 +96,8 @@ export interface CoinDetail {
   priceChange30d: number;
   high24h: number | null;
   low24h: number | null;
-  ath: number | null;
-  athChangePercent: number | null;
+  high52w: number | null;
+  high52wChangePercent: number | null;
   rank: number | null;
   homepage: string | null;
 }
@@ -240,13 +240,6 @@ interface CoinGeckoDetailResponse {
   };
 }
 
-// CoinGecko records ZEC's launch peak as $3,191.93, while the broader market
-// record used by CoinMarketCap and Coinbase is $5,941.80 (2016-10-29).
-// Keep narrowly-scoped corrections here instead of changing generic API data.
-const VERIFIED_ATH_USD: Record<string, number> = {
-  zcash: 5_941.8,
-};
-
 export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
   const { data } = await withRetry(() =>
     getClient().get<CoinGeckoDetailResponse>(`/coins/${id}`, {
@@ -262,10 +255,20 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
   const md = data.market_data;
   const homepage = data.links?.homepage?.find((u) => u && u.length > 0) ?? null;
   const currentPrice = md?.current_price?.usd ?? 0;
-  const ath = VERIFIED_ATH_USD[data.id] ?? md?.ath?.usd ?? null;
-  const athChangePercent = ath && currentPrice > 0
-    ? ((currentPrice - ath) / ath) * 100
-    : md?.ath_change_percentage?.usd ?? null;
+  // A rolling high is more useful than launch-day prints distorted by very low
+  // liquidity (notably ZEC). Failure here must not hide the rest of the detail page.
+  const chart = await withRetry(() =>
+    getClient().get<MarketChartResponse>(`/coins/${id}/market_chart`, {
+      params: { vs_currency: 'usd', days: 365, interval: 'daily' },
+    }),
+  ).then((response) => response.data).catch(() => ({ prices: [] }));
+  const validPrices = (chart.prices ?? [])
+    .map(([, price]) => price)
+    .filter((price) => Number.isFinite(price) && price > 0);
+  const high52w = validPrices.length > 0 ? Math.max(...validPrices) : null;
+  const high52wChangePercent = high52w && currentPrice > 0
+    ? ((currentPrice - high52w) / high52w) * 100
+    : null;
   return {
     id: data.id,
     symbol: data.symbol,
@@ -279,8 +282,8 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
     volume24h: md?.total_volume?.usd ?? null,
     high24h: md?.high_24h?.usd ?? null,
     low24h: md?.low_24h?.usd ?? null,
-    ath,
-    athChangePercent,
+    high52w,
+    high52wChangePercent,
     priceChange1h: md?.price_change_percentage_1h_in_currency?.usd ?? 0,
     priceChange24h: md?.price_change_percentage_24h ?? 0,
     priceChange7d: md?.price_change_percentage_7d ?? 0,

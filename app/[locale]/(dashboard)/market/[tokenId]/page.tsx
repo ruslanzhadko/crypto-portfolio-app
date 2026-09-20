@@ -183,14 +183,14 @@ export default async function TokenDetailPage({
           subtext={t('stat30dSubtext')}
         />
         <StatCard
-          label={t('statAth')}
-          value={coin.athChangePercent !== null ? formatPercent(coin.athChangePercent) : '—'}
+          label={t('stat52wHigh')}
+          value={coin.high52wChangePercent !== null ? formatPercent(coin.high52wChangePercent) : '—'}
           valueClassName={
-            coin.athChangePercent !== null
-              ? coin.athChangePercent >= 0 ? 'text-success' : 'text-danger'
+            coin.high52wChangePercent !== null
+              ? coin.high52wChangePercent >= 0 ? 'text-success' : 'text-danger'
               : undefined
           }
-          subtext={coin.ath !== null ? t('athSubtext', { value: formatUsd(coin.ath) }) : undefined}
+          subtext={coin.high52w !== null ? t('high52wSubtext', { value: formatUsd(coin.high52w) }) : undefined}
         />
       </div>
 
