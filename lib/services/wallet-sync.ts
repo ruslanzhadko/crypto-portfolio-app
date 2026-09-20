@@ -1,10 +1,7 @@
 import { Network } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
-import {
-  fetchWalletTokens,
-  MIN_TOKEN_USD,
-  type NormalizedToken,
-} from '@/lib/services/moralis';
+import { MIN_TOKEN_USD, type NormalizedToken } from '@/lib/services/token-types';
+import { fetchSolanaBalances } from '@/lib/services/helius';
 import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
 import { fetchRobinhoodBalances } from '@/lib/services/robinhood';
 import { fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
@@ -38,7 +35,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   let robinhoodSynced = false;
   const tokens = isEvm
     ? await fetchEVMBalancesFromAnkr(wallet.address)
-    : await fetchWalletTokens(wallet.address, wallet.network);
+    : await fetchSolanaBalances(wallet.address);
   if (isEvm) {
     try {
       tokens.push(...await fetchRobinhoodBalances(wallet.address));
@@ -142,7 +139,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
 // ─────────────────────────────────────────
 
 /**
- * Заповнює ціни для токенів, які Moralis повернув без `priceUsd` або з нульовим `usdValue`.
+ * Заповнює ціни для токенів, які провайдер повернув без `priceUsd` або з нульовим `usdValue`.
  *
  * Pipeline:
  *  1. price-feed (Binance native + DexScreener за contract address) — головне джерело.

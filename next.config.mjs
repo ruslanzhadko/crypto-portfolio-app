@@ -9,13 +9,11 @@ const nextConfig = {
     remotePatterns: [
       { protocol: 'https', hostname: 'assets.coingecko.com' },
       { protocol: 'https', hostname: 'coin-images.coingecko.com' },
-      { protocol: 'https', hostname: 'cdn.moralis.io' },
-      { protocol: 'https', hostname: 'logo.moralis.io' },
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'moralis'],
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
 };
 
