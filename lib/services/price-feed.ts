@@ -1,7 +1,7 @@
 import axios, { type AxiosInstance } from 'axios';
 
 /**
- * Уніфікований pricing pipeline. Зменшує залежність від Moralis/CoinGecko CU,
+ * Уніфікований pricing pipeline. Зменшує залежність від CoinGecko API,
  * використовуючи безкоштовні публічні джерела:
  *
  *  1. Binance — для нативних монет ланцюгів (ETH/BNB/POL/AVAX/SOL).

@@ -5,7 +5,7 @@ const envSchema = z.object({
   NEXTAUTH_SECRET: z.string().min(32).optional(),
   AUTH_SECRET: z.string().min(32).optional(),
   NEXTAUTH_URL: z.string().url().optional(),
-  MORALIS_API_KEY: z.string().optional(),
+  HELIUS_API_KEY: z.string().optional(),
   ROBINHOOD_BLOCKSCOUT_API_KEY: z.string().optional(),
   COINGECKO_API_KEY: z.string().optional(),
   COINGECKO_BASE_URL: z.string().url().default('https://api.coingecko.com/api/v3'),

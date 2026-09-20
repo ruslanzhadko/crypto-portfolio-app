@@ -10,7 +10,6 @@ export interface ChainInfo {
   displayName: string;
   symbol: string;
   chainId: string | null;
-  moralisId: string | null;
   coingeckoPlatform: string | null;
   coingeckoNativeId: string;
   /** Логотип нативного токена — Trust Wallet CDN, стабільні URL */
@@ -30,7 +29,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Robinhood Chain',
     symbol: 'ETH',
     chainId: '0x1237',
-    moralisId: null, // Balances and history use Blockscout, not Moralis/Ankr.
     coingeckoPlatform: null,
     coingeckoNativeId: 'ethereum',
     nativeLogoUrl: ETH_LOGO,
@@ -43,7 +41,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Ethereum',
     symbol: 'ETH',
     chainId: '0x1',
-    moralisId: 'eth',
     coingeckoPlatform: 'ethereum',
     coingeckoNativeId: 'ethereum',
     nativeLogoUrl: ETH_LOGO,
@@ -56,7 +53,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'BNB Chain',
     symbol: 'BNB',
     chainId: '0x38',
-    moralisId: 'bsc',
     coingeckoPlatform: 'binance-smart-chain',
     coingeckoNativeId: 'binancecoin',
     nativeLogoUrl: `${TW}/smartchain/info/logo.png`,
@@ -69,7 +65,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Polygon',
     symbol: 'POL',
     chainId: '0x89',
-    moralisId: 'polygon',
     coingeckoPlatform: 'polygon-pos',
     coingeckoNativeId: 'matic-network',
     nativeLogoUrl: `${TW}/polygon/info/logo.png`,
@@ -82,7 +77,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Arbitrum',
     symbol: 'ETH',
     chainId: '0xa4b1',
-    moralisId: 'arbitrum',
     coingeckoPlatform: 'arbitrum-one',
     coingeckoNativeId: 'ethereum',
     nativeLogoUrl: ETH_LOGO,
@@ -95,7 +89,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Optimism',
     symbol: 'ETH',
     chainId: '0xa',
-    moralisId: 'optimism',
     coingeckoPlatform: 'optimistic-ethereum',
     coingeckoNativeId: 'ethereum',
     nativeLogoUrl: ETH_LOGO,
@@ -108,7 +101,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Base',
     symbol: 'ETH',
     chainId: '0x2105',
-    moralisId: 'base',
     coingeckoPlatform: 'base',
     coingeckoNativeId: 'ethereum',
     nativeLogoUrl: ETH_LOGO,
@@ -121,7 +113,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'Avalanche',
     symbol: 'AVAX',
     chainId: '0xa86a',
-    moralisId: 'avalanche',
     coingeckoPlatform: 'avalanche',
     coingeckoNativeId: 'avalanche-2',
     nativeLogoUrl: `${TW}/avalanchec/info/logo.png`,
@@ -134,7 +125,6 @@ export const EVM_CHAINS: ChainInfo[] = [
     displayName: 'X Layer',
     symbol: 'OKB',
     chainId: '0xc4',
-    moralisId: 'xlayer',
     coingeckoPlatform: null,
     coingeckoNativeId: 'okb',
     nativeLogoUrl: '/okx-logo-black-and-white.png',
@@ -149,7 +139,6 @@ export const SOLANA_CHAIN: ChainInfo = {
   displayName: 'Solana',
   symbol: 'SOL',
   chainId: null,
-  moralisId: 'mainnet',
   coingeckoPlatform: 'solana',
   coingeckoNativeId: 'solana',
   nativeLogoUrl: `${TW}/solana/info/logo.png`,

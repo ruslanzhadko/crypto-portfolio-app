@@ -3,7 +3,7 @@ import { syncWallet, type SyncResult } from '@/lib/services/wallet-sync';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 
 // Хвилин до наступного sync для одного гаманця.
-// EVM баланси — Ankr (безлімітно); Solana — Moralis.
+// EVM баланси — Ankr; Solana — Helius DAS.
 // Ціни/зміни — DexScreener/Binance через price-feed.ts (безкоштовно).
 export const SYNC_THROTTLE_MINUTES = 10;
 

@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { syncWallet } from '@/lib/services/wallet-sync';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
-import { MoralisApiError, MoralisConfigError } from '@/lib/services/moralis';
+import { HeliusApiError, HeliusConfigError } from '@/lib/services/helius';
 import { AnkrApiError } from '@/lib/services/ankr';
 
 export const dynamic = 'force-dynamic';
@@ -31,11 +31,11 @@ export async function POST(
     if (err instanceof AnkrApiError) {
       return apiError('UPSTREAM_ERROR', `Ankr: ${err.message}`);
     }
-    if (err instanceof MoralisConfigError) {
+    if (err instanceof HeliusConfigError) {
       return apiError('INTERNAL_ERROR', err.message);
     }
-    if (err instanceof MoralisApiError) {
-      return apiError('UPSTREAM_ERROR', `Moralis: ${err.message}`);
+    if (err instanceof HeliusApiError) {
+      return apiError('UPSTREAM_ERROR', `Helius: ${err.message}`);
     }
     return handleUnknown(err);
   }

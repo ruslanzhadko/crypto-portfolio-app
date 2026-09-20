@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { MIN_TOKEN_USD } from '@/lib/services/moralis';
+import { MIN_TOKEN_USD } from '@/lib/services/token-types';
 import { cn } from '@/lib/utils/cn';
 
 interface TokenBalanceListProps {

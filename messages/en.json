@@ -520,7 +520,7 @@
     "step1Title": "Add your address",
     "step1Desc": "Paste any public EVM or Solana address. No registration of private keys — read-only access.",
     "step2Title": "Sync balances",
-    "step2Desc": "We fetch balances from Ankr, Moralis, and Blockscout across 10 networks and automatically filter spam tokens.",
+    "step2Desc": "We fetch balances from Ankr, Helius, and Blockscout across 10 networks and automatically filter spam tokens.",
     "step3Title": "Track & get alerts",
     "step3Desc": "Monitor price changes, set Telegram alerts, and compare wallets with each other.",
     "featuresTitle": "Key features",

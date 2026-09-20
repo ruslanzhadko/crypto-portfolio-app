@@ -1,5 +1,5 @@
 import axios, { AxiosError } from 'axios';
-import type { NormalizedToken, NormalizedTransaction } from './moralis';
+import type { NormalizedToken, NormalizedTransaction } from './token-types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Ankr Advanced API — multi-chain EVM balance fetching.

@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { z } from 'zod';
-import type { NormalizedToken, NormalizedTransaction } from './moralis';
+import type { NormalizedToken, NormalizedTransaction } from './token-types';
 import { getChainInfo } from '@/lib/utils/networks';
 
 // Official mainnet explorer: https://docs.robinhood.com/chain/connecting/

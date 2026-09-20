@@ -12,7 +12,7 @@ import { syncWallet } from '@/lib/services/wallet-sync';
 
 /** Гаманець синхронізуємо не частіше, ніж раз на 4 години. */
 const WALLET_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;
-/** Скільки гаманців максимум за один запуск (захист квот Moralis/Ankr). */
+/** Скільки гаманців максимум за один запуск (захист квот Helius/Ankr). */
 const MAX_WALLETS_PER_RUN = 10;
 /** Часовий бюджет на sync, щоб лишити час решті кроків у межах maxDuration=60с. */
 const WALLET_SYNC_TIME_BUDGET_MS = 35_000;
@@ -509,7 +509,7 @@ async function checkTriggers(
 }
 
 // ─────────────────────────────────────────
-// Step 0 — Sync wallet balances (Moralis/Ankr)
+// Step 0 — Sync wallet balances (Helius/Ankr)
 // ─────────────────────────────────────────
 
 /**

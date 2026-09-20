@@ -48,7 +48,7 @@ npm run cron:local          # читає розклад із CRON_SCHEDULE (де
    - `DIRECT_URL` — **direct** рядок (без `-pooler`), потрібен Prisma для міграцій.
 2. **Змінні середовища** (Project → Settings → Environment Variables) — повний перелік у `.env.example`:
    `DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`/`AUTH_SECRET`, `NEXTAUTH_URL`,
-   `CRON_SECRET`, `MORALIS_API_KEY`, `ANKR_API_KEY`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`,
+   `CRON_SECRET`, `ANKR_API_KEY`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`,
    `COINGECKO_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`.
    `NEXTAUTH_URL` і `NEXT_PUBLIC_APP_URL` = `https://<your-app>.vercel.app`.
 3. **Білд.** `npm run build` = `prisma generate && next build`; `postinstall` теж генерує клієнт.
