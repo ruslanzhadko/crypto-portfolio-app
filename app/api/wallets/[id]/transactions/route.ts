@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { fetchTransactionsPage } from '@/lib/services/ankr';
 import { fetchRobinhoodTransactions, parseRobinhoodCursor } from '@/lib/services/robinhood';
+import { transactionIsSpam, type TransactionSpamCandidate } from '@/lib/services/transaction-spam';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -31,6 +32,14 @@ function parseSwapSymbols(tokenSymbol: string): string[] {
     return tokenSymbol.split('→').map((s) => s.trim()).filter(Boolean);
   }
   return [tokenSymbol];
+}
+
+async function markSpam<T extends TransactionSpamCandidate>(walletId: string, transactions: T[]) {
+  const walletTokens = await prisma.tokenBalance.findMany({
+    where: { walletId },
+    select: { chainName: true, tokenAddress: true, isSpam: true },
+  });
+  return transactions.map((tx) => ({ ...tx, isSpam: transactionIsSpam(tx, walletTokens) }));
 }
 
 // ─── Solana transactions via public JSON-RPC (batch) ────────────────────────
@@ -227,6 +236,7 @@ async function fetchSolanaTransactionsHelius(
       results.push({
         id: tx.signature, hash: tx.signature, chainName: 'solana',
         type, tokenSymbol, tokenName: tokenSymbol,
+        tokenAddresses: [...new Set([...netOut, ...netIn].map(([mint]) => mint).filter((mint) => mint !== WSOL))],
         fromAddress: (type === 'send' || type === 'swap') ? address : null,
         toAddress:   type === 'receive' ? address : null,
         value, sentValue, usdValue: null, status: 'success',
@@ -430,6 +440,7 @@ async function fetchSolanaTransactionsPage(
     results.push({
       id: sig.signature, hash: sig.signature, chainName: 'solana',
       type, tokenSymbol, tokenName: tokenSymbol,
+      tokenAddresses: [...new Set(tokenChanges.map((change) => change.mint))],
       fromAddress: type === 'send' ? address : null,
       toAddress:   type === 'receive' ? address : null,
       value, sentValue, usdValue: null, status: 'success',
@@ -470,7 +481,7 @@ export async function GET(
     if (chain === 'robinhood' && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
 
     // Кеш-ключ для обох мереж
-    const cacheKey = `${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
+    const cacheKey = `spam-v3::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
     type PagePayload = { transactions: object[]; nextPageToken?: string; hasMore: boolean };
 
     const cached = cacheGet<PagePayload>(cacheKey);
@@ -482,7 +493,11 @@ export async function GET(
       const solPayload = heliusKey
         ? await fetchSolanaTransactionsHelius(wallet.address, wallet.id, heliusKey, pageToken, pageSize)
         : await fetchSolanaTransactionsPage(wallet.address, wallet.id, pageToken, pageSize);
-      const solResult: PagePayload = { ...solPayload, hasMore: !!solPayload.nextPageToken };
+      const solResult: PagePayload = {
+        ...solPayload,
+        transactions: await markSpam(wallet.id, solPayload.transactions as TransactionSpamCandidate[]),
+        hasMore: !!solPayload.nextPageToken,
+      };
       cacheSet(cacheKey, solResult);
       return ok(solResult);
     }
@@ -533,6 +548,7 @@ export async function GET(
         type: t.type,
         tokenSymbol: t.tokenSymbol,
         tokenName: t.tokenName,
+        tokenAddresses: t.tokenAddresses ?? [],
         fromAddress: t.fromAddress,
         toAddress: t.toAddress,
         value: t.value,
@@ -552,7 +568,7 @@ export async function GET(
       };
     });
 
-    const payload = { transactions: result, nextPageToken, hasMore: !!nextPageToken };
+    const payload = { transactions: await markSpam(wallet.id, result), nextPageToken, hasMore: !!nextPageToken };
     cacheSet(cacheKey, payload);
     return ok(payload);
   } catch (err) {

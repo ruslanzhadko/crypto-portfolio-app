@@ -23,6 +23,8 @@ export interface NormalizedTransaction {
   type: string;
   tokenSymbol: string | null;
   tokenName: string | null;
+  /** Exact token contracts/mints involved in this transaction (native assets omitted). */
+  tokenAddresses?: string[];
   fromAddress: string | null;
   toAddress: string | null;
   value: number | null;

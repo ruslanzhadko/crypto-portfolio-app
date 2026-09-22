@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, FileText, ExternalLink } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, FileText, ExternalLink, Search, Eye, EyeOff } from 'lucide-react';
 import { ChainBadge } from '@/components/common/network-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,9 @@ import { formatDate, formatNumber, shortAddress } from '@/lib/utils/format';
 import { Badge } from '@/components/ui/badge';
 import { TokenLogo } from '@/components/common/token-logo';
 import { cn } from '@/lib/utils/cn';
+import { getChainDisplayName } from '@/lib/utils/networks';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface TransactionDTO {
   id: string;
@@ -29,6 +32,7 @@ interface TransactionDTO {
   swapLogoUrl?: string | null;
   swapOutSymbol?: string | null;
   swapInSymbol?: string | null;
+  isSpam?: boolean;
 }
 
 interface TransactionListProps {
@@ -83,6 +87,10 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
   const [error, setError] = useState<string | null>(null);
   const [partialError, setPartialError] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [chainFilter, setChainFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [query, setQuery] = useState('');
+  const [showSpam, setShowSpam] = useState(false);
   const cursorsRef = useRef<CursorState>({ default: undefined, robinhood: undefined });
   const requestIdRef = useRef(0);
   const loadingRef = useRef(false);
@@ -182,11 +190,22 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
     );
   }
 
-  const visible = items.filter(
+  const displayable = items.filter(
     (tx) => tx.tokenSymbol || (tx.value !== null && tx.value > 0),
   );
+  const spamCount = displayable.filter((tx) => tx.isSpam).length;
+  const visible = displayable.filter((tx) => showSpam || !tx.isSpam);
+  const chains = [...new Set(visible.map((tx) => tx.chainName))]
+    .sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b)));
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const filtered = visible.filter((tx) =>
+    (chainFilter === 'all' || tx.chainName === chainFilter) &&
+    (typeFilter === 'all' || tx.type === typeFilter) &&
+    (!normalizedQuery || `${tx.tokenSymbol ?? ''} ${tx.hash}`.toLocaleLowerCase().includes(normalizedQuery)),
+  );
+  const filtersActive = chainFilter !== 'all' || typeFilter !== 'all' || normalizedQuery.length > 0;
 
-  if (visible.length === 0 && !hasMore) {
+  if (visible.length === 0 && !hasMore && spamCount === 0) {
     return (
       <EmptyState
         icon={FileText}
@@ -198,13 +217,69 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('cardTitle')}</CardTitle>
+      <CardHeader className="gap-2 space-y-0">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          {spamCount > 0 && (
+            <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-xs"
+              onClick={() => setShowSpam((current) => !current)}>
+              {showSpam ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              {showSpam ? t('hideSpam', { count: spamCount }) : t('showSpam', { count: spamCount })}
+            </Button>
+          )}
+        </div>
         {partialError && <p className="text-xs text-warning">{t('partialLoad')}</p>}
       </CardHeader>
       <CardContent className="p-0">
+        <div className="flex flex-col gap-3 border-b border-border px-6 pb-5 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="relative min-w-0 flex-1 sm:min-w-52">
+            <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+            <Input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={t('searchPlaceholder')}
+              aria-label={t('searchLabel')}
+              className="pl-9"
+            />
+          </div>
+          <Select value={chainFilter} onValueChange={setChainFilter}>
+            <SelectTrigger className="w-full sm:w-44" aria-label={t('networkFilter')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allNetworks')}</SelectItem>
+              {chains.map((chain) => (
+                <SelectItem key={chain} value={chain}>{getChainDisplayName(chain)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full sm:w-44" aria-label={t('typeFilter')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allTypes')}</SelectItem>
+              {(['receive', 'send', 'swap', 'transfer', 'contract'] as const).map((type) => (
+                <SelectItem key={type} value={type}>{txLabels[type]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {filtersActive && (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 px-4 py-3 text-xs text-text-muted sm:px-6 sm:text-sm">
+            <span>{t('results', { count: filtered.length })}{hasMore ? ` · ${t('loadedOnly')}` : ''}</span>
+            <Button variant="ghost" size="sm" onClick={() => { setChainFilter('all'); setTypeFilter('all'); setQuery(''); }}>
+              {t('clearFilters')}
+            </Button>
+          </div>
+        )}
         <div className="divide-y divide-border">
-          {visible.map((tx) => {
+          {filtered.length === 0 && (
+            <p className="px-6 py-10 text-center text-sm text-text-muted">
+              {spamCount > 0 && !showSpam && !filtersActive ? t('spamHidden') : t('noMatches')}
+            </p>
+          )}
+          {filtered.map((tx) => {
             if (!tx.tokenSymbol && (!tx.value || tx.value <= 0)) return null;
 
             const isOutgoing = tx.fromAddress?.toLowerCase() === normalizedSelf && tx.type !== 'receive';
@@ -225,7 +300,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
                 key={tx.id}
                 {...(rowProps as object)}
                 className={cn(
-                  'flex items-center gap-4 px-6 py-4 transition-colors hover:bg-surface-2/50',
+                  'grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-2 px-4 py-4 transition-colors hover:bg-surface-2/50 sm:flex sm:gap-4 sm:px-6',
                   txUrl && 'cursor-pointer',
                   isFailed && 'opacity-60',
                 )}
@@ -246,6 +321,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
                       </span>
                     )}
                     <ChainBadge chainName={tx.chainName} />
+                    {tx.isSpam && <Badge variant="danger">{t('spamBadge')}</Badge>}
                     {isFailed && <Badge variant="danger">failed</Badge>}
                   </div>
                   <div className="mt-1 flex items-center gap-1">
@@ -256,11 +332,11 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
                   </div>
                 </div>
 
-                <div className="shrink-0 text-right">
+                <div className="col-start-2 min-w-0 text-left sm:shrink-0 sm:text-right">
                   {tx.value !== null && tx.value > 0 ? (
                     isSwap ? (
                       /* Своп: −sentAmount [outLogo] → [inLogo] +recvAmount */
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
                         {tx.sentValue != null &&
                           tx.sentValue >= 0.001 &&
                           // Відсікаємо абсурдний курс (неправильні decimals від Ankr)
@@ -277,7 +353,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
                         </span>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center gap-2 sm:justify-end">
                         {tx.tokenSymbol && (
                           <TokenLogo src={tx.logoUrl} symbol={tx.tokenSymbol} size={20} />
                         )}

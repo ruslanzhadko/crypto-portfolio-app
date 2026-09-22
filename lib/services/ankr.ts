@@ -547,6 +547,7 @@ export function classifyTokenTransfers(
       type,
       tokenSymbol,
       tokenName,
+      tokenAddresses: [...new Set(allEntries.map((t) => t.contractAddress?.toLowerCase()).filter((address): address is string => !!address))],
       fromAddress,
       toAddress,
       value,

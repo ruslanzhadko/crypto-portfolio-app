@@ -144,6 +144,7 @@ function combineRobinhoodSwaps(events: RobinhoodEvent[], wallet: string): Robinh
         type: 'swap',
         tokenSymbol: `${sent.event.tokenSymbol ?? '?'} → ${received.event.tokenSymbol ?? '?'}`,
         tokenName: `${sent.event.tokenName ?? ''} → ${received.event.tokenName ?? ''}`,
+        tokenAddresses: [...new Set(group.flatMap((event) => event.tokenAddresses ?? []))],
         sentValue: -sent.amount,
         value: received.amount,
         fromAddress: wallet,
@@ -190,6 +191,7 @@ export async function fetchRobinhoodTransactions(address: string, pageToken?: st
     transactions.push({
       id: `${tx.transaction_hash}:${tx.log_index}`, hash: tx.transaction_hash, chainName: 'robinhood',
       assetKey: tx.token.address_hash.toLowerCase(),
+      tokenAddresses: [tx.token.address_hash.toLowerCase()],
       type: tx.from.hash.toLowerCase() === wallet ? 'send' : 'receive',
       tokenSymbol: tx.token.symbol, tokenName: tx.token.name, fromAddress: tx.from.hash,
       toAddress: tx.to?.hash ?? null, value: amount(tx.total.value, Number(tx.total.decimals)),
