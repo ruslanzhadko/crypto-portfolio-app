@@ -81,28 +81,28 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full table-fixed text-sm 2xl:table-auto">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="px-4 py-3 text-left">{t('colToken')}</th>
-                <th className="hidden px-4 py-3 text-left md:table-cell">{t('colNetworks')}</th>
-                <th className="px-4 py-3 text-right">
+                <th className="w-3/5 px-3 py-3 text-left sm:px-4 2xl:w-auto">{t('colToken')}</th>
+                <th className="hidden px-4 py-3 text-left 2xl:table-cell">{t('colNetworks')}</th>
+                <th className="hidden px-4 py-3 text-right xl:table-cell">
                   <SortButton active={sortKey === 'balance'} desc={desc} onClick={() => toggleSort('balance')}>
                     {t('colBalance')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right md:table-cell">{t('colPrice')}</th>
-                <th className="px-4 py-3 text-right">
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell">{t('colPrice')}</th>
+                <th className="px-3 py-3 text-right sm:px-4">
                   <SortButton active={sortKey === 'value'} desc={desc} onClick={() => toggleSort('value')}>
                     {t('colUsd')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right lg:table-cell">
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell">
                   <SortButton active={sortKey === 'change'} desc={desc} onClick={() => toggleSort('change')}>
                     {t('col24h')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right md:table-cell">{t('colShare')}</th>
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell">{t('colShare')}</th>
               </tr>
             </thead>
             <tbody>
@@ -124,8 +124,8 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                       )}
                       onClick={() => hasBreakdown && toggle(openTokens, setOpenTokens, tok.key)}
                     >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
+                      <td className="overflow-hidden px-3 py-3 sm:px-4">
+                        <div className="min-w-0 flex items-center gap-2 sm:gap-3">
                           {hasBreakdown ? (
                             <ChevronRight
                               className={cn(
@@ -158,33 +158,36 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                                 </span>
                               )}
                             </p>
+                            <p className="mt-0.5 font-mono text-xs text-text-muted xl:hidden">
+                              {formatTokenBalance(tok.totalBalance)} {tok.symbol}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      <td className="hidden px-4 py-3 md:table-cell">
+                      <td className="hidden px-4 py-3 2xl:table-cell">
                         <div className="flex flex-wrap gap-1">
                           {tok.chains.map((chainName) => (
                             <ChainBadge key={chainName} chainName={chainName} />
                           ))}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right font-mono text-xs">
+                      <td className="hidden px-4 py-3 text-right font-mono text-xs xl:table-cell">
                         {formatTokenBalance(tok.totalBalance)}
                       </td>
-                      <td className="hidden px-4 py-3 text-right md:table-cell">
+                      <td className="hidden px-4 py-3 text-right 2xl:table-cell">
                         {tok.currentPrice ? formatUsd(tok.currentPrice) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      <td className="px-3 py-3 text-right font-medium sm:px-4">
                         {formatUsd(tok.totalUsd)}
                       </td>
-                      <td className="hidden px-4 py-3 text-right lg:table-cell">
+                      <td className="hidden px-4 py-3 text-right 2xl:table-cell">
                         {tok.priceChange24h !== 0 ? (
                           <PriceChange value={tok.priceChange24h} size="sm" />
                         ) : (
                           <span className="text-text-muted">—</span>
                         )}
                       </td>
-                      <td className="hidden px-4 py-3 text-right text-text-muted md:table-cell">
+                      <td className="hidden px-4 py-3 text-right text-text-muted 2xl:table-cell">
                         {tok.share.toFixed(1)}%
                       </td>
                     </tr>

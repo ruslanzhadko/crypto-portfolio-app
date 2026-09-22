@@ -17,6 +17,7 @@ export function formatUsd(value: number, options: { compact?: boolean; minimumFr
       style: 'currency',
       currency: 'USD',
       notation: 'compact',
+      minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(value);
   }
@@ -67,5 +68,22 @@ export function formatDate(date: Date | string, pattern = 'PP'): string {
 export function formatRelative(date: Date | string | null | undefined, locale?: string): string {
   if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date) : date;
+  return formatDistanceToNow(d, { addSuffix: true, locale: dateFnsLocale(locale) });
+}
+
+export function formatRelativeCompact(date: Date | string | null | undefined, locale?: string): string {
+  if (!date) return '—';
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const differenceMs = Date.now() - d.getTime();
+
+  if (Math.abs(differenceMs) < 60 * 60_000) {
+    const relativeLocale = locale === 'en' ? 'en-US' : locale === 'ru' ? 'ru-RU' : 'uk-UA';
+    const minutes = Math.max(1, Math.round(Math.abs(differenceMs) / 60_000));
+    return new Intl.RelativeTimeFormat(relativeLocale, { numeric: 'always', style: 'short' })
+      .format(differenceMs >= 0 ? -minutes : minutes, 'minute')
+      .replace('min.', 'min')
+      .replace('мин.', 'мин');
+  }
+
   return formatDistanceToNow(d, { addSuffix: true, locale: dateFnsLocale(locale) });
 }

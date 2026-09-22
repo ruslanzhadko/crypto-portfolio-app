@@ -5,6 +5,8 @@
     "market": "Market",
     "alerts": "Alerts",
     "settings": "Settings",
+    "alertsMobile": "Alerts",
+    "settingsMobile": "Settings",
     "admin": "Admin",
     "profile": "Profile",
     "signOut": "Sign out",

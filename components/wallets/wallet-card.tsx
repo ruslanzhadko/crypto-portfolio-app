@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import {
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { NetworkBadge } from '@/components/common/network-badge';
 import { PriceChange } from '@/components/common/price-change';
-import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
+import { formatRelativeCompact, formatUsd, shortAddress } from '@/lib/utils/format';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
 
@@ -58,12 +58,9 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
   const [isPending, startTransition] = useTransition();
   const [isSyncing, setIsSyncing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [mounted, setMounted] = useState(false);
   const { toast } = useToast();
   const t = useTranslations('WalletCard');
   const locale = useLocale();
-
-  useEffect(() => setMounted(true), []);
 
   async function onSync() {
     if (isSyncing) return;
@@ -145,7 +142,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
       className="card-gradient h-full shadow-none transition-colors hover:border-primary/50 focus-within:border-primary/60"
       data-testid="wallet-card"
     >
-      <CardContent className="flex h-full flex-col p-4 sm:p-5">
+      <CardContent className="flex h-full flex-col px-5 py-4 sm:px-6 sm:py-5 lg:px-7">
         {/* Header row */}
         <div className="flex items-start justify-between gap-3">
           <Link
@@ -215,7 +212,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           <p className="text-2xl font-semibold leading-none tracking-[-0.025em] tabular-nums sm:text-3xl">
             {formatUsd(wallet.totalUsd, { minimumFractionDigits: 2 })}
           </p>
-          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs leading-5">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs leading-5">
             <PriceChange value={wallet.change24hPct} size="sm" />
             <span className="text-text-muted tabular-nums">
               {wallet.change24hUsd >= 0 ? '+' : ''}
@@ -225,7 +222,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between gap-3 text-xs leading-5 text-text-muted">
+        <div className="mt-4 flex items-center gap-2 text-xs leading-5 text-text-muted">
           <span>{t('portfolioShareLabel')}</span>
           <span
             className="font-semibold tabular-nums text-text"
@@ -235,58 +232,58 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           </span>
         </div>
 
-        <div className="mt-auto flex min-w-0 items-center gap-1.5 pt-3">
-          <NetworkBadge network={wallet.network} className="shrink-0" />
-          <Badge variant="secondary" className="shrink-0 font-normal">
-            {wallet.tokenCount} {tokenLabel(t, wallet.tokenCount)}
-          </Badge>
-          <p
-            className={cn(
-              'min-w-0 flex-1 truncate text-xs leading-5',
-              stale ? 'text-warning' : 'text-text-muted',
-            )}
-            aria-live="polite"
-            suppressHydrationWarning
-            title={
-              mounted
-                ? wallet.lastSyncAt
+        <div className="mt-auto flex min-w-0 flex-wrap items-center gap-x-2 gap-y-2 pt-3 sm:flex-nowrap">
+          <div className="flex shrink-0 items-center gap-2">
+            <NetworkBadge network={wallet.network} />
+            <Badge variant="secondary" className="font-normal">
+              {wallet.tokenCount} {tokenLabel(t, wallet.tokenCount)}
+            </Badge>
+          </div>
+          <div className="ml-auto flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto sm:max-w-[42%]">
+            <p
+              className={cn(
+                'min-w-0 flex-1 truncate text-right text-xs leading-5',
+                stale ? 'text-warning' : 'text-text-muted',
+              )}
+              aria-live="polite"
+              suppressHydrationWarning
+              title={
+                wallet.lastSyncAt
                   ? stale
                     ? t('syncStale', {
-                        time: formatRelative(wallet.lastSyncAt, locale),
+                        time: formatRelativeCompact(wallet.lastSyncAt, locale),
                       })
                     : t('syncUpdated', {
-                        time: formatRelative(wallet.lastSyncAt, locale),
+                      time: formatRelativeCompact(wallet.lastSyncAt, locale),
                       })
                   : t('notSynced')
-                : undefined
-            }
-          >
-            {mounted
-              ? wallet.lastSyncAt
+              }
+            >
+              {wallet.lastSyncAt
                 ? stale
                   ? t('syncStale', {
-                      time: formatRelative(wallet.lastSyncAt, locale),
+                      time: formatRelativeCompact(wallet.lastSyncAt, locale),
                     })
                   : t('syncUpdated', {
-                      time: formatRelative(wallet.lastSyncAt, locale),
+                    time: formatRelativeCompact(wallet.lastSyncAt, locale),
                     })
-                : t('notSynced')
-              : ' '}
-          </p>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-10 w-10 shrink-0 sm:w-auto sm:px-3 xl:h-11"
-            onClick={onSync}
-            disabled={isSyncing}
-            aria-label={t('menuSync')}
-            title={t('menuSync')}
-          >
-            <RefreshCw
-              className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')}
-            />
-            <span className="hidden sm:inline xl:hidden">{t('menuSync')}</span>
-          </Button>
+                : t('notSynced')}
+            </p>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10 shrink-0 xl:h-11"
+              onClick={onSync}
+              disabled={isSyncing}
+              aria-label={t('menuSync')}
+              title={t('menuSync')}
+            >
+              <RefreshCw
+                className={cn('h-3.5 w-3.5', isSyncing && 'animate-spin')}
+              />
+              <span className="sr-only">{t('menuSync')}</span>
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

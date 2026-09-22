@@ -91,7 +91,7 @@ export function DashboardSections({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Header action bar */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -139,7 +139,7 @@ export function DashboardSections({
         Mobile order:  Stats → PfChart → Tokens → TopMovers → AllocCharts
         Desktop order: Stats → TopMovers → AllocCharts → PfChart → Tokens
       */}
-      <div className="flex flex-col gap-6">
+      <div className="flex min-w-0 flex-col gap-6">
         <PortfolioSummary data={overview} />
 
         <div className="sm:order-4">
@@ -150,9 +150,9 @@ export function DashboardSections({
           />
         </div>
 
-        <div className="sm:order-5">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
+        <div className="min-w-0 sm:order-5">
+          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
+            <div className="min-w-0 lg:col-span-2">
               <TokenTable tokens={overview.tokens} />
             </div>
             <WalletList wallets={wallets} />
