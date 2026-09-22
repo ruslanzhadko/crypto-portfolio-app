@@ -258,6 +258,8 @@
   },
   "TokenDetail": {
     "backToMarket": "Back to Market",
+    "backToWallet": "Back to wallet",
+    "backToDashboard": "Back to Dashboard",
     "websiteButton": "Website",
     "errorTitle": "Token info unavailable",
     "errorTokenId": "Token ID:",

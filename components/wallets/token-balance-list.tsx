@@ -239,6 +239,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
           {groups.map((g) => (
             <TokenGroupRow
               key={g.key}
+              walletId={walletId}
               group={g}
               walletTotalUsd={totalUsd}
               expanded={expanded.has(g.key)}
@@ -273,6 +274,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
 // ─────────────────────────────────────────
 
 function TokenGroupRow({
+  walletId,
   group,
   walletTotalUsd,
   expanded,
@@ -280,6 +282,7 @@ function TokenGroupRow({
   localHidden,
   onToggleHide,
 }: {
+  walletId: string;
   group: BalanceGroup;
   walletTotalUsd: number;
   expanded: boolean;
@@ -402,7 +405,7 @@ function TokenGroupRow({
             </a>
           ) : (
           <Link
-            href={tokenPage.href}
+            href={`${tokenPage.href}?from=wallet:${encodeURIComponent(walletId)}`}
             className="flex min-w-0 flex-1 items-center gap-3"
           >
             {mainContent}
@@ -418,6 +421,7 @@ function TokenGroupRow({
             ціни лишались на одному рівні з рядками де є dropdown */}
         {!isMulti && group.chains[0] ? (
           <RowDropdown
+            walletId={walletId}
             token={group.chains[0]}
             isHidden={localHidden[group.chains[0].id] ?? group.chains[0].isHidden}
             hasMarket={hasMarket}
@@ -432,6 +436,7 @@ function TokenGroupRow({
       {/* Розкриття: per-chain рядки */}
       {isMulti && expanded && (
         <ChainBreakdown
+          walletId={walletId}
           chains={group.chains}
           groupTotalUsd={group.totalUsd}
           coingeckoId={group.coingeckoId}
@@ -448,12 +453,14 @@ function TokenGroupRow({
 // ─────────────────────────────────────────
 
 function ChainBreakdown({
+  walletId,
   chains,
   groupTotalUsd,
   coingeckoId,
   localHidden,
   onToggleHide,
 }: {
+  walletId: string;
   chains: TokenBalance[];
   groupTotalUsd: number;
   coingeckoId: string | null;
@@ -514,6 +521,7 @@ function ChainBreakdown({
               {chainShare.toFixed(1)}%
             </span>
             <RowDropdown
+              walletId={walletId}
               token={c}
               isHidden={hiddenNow}
               hasMarket={!!coingeckoId}
@@ -533,6 +541,7 @@ function ChainBreakdown({
 // ─────────────────────────────────────────
 
 function RowDropdown({
+  walletId,
   token,
   isHidden,
   hasMarket,
@@ -540,6 +549,7 @@ function RowDropdown({
   onToggleHide,
   compact = false,
 }: {
+  walletId: string;
   token: TokenBalance;
   isHidden: boolean;
   hasMarket: boolean;
@@ -575,7 +585,7 @@ function RowDropdown({
       <DropdownMenuContent align="end">
         {hasMarket && coingeckoId ? (
           <DropdownMenuItem asChild>
-            <Link href={`/market/${coingeckoId}`}>
+            <Link href={`/market/${coingeckoId}?from=wallet:${encodeURIComponent(walletId)}`}>
               <ExternalLink className="h-4 w-4" />
               {t('toMarketPage')}
             </Link>

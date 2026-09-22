@@ -45,7 +45,7 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
   }
   if (tokenPage) {
     return (
-      <Link href={tokenPage.href} className="block transition-colors hover:bg-muted/40">
+      <Link href={`${tokenPage.href}?from=dashboard`} className="block transition-colors hover:bg-muted/40">
         {inner}
       </Link>
     );

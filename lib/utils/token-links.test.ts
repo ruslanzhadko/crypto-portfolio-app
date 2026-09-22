@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getTokenPageUrl } from './token-links';
+import { getTokenDetailReturn, getTokenPageUrl } from './token-links';
 
 describe('getTokenPageUrl', () => {
   it('prefers internal Market for an identified EVM contract', () => {
@@ -31,5 +31,21 @@ describe('getTokenPageUrl', () => {
     expect(getTokenPageUrl({
       chainName: 'solana', tokenAddress: '', coingeckoId: 'solana',
     })).toEqual({ href: '/market/solana', external: false });
+  });
+});
+
+describe('getTokenDetailReturn', () => {
+  it('returns to the originating wallet or dashboard', () => {
+    expect(getTokenDetailReturn('wallet:clwallet123')).toEqual({
+      href: '/wallets/clwallet123', label: 'backToWallet',
+    });
+    expect(getTokenDetailReturn('dashboard')).toEqual({
+      href: '/dashboard', label: 'backToDashboard',
+    });
+  });
+
+  it('falls back to Market for direct or malformed links', () => {
+    expect(getTokenDetailReturn(undefined).href).toBe('/market');
+    expect(getTokenDetailReturn('wallet:../../admin').href).toBe('/market');
   });
 });

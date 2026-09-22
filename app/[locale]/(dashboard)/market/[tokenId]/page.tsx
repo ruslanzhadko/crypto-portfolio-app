@@ -13,16 +13,20 @@ import { CreateTriggerButton } from '@/components/alerts/create-trigger-button';
 import { CoinGeckoError, fetchCoinDetail, type CoinDetail } from '@/lib/services/coingecko';
 import { fetchOpenInterest } from '@/lib/services/open-interest';
 import { formatUsd, formatPercent } from '@/lib/utils/format';
+import { getTokenDetailReturn } from '@/lib/utils/token-links';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TokenDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tokenId: string }>;
+  searchParams?: Promise<{ from?: string }>;
 }) {
   const t = await getTranslations('TokenDetail');
   const { tokenId } = await params;
+  const back = getTokenDetailReturn((await searchParams)?.from);
   let coin: CoinDetail | null = null;
   let fetchError: string | null = null;
 
@@ -45,9 +49,9 @@ export default async function TokenDetailPage({
     return (
       <div className="space-y-6">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link href="/market">
+          <Link href={back.href}>
             <ChevronLeft className="h-4 w-4" />
-            {t('backToMarket')}
+            {t(back.label)}
           </Link>
         </Button>
         <Card className="border-warning/40 bg-warning/5">
@@ -71,9 +75,9 @@ export default async function TokenDetailPage({
   return (
     <div className="space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/market">
+        <Link href={back.href}>
           <ChevronLeft className="h-4 w-4" />
-          {t('backToMarket')}
+          {t(back.label)}
         </Link>
       </Button>
 

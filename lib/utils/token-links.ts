@@ -39,3 +39,19 @@ export function getTokenPageUrl(token: {
   }
   return null;
 }
+
+export function getTokenDetailReturn(from: string | undefined): {
+  href: string;
+  label: 'backToWallet' | 'backToDashboard' | 'backToMarket';
+} {
+  if (from?.startsWith('wallet:')) {
+    const walletId = from.slice('wallet:'.length);
+    if (/^[a-zA-Z0-9_-]{1,128}$/.test(walletId)) {
+      return { href: `/wallets/${walletId}`, label: 'backToWallet' };
+    }
+  }
+  if (from === 'dashboard') {
+    return { href: '/dashboard', label: 'backToDashboard' };
+  }
+  return { href: '/market', label: 'backToMarket' };
+}

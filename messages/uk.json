@@ -258,6 +258,8 @@
   },
   "TokenDetail": {
     "backToMarket": "До Market",
+    "backToWallet": "До гаманця",
+    "backToDashboard": "До Dashboard",
     "websiteButton": "Сайт",
     "errorTitle": "Інформація про токен недоступна",
     "errorTokenId": "Ідентифікатор токена:",

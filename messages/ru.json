@@ -258,6 +258,8 @@
   },
   "TokenDetail": {
     "backToMarket": "К Market",
+    "backToWallet": "К кошельку",
+    "backToDashboard": "К Dashboard",
     "websiteButton": "Сайт",
     "errorTitle": "Информация о токене недоступна",
     "errorTokenId": "Идентификатор токена:",
