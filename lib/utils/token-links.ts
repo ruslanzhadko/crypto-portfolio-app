@@ -1,3 +1,5 @@
+import { COINGECKO_ID_BY_SOLANA_MINT } from './known-solana-tokens';
+
 const DEX_CHAIN_BY_INTERNAL: Record<string, string> = {
   solana: 'solana',
   ethereum: 'ethereum',
@@ -19,15 +21,21 @@ export function getTokenPageUrl(token: {
   tokenAddress: string;
   coingeckoId?: string | null;
 }): { href: string; external: boolean } | null {
+  // Solana metadata can carry an old symbol-matched ID. Trust only known exact mints.
+  const marketId = token.chainName === 'solana' && token.tokenAddress
+    ? COINGECKO_ID_BY_SOLANA_MINT[token.tokenAddress] === token.coingeckoId
+      ? token.coingeckoId
+      : null
+    : token.coingeckoId;
+  if (marketId) {
+    return { href: `/market/${marketId}`, external: false };
+  }
   const dexChain = getDexScreenerChainId(token.chainName);
   if (token.tokenAddress && dexChain) {
     return {
       href: `https://dexscreener.com/${dexChain}/${token.tokenAddress}`,
       external: true,
     };
-  }
-  if (token.coingeckoId) {
-    return { href: `/market/${token.coingeckoId}`, external: false };
   }
   return null;
 }

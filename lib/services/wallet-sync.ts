@@ -4,7 +4,7 @@ import { MIN_TOKEN_USD, type NormalizedToken } from '@/lib/services/token-types'
 import { fetchSolanaBalances } from '@/lib/services/helius';
 import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
 import { fetchRobinhoodBalances } from '@/lib/services/robinhood';
-import { fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
+import { fetchCoinGeckoContractIds, fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
 
@@ -338,6 +338,10 @@ async function applyCachedPrices(
 ): Promise<EnrichedToken[]> {
   if (tokens.length === 0) return [];
 
+  const contractIds = tokens.some((t) => !t.isNative && t.address && t.chainName !== 'solana')
+    ? await fetchCoinGeckoContractIds().catch(() => new Map<string, string>())
+    : new Map<string, string>();
+
   const symbols = Array.from(new Set(tokens.map((t) => t.symbol.toLowerCase())));
   const cached = await prisma.tokenPrice.findMany({
     where: { symbol: { in: symbols, mode: 'insensitive' } },
@@ -360,7 +364,8 @@ async function applyCachedPrices(
   }
 
   return tokens.map((t): EnrichedToken => {
-    const verifiedId = t.coingeckoId ?? null;
+    const verifiedId = t.coingeckoId ??
+      (t.address ? contractIds.get(`${t.chainName}:${t.address.toLowerCase()}`) : undefined) ?? null;
     const fromCache = verifiedId
       ? priceById.get(verifiedId)
       : t.isNative ? priceBySymbol.get(t.symbol.toLowerCase()) : undefined;

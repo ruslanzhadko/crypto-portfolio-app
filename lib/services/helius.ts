@@ -1,14 +1,9 @@
 import type { NormalizedToken } from './token-types';
+import { COINGECKO_ID_BY_SOLANA_MINT } from '@/lib/utils/known-solana-tokens';
 
 const HELIUS_RPC_BASE = 'https://mainnet.helius-rpc.com/';
 const PAGE_SIZE = 1000;
 const FUNGIBLE_INTERFACES = new Set(['FungibleToken', 'FungibleAsset']);
-const COINGECKO_ID_BY_MINT: Record<string, string> = {
-  EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v: 'usd-coin',
-  Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB: 'tether',
-  DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263: 'bonk',
-  JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN: 'jupiter-exchange-solana',
-};
 
 interface HeliusAsset {
   id?: string;
@@ -160,7 +155,7 @@ export async function fetchSolanaBalances(address: string): Promise<NormalizedTo
         isNative: false,
         chainName: 'solana',
         isSpam: false,
-        coingeckoId: COINGECKO_ID_BY_MINT[asset.id] ?? null,
+        coingeckoId: COINGECKO_ID_BY_SOLANA_MINT[asset.id] ?? null,
       });
     }
 

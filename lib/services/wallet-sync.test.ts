@@ -3,11 +3,14 @@ import { syncWallet } from './wallet-sync';
 
 const mocks = vi.hoisted(() => ({
   ankr: vi.fn(), robinhood: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn(),
-  findPrices: vi.fn(), count: vi.fn(),
+  findPrices: vi.fn(), count: vi.fn(), contractIds: vi.fn(),
 }));
 vi.mock('./ankr', () => ({ fetchEVMBalancesFromAnkr: mocks.ankr }));
 vi.mock('./robinhood', () => ({ fetchRobinhoodBalances: mocks.robinhood }));
-vi.mock('./coingecko', () => ({ fetchPricesByIds: vi.fn(), searchCoins: vi.fn() }));
+vi.mock('./coingecko', () => ({
+  fetchCoinGeckoContractIds: mocks.contractIds,
+  fetchPricesByIds: vi.fn(), searchCoins: vi.fn(),
+}));
 vi.mock('./price-feed', () => ({ fetchPrices: vi.fn().mockResolvedValue(new Map()) }));
 vi.mock('@/lib/db/prisma', () => {
   const db = {
@@ -26,6 +29,18 @@ beforeEach(() => {
   mocks.robinhood.mockResolvedValue([{ ...native, chainName: 'robinhood' }]);
   mocks.findPrices.mockResolvedValue([]);
   mocks.count.mockResolvedValue(0);
+  mocks.contractIds.mockResolvedValue(new Map());
+});
+describe('contract market identity', () => {
+  it('stores CoinGecko ID only from the exact chain and contract', async () => {
+    const contract = { ...native, symbol: 'USDT', name: 'Tether USD',
+      address: '0xabc', isNative: false, chainName: 'bsc' };
+    mocks.ankr.mockResolvedValue([contract]);
+    mocks.robinhood.mockResolvedValue([]);
+    mocks.contractIds.mockResolvedValue(new Map([['bsc:0xabc', 'tether']]));
+    await syncWallet('wallet');
+    expect(mocks.createMany.mock.calls[0]?.[0].data[0].coingeckoId).toBe('tether');
+  });
 });
 describe('Robinhood wallet synchronization', () => {
   it('persists Robinhood together with Ankr chains for the same wallet', async () => {

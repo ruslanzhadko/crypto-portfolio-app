@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { getChainDisplayName, getChainColor } from '@/lib/utils/networks';
 import { fetchMarketChart } from '@/lib/services/coingecko';
 import { computePortfolioValue, computeShare, computePnL, computePortfolio24hChange } from '@/lib/services/portfolio-math';
+import { getTokenGroupingKey } from '@/lib/utils/token-grouping';
 
 export interface WalletTokenBreakdown {
   walletId: string;
@@ -80,11 +81,7 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
 
   for (const w of wallets) {
     for (const b of w.balances) {
-      // A ticker is not a token identity. Group contract tokens by chain+address;
-      // only native assets may use a shared verified CoinGecko identity.
-      const key = b.tokenAddress
-        ? `${b.chainName}:${b.tokenAddress.toLowerCase()}`
-        : b.coingeckoId ? `market:${b.coingeckoId}` : `${b.chainName}:native:${b.tokenSymbol.toLowerCase()}`;
+      const key = getTokenGroupingKey(b);
       const cached = b.coingeckoId ? priceCache.get(b.coingeckoId) : undefined;
 
       // Fallback: priceUsd → з балансу, інакше з кешу, інакше з usdValue/balance

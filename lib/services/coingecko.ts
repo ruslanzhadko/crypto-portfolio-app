@@ -115,6 +115,62 @@ export interface SearchResult {
   marketCapRank: number | null;
 }
 
+const CONTRACT_PLATFORM_BY_CHAIN: Record<string, string> = {
+  ethereum: 'ethereum',
+  bsc: 'binance-smart-chain',
+  polygon: 'polygon-pos',
+  arbitrum: 'arbitrum-one',
+  optimism: 'optimistic-ethereum',
+  base: 'base',
+  avalanche: 'avalanche',
+  xlayer: 'x-layer',
+};
+
+interface CoinWithPlatforms {
+  id: string;
+  platforms?: Record<string, string | null>;
+}
+
+let contractIdCache: Map<string, string> | null = null;
+let contractIdCacheUntil = 0;
+let contractIdLoad: Promise<Map<string, string>> | null = null;
+
+/** Resolves market identity by exact chain and contract, never by symbol. */
+export async function fetchCoinGeckoContractIds(): Promise<Map<string, string>> {
+  if (contractIdCache && Date.now() < contractIdCacheUntil) return contractIdCache;
+  if (contractIdLoad) return contractIdLoad;
+
+  contractIdLoad = (async () => {
+    const { data } = await withRetry(() => getClient().get<CoinWithPlatforms[]>(
+      '/coins/list', { params: { include_platform: true }, timeout: 30_000 },
+    ), 1);
+    if (!Array.isArray(data)) throw new CoinGeckoError('Некоректний список контрактів CoinGecko');
+
+    const ids = new Map<string, string>();
+    const ambiguous = new Set<string>();
+    for (const coin of data) {
+      if (!coin.id || !coin.platforms) continue;
+      for (const [chain, platform] of Object.entries(CONTRACT_PLATFORM_BY_CHAIN)) {
+        const address = coin.platforms[platform]?.toLowerCase();
+        if (!address) continue;
+        const key = `${chain}:${address}`;
+        const previous = ids.get(key);
+        if (previous && previous !== coin.id) ambiguous.add(key);
+        else ids.set(key, coin.id);
+      }
+    }
+    for (const key of ambiguous) ids.delete(key);
+    contractIdCache = ids;
+    contractIdCacheUntil = Date.now() + 24 * 60 * 60 * 1000;
+    return ids;
+  })();
+  try {
+    return await contractIdLoad;
+  } finally {
+    contractIdLoad = null;
+  }
+}
+
 // ─────────────────────────────────────────
 // API
 // ─────────────────────────────────────────

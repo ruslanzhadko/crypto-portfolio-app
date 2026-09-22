@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MIN_TOKEN_USD } from '@/lib/services/token-types';
 import { cn } from '@/lib/utils/cn';
 import { getTokenPageUrl } from '@/lib/utils/token-links';
+import { getTokenGroupingKey } from '@/lib/utils/token-grouping';
 
 interface TokenBalanceListProps {
   walletId: string;
@@ -52,8 +53,7 @@ interface BalanceGroup {
 }
 
 function verifiedMarketId(token: TokenBalance): string | null {
-  // Contract tokens navigate by exact address through DexScreener.
-  return token.tokenAddress === '' ? token.coingeckoId : null;
+  return getTokenPageUrl(token)?.external === false ? token.coingeckoId : null;
 }
 
 function explorerUrl(token: TokenBalance): string | null {
@@ -72,10 +72,7 @@ function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
   const map = new Map<string, BalanceGroup>();
   for (const t of tokens) {
     const marketId = verifiedMarketId(t);
-    // Aggregate only when identity is verified. A ticker is not an identifier.
-    const key = marketId
-      ? `market:${marketId}`
-      : `${t.chainName}:${t.tokenAddress || `native:${t.tokenSymbol.toLowerCase()}`}`;
+    const key = getTokenGroupingKey(t);
     const existing = map.get(key);
     if (existing) {
       existing.totalBalance += t.balance;
@@ -293,7 +290,9 @@ function TokenGroupRow({
   const t = useTranslations('TokenBalanceList');
   const isMulti = group.chains.length > 1;
   const hasMarket = !!group.coingeckoId;
-  const tokenPage = group.chains[0] ? getTokenPageUrl(group.chains[0]) : null;
+  const marketChain = group.chains.find((chain) => getTokenPageUrl(chain)?.external === false);
+  const linkChain = marketChain ?? group.chains[0];
+  const tokenPage = linkChain ? getTokenPageUrl(linkChain) : null;
   const share = walletTotalUsd > 0 ? (group.totalUsd / walletTotalUsd) * 100 : 0;
   const isLowValue = group.totalUsd > 0 && group.totalUsd < MIN_TOKEN_USD;
 
