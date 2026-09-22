@@ -105,6 +105,59 @@ export function parseRobinhoodCursor(cursor: string) {
   return historyCursorSchema.parse(JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')));
 }
 
+interface RobinhoodEvent extends NormalizedTransaction {
+  id: string;
+  assetKey: string;
+}
+
+function combineRobinhoodSwaps(events: RobinhoodEvent[], wallet: string): RobinhoodEvent[] {
+  const byHash = new Map<string, RobinhoodEvent[]>();
+  for (const event of events) {
+    const group = byHash.get(event.hash) ?? [];
+    group.push(event);
+    byHash.set(event.hash, group);
+  }
+
+  const result: RobinhoodEvent[] = [];
+  for (const [hash, group] of byHash) {
+    const net = new Map<string, { amount: number; event: RobinhoodEvent }>();
+    for (const event of group) {
+      if (!event.value || event.value <= 0) continue;
+      const outgoing = event.fromAddress?.toLowerCase() === wallet;
+      const incoming = event.toAddress?.toLowerCase() === wallet;
+      if (outgoing === incoming) continue;
+      const previous = net.get(event.assetKey);
+      net.set(event.assetKey, {
+        amount: (previous?.amount ?? 0) + (outgoing ? -event.value : event.value),
+        event,
+      });
+    }
+
+    const outgoing = [...net.values()].filter((flow) => flow.amount < -1e-12);
+    const incoming = [...net.values()].filter((flow) => flow.amount > 1e-12);
+    if (outgoing.length === 1 && incoming.length === 1) {
+      const sent = outgoing[0]!;
+      const received = incoming[0]!;
+      result.push({
+        ...received.event,
+        id: `${hash}:swap`,
+        type: 'swap',
+        tokenSymbol: `${sent.event.tokenSymbol ?? '?'} → ${received.event.tokenSymbol ?? '?'}`,
+        tokenName: `${sent.event.tokenName ?? ''} → ${received.event.tokenName ?? ''}`,
+        sentValue: -sent.amount,
+        value: received.amount,
+        fromAddress: wallet,
+        status: group.some((event) => event.status === 'failed') ? 'failed' : 'success',
+      });
+      continue;
+    }
+
+    // A zero-value contract call accompanying a transfer is not another asset.
+    result.push(...group.filter((event) => event.value !== 0 || group.length === 1));
+  }
+  return result.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+}
+
 export async function fetchRobinhoodTransactions(address: string, pageToken?: string) {
   const cursor = pageToken ? parseRobinhoodCursor(pageToken) : undefined;
   const path = `/addresses/${address}`;
@@ -118,13 +171,13 @@ export async function fetchRobinhoodTransactions(address: string, pageToken?: st
         items: z.array(transferSchema), next_page_params: cursorSchema.nullable(),
       }).parse(data)),
   ]);
-  const transactions: Array<NormalizedTransaction & { id: string }> = [];
+  const transactions: RobinhoodEvent[] = [];
   const wallet = address.toLowerCase();
   for (const tx of native.items) {
     if (!tx.timestamp) continue;
     const value = amount(tx.value, 18);
     transactions.push({
-      id: `${tx.hash}:native`, hash: tx.hash, chainName: 'robinhood',
+      id: `${tx.hash}:native`, hash: tx.hash, chainName: 'robinhood', assetKey: 'native',
       type: value === 0 ? 'contract' : tx.from.hash.toLowerCase() === wallet ? 'send' : 'receive',
       tokenSymbol: 'ETH', tokenName: 'Ethereum', fromAddress: tx.from.hash,
       toAddress: tx.to?.hash ?? null, value, usdValue: null, gasUsed: null,
@@ -136,6 +189,7 @@ export async function fetchRobinhoodTransactions(address: string, pageToken?: st
     if (!tx.timestamp || tx.token.type !== 'ERC-20') continue;
     transactions.push({
       id: `${tx.transaction_hash}:${tx.log_index}`, hash: tx.transaction_hash, chainName: 'robinhood',
+      assetKey: tx.token.address_hash.toLowerCase(),
       type: tx.from.hash.toLowerCase() === wallet ? 'send' : 'receive',
       tokenSymbol: tx.token.symbol, tokenName: tx.token.name, fromAddress: tx.from.hash,
       toAddress: tx.to?.hash ?? null, value: amount(tx.total.value, Number(tx.total.decimals)),
@@ -146,7 +200,7 @@ export async function fetchRobinhoodTransactions(address: string, pageToken?: st
   const next = { native: native.next_page_params, transfers: transfers.next_page_params };
   return {
     // Keep every event from both provider pages; truncating would skip transfers.
-    transactions: transactions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()),
+    transactions: combineRobinhoodSwaps(transactions, wallet),
     nextPageToken: next.native || next.transfers ? Buffer.from(JSON.stringify(next)).toString('base64url') : undefined,
   };
 }

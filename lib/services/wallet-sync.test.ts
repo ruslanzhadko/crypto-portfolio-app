@@ -43,6 +43,28 @@ describe('contract market identity', () => {
   });
 });
 describe('Robinhood wallet synchronization', () => {
+  it('keeps an unpriced ERC-20 visible instead of classifying it as dust', async () => {
+    mocks.ankr.mockResolvedValue([]);
+    mocks.robinhood.mockResolvedValue([{
+      ...native, symbol: 'ODYSSEUS', name: 'KEKIUS ODYSSEUS',
+      address: '0x296293317f67da4f333968bb86928681e26b77fa',
+      chainName: 'robinhood', isNative: false, balance: 1_024_024.08,
+      priceUsd: 0, usdValue: 0,
+    }]);
+    const result = await syncWallet('wallet');
+    expect(result.spamFiltered).toBe(0);
+    expect(mocks.createMany.mock.calls[0]?.[0].data[0].isSpam).toBe(false);
+  });
+  it('still classifies a priced dust ERC-20 as spam', async () => {
+    mocks.ankr.mockResolvedValue([]);
+    mocks.robinhood.mockResolvedValue([{
+      ...native, symbol: 'DUST', address: '0xabc', chainName: 'robinhood',
+      isNative: false, balance: 1, priceUsd: 0.01, usdValue: 0.01,
+    }]);
+    const result = await syncWallet('wallet');
+    expect(result.spamFiltered).toBe(1);
+    expect(mocks.createMany.mock.calls[0]?.[0].data[0].isSpam).toBe(true);
+  });
   it('persists Robinhood together with Ankr chains for the same wallet', async () => {
     const result = await syncWallet('wallet');
     expect(result.tokensSynced).toBe(2);
