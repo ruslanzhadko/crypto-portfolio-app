@@ -158,12 +158,12 @@ describe('POST /api/telegram/webhook', () => {
       expect(text).toContain('&lt;script&gt;');
     });
 
-    it('/start without firstName → generic greeting Привіт!', async () => {
+    it('/start without firstName → generic greeting Привет!', async () => {
       await POST(makeWebhookRequest(makeUpdate('/start', 222), VALID_SECRET) as never);
 
       const [chatId, text] = mockReply.mock.calls[0]!;
       expect(chatId).toBe(222);
-      expect(text).toContain('Привіт!');
+      expect(text).toContain('Привет!');
     });
 
     it('/id → replyToUpdate with chatId in <code> tag', async () => {

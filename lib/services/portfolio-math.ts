@@ -23,6 +23,24 @@ export function computeShare(part: number, total: number): number {
   return total > 0 ? (part / total) * 100 : 0;
 }
 
+/** Estimate 24h portfolio change from current asset values and their price changes. */
+export function computePortfolio24hChange(assets: Array<{ usdValue: number; priceChange24h: number }>): {
+  absolute: number;
+  percent: number;
+} {
+  let current = 0;
+  let previous = 0;
+  for (const asset of assets) {
+    if (!Number.isFinite(asset.usdValue) || asset.usdValue < 0) continue;
+    const change = Number.isFinite(asset.priceChange24h)
+      ? Math.max(-99.9, asset.priceChange24h) : 0;
+    current += asset.usdValue;
+    previous += asset.usdValue / (1 + change / 100);
+  }
+  const absolute = current - previous;
+  return { absolute, percent: previous > 0 ? absolute / previous * 100 : 0 };
+}
+
 export interface PnL {
   absolute: number;
   percent: number;

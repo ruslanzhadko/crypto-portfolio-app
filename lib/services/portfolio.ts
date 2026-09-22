@@ -2,7 +2,7 @@ import { Network } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { getChainDisplayName, getChainColor } from '@/lib/utils/networks';
 import { fetchMarketChart } from '@/lib/services/coingecko';
-import { computePortfolioValue, computeShare, computePnL } from '@/lib/services/portfolio-math';
+import { computePortfolioValue, computeShare, computePnL, computePortfolio24hChange } from '@/lib/services/portfolio-math';
 
 export interface WalletTokenBreakdown {
   walletId: string;
@@ -63,14 +63,11 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     },
   });
 
-  // Fallback з TokenPrice cache за символом (для випадків коли priceUsd на балансі == 0)
+  // Resolve cached prices only by verified CoinGecko identity, never ticker.
   const priceCache = new Map<string, { price: number; change24h: number }>();
   const cachedPrices = await prisma.tokenPrice.findMany();
   for (const p of cachedPrices) {
-    const k = p.symbol.toLowerCase();
-    if (!priceCache.has(k)) {
-      priceCache.set(k, { price: p.currentPrice, change24h: p.priceChange24h });
-    }
+    priceCache.set(p.tokenId, { price: p.currentPrice, change24h: p.priceChange24h });
   }
 
   const tokenMap = new Map<string, AggregatedToken>();
@@ -88,7 +85,7 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
       const key = b.tokenAddress
         ? `${b.chainName}:${b.tokenAddress.toLowerCase()}`
         : b.coingeckoId ? `market:${b.coingeckoId}` : `${b.chainName}:native:${b.tokenSymbol.toLowerCase()}`;
-      const cached = priceCache.get(key);
+      const cached = b.coingeckoId ? priceCache.get(b.coingeckoId) : undefined;
 
       // Fallback: priceUsd → з балансу, інакше з кешу, інакше з usdValue/balance
       const fallbackPriceFromUsd =
@@ -208,21 +205,10 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     }))
     .sort((a, b) => b.totalUsd - a.totalUsd);
 
-  // Зважена зміна 24г на рівні портфеля.
-  // Guard 1: change < -100 дає від'ємний знаменник → клампуємо до -99.9.
-  // Guard 2: contribution обмежується [-totalUsd, +totalUsd*100], щоб один токен
-  //          з підозрілими даними (-99.9%) не зруйнував весь портфельний показник.
-  let priceChange24hUsd = 0;
-  for (const t of tokens) {
-    if (t.priceChange24h === 0) continue;
-    const safeChange = Math.max(-99.9, t.priceChange24h);
-    const prev = t.totalUsd / (1 + safeChange / 100);
-    const contribution = t.totalUsd - prev;
-    // Максимальний збиток = поточна вартість (ціна не може стати від'ємною)
-    priceChange24hUsd += Math.max(contribution, -t.totalUsd);
-  }
-  const rawPriceChange24h = totalUsd > 0 ? (priceChange24hUsd / totalUsd) * 100 : 0;
-  const priceChange24h = Number.isFinite(rawPriceChange24h) ? rawPriceChange24h : 0;
+  const { absolute: priceChange24hUsd, percent: priceChange24h } =
+    computePortfolio24hChange(tokens.map((t) => ({
+      usdValue: t.totalUsd, priceChange24h: t.priceChange24h,
+    })));
 
   const topMovers = [...tokens]
     .filter((t) => Number.isFinite(t.priceChange24h) && t.priceChange24h !== 0)

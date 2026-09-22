@@ -7,6 +7,22 @@ import { authConfig } from './config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async session({ session, token }) {
+      if (!token?.id || !session.user) return session;
+      const current = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: { id: true, email: true, name: true, role: true, isBlocked: true },
+      });
+      session.user.id = current?.id ?? token.id;
+      session.user.email = current?.email ?? '';
+      session.user.name = current?.name ?? null;
+      session.user.role = current?.role ?? token.role;
+      session.user.isBlocked = current?.isBlocked ?? true;
+      return session;
+    },
+  },
   providers: [
     Credentials({
       name: 'Credentials',

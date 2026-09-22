@@ -99,14 +99,13 @@ export class AnkrApiError extends Error {
  * priceChange24h = 0 для всіх токенів — Ankr не повертає 24г-зміну.
  * Поле заповнюється пізніше через price-feed.ts (DexScreener / Binance).
  *
- * @throws {AnkrApiError} якщо перша сторінка не відповіла (не rate-limit, а справжня помилка).
+ * @throws {AnkrApiError} якщо будь-яка сторінка не відповіла або є некоректною.
  */
 export async function fetchEVMBalancesFromAnkr(
   walletAddress: string,
 ): Promise<NormalizedToken[]> {
   const results: NormalizedToken[] = [];
   let pageToken: string | undefined;
-  let isFirstPage = true;
 
   do {
     let data: AnkrRpcResponse;
@@ -135,20 +134,19 @@ export async function fetchEVMBalancesFromAnkr(
       const status = err instanceof AxiosError ? err.response?.status : undefined;
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[Ankr] fetchEVMBalances помилка (status=${status ?? 'n/a'}): ${msg}`);
-      // На першій сторінці — нема що повертати, кидаємо щоб caller знав про збій
-      if (isFirstPage) throw new AnkrApiError(`Ankr недоступний: ${msg}`);
-      break;
+      // Не зберігаємо частковий результат після збою будь-якої сторінки.
+      throw new AnkrApiError(`Ankr недоступний: ${msg}`);
     }
 
     if (data.error) {
       const msg = `RPC ${data.error.code}: ${data.error.message}`;
       console.error(`[Ankr] ${msg}`);
-      if (isFirstPage) throw new AnkrApiError(msg);
-      break;
+      throw new AnkrApiError(msg);
     }
 
-    if (!data.result) break;
-    isFirstPage = false;
+    if (!data.result || !Array.isArray(data.result.assets)) {
+      throw new AnkrApiError('Ankr повернув неповну відповідь');
+    }
 
     const { assets, nextPageToken } = data.result;
     pageToken = nextPageToken || undefined;

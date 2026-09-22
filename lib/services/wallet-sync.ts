@@ -68,20 +68,6 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     }
   }
 
-  // Якщо API повернув 0 токенів але в БД вже є дані — підозрілий стан
-  // (ліміт API, порожня відповідь). Не видаляємо, просто оновлюємо lastSyncAt.
-  if (toSave.length === 0) {
-    const existing = await prisma.tokenBalance.count({ where: { walletId } });
-    if (existing > 0) {
-      // A successfully fetched empty Robinhood chain must still be cleared.
-      if (isEvm && robinhoodSynced) {
-        await prisma.tokenBalance.deleteMany({ where: { walletId, chainName: 'robinhood' } });
-      }
-      await prisma.wallet.update({ where: { id: walletId }, data: { lastSyncAt: new Date() } });
-      return { walletId, unavailableChains, tokensSynced: 0, transactionsSynced: 0, spamFiltered: 0, totalUsd: 0, syncedAt: new Date()} ;
-    }
-  }
-
   await prisma.$transaction(async (tx) => {
     await tx.tokenBalance.deleteMany({
       where: { walletId, ...(isEvm && !robinhoodSynced ? { chainName: { not: 'robinhood' } } : {}) },
@@ -247,7 +233,7 @@ async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
   // unrelated tokens frequently share the same ticker (for example CATE).
   const needLogo = tokens.filter(
     (t) => !t.logoUrl && !t.coingeckoId && !t.isNative &&
-      t.chainName !== 'robinhood' && t.chainName !== 'solana',
+      t.chainName !== 'robinhood' && t.chainName !== 'solana' && !t.address,
   );
   if (needLogo.length === 0) return;
 
@@ -377,7 +363,7 @@ async function applyCachedPrices(
     const verifiedId = t.coingeckoId ?? null;
     const fromCache = verifiedId
       ? priceById.get(verifiedId)
-      : t.chainName === 'solana' ? undefined : priceBySymbol.get(t.symbol.toLowerCase());
+      : t.isNative ? priceBySymbol.get(t.symbol.toLowerCase()) : undefined;
     let coingeckoId: string | null = verifiedId;
     let usdValue = t.usdValue;
     let priceUsd = t.priceUsd;
@@ -395,8 +381,7 @@ async function applyCachedPrices(
         if (usdValue === 0) usdValue = t.balance * fromCache.price;
       }
     } else if (fromCache && t.chainName !== 'robinhood') {
-      // EVM may use the legacy symbol fallback. Solana only uses mint-verified IDs.
-      if (t.chainName !== 'solana') coingeckoId = fromCache.id;
+      // Contract assets only use a provider-verified ID, never a ticker match.
       if (priceUsd === 0) priceUsd = fromCache.price;
       if (priceChange24h === 0) priceChange24h = fromCache.change24h;
       if (usdValue === 0) usdValue = t.balance * fromCache.price;

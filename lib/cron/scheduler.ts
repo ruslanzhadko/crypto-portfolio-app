@@ -3,7 +3,7 @@
  * У production цю функцію виконує Vercel Cron Jobs (див. vercel.json).
  */
 import cron from 'node-cron';
-import { runPriceUpdater } from './price-updater';
+import { runPriceUpdater, runTriggerCheck } from './price-updater';
 
 const SCHEDULE = process.env.CRON_SCHEDULE ?? '* * * * *';
 
@@ -19,6 +19,8 @@ cron.schedule(SCHEDULE, async () => {
   try {
     const result = await runPriceUpdater();
     console.log(`[cron] ${new Date().toLocaleTimeString('uk-UA')} Виконано:`, result);
+    const triggers = await runTriggerCheck();
+    console.log('[cron] Перевірка тригерів:', triggers);
   } catch (err) {
     console.error('[cron] Помилка:', err);
   } finally {

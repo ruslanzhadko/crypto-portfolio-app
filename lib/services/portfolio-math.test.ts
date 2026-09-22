@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { computePortfolioValue, computeShare, computePnL } from '@/lib/services/portfolio-math';
+import { computePortfolioValue, computeShare, computePnL, computePortfolio24hChange } from '@/lib/services/portfolio-math';
+
+describe('computePortfolio24hChange', () => {
+  it('uses previous value as percentage denominator', () => {
+    const change = computePortfolio24hChange([{ usdValue: 110, priceChange24h: 10 }]);
+    expect(change.absolute).toBeCloseTo(10);
+    expect(change.percent).toBeCloseTo(10);
+  });
+  it('preserves a large legitimate drawdown', () => {
+    expect(computePortfolio24hChange([{ usdValue: 20, priceChange24h: -80 }]).percent)
+      .toBeCloseTo(-80);
+  });
+});
 
 // ═════════════════════════════════════════════════════════════════
 // computePortfolioValue — V = Σ (balance × price)

@@ -19,6 +19,7 @@ export async function requireUser(): Promise<GuardResult> {
   if (!session?.user?.id) {
     return { ok: false, response: apiError('UNAUTHORIZED', 'Потрібна авторизація') };
   }
+  // auth() refreshes role/block status from the database on each server request.
   if (session.user.isBlocked) {
     return { ok: false, response: apiError('FORBIDDEN', 'Акаунт заблоковано') };
   }

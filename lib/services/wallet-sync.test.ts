@@ -45,6 +45,14 @@ describe('Robinhood wallet synchronization', () => {
     mocks.robinhood.mockResolvedValue([]);
     mocks.count.mockResolvedValue(1);
     await syncWallet('wallet');
-    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { walletId: 'wallet', chainName: 'robinhood' } });
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { walletId: 'wallet' } });
+  });
+  it('preserves failed Robinhood data while clearing successfully empty Ankr chains', async () => {
+    mocks.ankr.mockResolvedValue([]);
+    mocks.robinhood.mockRejectedValue(new Error('unavailable'));
+    await syncWallet('wallet');
+    expect(mocks.deleteMany).toHaveBeenCalledWith({
+      where: { walletId: 'wallet', chainName: { not: 'robinhood' } },
+    });
   });
 });
