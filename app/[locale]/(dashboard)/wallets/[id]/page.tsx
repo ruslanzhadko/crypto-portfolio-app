@@ -52,8 +52,8 @@ export default async function WalletDetailPage({
         </Button>
       </div>
 
-      <Card className="card-gradient">
-        <CardContent className="p-6 pt-6 sm:pt-6">
+      <Card className="card-gradient shadow-none">
+        <CardContent className="p-5 sm:p-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -73,7 +73,9 @@ export default async function WalletDetailPage({
             </div>
             <div className="md:text-right">
               <p className="text-xs text-text-muted">{t('valueLabel')}</p>
-              <p className="text-3xl font-bold">{formatUsd(totalUsd)}</p>
+              <p className="text-3xl font-semibold tracking-tight tabular-nums">
+                {formatUsd(totalUsd, { minimumFractionDigits: 2 })}
+              </p>
               <WalletSyncButton walletId={wallet.id} className="mt-3" />
             </div>
           </div>

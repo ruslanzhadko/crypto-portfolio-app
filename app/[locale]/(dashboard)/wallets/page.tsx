@@ -3,7 +3,7 @@ import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { AddWalletDialog } from '@/components/wallets/add-wallet-dialog';
-import { WalletCard } from '@/components/wallets/wallet-card';
+import { WalletGallery } from '@/components/wallets/wallet-gallery';
 import { EmptyState } from '@/components/common/empty-state';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +21,7 @@ export default async function WalletsPage() {
       _count: { select: { balances: { where: { isSpam: false, isHidden: false } } } },
       balances: {
         where: { isSpam: false, isHidden: false },
-        select: { usdValue: true, updatedAt: true, priceChange24h: true },
-        orderBy: { updatedAt: 'desc' },
+        select: { usdValue: true, priceChange24h: true },
       },
     },
   });
@@ -44,7 +43,6 @@ export default async function WalletsPage() {
       network: w.network,
       label: w.label,
       lastSyncAt: w.lastSyncAt,
-      lastPriceUpdateAt: w.balances[0]?.updatedAt ?? null,
       tokenCount: w._count.balances,
       totalUsd,
       change24hUsd: Number.isFinite(change24hUsd) ? change24hUsd : 0,
@@ -58,7 +56,7 @@ export default async function WalletsPage() {
         <div>
           <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
           <p className="text-sm text-text-muted">
-            {t('pageDescription', { count: data.length })}
+            {t('pageDescription')}
           </p>
         </div>
         <AddWalletDialog />
@@ -71,18 +69,7 @@ export default async function WalletsPage() {
           description={t('emptyDescription')}
         />
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {data.map((w) => (
-            <WalletCard
-              key={w.id}
-              wallet={w}
-              lastPriceUpdateAt={w.lastPriceUpdateAt}
-              portfolioTotalUsd={data.reduce((s, x) => s + x.totalUsd, 0)}
-              change24hUsd={w.change24hUsd}
-              change24hPct={w.change24hPct}
-            />
-          ))}
-        </div>
+        <WalletGallery wallets={data} />
       )}
     </div>
   );

@@ -44,7 +44,7 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
               <Link
                 key={w.id}
                 href={`/wallets/${w.id}`}
-                className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-surface-2/50"
+                className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <WalletIcon className="h-4 w-4" />
@@ -56,7 +56,7 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-medium">{formatUsd(w.totalUsd, { compact: true })}</p>
+                  <p className="text-sm font-semibold tabular-nums">{formatUsd(w.totalUsd, { compact: true, minimumFractionDigits: 2 })}</p>
                   <NetworkBadge network={w.network} className="text-[10px]" />
                 </div>
               </Link>
