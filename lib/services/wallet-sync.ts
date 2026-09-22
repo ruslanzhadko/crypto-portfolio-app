@@ -23,6 +23,11 @@ function tokenKey(chainName: string, tokenAddress: string, tokenSymbol: string):
   return `${chainName}::${tokenAddress}::${tokenSymbol.toLowerCase()}`;
 }
 
+function shouldMarkSpam(token: NormalizedToken): boolean {
+  // An unknown price is not evidence of a low-value or spam token.
+  return token.isSpam || (!token.isNative && token.priceUsd > 0 && token.usdValue < MIN_TOKEN_USD);
+}
+
 export async function syncWallet(walletId: string): Promise<SyncResult> {
   const wallet = await prisma.wallet.findUnique({
     where: { id: walletId },
@@ -50,9 +55,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
 
-  const spamCount = enriched.filter(
-    (t) => t.isSpam || (!t.isNative && t.usdValue < MIN_TOKEN_USD),
-  ).length;
+  const spamCount = enriched.filter(shouldMarkSpam).length;
 
   const toSave = enriched.filter((t) => t.balance > 0);
 
@@ -90,7 +93,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
             priceChange24h: t.priceChange24h,
             logoUrl: t.logoUrl,
             coingeckoId: t.coingeckoId ?? null,
-            isSpam: t.isSpam || (!t.isNative && t.usdValue < MIN_TOKEN_USD),
+            isSpam: shouldMarkSpam(t),
             // Відновлюємо isHidden якщо токен раніше був прихований користувачем
             isHidden: prevHidden.get(key) ?? false,
           };

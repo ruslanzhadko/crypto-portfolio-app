@@ -51,6 +51,25 @@ describe('Robinhood balances', () => {
 });
 
 describe('Robinhood transaction pagination', () => {
+  it('combines the ETH sent and ERC-20 received in one swap row', async () => {
+    respond({ items: [{
+      hash: '0xswap', from: { hash: address }, to: { hash: token.address_hash },
+      timestamp: '2026-09-19T00:00:00Z', block_number: 1,
+      value: '10000000000000000', status: 'ok',
+    }], next_page_params: null });
+    respond({ items: [{
+      transaction_hash: '0xswap', log_index: 1,
+      from: { hash: token.address_hash }, to: { hash: address },
+      timestamp: '2026-09-19T00:00:00Z', block_number: 1,
+      token, total: { value: '1500000', decimals: '6' },
+    }], next_page_params: null });
+    const page = await fetchRobinhoodTransactions(address);
+    expect(page.transactions).toHaveLength(1);
+    expect(page.transactions[0]).toMatchObject({
+      id: '0xswap:swap', type: 'swap', tokenSymbol: 'ETH → USDC',
+      sentValue: 0.01, value: 1.5,
+    });
+  });
   it('keeps multiple transfer events in a transaction and resumes only unfinished streams', async () => {
     respond({ items: [], next_page_params: null });
     const event = {

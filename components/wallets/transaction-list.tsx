@@ -34,7 +34,16 @@ interface TransactionDTO {
 interface TransactionListProps {
   walletId: string;
   walletAddress: string;
-  chain?: 'robinhood';
+  network: 'EVM' | 'SOLANA';
+}
+
+type Source = 'default' | 'robinhood';
+type CursorState = Record<Source, string | null | undefined>;
+
+function mergeTransactions(existing: TransactionDTO[], incoming: TransactionDTO[]): TransactionDTO[] {
+  const byId = new Map<string, TransactionDTO>();
+  for (const tx of [...existing, ...incoming]) byId.set(`${tx.chainName}:${tx.id}`, tx);
+  return [...byId.values()].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
 }
 
 const EXPLORER: Record<string, string> = {
@@ -67,51 +76,73 @@ function getTxStyle(type: string, isOutgoing: boolean) {
   return TX_STYLE[type] ?? (isOutgoing ? TX_STYLE.send! : TX_STYLE.receive!);
 }
 
-export function TransactionList({ walletId, walletAddress, chain }: TransactionListProps) {
+export function TransactionList({ walletId, walletAddress, network }: TransactionListProps) {
   const t = useTranslations('TransactionList');
   const [items, setItems] = useState<TransactionDTO[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Масив page-токенів: [undefined, "tok1", "tok2", ...] — undefined = перша сторінка
-  const pageTokensRef = useRef<(string | undefined)[]>([undefined]);
-  const [pageIdx, setPageIdx] = useState(0);
+  const [partialError, setPartialError] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const cursorsRef = useRef<CursorState>({ default: undefined, robinhood: undefined });
+  const requestIdRef = useRef(0);
+  const loadingRef = useRef(false);
 
-  const load = useCallback(async (idx: number) => {
-    setError(null);
-    setItems(null);
-    const token = pageTokensRef.current[idx];
-    const url = `/api/wallets/${walletId}/transactions?pageSize=20${chain ? `&chain=${chain}` : ''}${token ? `&pageToken=${encodeURIComponent(token)}` : ''}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      setError(t('errorLoad'));
-      return;
+  const load = useCallback(async (reset: boolean) => {
+    if (loadingRef.current && !reset) return;
+    if (reset) {
+      requestIdRef.current += 1;
+      cursorsRef.current = { default: undefined, robinhood: undefined };
+      setItems(null);
+      setError(null);
+      setHasMore(false);
+    } else {
+      setLoadingMore(true);
     }
-    const payload = (await res.json()) as {
-      transactions: TransactionDTO[];
-      nextPageToken?: string;
-      hasMore: boolean;
-    };
-    if (!payload?.transactions) { setError(t('errorResponse')); return; }
+    loadingRef.current = true;
+    const requestId = requestIdRef.current;
+    const sources: Source[] = network === 'EVM' ? ['default', 'robinhood'] : ['default'];
+    const active = sources.filter((source) => cursorsRef.current[source] !== null);
+    const responses = await Promise.all(active.map(async (source) => {
+      try {
+        const cursor = cursorsRef.current[source];
+        const url = `/api/wallets/${walletId}/transactions?pageSize=20${source === 'robinhood' ? '&chain=robinhood' : ''}${cursor ? `&pageToken=${encodeURIComponent(cursor)}` : ''}`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('Transaction request failed');
+        const payload = (await res.json()) as { transactions: TransactionDTO[]; nextPageToken?: string };
+        if (!Array.isArray(payload.transactions)) throw new Error('Invalid transaction response');
+        return { source, payload };
+      } catch {
+        return { source, payload: null };
+      }
+    }));
+    if (requestId !== requestIdRef.current) return;
 
-    setItems(payload.transactions);
-    setHasMore(payload.hasMore ?? false);
-
-    if (payload.nextPageToken && !pageTokensRef.current[idx + 1]) {
-      pageTokensRef.current[idx + 1] = payload.nextPageToken;
+    const successes = responses.filter((response) => response.payload !== null);
+    const failed = successes.length !== responses.length;
+    for (const { source, payload } of successes) {
+      cursorsRef.current[source] = payload!.nextPageToken ?? null;
     }
-  }, [walletId, chain, t]);
+    if (successes.length === 0) {
+      if (reset) setError(t('errorLoad'));
+    } else {
+      const nextItems = successes.flatMap((response) => response.payload!.transactions);
+      setItems((previous) => mergeTransactions(reset ? [] : previous ?? [], nextItems));
+      setError(null);
+    }
+    setPartialError(failed);
+    setHasMore(sources.some((source) => cursorsRef.current[source] !== null));
+    setLoadingMore(false);
+    loadingRef.current = false;
+  }, [walletId, network, t]);
 
-  useEffect(() => { void load(pageIdx); }, [load, pageIdx]);
+  useEffect(() => { void load(true); }, [load]);
 
   // Рефетч після wallet sync
   useEffect(() => {
     const handler = (e: Event) => {
       const { walletId: sid } = (e as CustomEvent<{ walletId: string }>).detail;
       if (sid !== walletId) return;
-      // Скидаємо на першу сторінку
-      pageTokensRef.current = [undefined];
-      setPageIdx(0);
-      void load(0);
+      void load(true);
     };
     window.addEventListener('wallet-synced', handler);
     return () => window.removeEventListener('wallet-synced', handler);
@@ -130,7 +161,10 @@ export function TransactionList({ walletId, walletAddress, chain }: TransactionL
   if (error) {
     return (
       <Card>
-        <CardContent className="p-6 text-sm text-danger">{error}</CardContent>
+        <CardContent className="flex items-center justify-between gap-3 p-6 text-sm text-danger">
+          <span>{error}</span>
+          <Button variant="outline" size="sm" onClick={() => void load(true)}>{t('retry')}</Button>
+        </CardContent>
       </Card>
     );
   }
@@ -152,7 +186,7 @@ export function TransactionList({ walletId, walletAddress, chain }: TransactionL
     (tx) => tx.tokenSymbol || (tx.value !== null && tx.value > 0),
   );
 
-  if (visible.length === 0 && pageIdx === 0) {
+  if (visible.length === 0 && !hasMore) {
     return (
       <EmptyState
         icon={FileText}
@@ -166,6 +200,7 @@ export function TransactionList({ walletId, walletAddress, chain }: TransactionL
     <Card>
       <CardHeader>
         <CardTitle>{t('cardTitle')}</CardTitle>
+        {partialError && <p className="text-xs text-warning">{t('partialLoad')}</p>}
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y divide-border">
@@ -229,7 +264,7 @@ export function TransactionList({ walletId, walletAddress, chain }: TransactionL
                         {tx.sentValue != null &&
                           tx.sentValue >= 0.001 &&
                           // Відсікаємо абсурдний курс (неправильні decimals від Ankr)
-                          (tx.value == null || tx.value <= 0 || tx.sentValue / tx.value < 100_000) && (
+                          (tx.chainName === 'robinhood' || tx.value <= 0 || tx.sentValue / tx.value < 100_000) && (
                           <span className="text-sm font-semibold tabular-nums text-danger">
                             −{formatNumber(tx.sentValue, tx.sentValue < 0.01 ? 6 : tx.sentValue < 1 ? 4 : 2)}
                           </span>
@@ -260,16 +295,11 @@ export function TransactionList({ walletId, walletAddress, chain }: TransactionL
           })}
         </div>
 
-        {(pageIdx > 0 || hasMore) && (
-          <div className="flex items-center justify-between border-t border-border p-4">
-            <Button variant="outline" size="sm" disabled={pageIdx === 0}
-              onClick={() => setPageIdx((p) => Math.max(0, p - 1))}>
-              {t('prevPage')}
-            </Button>
-            <span className="text-xs text-text-muted">{t('pageLabel', { page: pageIdx + 1 })}</span>
-            <Button variant="outline" size="sm" disabled={!hasMore}
-              onClick={() => setPageIdx((p) => p + 1)}>
-              {t('nextPage')}
+        {hasMore && (
+          <div className="flex justify-center border-t border-border p-4">
+            <Button variant="outline" size="sm" disabled={loadingMore}
+              onClick={() => void load(false)}>
+              {loadingMore ? t('loadingMore') : t('loadMore')}
             </Button>
           </div>
         )}
