@@ -7,6 +7,7 @@ import {
   shortAddress,
   formatDate,
   formatRelative,
+  formatRelativeCompact,
 } from '@/lib/utils/format';
 
 describe('formatUsd', () => {
@@ -18,6 +19,7 @@ describe('formatUsd', () => {
   });
   it('compact для великих сум', () => {
     expect(formatUsd(1_000_000, { compact: true })).toBe('$1.00M');
+    expect(formatUsd(2_900, { compact: true })).toBe('$2.90K');
   });
   it('явний minimumFractionDigits', () => {
     expect(formatUsd(10, { minimumFractionDigits: 0 })).toBe('$10');
@@ -101,5 +103,19 @@ describe('formatRelative', () => {
   });
   it('валідна дата → повертає рядок', () => {
     expect(typeof formatRelative(new Date('2020-01-01T00:00:00.000Z'))).toBe('string');
+  });
+});
+
+describe('formatRelativeCompact', () => {
+  const seventeenMinutesAgo = () => new Date(Date.now() - 17 * 60_000);
+
+  it('uses compact minute units for each supported locale', () => {
+    expect(formatRelativeCompact(seventeenMinutesAgo(), 'en')).toBe('17 min ago');
+    expect(formatRelativeCompact(seventeenMinutesAgo(), 'ru')).toBe('17 мин назад');
+    expect(formatRelativeCompact(seventeenMinutesAgo(), 'uk')).toBe('17 хв тому');
+  });
+
+  it('keeps the existing relative format for longer intervals', () => {
+    expect(formatRelativeCompact(new Date(Date.now() - 2 * 60 * 60_000), 'en')).toBe('about 2 hours ago');
   });
 });

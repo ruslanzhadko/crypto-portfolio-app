@@ -85,11 +85,14 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
   return (
     <Card>
       <CardHeader
-        className={cn('flex cursor-pointer flex-row items-center justify-between space-y-0 select-none', open ? 'pb-2' : 'pb-6')}
+        className={cn(
+          'flex cursor-pointer gap-2 space-y-0 select-none sm:flex-row sm:items-center sm:justify-between',
+          open ? 'flex-col items-stretch pb-2' : 'flex-row items-start justify-between pb-6',
+        )}
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="flex items-center gap-3">
-          <CardTitle>{t('cardTitle')}</CardTitle>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+          <CardTitle className="w-full sm:w-auto">{t('cardTitle')}</CardTitle>
           <span className="font-mono text-sm font-semibold text-text">
             {formatUsd(totalUsd, { compact: true })}
           </span>
@@ -105,7 +108,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
             </span>
           )}
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center justify-end gap-1">
           {open &&
             ranges.map((r) => (
               <Button

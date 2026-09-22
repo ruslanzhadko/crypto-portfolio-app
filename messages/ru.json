@@ -5,6 +5,8 @@
     "market": "Market",
     "alerts": "Уведомления",
     "settings": "Настройки",
+    "alertsMobile": "Алерты",
+    "settingsMobile": "Настр.",
     "admin": "Админ",
     "profile": "Профиль",
     "signOut": "Выйти",

@@ -90,7 +90,7 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
       </div>
 
       {visible.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
           {visible.map((wallet) => (
             <WalletCard key={wallet.id} wallet={wallet} portfolioTotalUsd={portfolioTotalUsd} />
           ))}
