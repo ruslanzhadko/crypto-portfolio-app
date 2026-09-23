@@ -204,33 +204,35 @@ export default async function ComparePage() {
   }));
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="space-y-5 md:space-y-6">
+      <div className="space-y-3">
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link href="/dashboard">
             <ChevronLeft className="h-4 w-4" />
             {t('backToDashboard')}
           </Link>
         </Button>
-        <h1 className="mt-2 text-2xl font-bold md:text-3xl">{t('pageTitle')}</h1>
-        <p className="text-sm text-text-muted">{t('pageDescription')}</p>
+        <div>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-text-muted sm:text-[15px]">{t('pageDescription')}</p>
+        </div>
       </div>
 
       {/* ─── Summary panel ─────────────────────────────────────── */}
       <Card className="card-gradient">
-        <CardContent className="space-y-6 p-6">
+        <CardContent className="space-y-5 p-5 sm:p-6">
           <div>
-            <p className="text-xs uppercase tracking-wide text-text-muted">
+            <p className="text-sm font-medium text-text-muted">
               {t('totalValueLabel')}
             </p>
-            <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-              <span className="text-3xl font-bold tabular-nums">
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+              <span className="text-3xl font-semibold tracking-tight tabular-nums sm:text-4xl">
                 {formatUsd(portfolioTotal)}
               </span>
               {Math.abs(portfolioChangePct) > 0 && (
                 <PriceChange value={portfolioChangePct} />
               )}
-              <span className="text-xs text-text-muted">
+              <span className="text-sm text-text-muted">
                 {t('walletsTokensSummary', { wallets: enriched.length, tokens: totalTokens })}
               </span>
             </div>
@@ -238,15 +240,15 @@ export default async function ComparePage() {
 
           {/* Stacked bar — частка кожного гаманця у портфелі */}
           {portfolioTotal > 0 && (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <StackedBar segments={walletSegments} height="h-2.5" />
 
-              <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs">
+              <div className="flex flex-wrap gap-x-5 gap-y-2.5 text-xs sm:text-sm">
                 {enriched.map((w) => {
                   const widthPct =
                     portfolioTotal > 0 ? (w.totalUsd / portfolioTotal) * 100 : 0;
                   return (
-                    <div key={w.id} className="flex items-center gap-2">
+                    <div key={w.id} className="flex items-center gap-1.5">
                       <span
                         aria-hidden
                         className="h-2.5 w-2.5 rounded-full"
@@ -255,7 +257,7 @@ export default async function ComparePage() {
                       <span className="text-text-muted">
                         {w.label ?? shortAddress(w.address)}
                       </span>
-                      <span className="font-medium tabular-nums">
+                      <span className="font-semibold tabular-nums">
                         {widthPct.toFixed(1)}%
                       </span>
                     </div>
@@ -268,7 +270,7 @@ export default async function ComparePage() {
       </Card>
 
       {/* ─── Wallet cards ───────────────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2 xl:gap-5">
         {enriched.map((w, idx) => {
           const share = portfolioTotal > 0 ? (w.totalUsd / portfolioTotal) * 100 : 0;
           const top = w.balances.slice(0, 5);
@@ -280,57 +282,46 @@ export default async function ComparePage() {
           return (
             <Card
               key={w.id}
-              className={cn(
-                'card-gradient relative transition-shadow hover:shadow-card',
-                isLargest && 'ring-1 ring-primary/40',
-              )}
+              className={cn('card-gradient transition-colors hover:border-primary/40', isLargest && 'border-primary/40')}
             >
-              {/* Декоративна вертикальна смуга кольору гаманця зліва */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute inset-y-0 left-0 w-1 rounded-l-2xl"
-                style={{ background: w.accent.gradient }}
-              />
-
-              {isLargest && (
-                <div className="absolute right-3 top-3 z-10 inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-medium text-primary">
-                  <Sparkles className="h-3 w-3" aria-hidden />
-                  {t('largestBadge')}
-                </div>
-              )}
-
-              <CardContent className="space-y-5 p-6 pl-7">
+              <CardContent className="flex h-full flex-col gap-5 p-5 sm:p-6">
                 {/* Header: avatar + label + address + network */}
-                <div className="flex items-start gap-3">
+                <div className="flex min-w-0 items-start gap-3">
                   <div
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-card"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white"
                     style={{ background: w.accent.gradient }}
                     aria-hidden
                   >
                     {getInitials(w.label, w.address)}
                   </div>
-                  <div className="min-w-0 flex-1 pr-20">
-                    <h3 className="truncate text-lg font-bold leading-tight">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate text-base font-semibold leading-tight sm:text-lg">
                       {w.label ?? t('noLabel')}
                     </h3>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="truncate font-mono text-xs text-text-muted">
                         {shortAddress(w.address, 8)}
                       </p>
                       <NetworkBadge network={w.network} className="shrink-0 text-[10px]" />
                     </div>
                   </div>
+                  {isLargest && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary/15 px-2 py-1 text-xs font-medium text-primary">
+                      <Sparkles className="h-3 w-3" aria-hidden />
+                      <span className="hidden sm:inline">{t('largestBadge')}</span>
+                    </span>
+                  )}
                 </div>
 
                 {/* Total + 24h */}
                 <div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-3xl font-bold tabular-nums">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <span className="text-2xl font-semibold tracking-tight tabular-nums sm:text-3xl">
                       {formatUsd(w.totalUsd)}
                     </span>
                     {w.change24hPct !== 0 && <PriceChange value={w.change24hPct} />}
                   </div>
-                  <p className="mt-1.5 text-xs text-text-muted">
+                  <p className="mt-1.5 text-sm text-text-muted">
                     {t('walletShareSummary', { share: share.toFixed(1), tokens: w.balances.length, networks: w.chains.length })}
                   </p>
                 </div>
@@ -338,17 +329,17 @@ export default async function ComparePage() {
                 {/* Список топ-5 — кожен рядок має м'який bg-fill за пропорцією */}
                 {top.length > 0 && w.totalUsd > 0 && (
                   <div>
-                    <p className="mb-2.5 text-[11px] uppercase tracking-wide text-text-muted">
+                    <p className="mb-2.5 text-xs font-medium uppercase tracking-wide text-text-muted">
                       {t('topTokensHeading')}
                     </p>
-                    <ul className="space-y-1">
+                    <ul className="space-y-1.5">
                       {top.map((t, i) => {
                         const tokenPct = (t.usdValue / w.totalUsd) * 100;
                         const color = TOKEN_COLORS[i % TOKEN_COLORS.length]!;
                         return (
                           <li
                             key={t.id}
-                            className="relative grid grid-cols-[minmax(0,1fr),auto,auto] items-center gap-3 overflow-hidden rounded-md px-2.5 py-1.5 text-xs"
+                            className="relative grid grid-cols-[minmax(0,1fr),auto,3.25rem] items-center gap-2 overflow-hidden rounded-md px-3 py-2 text-xs sm:text-sm"
                             style={{
                               backgroundImage: `linear-gradient(to right, ${color}22 ${tokenPct}%, transparent ${tokenPct}%)`,
                             }}
@@ -361,10 +352,10 @@ export default async function ComparePage() {
                               />
                               <span className="truncate font-medium">{t.tokenSymbol}</span>
                             </div>
-                            <span className="tabular-nums text-text-muted">
+                            <span className="whitespace-nowrap tabular-nums text-text-muted">
                               {formatUsd(t.usdValue, { compact: true })}
                             </span>
-                            <span className="w-12 text-right tabular-nums text-text-muted">
+                            <span className="text-right tabular-nums text-text-muted">
                               {tokenPct.toFixed(1)}%
                             </span>
                           </li>
@@ -372,7 +363,7 @@ export default async function ComparePage() {
                       })}
                       {restUsd > 0 && (
                         <li
-                          className="relative grid grid-cols-[minmax(0,1fr),auto,auto] items-center gap-3 overflow-hidden rounded-md px-2.5 py-1.5 text-xs text-text-muted"
+                          className="relative grid grid-cols-[minmax(0,1fr),auto,3.25rem] items-center gap-2 overflow-hidden rounded-md px-3 py-2 text-xs text-text-muted sm:text-sm"
                           style={{
                             backgroundImage: `linear-gradient(to right, ${REST_COLOR}40 ${restPct}%, transparent ${restPct}%)`,
                           }}
@@ -387,10 +378,10 @@ export default async function ComparePage() {
                               {t('otherTokens', { count: w.balances.length - top.length })}
                             </span>
                           </div>
-                          <span className="tabular-nums">
+                          <span className="whitespace-nowrap tabular-nums">
                             {formatUsd(restUsd, { compact: true })}
                           </span>
-                          <span className="w-12 text-right tabular-nums">
+                          <span className="text-right tabular-nums">
                             {restPct.toFixed(1)}%
                           </span>
                         </li>
@@ -401,7 +392,7 @@ export default async function ComparePage() {
 
                 {/* Мережі — показуємо лише якщо їх більше однієї */}
                 {w.chains.length > 1 && (
-                  <div className="flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
+                  <div className="flex flex-wrap gap-2 border-t border-border/60 pt-4">
                     {w.chains.map((c) => (
                       <ChainBadge key={c} chainName={c} />
                     ))}
@@ -409,7 +400,7 @@ export default async function ComparePage() {
                 )}
 
                 {/* Footer: sync time */}
-                <p className="text-[11px] text-text-muted">
+                <p className="mt-auto text-xs text-text-muted">
                   {t('lastSync', { time: formatRelative(w.lastSyncAt, locale) })}
                 </p>
               </CardContent>
