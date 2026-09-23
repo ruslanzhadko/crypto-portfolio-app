@@ -96,8 +96,8 @@ export interface CoinDetail {
   priceChange30d: number;
   high24h: number | null;
   low24h: number | null;
-  high52w: number | null;
-  high52wChangePercent: number | null;
+  ath: number | null;
+  athChangePercent: number | null;
   rank: number | null;
   homepage: string | null;
 }
@@ -311,19 +311,11 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
   const md = data.market_data;
   const homepage = data.links?.homepage?.find((u) => u && u.length > 0) ?? null;
   const currentPrice = md?.current_price?.usd ?? 0;
-  // A rolling high is more useful than launch-day prints distorted by very low
-  // liquidity (notably ZEC). Failure here must not hide the rest of the detail page.
-  const chart = await withRetry(() =>
-    getClient().get<MarketChartResponse>(`/coins/${id}/market_chart`, {
-      params: { vs_currency: 'usd', days: 365, interval: 'daily' },
-    }),
-  ).then((response) => response.data).catch(() => ({ prices: [] }));
-  const validPrices = (chart.prices ?? [])
-    .map(([, price]) => price)
-    .filter((price) => Number.isFinite(price) && price > 0);
-  const high52w = validPrices.length > 0 ? Math.max(...validPrices) : null;
-  const high52wChangePercent = high52w && currentPrice > 0
-    ? ((currentPrice - high52w) / high52w) * 100
+  const apiAth = md?.ath?.usd;
+  const ath = apiAth !== undefined && Number.isFinite(apiAth) && apiAth > 0 ? apiAth : null;
+  const apiAthChange = md?.ath_change_percentage?.usd;
+  const athChangePercent = ath !== null && apiAthChange !== undefined && Number.isFinite(apiAthChange)
+    ? apiAthChange
     : null;
   return {
     id: data.id,
@@ -338,8 +330,8 @@ export async function fetchCoinDetail(id: string): Promise<CoinDetail> {
     volume24h: md?.total_volume?.usd ?? null,
     high24h: md?.high_24h?.usd ?? null,
     low24h: md?.low_24h?.usd ?? null,
-    high52w,
-    high52wChangePercent,
+    ath,
+    athChangePercent,
     priceChange1h: md?.price_change_percentage_1h_in_currency?.usd ?? 0,
     priceChange24h: md?.price_change_percentage_24h ?? 0,
     priceChange7d: md?.price_change_percentage_7d ?? 0,

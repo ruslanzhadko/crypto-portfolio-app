@@ -84,7 +84,7 @@ export function PriceChart({ tokenId, initialDays = 7 }: PriceChartProps) {
           ))}
         </div>
       </CardHeader>
-      <CardContent className="h-[320px]">
+      <CardContent className="h-[320px] lg:h-[clamp(240px,calc(100dvh-720px),300px)]">
         {error && <p className="text-sm text-danger">{error}</p>}
         {!error && points === null && <Skeleton className="h-full w-full rounded-lg" />}
         {!error && points && points.length > 0 && mounted && (

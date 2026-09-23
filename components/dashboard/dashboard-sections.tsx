@@ -22,7 +22,7 @@ import {
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu';
 import { formatRelative } from '@/lib/utils/format';
-import type { PortfolioOverview } from '@/lib/services/portfolio';
+import type { AggregatedToken, PortfolioOverview } from '@/lib/services/portfolio';
 import type { Network } from '@prisma/client';
 
 type SectionKey = 'topMovers' | 'allocation' | 'networkAllocation';
@@ -47,6 +47,7 @@ export interface WalletDto {
 
 interface Props {
   overview: PortfolioOverview;
+  spamTokens: AggregatedToken[];
   wallets: WalletDto[];
   hiddenTokensCount: number;
   lastPriceUpdateAt: string | null;
@@ -55,6 +56,7 @@ interface Props {
 
 export function DashboardSections({
   overview,
+  spamTokens,
   wallets,
   hiddenTokensCount,
   lastPriceUpdateAt,
@@ -153,7 +155,7 @@ export function DashboardSections({
         <div className="min-w-0 sm:order-5">
           <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="min-w-0 lg:col-span-2">
-              <TokenTable tokens={overview.tokens} />
+              <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
             </div>
             <WalletList wallets={wallets} />
           </div>

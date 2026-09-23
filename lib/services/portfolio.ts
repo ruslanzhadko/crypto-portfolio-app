@@ -224,6 +224,63 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
   };
 }
 
+/** Spam balances for the dashboard inspector; never included in portfolio totals. */
+export async function getDashboardSpamTokens(userId: string): Promise<AggregatedToken[]> {
+  const wallets = await prisma.wallet.findMany({
+    where: { userId },
+    include: { balances: { where: { isSpam: true, isHidden: false } } },
+  });
+  const grouped = new Map<string, AggregatedToken>();
+
+  for (const wallet of wallets) {
+    for (const balance of wallet.balances) {
+      const key = getTokenGroupingKey(balance);
+      const breakdown: WalletTokenBreakdown = {
+        walletId: wallet.id,
+        walletLabel: wallet.label,
+        walletAddress: wallet.address,
+        network: wallet.network,
+        chainName: balance.chainName,
+        balance: balance.balance,
+        usdValue: balance.usdValue,
+        share: 0,
+      };
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.totalBalance += balance.balance;
+        existing.totalUsd += balance.usdValue;
+        existing.wallets.push(breakdown);
+        if (!existing.chains.includes(balance.chainName)) existing.chains.push(balance.chainName);
+        if (!existing.walletIds.includes(wallet.id)) existing.walletIds.push(wallet.id);
+      } else {
+        grouped.set(key, {
+          key,
+          symbol: balance.tokenSymbol,
+          name: balance.tokenName,
+          logoUrl: balance.logoUrl,
+          coingeckoId: balance.coingeckoId,
+          chainName: balance.chainName,
+          tokenAddress: balance.tokenAddress,
+          totalBalance: balance.balance,
+          totalUsd: balance.usdValue,
+          share: 0,
+          chains: [balance.chainName],
+          walletIds: [wallet.id],
+          wallets: [breakdown],
+          currentPrice: balance.priceUsd,
+          priceChange24h: balance.priceChange24h,
+        });
+      }
+    }
+  }
+
+  return Array.from(grouped.values()).map((token) => {
+    token.wallets.sort((a, b) => b.usdValue - a.usdValue);
+    for (const wallet of token.wallets) wallet.share = computeShare(wallet.usdValue, token.totalUsd);
+    return token;
+  }).sort((a, b) => b.totalUsd - a.totalUsd);
+}
+
 // ─────────────────────────────────────────
 // PnL
 // ─────────────────────────────────────────

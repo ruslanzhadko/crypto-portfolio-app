@@ -2,9 +2,11 @@
 
 import { useMemo, useState, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpDown, ChevronRight, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
+import { ArrowUpDown, ChevronRight, Eye, EyeOff, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { TokenLogo } from '@/components/common/token-logo';
 import { PriceChange } from '@/components/common/price-change';
 import {
@@ -14,6 +16,8 @@ import {
 } from '@/lib/utils/format';
 import { ChainBadge } from '@/components/common/network-badge';
 import { cn } from '@/lib/utils/cn';
+import { getChainDisplayName } from '@/lib/utils/networks';
+import { filterDashboardTokens } from '@/lib/utils/dashboard-token-filter';
 import type { AggregatedToken, WalletTokenBreakdown } from '@/lib/services/portfolio';
 
 type SortKey = 'value' | 'balance' | 'change';
@@ -27,16 +31,23 @@ interface WalletGroup {
   chains: WalletTokenBreakdown[];
 }
 
-export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
+export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; spamTokens: AggregatedToken[] }) {
   const t = useTranslations('TokenTable');
   const [sortKey, setSortKey] = useState<SortKey>('value');
   const [desc, setDesc] = useState(true);
+  const [search, setSearch] = useState('');
+  const [chainFilter, setChainFilter] = useState('all');
+  const [showSpam, setShowSpam] = useState(false);
   // Окремі множини для розгорнутих токенів і розгорнутих гаманців (ключі: tokenKey та tokenKey::walletId)
   const [openTokens, setOpenTokens] = useState<Set<string>>(new Set());
   const [openWallets, setOpenWallets] = useState<Set<string>>(new Set());
 
+  const availableChains = useMemo(() => Array.from(new Set(
+    [...tokens, ...spamTokens].flatMap((token) => token.chains),
+  )).sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [tokens, spamTokens]);
+
   const sorted = useMemo(() => {
-    const arr = [...tokens];
+    const arr = filterDashboardTokens(showSpam ? spamTokens : tokens, chainFilter, search);
     arr.sort((a, b) => {
       let av: number;
       let bv: number;
@@ -57,7 +68,7 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
       return desc ? bv - av : av - bv;
     });
     return arr;
-  }, [tokens, sortKey, desc]);
+  }, [tokens, spamTokens, showSpam, chainFilter, search, sortKey, desc]);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setDesc((d) => !d);
@@ -76,8 +87,45 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('cardTitle')}</CardTitle>
+      <CardHeader className="space-y-3 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          <Button
+            variant={showSpam ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5"
+            disabled={spamTokens.length === 0}
+            aria-pressed={showSpam}
+            onClick={() => setShowSpam((value) => !value)}
+          >
+            {showSpam ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
+            {showSpam ? t('hideSpam') : t('showSpam', { count: spamTokens.length })}
+          </Button>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('searchPlaceholder')}
+              aria-label={t('searchLabel')}
+              className="pl-9"
+            />
+          </div>
+          <Select value={chainFilter} onValueChange={setChainFilter}>
+            <SelectTrigger className="w-full sm:w-44" aria-label={t('networkFilter')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allNetworks')}</SelectItem>
+              {availableChains.map((chain) => (
+                <SelectItem key={chain} value={chain}>{getChainDisplayName(chain)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {showSpam && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -109,7 +157,7 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
               {sorted.map((tok) => {
                 const isOpen = openTokens.has(tok.key);
                 // Приховуємо dust (< $0.01) у розгорнутому вигляді
-                const visibleWallets = tok.wallets.filter((w) => w.usdValue >= 0.01);
+                const visibleWallets = showSpam ? tok.wallets : tok.wallets.filter((w) => w.usdValue >= 0.01);
                 const hiddenCount = tok.wallets.length - visibleWallets.length;
                 const groups = groupByWallet(visibleWallets);
                 const hasBreakdown = groups.length > 0;
@@ -188,7 +236,7 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                         )}
                       </td>
                       <td className="hidden px-4 py-3 text-right text-text-muted 2xl:table-cell">
-                        {tok.share.toFixed(1)}%
+                        {showSpam ? '—' : `${tok.share.toFixed(1)}%`}
                       </td>
                     </tr>
 
@@ -223,7 +271,9 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
-                    {t('emptyText')}
+                    {search.trim() || chainFilter !== 'all'
+                      ? t('noFilterResults')
+                      : showSpam ? t('emptySpam') : t('emptyText')}
                   </td>
                 </tr>
               )}

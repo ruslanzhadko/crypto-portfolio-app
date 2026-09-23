@@ -73,7 +73,7 @@ export default async function TokenDetailPage({
   if (!coin) notFound();
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href={back.href}>
           <ChevronLeft className="h-4 w-4" />
@@ -82,7 +82,7 @@ export default async function TokenDetailPage({
       </Button>
 
       <Card className="card-gradient">
-        <CardContent className="p-3 sm:p-6">
+        <CardContent className="p-3 sm:p-5">
           <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 sm:gap-x-4">
             <TokenLogo src={coin.image} symbol={coin.symbol} size={40} className="shrink-0 sm:h-12 sm:w-12" />
             <div className="min-w-0">
@@ -176,14 +176,14 @@ export default async function TokenDetailPage({
         />
         <StatCard
           compactMobile
-          label={t('stat52wHigh')}
-          value={coin.high52wChangePercent !== null ? formatPercent(coin.high52wChangePercent) : '—'}
+          label={t('statAth')}
+          value={coin.athChangePercent !== null ? formatPercent(coin.athChangePercent) : '—'}
           valueClassName={
-            coin.high52wChangePercent !== null
-              ? coin.high52wChangePercent >= 0 ? 'text-success' : 'text-danger'
+            coin.athChangePercent !== null
+              ? coin.athChangePercent >= 0 ? 'text-success' : 'text-danger'
               : undefined
           }
-          subtext={coin.high52w !== null ? t('high52wSubtext', { value: formatUsd(coin.high52w) }) : undefined}
+          subtext={coin.ath !== null ? t('athSubtext', { value: formatUsd(coin.ath) }) : undefined}
         />
         <div className="col-span-2 xl:col-span-1 xl:col-start-4 xl:row-start-1">
           <OpenInterestCard data={openInterest} symbol={coin.symbol} />

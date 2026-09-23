@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
-import { getPortfolioOverview } from '@/lib/services/portfolio';
+import { getDashboardSpamTokens, getPortfolioOverview } from '@/lib/services/portfolio';
 import { DashboardSections } from '@/components/dashboard/dashboard-sections';
 import { EmptyState } from '@/components/common/empty-state';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,9 @@ export default async function DashboardPage() {
 
   const t = await getTranslations('Dashboard');
 
-  const [overview, wallets, hiddenTokensCount, lastPriceUpdate] = await Promise.all([
+  const [overview, spamTokens, wallets, hiddenTokensCount, lastPriceUpdate] = await Promise.all([
     getPortfolioOverview(userId),
+    getDashboardSpamTokens(userId),
     prisma.wallet.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
@@ -81,6 +82,7 @@ export default async function DashboardPage() {
       <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
       <DashboardSections
         overview={overview}
+        spamTokens={spamTokens}
         wallets={walletDtos}
         hiddenTokensCount={hiddenTokensCount}
         lastPriceUpdateAt={lastPriceUpdate?.updatedAt?.toISOString() ?? null}
