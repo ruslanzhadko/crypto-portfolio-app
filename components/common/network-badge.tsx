@@ -37,7 +37,7 @@ export function ChainBadge({ chainName, className }: ChainBadgeProps) {
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-text',
+        'inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-text',
         className,
       )}
     >

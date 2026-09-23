@@ -9,17 +9,17 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
   return (
     <Card>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <div className="min-w-0">
+          <table className="w-full table-fixed text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="px-3 py-3 text-left sm:px-4 sm:py-3.5">#</th>
-                <th className="px-3 py-3 text-left sm:px-4 sm:py-3.5">Назва</th>
-                <th className="px-3 py-3 text-right sm:px-5">Ціна</th>
-                <th className="px-3 py-3 text-right sm:px-5">24г</th>
-                <th className="hidden px-5 py-3 text-right lg:table-cell">7д</th>
-                <th className="hidden px-5 py-3 text-right md:table-cell">Капіталізація</th>
-                <th className="hidden px-5 py-3 text-right lg:table-cell">Обʼєм 24г</th>
+                <th className="w-9 px-2 py-3 text-left sm:w-12 sm:px-4 sm:py-3.5">#</th>
+                <th className="px-1 py-3 text-left sm:px-4 sm:py-3.5">Назва</th>
+                <th className="w-28 px-2 py-3 text-right sm:w-36 sm:px-5">Ціна</th>
+                <th className="hidden w-24 px-3 py-3 text-right md:table-cell">24г</th>
+                <th className="hidden w-24 px-3 py-3 text-right 2xl:table-cell">7д</th>
+                <th className="hidden w-36 px-4 py-3 text-right xl:table-cell">Капіталізація</th>
+                <th className="hidden w-36 px-4 py-3 text-right 2xl:table-cell">Обʼєм 24г</th>
               </tr>
             </thead>
             <tbody>
@@ -28,32 +28,35 @@ export function MarketTable({ coins }: { coins: MarketCoin[] }) {
                   key={c.id}
                   className="border-b border-border/60 transition-colors hover:bg-surface-2/50"
                 >
-                  <td className="px-3 py-3 text-text-muted sm:px-4 sm:py-3.5">{c.market_cap_rank ?? '—'}</td>
-                  <td className="px-3 py-3 sm:px-4 sm:py-3.5">
+                  <td className="px-2 py-3 text-text-muted sm:px-4 sm:py-3.5">{c.market_cap_rank ?? '—'}</td>
+                  <td className="min-w-0 px-1 py-3 sm:px-4 sm:py-3.5">
                     <Link
                       href={`/market/${c.id}`}
-                      className="flex items-center gap-2 sm:gap-3"
+                      className="flex min-w-0 items-center gap-2 sm:gap-3"
                     >
-                      <TokenLogo src={c.image} symbol={c.symbol} size={32} />
+                      <TokenLogo src={c.image} symbol={c.symbol} size={32} className="shrink-0" />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold sm:text-base">{c.name}</p>
-                        <p className="text-xs uppercase text-text-muted">{c.symbol}</p>
+                        <p className="truncate text-xs uppercase text-text-muted">{c.symbol}</p>
                       </div>
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-right font-mono text-sm sm:px-5 sm:text-base">
-                    {formatUsd(c.current_price)}
+                  <td className="px-2 py-3 text-right text-xs tabular-nums sm:px-5 sm:text-base">
+                    <span className="block font-medium break-all sm:break-normal">{formatUsd(c.current_price)}</span>
+                    <span className="mt-0.5 block md:hidden">
+                      <PriceChange value={c.price_change_percentage_24h ?? 0} size="sm" />
+                    </span>
                   </td>
-                  <td className="px-3 py-3 text-right sm:px-5">
+                  <td className="hidden px-3 py-3 text-right md:table-cell">
                     <PriceChange value={c.price_change_percentage_24h ?? 0} size="sm" />
                   </td>
-                  <td className="hidden px-5 py-3 text-right lg:table-cell">
+                  <td className="hidden px-3 py-3 text-right 2xl:table-cell">
                     <PriceChange value={c.price_change_percentage_7d_in_currency ?? 0} size="sm" />
                   </td>
-                  <td className="hidden px-5 py-3 text-right text-text-muted md:table-cell">
+                  <td className="hidden px-4 py-3 text-right text-text-muted xl:table-cell">
                     {c.market_cap ? formatUsd(c.market_cap, { compact: true }) : '—'}
                   </td>
-                  <td className="hidden px-5 py-3 text-right text-text-muted lg:table-cell">
+                  <td className="hidden px-4 py-3 text-right text-text-muted 2xl:table-cell">
                     {c.total_volume ? formatUsd(c.total_volume, { compact: true }) : '—'}
                   </td>
                 </tr>

@@ -39,7 +39,10 @@ async function markSpam<T extends TransactionSpamCandidate>(walletId: string, tr
     where: { walletId },
     select: { chainName: true, tokenAddress: true, isSpam: true },
   });
-  return transactions.map((tx) => ({ ...tx, isSpam: transactionIsSpam(tx, walletTokens) }));
+  const interactedAddresses = new Set(transactions
+    .filter((tx) => tx.type === 'send' || tx.type === 'swap')
+    .flatMap((tx) => (tx.tokenAddresses ?? []).map((address) => `${tx.chainName}:${address.toLowerCase()}`)));
+  return transactions.map((tx) => ({ ...tx, isSpam: transactionIsSpam(tx, walletTokens, interactedAddresses) }));
 }
 
 // ─── Solana transactions via public JSON-RPC (batch) ────────────────────────
@@ -481,7 +484,7 @@ export async function GET(
     if (chain === 'robinhood' && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
 
     // Кеш-ключ для обох мереж
-    const cacheKey = `spam-v3::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
+    const cacheKey = `spam-v4::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
     type PagePayload = { transactions: object[]; nextPageToken?: string; hasMore: boolean };
 
     const cached = cacheGet<PagePayload>(cacheKey);

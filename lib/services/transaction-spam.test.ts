@@ -8,12 +8,18 @@ describe('transaction spam classification', () => {
     expect(transactionIsSpam({ chainName: 'bsc', type: 'receive', tokenAddresses: ['0xabc'] }, flagged)).toBe(true);
   });
 
-  it('does not hide a different contract with the same symbol', () => {
-    expect(transactionIsSpam({ chainName: 'bsc', type: 'receive', tokenAddresses: ['0xdef'], tokenSymbol: 'CATE' }, flagged)).toBe(false);
+  it('does not confuse a different contract with the same symbol', () => {
+    expect(transactionIsSpam({ chainName: 'bsc', type: 'receive', tokenAddresses: ['0xdef'], tokenSymbol: 'CATE' }, flagged)).toBe(true);
+    expect(transactionIsSpam({ chainName: 'bsc', type: 'receive', tokenAddresses: ['0xdef'], tokenSymbol: 'CATE' }, [
+      ...flagged, { chainName: 'bsc', tokenAddress: '0xdef', isSpam: false },
+    ])).toBe(false);
   });
 
   it('does not hide the same contract address on another chain', () => {
-    expect(transactionIsSpam({ chainName: 'base', type: 'receive', tokenAddresses: ['0xabc'] }, flagged)).toBe(false);
+    expect(transactionIsSpam({ chainName: 'base', type: 'receive', tokenAddresses: ['0xabc'] }, flagged)).toBe(true);
+    expect(transactionIsSpam({ chainName: 'base', type: 'receive', tokenAddresses: ['0xabc'] }, [
+      { chainName: 'base', tokenAddress: '0xabc', isSpam: false },
+    ])).toBe(false);
   });
 
   it('keeps deliberate swaps even if an involved balance was marked as dust', () => {
@@ -25,10 +31,11 @@ describe('transaction spam classification', () => {
     expect(transactionIsSpam({ chainName: 'robinhood', tokenSymbol: 'ODYSSEUS' }, [])).toBe(false);
   });
 
-  it('quarantines a large incoming unknown-token airdrop but not a known token', () => {
-    const tx = { chainName: 'bsc', type: 'receive', tokenAddresses: ['0xdef'], value: 2_000_000 };
+  it('quarantines incoming unknown tokens of any amount, but keeps interacted contracts', () => {
+    const tx = { chainName: 'bsc', type: 'receive', tokenAddresses: ['0xdef'], value: 2.29 };
     expect(transactionIsSpam(tx, flagged)).toBe(true);
     expect(transactionIsSpam(tx, [...flagged, { chainName: 'bsc', tokenAddress: '0xdef', isSpam: false }])).toBe(false);
+    expect(transactionIsSpam(tx, flagged, new Set(['bsc:0xdef']))).toBe(false);
     expect(transactionIsSpam({ ...tx, type: 'send' }, flagged)).toBe(false);
   });
 });

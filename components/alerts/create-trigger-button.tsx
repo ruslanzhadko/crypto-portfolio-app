@@ -20,7 +20,7 @@ export function CreateTriggerButton({
   const params = new URLSearchParams({ tokenId, tokenSymbol, tokenName });
   return (
     <Button asChild size="sm">
-      <Link href={`/alerts/new?${params.toString()}`}>
+      <Link href={`/alerts/new?${params.toString()}`} aria-label={t('createTriggerButton')}>
         <Bell className="h-4 w-4" />
         <span className="hidden sm:inline">{t('createTriggerButton')}</span>
       </Link>

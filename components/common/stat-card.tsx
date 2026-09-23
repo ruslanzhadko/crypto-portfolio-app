@@ -15,6 +15,7 @@ interface StatCardProps {
   href?: string;
   className?: string;
   valueClassName?: string;
+  compactMobile?: boolean;
 }
 
 export function StatCard({
@@ -29,13 +30,15 @@ export function StatCard({
   href,
   className,
   valueClassName,
+  compactMobile = false,
 }: StatCardProps) {
   const inner = (
     <div
       className={cn(
         'group relative overflow-hidden rounded-xl border border-border bg-surface',
         'flex flex-col justify-center',
-        'p-3 sm:p-5 transition-all duration-200',
+        compactMobile ? 'p-2.5 sm:p-5' : 'p-3 sm:p-5',
+        'transition-all duration-200',
         href && 'cursor-pointer',
         'hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]',
         className,
@@ -58,16 +61,16 @@ export function StatCard({
         )}
       </div>
 
-      <p className={cn('relative mt-3 text-xl sm:text-[1.75rem] font-bold tracking-tight leading-none', valueClassName)}>
+      <p className={cn('relative text-xl sm:text-[1.75rem] font-bold tracking-tight leading-none', compactMobile ? 'mt-2' : 'mt-3', valueClassName)}>
         {value}
       </p>
 
-      <div className="relative mt-2.5 flex min-h-[1.25rem] flex-wrap items-center gap-x-2 gap-y-1">
+      <div className={cn('relative flex flex-wrap items-center gap-x-2 gap-y-1', compactMobile ? 'mt-1.5 min-h-0 sm:mt-2.5 sm:min-h-[1.25rem]' : 'mt-2.5 min-h-[1.25rem]')}>
         {typeof delta === 'number' && (
           <PriceChange value={delta} size="default" />
         )}
         {deltaLabel && (
-          <span className="text-sm text-text-muted">{deltaLabel}</span>
+          <span className={cn('text-text-muted', compactMobile ? 'text-xs sm:text-sm' : 'text-sm')}>{deltaLabel}</span>
         )}
         {typeof deltaUsd === 'number' && deltaUsd !== 0 && (
           <span className={cn('text-sm font-medium tabular-nums', deltaUsd >= 0 ? 'text-success' : 'text-danger')}>
@@ -78,7 +81,7 @@ export function StatCard({
           </span>
         )}
         {subtext && !delta && (
-          <span className="text-sm text-text-muted">{subtext}</span>
+          <span className={cn('text-text-muted', compactMobile ? 'text-xs sm:text-sm' : 'text-sm')}>{subtext}</span>
         )}
       </div>
     </div>

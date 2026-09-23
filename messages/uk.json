@@ -421,6 +421,12 @@
   },
   "TokenBalanceList": {
     "cardTitle": "Токени",
+    "searchPlaceholder": "Назва, тикер або контракт",
+    "searchLabel": "Пошук токенів у гаманці",
+    "networkFilter": "Фільтр за мережею",
+    "allNetworks": "Усі мережі",
+    "noFilterResults": "За вибраними фільтрами токенів немає.",
+    "clearFilters": "Скинути фільтри",
     "networksCount": "{count} мереж",
     "emptyTitle": "Токенів не знайдено",
     "emptyDescription": "Натисніть Sync для завантаження балансів з блокчейну.",

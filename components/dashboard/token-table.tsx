@@ -266,7 +266,7 @@ function WalletBreakdown({
 }) {
   const t = useTranslations('TokenTable');
   return (
-    <div className="ml-6 space-y-1">
+    <div className="space-y-1 sm:ml-6">
       {groups.map((g) => {
         const walletKey = `${tokenKey}::${g.walletId}`;
         const isOpen = openWallets.has(walletKey);
@@ -278,7 +278,7 @@ function WalletBreakdown({
               type="button"
               onClick={() => hasMultipleChains && onToggleWallet(walletKey)}
               className={cn(
-                'grid w-full grid-cols-[1rem_minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-md px-2 py-1.5 text-left text-xs transition-colors md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto]',
+                'grid w-full grid-cols-[1rem_minmax(0,1fr)_auto] items-start gap-x-2 rounded-md px-1 py-2 text-left text-xs transition-colors sm:gap-x-3 sm:px-2 md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:items-center',
                 hasMultipleChains ? 'cursor-pointer hover:bg-surface-2/60' : 'cursor-default',
                 isOpen && 'bg-surface-2/40',
               )}
@@ -295,9 +295,11 @@ function WalletBreakdown({
                 <span aria-hidden />
               )}
 
-              <div className="flex min-w-0 items-center gap-2">
-                <WalletIcon className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
-                <span className="truncate font-medium">{g.walletLabel ?? t('walletFallback')}</span>
+              <div className="flex min-w-0 flex-col gap-1 md:flex-row md:items-center md:gap-2">
+                <span className="flex min-w-0 items-center gap-2">
+                  <WalletIcon className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
+                  <span className="truncate font-medium">{g.walletLabel ?? t('walletFallback')}</span>
+                </span>
                 <span className="hidden font-mono text-[10px] text-text-muted md:inline">
                   {shortAddress(g.walletAddress, 4)}
                 </span>
@@ -314,7 +316,7 @@ function WalletBreakdown({
                 ) : null}
               </div>
 
-              <span className="text-right font-mono text-[11px]">
+              <span className="hidden text-right font-mono text-[11px] tabular-nums md:inline">
                 {formatTokenBalance(g.totalBalance)}
               </span>
 
@@ -322,7 +324,10 @@ function WalletBreakdown({
                 {formatUsd(g.totalUsd)}
               </span>
 
-              <div className="flex items-center justify-end gap-2">
+              <div className="flex min-w-0 flex-col items-end gap-1 tabular-nums md:flex-row md:items-center md:justify-end md:gap-2">
+                <span className="font-mono text-[11px] text-text md:hidden">
+                  {formatTokenBalance(g.totalBalance)}
+                </span>
                 <div
                   className="hidden h-1 w-12 overflow-hidden rounded-full bg-surface-2 md:block"
                   aria-hidden
@@ -361,20 +366,23 @@ function ChainBreakdown({
   walletTotalUsd: number;
 }) {
   return (
-    <div className="ml-7 mt-0.5 space-y-0.5 border-l border-border/60 pl-3">
+    <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border/60 pl-2 sm:ml-7 sm:pl-3">
       {chains.map((c, idx) => {
         const chainShare = walletTotalUsd > 0 ? (c.usdValue / walletTotalUsd) * 100 : 0;
         return (
           <div
             key={`${c.chainName}::${idx}`}
-            className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 rounded-md px-2 py-1 text-[11px] text-text-muted hover:bg-surface-2/40 md:grid-cols-[minmax(0,1fr)_auto_auto_auto]"
+            className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 rounded-md px-1 py-2 text-[11px] text-text-muted hover:bg-surface-2/40 sm:gap-x-3 sm:px-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center"
           >
             <ChainBadge chainName={c.chainName} />
-            <span className="text-right font-mono">{formatTokenBalance(c.balance)}</span>
+            <span className="hidden text-right font-mono tabular-nums md:inline">{formatTokenBalance(c.balance)}</span>
             <span className="hidden text-right font-medium text-text md:inline">
               {formatUsd(c.usdValue)}
             </span>
-            <span className="w-12 text-right">{chainShare.toFixed(1)}%</span>
+            <span className="flex flex-col items-end gap-1 tabular-nums md:block md:w-12 md:text-right">
+              <span className="font-mono text-text md:hidden">{formatTokenBalance(c.balance)}</span>
+              <span>{chainShare.toFixed(1)}%</span>
+            </span>
           </div>
         );
       })}

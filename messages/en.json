@@ -421,6 +421,12 @@
   },
   "TokenBalanceList": {
     "cardTitle": "Tokens",
+    "searchPlaceholder": "Name, symbol or contract",
+    "searchLabel": "Search wallet tokens",
+    "networkFilter": "Filter by network",
+    "allNetworks": "All networks",
+    "noFilterResults": "No tokens match these filters.",
+    "clearFilters": "Clear filters",
     "networksCount": "{count} networks",
     "emptyTitle": "No tokens found",
     "emptyDescription": "Click Sync to load balances from the blockchain.",

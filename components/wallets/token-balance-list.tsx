@@ -11,6 +11,7 @@ import {
   ExternalLink,
   MoreVertical,
   Copy,
+  Search,
 } from 'lucide-react';
 import type { TokenBalance } from '@prisma/client';
 import { TokenLogo } from '@/components/common/token-logo';
@@ -20,6 +21,8 @@ import { formatTokenBalance, formatUsd, shortAddress } from '@/lib/utils/format'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { EmptyState } from '@/components/common/empty-state';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -32,6 +35,7 @@ import { MIN_TOKEN_USD } from '@/lib/services/token-types';
 import { cn } from '@/lib/utils/cn';
 import { getTokenPageUrl } from '@/lib/utils/token-links';
 import { getTokenGroupingKey } from '@/lib/utils/token-grouping';
+import { getChainDisplayName } from '@/lib/utils/networks';
 
 interface TokenBalanceListProps {
   walletId: string;
@@ -109,6 +113,8 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
   const t = useTranslations('TokenBalanceList');
   const [showSpam, setShowSpam] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
+  const [chainFilter, setChainFilter] = useState('all');
+  const [search, setSearch] = useState('');
   const [localHidden, setLocalHidden] = useState<Record<string, boolean>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [, startTransition] = useTransition();
@@ -118,17 +124,28 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
   const manuallyHidden = tokens.filter(
     (t) => !t.isSpam && (localHidden[t.id] ?? t.isHidden),
   );
+  const availableChains = useMemo(
+    () => Array.from(new Set(tokens.map((token) => token.chainName))).sort(
+      (a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b)),
+    ),
+    [tokens],
+  );
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const hasActiveFilter = chainFilter !== 'all' || normalizedSearch.length > 0;
 
   // 1. Фільтрація на рівні chain-balance
   const visible = useMemo(
     () =>
       tokens.filter((t) => {
+        if (chainFilter !== 'all' && t.chainName !== chainFilter) return false;
+        if (normalizedSearch && ![t.tokenSymbol, t.tokenName, t.tokenAddress ?? '']
+          .some((value) => value.toLocaleLowerCase().includes(normalizedSearch))) return false;
         const hidden = localHidden[t.id] ?? t.isHidden;
         if (t.isSpam) return showSpam;
         if (hidden) return showHidden;
         return true;
       }),
-    [tokens, showSpam, showHidden, localHidden],
+    [tokens, chainFilter, normalizedSearch, showSpam, showHidden, localHidden],
   );
 
   // 2. Групування за символом
@@ -235,6 +252,29 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
       </CardHeader>
 
       <CardContent className="p-0">
+        <div className="flex flex-col gap-2 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder={t('searchPlaceholder')}
+              aria-label={t('searchLabel')}
+              className="pl-9"
+            />
+          </div>
+          <Select value={chainFilter} onValueChange={setChainFilter}>
+            <SelectTrigger className="w-full sm:w-48" aria-label={t('networkFilter')}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allNetworks')}</SelectItem>
+              {availableChains.map((chain) => (
+                <SelectItem key={chain} value={chain}>{getChainDisplayName(chain)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="divide-y divide-border">
           {groups.map((g) => (
             <TokenGroupRow
@@ -252,8 +292,16 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
 
         {groups.length === 0 && (
           <p className="px-6 py-8 text-center text-sm text-text-muted">
-            {t('nothingVisible')}{' '}
-            {spamTokens.length > 0 && !showSpam && (
+            {hasActiveFilter ? t('noFilterResults') : t('nothingVisible')}{' '}
+            {hasActiveFilter ? (
+              <button
+                type="button"
+                className="text-primary hover:underline"
+                onClick={() => { setSearch(''); setChainFilter('all'); }}
+              >
+                {t('clearFilters')}
+              </button>
+            ) : spamTokens.length > 0 && !showSpam && (
               <button
                 type="button"
                 className="text-primary hover:underline"

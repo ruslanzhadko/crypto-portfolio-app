@@ -73,7 +73,7 @@ export default async function TokenDetailPage({
   if (!coin) notFound();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href={back.href}>
           <ChevronLeft className="h-4 w-4" />
@@ -82,59 +82,51 @@ export default async function TokenDetailPage({
       </Button>
 
       <Card className="card-gradient">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex items-start gap-3 sm:gap-4">
-            <TokenLogo src={coin.image} symbol={coin.symbol} size={48} className="shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 min-w-0">
-                  <h1 className="text-xl font-bold sm:text-3xl truncate">{coin.name}</h1>
-                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-sm font-medium uppercase text-text-muted shrink-0">
-                    {coin.symbol}
-                  </span>
-                  {coin.rank && (
-                    <span className="text-sm text-text-muted shrink-0">#{coin.rank}</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <CreateTriggerButton
-                    tokenId={coin.id}
-                    tokenSymbol={coin.symbol}
-                    tokenName={coin.name}
-                  />
-                  {coin.homepage && (
-                    <Button asChild variant="outline" size="sm">
-                      <a href={coin.homepage} target="_blank" rel="noreferrer">
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">{t('websiteButton')}</span>
-                      </a>
-                    </Button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-2 flex items-baseline gap-3">
-                <span className="text-2xl font-bold sm:text-3xl">{formatUsd(coin.currentPrice)}</span>
-                <PriceChange value={coin.priceChange24h} />
-              </div>
-              {coin.description && (
-                <p className="mt-2 text-sm text-text-muted line-clamp-2">
-                  {coin.description}
-                </p>
+        <CardContent className="p-3 sm:p-6">
+          <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 sm:gap-x-4">
+            <TokenLogo src={coin.image} symbol={coin.symbol} size={40} className="shrink-0 sm:h-12 sm:w-12" />
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold leading-tight sm:text-3xl" title={coin.name}>{coin.name}</h1>
+              <p className="mt-0.5 flex items-center gap-2 text-xs text-text-muted sm:text-sm">
+                <span className="truncate uppercase">{coin.symbol}</span>
+                {coin.rank && <span className="shrink-0">#{coin.rank}</span>}
+              </p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <CreateTriggerButton tokenId={coin.id} tokenSymbol={coin.symbol} tokenName={coin.name} />
+              {coin.homepage && (
+                <Button asChild variant="outline" size="sm">
+                  <a href={coin.homepage} target="_blank" rel="noreferrer" aria-label={t('websiteButton')}>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{t('websiteButton')}</span>
+                  </a>
+                </Button>
               )}
             </div>
+            <div className="col-span-3 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 sm:pl-16">
+              <span className="min-w-0 break-all text-2xl font-bold leading-tight tabular-nums sm:break-normal sm:text-3xl">{formatUsd(coin.currentPrice)}</span>
+              <PriceChange value={coin.priceChange24h} />
+            </div>
+            {coin.description && (
+              <p className="col-span-3 min-w-0 truncate text-xs text-text-muted sm:line-clamp-2 sm:whitespace-normal sm:pl-16 sm:text-sm">
+                {coin.description}
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Ряд 1 — ринкові показники */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      {/* На мобільному спочатку показуємо короткі метрики, а деталі ф'ючерсів — нижче. */}
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
         <StatCard
+          compactMobile
           label={t('statMarketCap')}
           value={coin.marketCap !== null ? formatUsd(coin.marketCap, { compact: true }) : '—'}
           delta={coin.priceChange24h}
           deltaLabel={t('deltaLabel')}
         />
         <StatCard
+          compactMobile
           label={t('statVolume24h')}
           value={coin.volume24h !== null ? formatUsd(coin.volume24h, { compact: true }) : '—'}
           subtext={
@@ -143,50 +135,47 @@ export default async function TokenDetailPage({
               : undefined
           }
         />
-        <div className="col-span-2 lg:col-span-1 group relative overflow-hidden rounded-xl border border-border bg-surface flex flex-col justify-center p-3 sm:p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_0_20px_-5px_rgba(108,99,255,0.25)]">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/8 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-          <p className="relative text-sm font-medium text-text-muted leading-tight">{t('statRange24h')}</p>
-          <div className="relative mt-3 flex items-center gap-6 sm:block sm:space-y-1.5">
-            <div className="flex items-center gap-1.5">
+        <div className="col-span-2 flex min-w-0 flex-col justify-center rounded-xl border border-border bg-surface p-3 xl:col-span-1">
+          <p className="text-sm font-medium leading-tight text-text-muted">{t('statRange24h')}</p>
+          <div className="mt-2 grid min-w-0 grid-cols-2 gap-2 xl:grid-cols-1">
+            <div className="flex min-w-0 items-center gap-1">
               <span className="text-base font-semibold text-success">↑</span>
-              <span className="text-xl sm:text-[1.75rem] font-bold tabular-nums leading-tight">
+              <span className="min-w-0 break-all text-sm font-bold leading-tight tabular-nums sm:break-normal sm:text-xl xl:text-2xl">
                 {coin.high24h !== null ? formatUsd(coin.high24h) : '—'}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex min-w-0 items-center gap-1">
               <span className="text-base font-semibold text-danger">↓</span>
-              <span className="text-xl sm:text-[1.75rem] font-bold tabular-nums leading-tight text-text-muted">
+              <span className="min-w-0 break-all text-sm font-bold leading-tight tabular-nums text-text-muted sm:break-normal sm:text-xl xl:text-2xl">
                 {coin.low24h !== null ? formatUsd(coin.low24h) : '—'}
               </span>
             </div>
           </div>
         </div>
-        <div className="col-span-2 lg:col-span-1">
-          <OpenInterestCard data={openInterest} symbol={coin.symbol} />
-        </div>
-      </div>
-
-      {/* Ряд 2 — динаміка цін */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
         <StatCard
+          compactMobile
+          className="xl:col-start-1"
           label={t('stat1h')}
           value={formatPercent(coin.priceChange1h)}
           valueClassName={coin.priceChange1h >= 0 ? 'text-success' : 'text-danger'}
           subtext={t('stat1hSubtext')}
         />
         <StatCard
+          compactMobile
           label={t('stat7d')}
           value={formatPercent(coin.priceChange7d)}
           valueClassName={coin.priceChange7d >= 0 ? 'text-success' : 'text-danger'}
           subtext={t('stat7dSubtext')}
         />
         <StatCard
+          compactMobile
           label={t('stat30d')}
           value={formatPercent(coin.priceChange30d)}
           valueClassName={coin.priceChange30d >= 0 ? 'text-success' : 'text-danger'}
           subtext={t('stat30dSubtext')}
         />
         <StatCard
+          compactMobile
           label={t('stat52wHigh')}
           value={coin.high52wChangePercent !== null ? formatPercent(coin.high52wChangePercent) : '—'}
           valueClassName={
@@ -196,6 +185,9 @@ export default async function TokenDetailPage({
           }
           subtext={coin.high52w !== null ? t('high52wSubtext', { value: formatUsd(coin.high52w) }) : undefined}
         />
+        <div className="col-span-2 xl:col-span-1 xl:col-start-4 xl:row-start-1">
+          <OpenInterestCard data={openInterest} symbol={coin.symbol} />
+        </div>
       </div>
 
       <PriceChart tokenId={coin.id} />
