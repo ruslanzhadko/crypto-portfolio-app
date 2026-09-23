@@ -193,17 +193,28 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                     </tr>
 
                     {isOpen && hasBreakdown && (
-                      <tr className="border-b border-border/60 md:bg-surface-2/20">
-                        <td colSpan={7} className="px-2 py-1.5 md:px-4 md:py-3">
-                          <WalletBreakdown
-                            tokenKey={tok.key}
-                            groups={groups}
-                            totalUsd={tok.totalUsd}
-                            hiddenCount={hiddenCount}
-                            openWallets={openWallets}
-                            onToggleWallet={(walletKey) => toggle(openWallets, setOpenWallets, walletKey)}
-                          />
-                        </td>
+                      <tr className="border-b border-border/60 bg-surface-2/20">
+                        {([2, 3, 7] as const).map((span, index) => (
+                          <td
+                            key={span}
+                            colSpan={span}
+                            className={cn(
+                              'min-w-0 px-2 py-1.5 md:px-4 md:py-3',
+                              index === 0 && 'xl:hidden',
+                              index === 1 && 'hidden xl:table-cell 2xl:hidden',
+                              index === 2 && 'hidden 2xl:table-cell',
+                            )}
+                          >
+                            <WalletBreakdown
+                              tokenKey={tok.key}
+                              groups={groups}
+                              totalUsd={tok.totalUsd}
+                              hiddenCount={hiddenCount}
+                              openWallets={openWallets}
+                              onToggleWallet={(walletKey) => toggle(openWallets, setOpenWallets, walletKey)}
+                            />
+                          </td>
+                        ))}
                       </tr>
                     )}
                   </Fragment>

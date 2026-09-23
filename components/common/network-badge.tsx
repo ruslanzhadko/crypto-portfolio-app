@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Network } from '@prisma/client';
-import { getChainColor, getChainDisplayName, getChainInfo } from '@/lib/utils/networks';
+import { getChainDisplayName, getChainInfo } from '@/lib/utils/networks';
 import { TokenLogo } from '@/components/common/token-logo';
 import { cn } from '@/lib/utils/cn';
 
@@ -41,11 +41,12 @@ export function ChainBadge({ chainName, className }: ChainBadgeProps) {
         className,
       )}
     >
-      {chainName === 'robinhood' ? <TokenLogo src={getChainInfo(chainName)?.chainLogoUrl} symbol="Robinhood" size={12} /> : <span
-        aria-hidden
-        className="h-1.5 w-1.5 rounded-full"
-        style={{ backgroundColor: getChainColor(chainName) }}
-      />}
+      <TokenLogo
+        src={getChainInfo(chainName)?.chainLogoUrl}
+        symbol={getChainDisplayName(chainName)}
+        size={14}
+        className="shrink-0 object-contain text-[8px]"
+      />
       {getChainDisplayName(chainName)}
     </span>
   );
