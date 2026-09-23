@@ -2,11 +2,17 @@
 
 import { useMemo, useState, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpDown, ChevronRight, Eye, EyeOff, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronRight, Eye, EyeOff, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { TokenLogo } from '@/components/common/token-logo';
 import { PriceChange } from '@/components/common/price-change';
 import {
@@ -36,7 +42,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
   const [sortKey, setSortKey] = useState<SortKey>('value');
   const [desc, setDesc] = useState(true);
   const [search, setSearch] = useState('');
-  const [chainFilter, setChainFilter] = useState('all');
+  const [selectedChains, setSelectedChains] = useState<Set<string>>(() => new Set());
   const [showSpam, setShowSpam] = useState(false);
   // Окремі множини для розгорнутих токенів і розгорнутих гаманців (ключі: tokenKey та tokenKey::walletId)
   const [openTokens, setOpenTokens] = useState<Set<string>>(new Set());
@@ -47,7 +53,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
   )).sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [tokens, spamTokens]);
 
   const sorted = useMemo(() => {
-    const arr = filterDashboardTokens(showSpam ? spamTokens : tokens, chainFilter, search);
+    const arr = filterDashboardTokens(showSpam ? spamTokens : tokens, selectedChains, search);
     arr.sort((a, b) => {
       let av: number;
       let bv: number;
@@ -68,7 +74,22 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
       return desc ? bv - av : av - bv;
     });
     return arr;
-  }, [tokens, spamTokens, showSpam, chainFilter, search, sortKey, desc]);
+  }, [tokens, spamTokens, showSpam, selectedChains, search, sortKey, desc]);
+
+  function toggleChain(chain: string) {
+    setSelectedChains((current) => {
+      const next = new Set(current);
+      if (next.has(chain)) next.delete(chain);
+      else next.add(chain);
+      return next;
+    });
+  }
+
+  const networkLabel = selectedChains.size === 0
+    ? t('allNetworks')
+    : selectedChains.size === 1
+      ? getChainDisplayName([...selectedChains][0]!)
+      : t('networksSelected', { count: selectedChains.size });
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setDesc((d) => !d);
@@ -113,17 +134,38 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
               className="pl-9"
             />
           </div>
-          <Select value={chainFilter} onValueChange={setChainFilter}>
-            <SelectTrigger className="w-full sm:w-44" aria-label={t('networkFilter')}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('allNetworks')}</SelectItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="w-full justify-between gap-2 sm:w-44"
+                aria-label={t('networkFilter')}
+              >
+                <span className="truncate">{networkLabel}</span>
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="max-h-72 w-56 overflow-y-auto">
+              <DropdownMenuCheckboxItem
+                checked={selectedChains.size === 0}
+                onCheckedChange={() => setSelectedChains(new Set())}
+                onSelect={(event) => event.preventDefault()}
+              >
+                {t('allNetworks')}
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
               {availableChains.map((chain) => (
-                <SelectItem key={chain} value={chain}>{getChainDisplayName(chain)}</SelectItem>
+                <DropdownMenuCheckboxItem
+                  key={chain}
+                  checked={selectedChains.has(chain)}
+                  onCheckedChange={() => toggleChain(chain)}
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  {getChainDisplayName(chain)}
+                </DropdownMenuCheckboxItem>
               ))}
-            </SelectContent>
-          </Select>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {showSpam && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
       </CardHeader>
@@ -271,7 +313,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
-                    {search.trim() || chainFilter !== 'all'
+                    {search.trim() || selectedChains.size > 0
                       ? t('noFilterResults')
                       : showSpam ? t('emptySpam') : t('emptyText')}
                   </td>

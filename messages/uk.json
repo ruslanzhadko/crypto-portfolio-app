@@ -88,6 +88,7 @@
     "searchLabel": "Пошук токенів",
     "networkFilter": "Фільтр токенів за мережею",
     "allNetworks": "Усі мережі",
+    "networksSelected": "Мережі: {count}",
     "showSpam": "Спам ({count})",
     "hideSpam": "Звичайні токени",
     "spamNotice": "Спам-токени не входять у вартість портфеля та аналітику.",

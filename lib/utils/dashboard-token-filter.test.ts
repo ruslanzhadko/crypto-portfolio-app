@@ -18,11 +18,11 @@ const token: AggregatedToken = {
 
 describe('dashboard token filters', () => {
   it('keeps the original token for all networks and searches by contract', () => {
-    expect(filterDashboardTokens([token], 'all', '0xbase')).toEqual([token]);
+    expect(filterDashboardTokens([token], new Set(), '0xbase')).toEqual([token]);
   });
 
   it('recalculates balances for the selected network', () => {
-    const [filtered] = filterDashboardTokens([token], 'arbitrum', 'weth');
+    const [filtered] = filterDashboardTokens([token], new Set(['arbitrum']), 'weth');
     expect(filtered?.totalBalance).toBe(2);
     expect(filtered?.totalUsd).toBe(200);
     expect(filtered?.chains).toEqual(['arbitrum']);
@@ -31,7 +31,29 @@ describe('dashboard token filters', () => {
     expect(filtered?.share).toBeCloseTo(66.67, 2);
   });
 
+  it('combines only the selected networks without duplicating a token row', () => {
+    const tokenAcrossThreeNetworks: AggregatedToken = {
+      ...token,
+      totalBalance: 7,
+      totalUsd: 700,
+      chains: ['base', 'arbitrum', 'optimism'],
+      wallets: [
+        ...token.wallets,
+        { walletId: 'three', walletLabel: 'Third', walletAddress: '0x3', network: Network.EVM,
+          chainName: 'optimism', balance: 4, usdValue: 400, share: 57.14 },
+      ],
+    };
+    const results = filterDashboardTokens([tokenAcrossThreeNetworks], new Set(['base', 'arbitrum']), '');
+    expect(results).toHaveLength(1);
+    const [filtered] = results;
+    expect(filtered?.totalBalance).toBe(3);
+    expect(filtered?.totalUsd).toBe(300);
+    expect(filtered?.chains).toEqual(['base', 'arbitrum']);
+    expect(filtered?.wallets).toHaveLength(2);
+    expect(filtered?.wallets.every((wallet) => wallet.chainName !== 'optimism')).toBe(true);
+  });
+
   it('does not show a token on an unrelated network', () => {
-    expect(filterDashboardTokens([token], 'solana', '')).toEqual([]);
+    expect(filterDashboardTokens([token], new Set(['solana']), '')).toEqual([]);
   });
 });

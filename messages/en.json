@@ -88,6 +88,7 @@
     "searchLabel": "Search tokens",
     "networkFilter": "Filter tokens by network",
     "allNetworks": "All networks",
+    "networksSelected": "Networks: {count}",
     "showSpam": "Spam ({count})",
     "hideSpam": "Regular tokens",
     "spamNotice": "Spam tokens are excluded from portfolio value and analytics.",
