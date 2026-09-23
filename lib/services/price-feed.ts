@@ -81,6 +81,7 @@ const DEXSCREENER_CHAIN_ID: Record<string, string> = {
   arbitrum: 'arbitrum',
   optimism: 'optimism',
   base: 'base',
+  robinhood: 'robinhood',
   avalanche: 'avalanche',
   solana: 'solana',
   xlayer: 'xlayer',

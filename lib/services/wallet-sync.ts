@@ -24,8 +24,9 @@ function tokenKey(chainName: string, tokenAddress: string, tokenSymbol: string):
 }
 
 function shouldMarkSpam(token: NormalizedToken): boolean {
-  // An unknown price is not evidence of a low-value or spam token.
-  return token.isSpam || (!token.isNative && token.priceUsd > 0 && token.usdValue < MIN_TOKEN_USD);
+  // Keep unpriced ERC-20/SPL tokens in Spam until a trusted source supplies a
+  // usable valuation; otherwise zero-priced airdrops overwhelm the main list.
+  return token.isSpam || (!token.isNative && token.usdValue < MIN_TOKEN_USD);
 }
 
 export async function syncWallet(walletId: string): Promise<SyncResult> {

@@ -8,6 +8,7 @@ const DEX_CHAIN_BY_INTERNAL: Record<string, string> = {
   arbitrum: 'arbitrum',
   optimism: 'optimism',
   base: 'base',
+  robinhood: 'robinhood',
   avalanche: 'avalanche',
   xlayer: 'xlayer',
 };

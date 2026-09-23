@@ -193,8 +193,8 @@ export function TokenTable({ tokens }: { tokens: AggregatedToken[] }) {
                     </tr>
 
                     {isOpen && hasBreakdown && (
-                      <tr className="border-b border-border/60 bg-surface-2/20">
-                        <td colSpan={7} className="px-2 py-3 md:px-4">
+                      <tr className="border-b border-border/60 md:bg-surface-2/20">
+                        <td colSpan={7} className="px-2 py-1.5 md:px-4 md:py-3">
                           <WalletBreakdown
                             tokenKey={tok.key}
                             groups={groups}
@@ -266,7 +266,7 @@ function WalletBreakdown({
 }) {
   const t = useTranslations('TokenTable');
   return (
-    <div className="space-y-1 sm:ml-6">
+    <div className="sm:ml-6 sm:space-y-1">
       {groups.map((g) => {
         const walletKey = `${tokenKey}::${g.walletId}`;
         const isOpen = openWallets.has(walletKey);
@@ -278,9 +278,9 @@ function WalletBreakdown({
               type="button"
               onClick={() => hasMultipleChains && onToggleWallet(walletKey)}
               className={cn(
-                'grid w-full grid-cols-[1rem_minmax(0,1fr)_auto] items-start gap-x-2 rounded-md px-1 py-2 text-left text-xs transition-colors sm:gap-x-3 sm:px-2 md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:items-center',
+                'flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1.5 text-left text-xs transition-colors md:grid md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2',
                 hasMultipleChains ? 'cursor-pointer hover:bg-surface-2/60' : 'cursor-default',
-                isOpen && 'bg-surface-2/40',
+                isOpen && 'md:bg-surface-2/40',
               )}
             >
               {hasMultipleChains ? (
@@ -295,8 +295,8 @@ function WalletBreakdown({
                 <span aria-hidden />
               )}
 
-              <div className="flex min-w-0 flex-col gap-1 md:flex-row md:items-center md:gap-2">
-                <span className="flex min-w-0 items-center gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-1.5 md:gap-2">
+                <span className="flex min-w-0 items-center gap-1.5 md:gap-2">
                   <WalletIcon className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
                   <span className="truncate font-medium">{g.walletLabel ?? t('walletFallback')}</span>
                 </span>
@@ -324,7 +324,7 @@ function WalletBreakdown({
                 {formatUsd(g.totalUsd)}
               </span>
 
-              <div className="flex min-w-0 flex-col items-end gap-1 tabular-nums md:flex-row md:items-center md:justify-end md:gap-2">
+              <div className="flex shrink-0 items-baseline justify-end gap-2 tabular-nums md:items-center">
                 <span className="font-mono text-[11px] text-text md:hidden">
                   {formatTokenBalance(g.totalBalance)}
                 </span>
@@ -337,7 +337,7 @@ function WalletBreakdown({
                     style={{ width: `${Math.min(walletShare, 100).toFixed(1)}%` }}
                   />
                 </div>
-                <span className="w-12 text-right text-text-muted">
+                <span className="w-10 text-right text-text-muted md:w-12">
                   {walletShare.toFixed(1)}%
                 </span>
               </div>
@@ -366,20 +366,20 @@ function ChainBreakdown({
   walletTotalUsd: number;
 }) {
   return (
-    <div className="ml-4 mt-0.5 space-y-0.5 border-l border-border/60 pl-2 sm:ml-7 sm:pl-3">
+    <div className="ml-5 md:ml-7 md:mt-0.5 md:space-y-0.5 md:border-l md:border-border/60 md:pl-3">
       {chains.map((c, idx) => {
         const chainShare = walletTotalUsd > 0 ? (c.usdValue / walletTotalUsd) * 100 : 0;
         return (
           <div
             key={`${c.chainName}::${idx}`}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-2 rounded-md px-1 py-2 text-[11px] text-text-muted hover:bg-surface-2/40 sm:gap-x-3 sm:px-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center"
+            className="flex min-w-0 items-center justify-between gap-2 rounded-md px-1 py-1.5 text-[11px] text-text-muted md:grid md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2 md:py-1 md:hover:bg-surface-2/40"
           >
             <ChainBadge chainName={c.chainName} />
             <span className="hidden text-right font-mono tabular-nums md:inline">{formatTokenBalance(c.balance)}</span>
             <span className="hidden text-right font-medium text-text md:inline">
               {formatUsd(c.usdValue)}
             </span>
-            <span className="flex flex-col items-end gap-1 tabular-nums md:block md:w-12 md:text-right">
+            <span className="flex shrink-0 items-baseline gap-2 tabular-nums md:block md:w-12 md:text-right">
               <span className="font-mono text-text md:hidden">{formatTokenBalance(c.balance)}</span>
               <span>{chainShare.toFixed(1)}%</span>
             </span>

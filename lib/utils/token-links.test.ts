@@ -27,6 +27,17 @@ describe('getTokenPageUrl', () => {
     })).toEqual({ href: 'https://dexscreener.com/bsc/0xabc', external: true });
   });
 
+  it('links a Robinhood token by exact contract', () => {
+    expect(getTokenPageUrl({
+      chainName: 'robinhood',
+      tokenAddress: '0x296293317f67da4f333968bb86928681e26b77fa',
+      coingeckoId: null,
+    })).toEqual({
+      href: 'https://dexscreener.com/robinhood/0x296293317f67da4f333968bb86928681e26b77fa',
+      external: true,
+    });
+  });
+
   it('keeps native assets on the internal market page', () => {
     expect(getTokenPageUrl({
       chainName: 'solana', tokenAddress: '', coingeckoId: 'solana',

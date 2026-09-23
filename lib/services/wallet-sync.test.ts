@@ -3,7 +3,7 @@ import { syncWallet } from './wallet-sync';
 
 const mocks = vi.hoisted(() => ({
   ankr: vi.fn(), robinhood: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn(),
-  findPrices: vi.fn(), count: vi.fn(), contractIds: vi.fn(),
+  findPrices: vi.fn(), count: vi.fn(), contractIds: vi.fn(), fetchPrices: vi.fn(),
 }));
 vi.mock('./ankr', () => ({ fetchEVMBalancesFromAnkr: mocks.ankr }));
 vi.mock('./robinhood', () => ({ fetchRobinhoodBalances: mocks.robinhood }));
@@ -11,7 +11,7 @@ vi.mock('./coingecko', () => ({
   fetchCoinGeckoContractIds: mocks.contractIds,
   fetchPricesByIds: vi.fn(), searchCoins: vi.fn(),
 }));
-vi.mock('./price-feed', () => ({ fetchPrices: vi.fn().mockResolvedValue(new Map()) }));
+vi.mock('./price-feed', () => ({ fetchPrices: mocks.fetchPrices }));
 vi.mock('@/lib/db/prisma', () => {
   const db = {
     wallet: { findUnique: vi.fn().mockResolvedValue({ id: 'wallet', address: '0x123', network: 'EVM' }), update: vi.fn() },
@@ -30,6 +30,7 @@ beforeEach(() => {
   mocks.findPrices.mockResolvedValue([]);
   mocks.count.mockResolvedValue(0);
   mocks.contractIds.mockResolvedValue(new Map());
+  mocks.fetchPrices.mockResolvedValue(new Map());
 });
 describe('contract market identity', () => {
   it('stores CoinGecko ID only from the exact chain and contract', async () => {
@@ -43,7 +44,7 @@ describe('contract market identity', () => {
   });
 });
 describe('Robinhood wallet synchronization', () => {
-  it('keeps an unpriced ERC-20 visible instead of classifying it as dust', async () => {
+  it('keeps ODYSSEUS visible when its exact Robinhood contract has a price', async () => {
     mocks.ankr.mockResolvedValue([]);
     mocks.robinhood.mockResolvedValue([{
       ...native, symbol: 'ODYSSEUS', name: 'KEKIUS ODYSSEUS',
@@ -51,9 +52,26 @@ describe('Robinhood wallet synchronization', () => {
       chainName: 'robinhood', isNative: false, balance: 1_024_024.08,
       priceUsd: 0, usdValue: 0,
     }]);
+    mocks.fetchPrices.mockResolvedValue(new Map([[
+      'robinhood::0x296293317f67da4f333968bb86928681e26b77fa::odysseus',
+      { price: 0.00003481, change24h: 2.37, source: 'dexscreener' },
+    ]]));
     const result = await syncWallet('wallet');
     expect(result.spamFiltered).toBe(0);
-    expect(mocks.createMany.mock.calls[0]?.[0].data[0].isSpam).toBe(false);
+    const saved = mocks.createMany.mock.calls[0]?.[0].data[0];
+    expect(saved.isSpam).toBe(false);
+    expect(saved.priceUsd).toBe(0.00003481);
+    expect(saved.usdValue).toBeCloseTo(35.646, 2);
+  });
+  it('moves unpriced non-native tokens into Spam', async () => {
+    mocks.ankr.mockResolvedValue([]);
+    mocks.robinhood.mockResolvedValue([{
+      ...native, symbol: 'UNKNOWN', address: '0xabc', chainName: 'robinhood',
+      isNative: false, balance: 1000, priceUsd: 0, usdValue: 0,
+    }]);
+    const result = await syncWallet('wallet');
+    expect(result.spamFiltered).toBe(1);
+    expect(mocks.createMany.mock.calls[0]?.[0].data[0].isSpam).toBe(true);
   });
   it('still classifies a priced dust ERC-20 as spam', async () => {
     mocks.ankr.mockResolvedValue([]);
