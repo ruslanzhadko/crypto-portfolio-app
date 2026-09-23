@@ -51,11 +51,11 @@ export default async function WalletsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
-          <p className="text-sm text-text-muted">
+    <div className="space-y-5 md:space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold leading-tight tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+          <p className="mt-1 text-sm leading-6 text-text-muted sm:text-[15px]">
             {t('pageDescription')}
           </p>
         </div>

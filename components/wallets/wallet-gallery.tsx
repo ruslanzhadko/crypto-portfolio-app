@@ -48,19 +48,19 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 border-b border-border pb-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <p className="text-sm text-text-muted">{t('portfolioValue')}</p>
-          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            <p className="text-2xl font-semibold tracking-tight tabular-nums">
+      <div className="flex flex-col gap-5 rounded-xl border border-border bg-surface px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:px-6">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-text-muted">{t('portfolioValue')}</p>
+          <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+            <p className="text-2xl font-semibold leading-tight tracking-tight tabular-nums sm:text-[28px]">
               {formatUsd(portfolioTotalUsd, { minimumFractionDigits: 2 })}
             </p>
-            <p className="text-sm text-text-muted">{t('walletCount', { count: wallets.length })}</p>
+            <p className="text-sm font-medium text-text-muted">{t('walletCount', { count: wallets.length })}</p>
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="flex w-full gap-1 overflow-x-auto rounded-lg border border-border bg-surface p-1 sm:w-auto" role="group" aria-label={t('filterLabel')}>
+        <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex w-full gap-1 overflow-x-auto rounded-lg border border-border bg-surface-2/40 p-1 sm:w-auto" role="group" aria-label={t('filterLabel')}>
             {filters.map(({ key, label }) => (
               <button
                 key={key}
@@ -68,7 +68,7 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
                 aria-pressed={filter === key}
                 onClick={() => setFilter(key)}
                 className={cn(
-                  'min-h-11 shrink-0 rounded-md px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'min-h-11 shrink-0 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   filter === key ? 'bg-surface-2 text-text' : 'text-text-muted hover:text-text',
                 )}
               >
@@ -77,7 +77,7 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
             ))}
           </div>
           <Select value={sort} onValueChange={(value) => setSort(value as Sort)}>
-            <SelectTrigger className="h-11 w-full bg-surface sm:w-44" aria-label={t('sortLabel')}>
+            <SelectTrigger className="h-11 w-full bg-surface text-sm font-medium sm:w-44" aria-label={t('sortLabel')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
