@@ -1,6 +1,6 @@
 import { getTranslations } from 'next-intl/server';
 import { getLocale } from 'next-intl/server';
-import { Bell, ShieldOff, Users, Wallet, ArrowRight } from 'lucide-react';
+import { Bell, ShieldOff, Users, Wallet, ArrowRight, RadioTower } from 'lucide-react';
 import { Link, redirect } from '@/i18n/navigation';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
@@ -22,7 +22,7 @@ export default async function AdminPage() {
 
   const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const [totalUsers, blockedUsers, totalWallets, activeTriggers, notifs24h, notifsSent, notifsFailed] =
+  const [totalUsers, blockedUsers, totalWallets, activeTriggers, notifs24h, notifsSent, notifsFailed, feedSources, activeFeedSources] =
     await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isBlocked: true } }),
@@ -31,6 +31,8 @@ export default async function AdminPage() {
       prisma.notificationLog.count({ where: { sentAt: { gte: since24h } } }),
       prisma.notificationLog.count({ where: { status: 'sent' } }),
       prisma.notificationLog.count({ where: { status: 'failed' } }),
+      prisma.telegramFeedSource.count(),
+      prisma.telegramFeedSource.count({ where: { isActive: true } }),
     ]);
 
   const recentUsers = await prisma.user.findMany({
@@ -64,6 +66,26 @@ export default async function AdminPage() {
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <TelegramWebhookCard />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+            <CardTitle className="flex items-center gap-2">
+              <RadioTower className="h-4 w-4" />
+              {t('feedSourcesCardTitle')}
+            </CardTitle>
+            <Badge variant={activeFeedSources > 0 ? 'success' : 'secondary'}>
+              {t('feedSourcesActive', { active: activeFeedSources, total: feedSources })}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm leading-6 text-text-muted">{t('feedSourcesCardDescription')}</p>
+            <Button asChild size="sm">
+              <Link href="/admin/feed-sources">
+                {t('feedSourcesManage')}
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

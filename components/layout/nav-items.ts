@@ -2,11 +2,12 @@ import {
   LayoutDashboard,
   Wallet,
   TrendingUp,
+  Radio,
   Bell,
   Settings,
   ShieldCheck,
   type LucideIcon,
-} from 'lucide-react';
+} from "lucide-react";
 
 export interface NavItem {
   href: string;
@@ -16,10 +17,11 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', labelKey: 'dashboard', icon: LayoutDashboard },
-  { href: '/wallets', labelKey: 'wallets', icon: Wallet },
-  { href: '/market', labelKey: 'market', icon: TrendingUp },
-  { href: '/alerts', labelKey: 'alerts', icon: Bell },
-  { href: '/settings', labelKey: 'settings', icon: Settings },
-  { href: '/admin', labelKey: 'admin', icon: ShieldCheck, adminOnly: true },
+  { href: "/dashboard", labelKey: "dashboard", icon: LayoutDashboard },
+  { href: "/wallets", labelKey: "wallets", icon: Wallet },
+  { href: "/market", labelKey: "market", icon: TrendingUp },
+  { href: "/feed", labelKey: "feed", icon: Radio },
+  { href: "/alerts", labelKey: "alerts", icon: Bell },
+  { href: "/settings", labelKey: "settings", icon: Settings },
+  { href: "/admin", labelKey: "admin", icon: ShieldCheck, adminOnly: true },
 ];

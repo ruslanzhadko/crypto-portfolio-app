@@ -2,6 +2,22 @@
 
 Моніторинг крипто-портфеля: Next.js 14 (App Router), TypeScript, Prisma, NextAuth.js (Auth.js v5), Tailwind.
 
+## Криптострічка з Telegram
+
+Розділ `/feed` читає публічні канали через окремий Telegram-акаунт.
+Постійний listener треба розгортати як worker на Railway, Render, Fly.io або VPS,
+а не як Vercel Function.
+
+1. Створіть Telegram API credentials на `https://my.telegram.org`.
+2. Вкажіть `TELEGRAM_API_ID` та `TELEGRAM_API_HASH` локально.
+3. Один раз запустіть `npm run telegram:feed:auth` і збережіть результат
+   як секрет `TELEGRAM_USER_SESSION`.
+4. Застосуйте схему бази: `npm run db:push`.
+5. Запустіть збір публікацій: `npm run telegram:feed`.
+
+Worker завантажує 30 останніх текстових дописів кожного каналу, а потім миттєво
+зберігає нові. `TELEGRAM_USER_SESSION` не можна додавати в Git — це секрет доступу до акаунта.
+
 ## Підтримувані мережі
 
 10 мереж: Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche,
@@ -63,6 +79,7 @@ npm run cron:local          # читає розклад із CRON_SCHEDULE (де
 виконує обидва кроки.
 
 Два джерела викликів цього ендпоінта:
+
 1. **Vercel Cron** (`vercel.json`, `0 6 * * *` та `5 6 * * *`) — штатний планувальник, раз на добу.
    На Hobby-плані Vercel дозволяє лише добову частоту, тому це резервний/демонстраційний канал.
 2. **Зовнішній планувальник** ([cron-job.org](https://cron-job.org)) — основний для частих

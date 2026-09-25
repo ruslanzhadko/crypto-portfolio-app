@@ -275,3 +275,67 @@ model PortfolioSnapshot {
 
   @@index([userId, timestamp])
 }
+
+// ═══════════════════════════════════════
+// КРИПТОЛЕНТА ИЗ TELEGRAM
+// ═══════════════════════════════════════
+
+model TelegramFeedSource {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  telegramId    String?
+  title         String
+  description   String?
+  avatarUrl     String?
+  isActive      Boolean  @default(true)
+  lastMessageId Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts TelegramFeedPost[]
+
+  @@index([isActive])
+}
+
+model TelegramFeedPost {
+  id                String       @id @default(cuid())
+  sourceId          String
+  telegramMessageId Int
+  type              FeedPostType @default(OTHER)
+  text              String       @db.Text
+  title             String?
+  symbol            String?
+  direction         String?
+  exchange          String?
+  changePercent     Float?
+  intervalSeconds   Int?
+  amountUsd         Float?
+  priceUsd          Float?
+  limitUsd          Float?
+  mediaUrl          String?
+  telegramUrl       String
+  metadata          Json?
+  publishedAt       DateTime
+  editedAt          DateTime?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  source TelegramFeedSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceId, telegramMessageId])
+  @@index([publishedAt])
+  @@index([type, publishedAt])
+  @@index([symbol, publishedAt])
+}
+
+enum FeedPostType {
+  NEWS
+  LISTING
+  ARBITRAGE
+  PRICE_ANOMALY
+  LIQUIDATION
+  TRADE_IDEA
+  AIRDROP
+  ANALYSIS
+  OTHER
+}
