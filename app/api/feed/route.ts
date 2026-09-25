@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
-import { requireUser } from "@/lib/api/auth-guard";
 import { apiError, handleUnknown, ok } from "@/lib/api/response";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +28,6 @@ const querySchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await requireUser();
-    if (!guard.ok) return guard.response;
-
     const parsed = querySchema.safeParse({
       type: req.nextUrl.searchParams.get("type") ?? undefined,
       source: req.nextUrl.searchParams.get("source") ?? undefined,

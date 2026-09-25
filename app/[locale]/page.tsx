@@ -1,22 +1,36 @@
-import Image from 'next/image';
-import { Link } from '@/i18n/navigation';
+import Image from "next/image";
+import { Link } from "@/i18n/navigation";
 import {
-  ArrowRight, BarChart3, Bell, ShieldCheck, Wallet,
-} from 'lucide-react';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { fetchLandingMarket, type LandingCoin } from '@/lib/services/landing-market';
-import { LiveMarket } from '@/components/landing/live-market';
-import { ALL_CHAINS } from '@/lib/utils/networks';
-import { LandingFaq } from '@/components/landing/landing-faq';
-import { LocaleSwitcher } from '@/components/common/locale-switcher';
+  ArrowRight,
+  BarChart3,
+  Bell,
+  Newspaper,
+  Radio,
+  Search,
+  ShieldCheck,
+  Wallet,
+  Zap,
+} from "lucide-react";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  fetchLandingMarket,
+  type LandingCoin,
+} from "@/lib/services/landing-market";
+import { LiveMarket } from "@/components/landing/live-market";
+import { ALL_CHAINS } from "@/lib/utils/networks";
+import { LandingFaq } from "@/components/landing/landing-faq";
+import { LocaleSwitcher } from "@/components/common/locale-switcher";
 
-
-export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {
+export default async function LandingPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations('Landing');
+  const t = await getTranslations("Landing");
 
   let coins: LandingCoin[] = [];
   try {
@@ -24,23 +38,28 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
   } catch {}
 
   const steps = [
-    { num: '01', icon: Wallet, title: t('step1Title'), desc: t('step1Desc') },
-    { num: '02', icon: BarChart3, title: t('step2Title'), desc: t('step2Desc') },
-    { num: '03', icon: Bell, title: t('step3Title'), desc: t('step3Desc') },
+    { num: "01", icon: Wallet, title: t("step1Title"), desc: t("step1Desc") },
+    {
+      num: "02",
+      icon: BarChart3,
+      title: t("step2Title"),
+      desc: t("step2Desc"),
+    },
+    { num: "03", icon: Bell, title: t("step3Title"), desc: t("step3Desc") },
   ];
 
   const features = [
-    { icon: Wallet, title: t('feature1Title'), desc: t('feature1Desc') },
-    { icon: BarChart3, title: t('feature3Title'), desc: t('feature3Desc') },
-    { icon: Bell, title: t('feature2Title'), desc: t('feature2Desc') },
-    { icon: ShieldCheck, title: t('feature4Title'), desc: t('feature4Desc') },
+    { icon: Wallet, title: t("feature1Title"), desc: t("feature1Desc") },
+    { icon: BarChart3, title: t("feature3Title"), desc: t("feature3Desc") },
+    { icon: Bell, title: t("feature2Title"), desc: t("feature2Desc") },
+    { icon: ShieldCheck, title: t("feature4Title"), desc: t("feature4Desc") },
   ];
 
   const faqs = [
-    { q: t('faq1q'), a: t('faq1a') },
-    { q: t('faq2q'), a: t('faq2a') },
-    { q: t('faq3q'), a: t('faq3a') },
-    { q: t('faq4q'), a: t('faq4a') },
+    { q: t("faq1q"), a: t("faq1a") },
+    { q: t("faq2q"), a: t("faq2a") },
+    { q: t("faq3q"), a: t("faq3a") },
+    { q: t("faq4q"), a: t("faq4a") },
   ];
 
   return (
@@ -68,12 +87,20 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         </div>
         <div className="flex items-center gap-2">
           <LocaleSwitcher />
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="hidden sm:inline-flex"
+          >
+            <Link href="/feed">{t("navFeed")}</Link>
+          </Button>
           <Button asChild variant="ghost" size="sm">
-            <Link href="/auth/login">{t('navSignIn')}</Link>
+            <Link href="/auth/login">{t("navSignIn")}</Link>
           </Button>
           <Button asChild size="sm">
             <Link href="/auth/register">
-              {t('navGetStarted')} <ArrowRight className="h-4 w-4" />
+              {t("navGetStarted")} <ArrowRight className="h-4 w-4" />
             </Link>
           </Button>
         </div>
@@ -83,18 +110,18 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       <section className="container py-16 md:py-24">
         <div className="mx-auto max-w-3xl text-center">
           <h1 className="text-4xl font-bold leading-tight tracking-tight md:text-6xl">
-            {t('heroTitle')}{' '}
-            <span className="gradient-text">{t('heroTitleAccent')}</span>
+            {t("heroTitle")}{" "}
+            <span className="gradient-text">{t("heroTitleAccent")}</span>
           </h1>
           <p className="mt-6 text-lg text-text-muted md:text-xl">
-            {t('heroSubtitle')}
+            {t("heroSubtitle")}
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Button asChild size="lg">
-              <Link href="/auth/register">{t('heroCreateAccount')}</Link>
+              <Link href="/auth/register">{t("heroCreateAccount")}</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href="/auth/login">{t('heroSignIn')}</Link>
+              <Link href="/auth/login">{t("heroSignIn")}</Link>
             </Button>
           </div>
         </div>
@@ -103,8 +130,12 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       {/* ── How it works ── */}
       <section className="container pb-14">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('howItWorksTitle')}</h2>
-          <p className="mt-2 text-base text-text-muted">{t('howItWorksSubtitle')}</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+            {t("howItWorksTitle")}
+          </h2>
+          <p className="mt-2 text-base text-text-muted">
+            {t("howItWorksSubtitle")}
+          </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-3">
           {steps.map((step) => (
@@ -114,7 +145,9 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
                   <step.icon className="h-6 w-6 text-primary" />
                 </div>
                 <h3 className="font-semibold">{step.title}</h3>
-                <p className="mt-2 text-base leading-relaxed text-text-muted">{step.desc}</p>
+                <p className="mt-2 text-base leading-relaxed text-text-muted">
+                  {step.desc}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -124,11 +157,85 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       {/* ── Live market ── */}
       <LiveMarket initialCoins={coins} />
 
+      {/* ── Public crypto feed ── */}
+      <section className="container pb-16 md:pb-20">
+        <div className="mx-auto grid max-w-5xl overflow-hidden rounded-2xl bg-surface shadow-card lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="flex flex-col justify-center p-7 sm:p-10 lg:p-12">
+            <h2 className="max-w-xl text-3xl font-bold tracking-tight md:text-4xl">
+              {t("feedTitle")}
+            </h2>
+            <p className="mt-4 max-w-xl text-base leading-7 text-text-muted">
+              {t("feedDescription")}
+            </p>
+            <div className="mt-7">
+              <Button asChild size="lg">
+                <Link href="/feed">
+                  {t("feedCta")}
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+            <p className="mt-3 text-xs text-text-muted">{t("feedNoAccount")}</p>
+          </div>
+
+          <div className="bg-surface-2/70 p-5 sm:p-7 lg:p-9">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Radio className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">
+                  {t("feedPreviewTitle")}
+                </span>
+              </div>
+              <span className="flex items-center gap-2 text-xs font-medium text-success">
+                <span className="h-2 w-2 rounded-full bg-success" aria-hidden />
+                {t("feedLive")}
+              </span>
+            </div>
+
+            <div className="divide-y divide-border overflow-hidden rounded-xl bg-background/70">
+              {[
+                {
+                  icon: Zap,
+                  title: t("feedSignalTitle"),
+                  desc: t("feedSignalDesc"),
+                },
+                {
+                  icon: Search,
+                  title: t("feedOpportunityTitle"),
+                  desc: t("feedOpportunityDesc"),
+                },
+                {
+                  icon: Newspaper,
+                  title: t("feedNewsTitle"),
+                  desc: t("feedNewsDesc"),
+                },
+              ].map((item) => (
+                <div key={item.title} className="flex gap-4 p-4 sm:p-5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <item.icon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-semibold">{item.title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-text-muted">
+                      {item.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Features ── */}
       <section className="container pb-14">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('featuresTitle')}</h2>
-          <p className="mt-2 text-base text-text-muted">{t('featuresSubtitle')}</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+            {t("featuresTitle")}
+          </h2>
+          <p className="mt-2 text-base text-text-muted">
+            {t("featuresSubtitle")}
+          </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
@@ -148,8 +255,12 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       {/* ── Networks ── */}
       <section className="container pb-14">
         <div className="mb-8 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('networksTitle')}</h2>
-          <p className="mt-2 text-base text-text-muted">{t('networksSubtitle')}</p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+            {t("networksTitle")}
+          </h2>
+          <p className="mt-2 text-base text-text-muted">
+            {t("networksSubtitle")}
+          </p>
         </div>
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-3 sm:grid-cols-5 lg:grid-cols-10">
           {ALL_CHAINS.map((chain) => (
@@ -179,18 +290,27 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
             <div>
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary">
                 <Bell className="h-3.5 w-3.5" />
-                {t('telegramTitle')}
+                {t("telegramTitle")}
               </div>
               <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
-                {t('telegramSubtitle')}
+                {t("telegramSubtitle")}
               </h2>
               <p className="mt-4 leading-relaxed text-text-muted">
-                {t('telegramDesc')}
+                {t("telegramDesc")}
               </p>
               <ul className="mt-4 space-y-2">
-                {[t('telegramFeature1'), t('telegramFeature2'), t('telegramFeature3')].map((item) => (
-                  <li key={item} className="flex items-start gap-2 text-sm text-text-muted">
-                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">✓</span>
+                {[
+                  t("telegramFeature1"),
+                  t("telegramFeature2"),
+                  t("telegramFeature3"),
+                ].map((item) => (
+                  <li
+                    key={item}
+                    className="flex items-start gap-2 text-sm text-text-muted"
+                  >
+                    <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] text-primary">
+                      ✓
+                    </span>
                     {item}
                   </li>
                 ))}
@@ -208,22 +328,42 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
                     className="rounded-full object-cover"
                   />
                   <div>
-                    <p className="text-sm font-semibold text-white">CryptoPortfolio</p>
+                    <p className="text-sm font-semibold text-white">
+                      CryptoPortfolio
+                    </p>
                     <p className="text-xs text-[#8096a7]">bot</p>
                   </div>
                 </div>
                 <div className="mb-2 ml-2 max-w-[90%] rounded-xl rounded-tl-none bg-[#2b5278] px-3.5 py-2.5 text-[13px] text-white">
-                  <p>🚨 <strong>Price alert: BTC</strong></p>
-                  <p className="mt-1.5">📈 Change: <strong>+5.43%</strong> in 1h</p>
-                  <p>💰 Price now: <strong>$67,234</strong></p>
-                  <p>📌 Price before: <strong>$63,778</strong></p>
-                  <p className="mt-1.5 text-[11px] text-[#8096a7]">⏱ 21.06.2026, 14:32:15</p>
+                  <p>
+                    🚨 <strong>Price alert: BTC</strong>
+                  </p>
+                  <p className="mt-1.5">
+                    📈 Change: <strong>+5.43%</strong> in 1h
+                  </p>
+                  <p>
+                    💰 Price now: <strong>$67,234</strong>
+                  </p>
+                  <p>
+                    📌 Price before: <strong>$63,778</strong>
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-[#8096a7]">
+                    ⏱ 21.06.2026, 14:32:15
+                  </p>
                 </div>
                 <div className="ml-2 max-w-[90%] rounded-xl rounded-tl-none bg-[#2b5278] px-3.5 py-2.5 text-[13px] text-white">
-                  <p>🎯 <strong>Target price: ETH</strong></p>
-                  <p className="mt-1.5">📈 Price went <strong>above</strong> $3,500</p>
-                  <p>💰 Current price: <strong>$3,521</strong></p>
-                  <p className="mt-1.5 text-[11px] italic text-[#8096a7]">Trigger deactivated.</p>
+                  <p>
+                    🎯 <strong>Target price: ETH</strong>
+                  </p>
+                  <p className="mt-1.5">
+                    📈 Price went <strong>above</strong> $3,500
+                  </p>
+                  <p>
+                    💰 Current price: <strong>$3,521</strong>
+                  </p>
+                  <p className="mt-1.5 text-[11px] italic text-[#8096a7]">
+                    Trigger deactivated.
+                  </p>
                 </div>
               </div>
             </div>
@@ -235,8 +375,10 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       <section className="container pb-14">
         <div className="mx-auto max-w-2xl">
           <div className="mb-8 text-center">
-            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">{t('faqTitle')}</h2>
-            <p className="mt-2 text-base text-text-muted">{t('faqSubtitle')}</p>
+            <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
+              {t("faqTitle")}
+            </h2>
+            <p className="mt-2 text-base text-text-muted">{t("faqSubtitle")}</p>
           </div>
           <Card className="card-gradient">
             <CardContent className="p-6 pt-6 sm:pt-6">
@@ -249,7 +391,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       {/* ── Footer ── */}
       <footer className="border-t border-border py-4">
         <div className="container text-center text-sm text-text-muted">
-          {t.rich('footerAuthor', {
+          {t.rich("footerAuthor", {
             link: (chunks) => (
               <a
                 href="https://t.me/ludoslan"
