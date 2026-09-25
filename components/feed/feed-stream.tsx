@@ -280,7 +280,14 @@ export function FeedStream() {
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-16 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur-sm">
+      <div
+        className={cn(
+          "sticky top-16 z-20 -mx-2 transition-[background-color,padding,height] duration-200 motion-reduce:transition-none",
+          controlsCollapsed
+            ? "h-14 bg-transparent p-0"
+            : "bg-background/95 px-2 py-2 backdrop-blur-sm",
+        )}
+      >
         <div
           className={cn(
             "space-y-3 overflow-hidden transition-[max-height,opacity,transform] duration-200 motion-reduce:transition-none sm:max-h-none sm:translate-y-0 sm:opacity-100",
@@ -359,13 +366,13 @@ export function FeedStream() {
         <div
           className={cn(
             "justify-end sm:hidden",
-            controlsCollapsed ? "flex" : "hidden",
+            controlsCollapsed ? "absolute right-2 top-2 flex" : "hidden",
           )}
         >
           <Button
             variant="outline"
             size="icon"
-            className="h-10 w-10 rounded-full shadow-sm"
+            className="h-10 w-10 rounded-full bg-background shadow-sm"
             onClick={() => setControlsCollapsed(false)}
             aria-label={t("showFilters")}
             aria-expanded={!controlsCollapsed}
