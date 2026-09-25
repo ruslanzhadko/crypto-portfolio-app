@@ -2,7 +2,6 @@ import { TelegramClient } from "teleproto";
 import { StringSession } from "teleproto/sessions";
 import { prisma } from "../lib/db/prisma";
 import { classifyFeedPost } from "../lib/feed/classify-post";
-import { extractTelegramLinks } from "../lib/feed/links";
 
 const DEFAULT_CHANNELS = [
   "arbitrageaggregator",
@@ -34,12 +33,6 @@ type ChannelUpdate = {
   message?: {
     id?: number;
     message?: string;
-    entities?: Array<{
-      className?: string;
-      offset?: number;
-      length?: number;
-      url?: string;
-    }>;
     date?: number;
     editDate?: number;
   };
@@ -84,19 +77,7 @@ async function saveMessage(
 ) {
   if (!message?.id || !message.message?.trim() || !message.date) return;
 
-  const rawText = message.message;
-  const leadingWhitespace = rawText.length - rawText.trimStart().length;
-  const text = rawText.trim();
-  const links = extractTelegramLinks(
-    text,
-    message.entities?.map((entity) => ({
-      ...entity,
-      offset:
-        typeof entity.offset === "number"
-          ? entity.offset - leadingWhitespace
-          : entity.offset,
-    })),
-  );
+  const text = message.message.trim();
   const classified = classifyFeedPost(text);
   const publishedAt = new Date(message.date * 1000);
   const editedAt = message.editDate ? new Date(message.editDate * 1000) : null;
@@ -113,7 +94,6 @@ async function saveMessage(
         sourceId,
         telegramMessageId: message.id,
         text,
-        metadata: { links },
         telegramUrl: `https://t.me/${username}/${message.id}`,
         publishedAt,
         editedAt,
@@ -121,7 +101,6 @@ async function saveMessage(
       },
       update: {
         text,
-        metadata: { links },
         editedAt,
         ...classified,
       },
@@ -171,9 +150,7 @@ async function startWatching(username: string) {
     for (const message of [...recentMessages].reverse()) {
       await saveMessage(username, source.id, message as ChannelMessage);
     }
-    console.log(
-      `[feed] backfilled @${username}: ${recentMessages.length} messages`,
-    );
+    console.log(`[feed] backfilled @${username}: ${recentMessages.length} messages`);
   } catch (error) {
     stop();
     watchers.delete(username);
@@ -232,9 +209,7 @@ async function main() {
   syncTimer = setInterval(() => void syncSources(), 30_000);
 
   console.log(`[feed] listener started for ${watchers.size} channels`);
-  console.log(
-    "[feed] source list refreshes from the database every 30 seconds",
-  );
+  console.log("[feed] source list refreshes from the database every 30 seconds");
   await new Promise<void>(() => undefined);
 }
 

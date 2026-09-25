@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   ArrowDownRight,
@@ -23,7 +16,6 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { resolveFeedTextLinks, type FeedTextLink } from "@/lib/feed/links";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -56,7 +48,6 @@ interface FeedPost {
   limitUsd: number | null;
   mediaUrl: string | null;
   telegramUrl: string;
-  links: FeedTextLink[];
   publishedAt: string;
   source: { username: string; title: string; avatarUrl: string | null };
 }
@@ -524,11 +515,11 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
                   </span>
                 )}
               </div>
-              <LinkedPostText
-                text={post.text}
-                links={post.links}
-                expanded={expanded}
-              />
+              <p className="whitespace-pre-line text-[13px] leading-5 text-text md:text-[15px] md:leading-6">
+                {!expanded && post.text.length > 560
+                  ? `${post.text.slice(0, 560).trim()}\u2026`
+                  : post.text}
+              </p>
               {post.text.length > 560 && (
                 <button
                   type="button"
@@ -553,48 +544,6 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
         </div>
       </div>
     </article>
-  );
-}
-
-function LinkedPostText({
-  text,
-  links,
-  expanded,
-}: {
-  text: string;
-  links: FeedTextLink[];
-  expanded: boolean;
-}) {
-  const truncated = !expanded && text.length > 560;
-  const visibleText = truncated ? text.slice(0, 560).trim() : text;
-  const visibleLinks = resolveFeedTextLinks(visibleText, links);
-  const content: ReactNode[] = [];
-  let cursor = 0;
-
-  for (const link of visibleLinks) {
-    if (link.offset < cursor) continue;
-    const end = link.offset + link.length;
-    content.push(visibleText.slice(cursor, link.offset));
-    content.push(
-      <a
-        key={`${link.offset}-${link.url}`}
-        href={link.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="break-all font-medium text-primary underline decoration-primary/50 underline-offset-4 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {visibleText.slice(link.offset, end)}
-      </a>,
-    );
-    cursor = end;
-  }
-  content.push(visibleText.slice(cursor));
-  if (truncated) content.push("…");
-
-  return (
-    <p className="whitespace-pre-line break-words text-[13px] leading-5 text-text md:text-[15px] md:leading-6">
-      {content}
-    </p>
   );
 }
 
