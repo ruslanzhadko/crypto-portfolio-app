@@ -26,6 +26,7 @@
     "sourceLabel": "Channel",
     "allSources": "All channels",
     "refresh": "Refresh feed",
+    "showFilters": "Show filters",
     "updated": "Updated {time}",
     "loadError": "Could not load the feed",
     "retry": "Retry",

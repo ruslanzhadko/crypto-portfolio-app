@@ -26,6 +26,7 @@
     "sourceLabel": "Канал",
     "allSources": "Усі канали",
     "refresh": "Оновити стрічку",
+    "showFilters": "Показати фільтри",
     "updated": "Оновлено {time}",
     "loadError": "Не вдалося завантажити стрічку",
     "retry": "Повторити",

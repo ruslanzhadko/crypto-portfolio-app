@@ -23,7 +23,7 @@ export default async function FeedPage({
   ]);
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden">
+    <main className="relative min-h-screen overflow-x-clip">
       <div className="pointer-events-none fixed inset-0" aria-hidden>
         <div className="absolute left-1/2 top-0 h-[520px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-[130px]" />
       </div>

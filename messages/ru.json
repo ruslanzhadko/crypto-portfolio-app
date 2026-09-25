@@ -26,6 +26,7 @@
     "sourceLabel": "Канал",
     "allSources": "Все каналы",
     "refresh": "Обновить ленту",
+    "showFilters": "Показать фильтры",
     "updated": "Обновлено {time}",
     "loadError": "Не удалось загрузить ленту",
     "retry": "Повторить",

@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Search,
   Sparkles,
+  SlidersHorizontal,
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
@@ -135,7 +136,9 @@ export function FeedStream() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [controlsCollapsed, setControlsCollapsed] = useState(false);
   const firstLoad = useRef(true);
+  const lastScrollY = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
   const historyRequest = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
@@ -147,6 +150,35 @@ export function FeedStream() {
     const timer = window.setTimeout(() => setSearch(searchInput.trim()), 300);
     return () => window.clearTimeout(timer);
   }, [searchInput]);
+
+  useEffect(() => {
+    lastScrollY.current = window.scrollY;
+
+    const onScroll = () => {
+      if (window.innerWidth >= 640) {
+        setControlsCollapsed(false);
+        return;
+      }
+
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY.current;
+
+      if (currentY < 96) {
+        setControlsCollapsed(false);
+      } else if (delta > 8) {
+        setControlsCollapsed(true);
+      }
+
+      lastScrollY.current = currentY;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
 
   const load = useCallback(
     async (quiet = false) => {
@@ -248,69 +280,97 @@ export function FeedStream() {
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-16 z-20 -mx-2 space-y-3 bg-background/95 px-2 py-2 backdrop-blur-sm">
+      <div className="sticky top-16 z-20 -mx-2 bg-background/95 px-2 py-2 backdrop-blur-sm">
         <div
-          className="flex gap-2 overflow-x-auto pb-1"
-          aria-label={t("filterByType")}
+          className={cn(
+            "space-y-3 overflow-hidden transition-[max-height,opacity,transform] duration-200 motion-reduce:transition-none sm:max-h-none sm:translate-y-0 sm:opacity-100",
+            controlsCollapsed
+              ? "pointer-events-none max-h-0 -translate-y-1 opacity-0 sm:pointer-events-auto"
+              : "max-h-56 translate-y-0 opacity-100",
+          )}
         >
-          {FILTERS.map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              onClick={() => setType(filter)}
-              aria-pressed={type === filter}
-              className={cn(
-                "min-h-11 shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                type === filter
-                  ? "bg-text text-background"
-                  : "bg-surface-2 text-text-muted hover:text-text",
-              )}
+          <div
+            className="flex gap-2 overflow-x-auto pb-1"
+            aria-label={t("filterByType")}
+          >
+            {FILTERS.map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setType(filter)}
+                aria-pressed={type === filter}
+                className={cn(
+                  "min-h-10 shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-11 sm:px-4 sm:text-xs",
+                  type === filter
+                    ? "bg-text text-background"
+                    : "bg-surface-2 text-text-muted hover:text-text",
+                )}
+              >
+                {t(`filters.${filter}`)}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-[minmax(0,1fr)_40px] gap-2 sm:grid-cols-[minmax(0,1fr)_220px_auto]">
+            <label className="relative col-span-2 block sm:col-span-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+              <Input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                placeholder={t("searchPlaceholder")}
+                aria-label={t("searchLabel")}
+                className="h-10 pl-9 text-sm"
+              />
+            </label>
+            <label className="relative block">
+              <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
+              <select
+                value={source}
+                onChange={(event) => setSource(event.target.value)}
+                aria-label={t("sourceLabel")}
+                className="h-10 w-full appearance-none rounded-lg border border-border bg-surface-2 pl-9 pr-8 text-sm text-text ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <option value="ALL">{t("allSources")}</option>
+                {sources.map((item) => (
+                  <option key={item.username} value={item.username}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-10 w-10"
+              onClick={() => void load()}
+              disabled={refreshing}
+              aria-label={t("refresh")}
             >
-              {t(`filters.${filter}`)}
-            </button>
-          ))}
+              <RefreshCw
+                className={cn(
+                  "h-4 w-4",
+                  refreshing && "animate-spin motion-reduce:animate-none",
+                )}
+              />
+            </Button>
+          </div>
         </div>
 
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_220px_auto]">
-          <label className="relative block">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <Input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              placeholder={t("searchPlaceholder")}
-              aria-label={t("searchLabel")}
-              className="pl-9"
-            />
-          </label>
-          <label className="relative block">
-            <Filter className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-            <select
-              value={source}
-              onChange={(event) => setSource(event.target.value)}
-              aria-label={t("sourceLabel")}
-              className="h-10 w-full appearance-none rounded-lg border border-border bg-surface-2 pl-9 pr-8 text-sm text-text ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-            >
-              <option value="ALL">{t("allSources")}</option>
-              {sources.map((item) => (
-                <option key={item.username} value={item.username}>
-                  {item.title}
-                </option>
-              ))}
-            </select>
-          </label>
+        <div
+          className={cn(
+            "justify-end sm:hidden",
+            controlsCollapsed ? "flex" : "hidden",
+          )}
+        >
           <Button
             variant="outline"
             size="icon"
-            onClick={() => void load()}
-            disabled={refreshing}
-            aria-label={t("refresh")}
+            className="h-10 w-10 rounded-full shadow-sm"
+            onClick={() => setControlsCollapsed(false)}
+            aria-label={t("showFilters")}
+            aria-expanded={!controlsCollapsed}
           >
-            <RefreshCw
-              className={cn(
-                "h-4 w-4",
-                refreshing && "animate-spin motion-reduce:animate-none",
-              )}
-            />
+            <SlidersHorizontal className="h-4 w-4" />
           </Button>
         </div>
       </div>
@@ -336,7 +396,7 @@ export function FeedStream() {
         <FeedSkeleton />
       ) : groups.length ? (
         <div className="space-y-4">
-          <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
+          <div className="overflow-hidden rounded-xl bg-surface shadow-card sm:rounded-2xl">
             {groups.map((group) => (
               <FeedRow key={group.key} group={group} locale={locale} />
             ))}
@@ -398,18 +458,18 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
   );
 
   return (
-    <article className="group border-b border-border/80 p-4 last:border-b-0 md:p-5">
-      <div className="flex gap-3 md:gap-4">
+    <article className="group border-b border-border/80 p-3.5 last:border-b-0 md:p-5">
+      <div className="flex gap-2.5 md:gap-4">
         <div
           className={cn(
-            "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+            "mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg md:h-9 md:w-9 md:rounded-xl",
             type.surface,
           )}
         >
-          <Icon className={cn("h-[18px] w-[18px]", type.color)} />
+          <Icon className={cn("h-4 w-4 md:h-[18px] md:w-[18px]", type.color)} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] md:text-xs">
             <span className="font-semibold text-text">{post.source.title}</span>
             <span className="text-text-muted">@{post.source.username}</span>
             <span className="text-text-muted" aria-hidden="true">
@@ -448,7 +508,7 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
                   </span>
                 )}
               </div>
-              <p className="whitespace-pre-line text-sm leading-6 text-text md:text-[15px]">
+              <p className="whitespace-pre-line text-[13px] leading-5 text-text md:text-[15px] md:leading-6">
                 {!expanded && post.text.length > 560
                   ? `${post.text.slice(0, 560).trim()}\u2026`
                   : post.text}
@@ -470,7 +530,7 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
             href={post.telegramUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-text-muted underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="mt-2.5 inline-flex items-center gap-1.5 text-[11px] font-medium text-text-muted underline-offset-4 transition-colors hover:text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:mt-3 md:text-xs"
           >
             {t("openTelegram")} <ExternalLink className="h-3.5 w-3.5" />
           </a>
@@ -495,13 +555,13 @@ function MachineEvent({
 
   if (post.type === "LIQUIDATION") {
     return (
-      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-lg font-bold tabular-nums text-text">
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1 md:gap-x-3">
+        <span className="text-base font-bold tabular-nums text-text md:text-lg">
           {post.symbol}
         </span>
         <span
           className={cn(
-            "text-sm font-semibold",
+            "text-[13px] font-semibold md:text-sm",
             post.direction === "LONG" ? "text-danger" : "text-success",
           )}
         >
@@ -514,11 +574,11 @@ function MachineEvent({
                   : "—",
           })}
         </span>
-        <span className="text-lg font-bold tabular-nums">
+        <span className="text-base font-bold tabular-nums md:text-lg">
           {compactUsd(totalAmount || post.amountUsd || 0, locale)}
         </span>
         {post.priceUsd != null && (
-          <span className="text-sm tabular-nums text-text-muted">
+          <span className="text-[13px] tabular-nums text-text-muted md:text-sm">
             @ {compactUsd(post.priceUsd, locale)}
           </span>
         )}
@@ -530,20 +590,22 @@ function MachineEvent({
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-      <span className="text-lg font-bold text-text">{post.symbol}</span>
+    <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1 md:gap-x-3">
+      <span className="text-base font-bold text-text md:text-lg">
+        {post.symbol}
+      </span>
       <span
         className={cn(
-          "inline-flex items-center text-lg font-bold tabular-nums",
+          "inline-flex items-center text-base font-bold tabular-nums md:text-lg",
           positive ? "text-success" : "text-danger",
         )}
       >
-        <DirectionIcon className="mr-0.5 h-5 w-5" />
+        <DirectionIcon className="mr-0.5 h-4 w-4 md:h-5 md:w-5" />
         {post.changePercent != null &&
           `${post.changePercent > 0 ? "+" : ""}${post.changePercent.toFixed(2)}%`}
       </span>
       {post.intervalSeconds != null && (
-        <span className="text-sm text-text-muted">
+        <span className="text-[13px] text-text-muted md:text-sm">
           {t("inSeconds", { seconds: post.intervalSeconds })}
         </span>
       )}
@@ -589,11 +651,11 @@ function typeMeta(type: PostType, direction: string | null) {
 
 function FeedSkeleton() {
   return (
-    <div className="overflow-hidden rounded-2xl bg-surface shadow-card">
+    <div className="overflow-hidden rounded-xl bg-surface shadow-card sm:rounded-2xl">
       {[0, 1, 2, 3].map((item) => (
         <div
           key={item}
-          className="flex gap-4 border-b border-border p-5 last:border-0"
+          className="flex gap-3 border-b border-border p-3.5 last:border-0 md:gap-4 md:p-5"
         >
           <Skeleton className="h-9 w-9 shrink-0 rounded-xl" />
           <div className="w-full space-y-3">
