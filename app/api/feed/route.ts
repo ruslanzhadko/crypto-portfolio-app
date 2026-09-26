@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, handleUnknown, ok } from "@/lib/api/response";
+import { readFeedTextLinks } from "@/lib/feed/links";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,11 @@ export async function GET(req: NextRequest) {
     });
 
     return ok({
-      posts: posts.map((post) => ({ ...post, metadata: undefined })),
+      posts: posts.map((post) => ({
+        ...post,
+        links: readFeedTextLinks(post.metadata),
+        metadata: undefined,
+      })),
       sources,
       nextCursor:
         posts.length === limit
