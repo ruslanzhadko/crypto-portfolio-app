@@ -10,6 +10,7 @@ import { PortfolioChart } from '@/components/dashboard/portfolio-chart';
 import { TokenTable } from '@/components/dashboard/token-table';
 import { WalletList } from '@/components/dashboard/wallet-list';
 import { TopMovers } from '@/components/dashboard/top-movers';
+import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { SyncAllButton } from '@/components/dashboard/sync-all-button';
 import { Button } from '@/components/ui/button';
 import {
@@ -164,7 +165,14 @@ export function DashboardSections({
           </div>
         </div>
 
-        <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0">
+            <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
+          </div>
+          <div className="min-w-0">
+            <RecentTransactions />
+          </div>
+        </div>
 
         {(show.allocation || show.networkAllocation) && (
           <div className="grid gap-4 lg:grid-cols-2">

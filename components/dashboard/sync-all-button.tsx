@@ -87,6 +87,7 @@ export function SyncAllButton({
       }
 
       // Завжди оновлюємо дашборд — навіть якщо synced.length = 0 (помилки чи throttle)
+      window.dispatchEvent(new Event('portfolio-synced'));
       router.refresh();
     });
   }

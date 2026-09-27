@@ -579,6 +579,19 @@
     "toastHiddenDesc": "{symbol} исключён из баланса",
     "toastShownDesc": "{symbol} включён в баланс"
   },
+  "RecentTransactions": {
+    "title": "Последние транзакции",
+    "subtitle": "Все активные кошельки",
+    "refresh": "Обновить транзакции",
+    "partialError": "Часть сетей временно недоступна.",
+    "errorTitle": "Не удалось загрузить транзакции",
+    "errorDescription": "Проверьте подключение к провайдерам и попробуйте снова.",
+    "retry": "Повторить",
+    "emptyTitle": "Транзакций пока нет",
+    "emptyDescription": "Последние операции появятся здесь автоматически.",
+    "walletFallback": "Кошелёк",
+    "failed": "Ошибка"
+  },
   "TransactionList": {
     "cardTitle": "Транзакции",
     "emptyTitle": "Транзакций нет",
