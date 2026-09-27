@@ -148,10 +148,16 @@ export function DashboardSections({
             hiddenTokensCount={hiddenTokensCount}
             onVisibilityChange={setChartVisible}
           />
-          <PortfolioSummary data={overview} showLargestPositions={chartVisible === true} />
+          <div className="min-w-0 xl:w-64 xl:min-w-64 xl:shrink-0">
+            <PortfolioSummary data={overview} showLargestPositions={chartVisible === true} />
+          </div>
         </div>
 
-        {show.topMovers && <TopMovers tokens={overview.tokens} />}
+        {show.topMovers && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
+            <TopMovers tokens={overview.tokens} />
+          </div>
+        )}
 
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-3">
           <div className="min-w-0 xl:col-span-2">

@@ -179,7 +179,7 @@ export function PortfolioChart({
         </div>
       </CardHeader>
       <div id="portfolio-history">
-      {preferenceLoaded && showChart && <CardContent className="pt-2">
+      {preferenceLoaded && showChart && <CardContent className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300 motion-reduce:animate-none">
           {points === null && <Skeleton className="h-[130px] w-full rounded-lg sm:h-[160px]" />}
           {points && points.length === 0 && (
             <EmptyState
