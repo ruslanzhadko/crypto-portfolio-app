@@ -109,7 +109,7 @@ export function PortfolioChart({
 
   return (
     <Card className="h-full min-w-0">
-      <CardHeader className="space-y-0 xl:min-h-[132px]">
+      <CardHeader className="space-y-0 xl:min-h-[132px] xl:py-[17px]">
         <div className="grid min-w-0 grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
           <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 sm:col-span-2 sm:row-start-2">
@@ -180,17 +180,17 @@ export function PortfolioChart({
       </CardHeader>
       <div id="portfolio-history">
       {preferenceLoaded && showChart && <CardContent className="pt-2 animate-in fade-in slide-in-from-top-2 duration-300 motion-reduce:animate-none">
-          {points === null && <Skeleton className="h-[130px] w-full rounded-lg sm:h-[160px]" />}
+          {points === null && <Skeleton className="h-[130px] w-full rounded-lg sm:h-[190px]" />}
           {points && points.length === 0 && (
             <EmptyState
               icon={TrendingUp}
               title={t('emptyTitle')}
               description={t('emptyDescription')}
-              className="min-h-[130px] p-4 sm:min-h-[160px]"
+              className="min-h-[130px] p-4 sm:min-h-[190px]"
             />
           )}
           {anomalousEstimate && !showAnomalousEstimate && (
-            <div className="flex min-h-[130px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[160px]">
+            <div className="flex min-h-[130px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[190px]">
               <p className="text-sm font-medium">{t('unreliableTitle')}</p>
               <p className="max-w-md text-xs text-text-muted">{t('unreliableDescription')}</p>
               <Button variant="outline" size="sm" onClick={() => setShowAnomalousEstimate(true)}>
