@@ -99,6 +99,8 @@
   },
   "PortfolioChart": {
     "cardTitle": "Стоимость портфеля",
+    "hideChart": "Скрыть график",
+    "showChart": "Показать график",
     "deltaLabel": "за 24 ч",
     "rangeLabel": "Период графика",
     "unreliableTitle": "На графике большой скачок",

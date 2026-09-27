@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
@@ -8,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
 import { formatDate, formatUsd, formatPercent } from '@/lib/utils/format';
-import { TrendingUp } from 'lucide-react';
+import { ChevronDown, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface SnapshotPoint {
@@ -23,11 +24,16 @@ interface PortfolioChartProps {
   priceChange24h: number;
   priceChange24hUsd: number;
   hiddenTokensCount?: number;
+  summary: ReactNode;
 }
 
-export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hiddenTokensCount = 0 }: PortfolioChartProps) {
+const CHART_VISIBILITY_KEY = 'dashboard-portfolio-chart-visible-v1';
+
+export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hiddenTokensCount = 0, summary }: PortfolioChartProps) {
   const t = useTranslations('PortfolioChart');
   const [mounted, setMounted] = useState(false);
+  const [preferenceLoaded, setPreferenceLoaded] = useState(false);
+  const [showChart, setShowChart] = useState(true);
   const [resetting, setResetting] = useState(false);
   const [days, setDays] = useState<number>(30);
   const [revision, setRevision] = useState(0);
@@ -44,9 +50,16 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
     totalUsd > 0 &&
     (points?.some((point) => point.totalUsd > totalUsd * 20) ?? false);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    try {
+      setShowChart(localStorage.getItem(CHART_VISIBILITY_KEY) !== 'false');
+    } catch {}
+    setPreferenceLoaded(true);
+  }, []);
 
   useEffect(() => {
+    if (!preferenceLoaded || !showChart) return;
     let cancelled = false;
     setPoints(null);
     fetch(`/api/portfolio/snapshot?days=${days}`)
@@ -70,7 +83,15 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
     return () => {
       cancelled = true;
     };
-  }, [days, revision]);
+  }, [days, revision, preferenceLoaded, showChart]);
+
+  function toggleChart() {
+    const next = !showChart;
+    setShowChart(next);
+    try {
+      localStorage.setItem(CHART_VISIBILITY_KEY, String(next));
+    } catch {}
+  }
 
   async function resetHistory() {
     setResetting(true);
@@ -85,52 +106,71 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
   }
 
   return (
-    <Card className="h-full min-w-0">
-      <CardHeader className="gap-4 space-y-0 pb-2 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
-          <p className="mt-3 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:text-4xl">
-            {formatUsd(totalUsd, { compact: true })}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-            <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
-              {formatPercent(priceChange24h)}
-            </span>
-            <span className="text-text-muted">{t('deltaLabel')}</span>
-            {priceChange24hUsd !== 0 && (
-              <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
-                {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
+    <Card className="min-w-0">
+      <CardHeader className="gap-4 space-y-0 pb-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
+            <p className="mt-3 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:text-4xl">
+              {formatUsd(totalUsd, { compact: true })}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
+                {formatPercent(priceChange24h)}
+              </span>
+              <span className="text-text-muted">{t('deltaLabel')}</span>
+              {priceChange24hUsd !== 0 && (
+                <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
+                  {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
+                </span>
+              )}
+            </div>
+            {preferenceLoaded && showChart && (source === 'reconstructed' || source === 'mixed') && (
+              <span
+                className="mt-2 inline-flex rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning"
+                title={t('estimateTooltip')}
+              >
+                {t('estimateBadge')}
               </span>
             )}
           </div>
-          {(source === 'reconstructed' || source === 'mixed') && (
-            <span
-              className="mt-2 inline-flex rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning"
-              title={t('estimateTooltip')}
-            >
-              {t('estimateBadge')}
-            </span>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1" role="group" aria-label={t('rangeLabel')}>
-          {ranges.map((r) => (
+          <div className="flex flex-wrap items-center gap-2">
+            {preferenceLoaded && showChart && (
+              <div className="flex items-center gap-1" role="group" aria-label={t('rangeLabel')}>
+                {ranges.map((r) => (
+                  <Button
+                    key={r.value}
+                    variant={days === r.value ? 'default' : 'ghost'}
+                    size="sm"
+                    className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
+                    aria-pressed={days === r.value}
+                    onClick={() => {
+                      setShowAnomalousEstimate(false);
+                      setDays(r.value);
+                    }}
+                  >
+                    {r.label}
+                  </Button>
+                ))}
+              </div>
+            )}
             <Button
-              key={r.value}
-              variant={days === r.value ? 'default' : 'ghost'}
+              variant="outline"
               size="sm"
-              className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
-              aria-pressed={days === r.value}
-              onClick={() => {
-                setShowAnomalousEstimate(false);
-                setDays(r.value);
-              }}
+              className="gap-1.5"
+              aria-expanded={preferenceLoaded && showChart}
+              aria-controls="portfolio-history"
+              onClick={toggleChart}
             >
-              {r.label}
+              {preferenceLoaded && showChart ? t('hideChart') : t('showChart')}
+              <ChevronDown className={cn('h-4 w-4 transition-transform', preferenceLoaded && showChart && 'rotate-180')} aria-hidden />
             </Button>
-          ))}
+          </div>
         </div>
+        <div className="border-t border-border pt-4">{summary}</div>
       </CardHeader>
-      {hiddenTokensCount > 0 && (
+      <div id="portfolio-history">
+      {preferenceLoaded && showChart && hiddenTokensCount > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-6">
           <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
             {t('hiddenTokensBrief', { count: hiddenTokensCount })}
@@ -146,7 +186,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
           </Button>
         </div>
       )}
-      <CardContent className="pt-2">
+      {preferenceLoaded && showChart && <CardContent className="pt-2">
           {points === null && <Skeleton className="h-[180px] w-full rounded-lg sm:h-[220px]" />}
           {points && points.length === 0 && (
             <EmptyState
@@ -202,7 +242,8 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
             </ResponsiveContainer>
             </div>
           )}
-      </CardContent>
+      </CardContent>}
+      </div>
     </Card>
   );
 }

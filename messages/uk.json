@@ -99,6 +99,8 @@
   },
   "PortfolioChart": {
     "cardTitle": "Вартість портфеля",
+    "hideChart": "Сховати графік",
+    "showChart": "Показати графік",
     "deltaLabel": "за 24 год",
     "rangeLabel": "Період графіка",
     "unreliableTitle": "На графіку великий стрибок",

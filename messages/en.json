@@ -99,6 +99,8 @@
   },
   "PortfolioChart": {
     "cardTitle": "Portfolio value",
+    "hideChart": "Hide chart",
+    "showChart": "Show chart",
     "deltaLabel": "in 24h",
     "rangeLabel": "Chart period",
     "unreliableTitle": "A large spike appears in the chart",
