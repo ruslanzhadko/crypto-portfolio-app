@@ -103,7 +103,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
 
   return (
     <>
-      <div className="w-full lg:w-1/2">
+      <div className="w-full">
         <Card className="min-w-0 overflow-hidden">
           <div className="grid min-w-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
             <section className="min-w-0">
