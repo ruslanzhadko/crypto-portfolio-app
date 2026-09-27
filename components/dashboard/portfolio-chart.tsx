@@ -108,7 +108,7 @@ export function PortfolioChart({
   }
 
   return (
-    <Card className="min-w-0">
+    <Card className="h-full min-w-0">
       <CardHeader className="space-y-0 xl:min-h-[132px]">
         <div className="grid min-w-0 grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
           <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
@@ -199,7 +199,7 @@ export function PortfolioChart({
             </div>
           )}
           {points && points.length > 0 && mounted && (!anomalousEstimate || showAnomalousEstimate) && (
-            <div className="h-[130px] sm:h-[160px]">
+            <div className="h-[130px] sm:h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>

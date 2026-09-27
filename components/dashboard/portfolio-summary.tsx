@@ -23,7 +23,7 @@ export function PortfolioSummary({
     .slice(0, 4);
 
   return (
-    <Card className="grid min-w-0 grid-cols-3 divide-x divide-border animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:grid-cols-1 xl:divide-x-0 xl:divide-y">
+    <Card className="grid h-full min-w-0 grid-cols-3 divide-x divide-border animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:grid-cols-1 xl:divide-x-0 xl:divide-y">
       <Link
         href="/wallets"
         className="flex min-w-0 flex-col gap-1 p-3 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary xl:min-h-11 xl:flex-row xl:items-center xl:justify-between xl:gap-2 xl:px-3 xl:py-2"

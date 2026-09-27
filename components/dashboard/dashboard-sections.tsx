@@ -140,7 +140,7 @@ export function DashboardSections({
       </div>
 
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
           <PortfolioChart
             totalUsd={overview.totalUsd}
             priceChange24h={overview.priceChange24h}
@@ -148,7 +148,7 @@ export function DashboardSections({
             hiddenTokensCount={hiddenTokensCount}
             onVisibilityChange={setChartVisible}
           />
-          <div className="min-w-0 xl:w-64 xl:min-w-64 xl:shrink-0">
+          <div className="min-w-0 xl:h-full xl:w-64 xl:min-w-64 xl:shrink-0">
             <PortfolioSummary data={overview} showLargestPositions={chartVisible === true} />
           </div>
         </div>
