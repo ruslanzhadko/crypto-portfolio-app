@@ -608,7 +608,9 @@
     "spam": "Спам",
     "resetFilters": "Скинути фільтри",
     "noMatches": "Операцій не знайдено",
-    "noMatchesDescription": "Змініть вибрані фільтри або скиньте їх."
+    "noMatchesDescription": "Змініть вибрані фільтри або скиньте їх.",
+    "loadMore": "Завантажити ще",
+    "loadingMore": "Завантажуємо…"
   },
   "TransactionList": {
     "cardTitle": "Транзакції",

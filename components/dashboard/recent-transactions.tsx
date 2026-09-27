@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Eye, EyeOff, FileText, RefreshCw, RotateCcw, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,12 @@ interface RecentTransaction {
 
 interface WalletOption { id: string; label: string | null; address: string }
 
+type LoadMode = 'initial' | 'refresh' | 'more';
+
+const INITIAL_LIMIT = 20;
+const LIMIT_STEP = 20;
+const MAX_LIMIT = 100;
+
 const EXPLORER: Record<string, string> = {
   ethereum: 'https://etherscan.io/tx/', bsc: 'https://bscscan.com/tx/',
   polygon: 'https://polygonscan.com/tx/', avalanche: 'https://snowtrace.io/tx/',
@@ -62,35 +68,45 @@ export function RecentTransactions() {
   const [unavailableNetworks, setUnavailableNetworks] = useState<string[]>([]);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [walletFilter, setWalletFilter] = useState('all');
   const [chainFilter, setChainFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [showSpam, setShowSpam] = useState(false);
+  const limitRef = useRef(INITIAL_LIMIT);
 
-  const load = useCallback(async (quiet = false) => {
-    if (quiet) setRefreshing(true); else setTransactions(null);
+  const load = useCallback(async (requestedLimit = INITIAL_LIMIT, mode: LoadMode = 'initial') => {
+    if (mode === 'refresh') setRefreshing(true);
+    else if (mode === 'more') setLoadingMore(true);
+    else setTransactions(null);
     setError(false);
     try {
-      const response = await fetch('/api/transactions/recent?limit=20');
+      const response = await fetch(`/api/transactions/recent?limit=${requestedLimit}`);
       if (!response.ok) throw new Error('Recent transactions request failed');
       const data = await response.json() as {
         transactions: RecentTransaction[]; wallets?: WalletOption[];
-        spamCount?: number; partialError?: boolean; unavailableNetworks?: string[];
+        spamCount?: number; partialError?: boolean; unavailableNetworks?: string[]; hasMore?: boolean;
       };
       setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
       setWallets(Array.isArray(data.wallets) ? data.wallets : []);
       setSpamCount(data.spamCount ?? 0);
       setPartialError(Boolean(data.partialError));
       setUnavailableNetworks(Array.isArray(data.unavailableNetworks) ? data.unavailableNetworks : []);
+      setHasMore(Boolean(data.hasMore) && requestedLimit < MAX_LIMIT);
+      limitRef.current = requestedLimit;
     } catch {
       setError(true);
       setTransactions((current) => current ?? []);
-    } finally { setRefreshing(false); }
+    } finally {
+      setRefreshing(false);
+      setLoadingMore(false);
+    }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { void load(INITIAL_LIMIT); }, [load]);
   useEffect(() => {
-    const refresh = () => void load(true);
+    const refresh = () => void load(limitRef.current, 'refresh');
     window.addEventListener('wallet-synced', refresh);
     window.addEventListener('portfolio-synced', refresh);
     return () => {
@@ -115,13 +131,14 @@ export function RecentTransactions() {
   const filtersActive = walletFilter !== 'all' || chainFilter !== 'all' || typeFilter !== 'all';
   const unavailableNetworkNames = unavailableNetworks.map(getChainDisplayName).join(', ');
   const resetFilters = () => { setWalletFilter('all'); setChainFilter('all'); setTypeFilter('all'); };
+  const loadMore = () => void load(Math.min(limitRef.current + LIMIT_STEP, MAX_LIMIT), 'more');
   const typeLabels: Record<string, string> = {
     receive: t('typeReceive'), transfer: t('typeReceive'), send: t('typeSend'),
     swap: t('typeSwap'), contract: t('typeContract'),
   };
 
   return (
-    <Card className="overflow-hidden xl:sticky xl:top-4">
+    <Card className="flex overflow-hidden xl:absolute xl:inset-0 xl:min-h-0 xl:flex-col">
       <CardHeader className="gap-0 space-y-0 border-b border-border pb-4">
         <div className="flex items-center justify-between gap-3">
           <div>
@@ -129,7 +146,7 @@ export function RecentTransactions() {
             <p className="mt-1.5 text-xs text-text-muted">{t('subtitle')}</p>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-text-muted"
-            onClick={() => void load(true)} disabled={refreshing || transactions === null}
+            onClick={() => void load(limitRef.current, 'refresh')} disabled={refreshing || loadingMore || transactions === null}
             aria-label={t('refresh')} title={t('refresh')}>
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} aria-hidden />
           </Button>
@@ -191,7 +208,7 @@ export function RecentTransactions() {
           </p>
         </div>}
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
         {transactions === null ? <TransactionSkeleton />
           : error && transactions.length === 0 ? <MessageState title={t('errorTitle')} description={t('errorDescription')}>
             <Button variant="outline" size="sm" className="mt-4" onClick={() => void load()}>{t('retry')}</Button>
@@ -202,14 +219,22 @@ export function RecentTransactions() {
               <RotateCcw className="h-3.5 w-3.5" aria-hidden />{t('resetFilters')}
             </Button>
           </MessageState>
-          : <div className={cn('max-h-[46rem] divide-y divide-border/70 overflow-y-auto transition-opacity', refreshing && 'opacity-60')}>
-            {filtered.map((transaction) => <TransactionRow
-              key={`${transaction.walletId}:${transaction.chainName}:${transaction.id}`}
-              transaction={transaction} locale={locale} walletFallback={t('walletFallback')}
-              failedLabel={t('failed')} spamLabel={t('spam')}
-              typeLabel={typeLabels[transaction.type] ?? t('typeContract')}
-            />)}
-          </div>}
+          : <>
+            <div className={cn('min-h-0 max-h-[46rem] divide-y divide-border/70 overflow-y-auto transition-opacity xl:max-h-none xl:flex-1', refreshing && 'opacity-60')}>
+              {filtered.map((transaction) => <TransactionRow
+                key={`${transaction.walletId}:${transaction.chainName}:${transaction.id}`}
+                transaction={transaction} locale={locale} walletFallback={t('walletFallback')}
+                failedLabel={t('failed')} spamLabel={t('spam')}
+                typeLabel={typeLabels[transaction.type] ?? t('typeContract')}
+              />)}
+            </div>
+            {hasMore && <div className="border-t border-border p-3">
+              <Button variant="outline" size="sm" className="w-full gap-2" onClick={loadMore} disabled={loadingMore || refreshing}>
+                {loadingMore && <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+                {loadingMore ? t('loadingMore') : t('loadMore')}
+              </Button>
+            </div>}
+          </>}
       </CardContent>
     </Card>
   );

@@ -608,7 +608,9 @@
     "spam": "Спам",
     "resetFilters": "Сбросить фильтры",
     "noMatches": "Операций не найдено",
-    "noMatchesDescription": "Измените выбранные фильтры или сбросьте их."
+    "noMatchesDescription": "Измените выбранные фильтры или сбросьте их.",
+    "loadMore": "Загрузить ещё",
+    "loadingMore": "Загружаем…"
   },
   "TransactionList": {
     "cardTitle": "Транзакции",

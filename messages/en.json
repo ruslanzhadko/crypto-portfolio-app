@@ -608,7 +608,9 @@
     "spam": "Spam",
     "resetFilters": "Reset filters",
     "noMatches": "No matching activity",
-    "noMatchesDescription": "Change the selected filters or reset them."
+    "noMatchesDescription": "Change the selected filters or reset them.",
+    "loadMore": "Load more",
+    "loadingMore": "Loading…"
   },
   "TransactionList": {
     "cardTitle": "Transactions",

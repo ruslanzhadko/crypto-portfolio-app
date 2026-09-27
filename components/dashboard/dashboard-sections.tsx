@@ -165,11 +165,11 @@ export function DashboardSections({
           </div>
         </div>
 
-        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] 2xl:grid-cols-[minmax(0,1fr)_29rem]">
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] xl:items-stretch 2xl:grid-cols-[minmax(0,1fr)_29rem]">
           <div className="min-w-0">
             <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 xl:relative xl:min-h-0">
             <RecentTransactions />
           </div>
         </div>
