@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Eye, EyeOff, FileText, RefreshCw, RotateCcw } from 'lucide-react';
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Eye, EyeOff, FileText, RefreshCw, RotateCcw, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -59,6 +59,7 @@ export function RecentTransactions() {
   const [wallets, setWallets] = useState<WalletOption[]>([]);
   const [spamCount, setSpamCount] = useState(0);
   const [partialError, setPartialError] = useState(false);
+  const [unavailableNetworks, setUnavailableNetworks] = useState<string[]>([]);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [walletFilter, setWalletFilter] = useState('all');
@@ -74,12 +75,13 @@ export function RecentTransactions() {
       if (!response.ok) throw new Error('Recent transactions request failed');
       const data = await response.json() as {
         transactions: RecentTransaction[]; wallets?: WalletOption[];
-        spamCount?: number; partialError?: boolean;
+        spamCount?: number; partialError?: boolean; unavailableNetworks?: string[];
       };
       setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
       setWallets(Array.isArray(data.wallets) ? data.wallets : []);
       setSpamCount(data.spamCount ?? 0);
       setPartialError(Boolean(data.partialError));
+      setUnavailableNetworks(Array.isArray(data.unavailableNetworks) ? data.unavailableNetworks : []);
     } catch {
       setError(true);
       setTransactions((current) => current ?? []);
@@ -111,6 +113,7 @@ export function RecentTransactions() {
   }), [transactions, showSpam, walletFilter, chainFilter, typeFilter]);
 
   const filtersActive = walletFilter !== 'all' || chainFilter !== 'all' || typeFilter !== 'all';
+  const unavailableNetworkNames = unavailableNetworks.map(getChainDisplayName).join(', ');
   const resetFilters = () => { setWalletFilter('all'); setChainFilter('all'); setTypeFilter('all'); };
   const typeLabels: Record<string, string> = {
     receive: t('typeReceive'), transfer: t('typeReceive'), send: t('typeSend'),
@@ -167,7 +170,7 @@ export function RecentTransactions() {
           <div className="mt-3 flex min-h-8 items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-text-muted">{t('results', { count: filtered.length })}</span>
             <div className="flex items-center gap-1">
-              {spamCount > 0 && <Button variant="ghost" size="sm" className="h-8 gap-1.5 px-2 text-xs text-text-muted"
+              {spamCount > 0 && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2"
                 onClick={() => setShowSpam((current) => !current)} aria-pressed={showSpam}>
                 {showSpam ? <EyeOff className="h-3.5 w-3.5" aria-hidden /> : <Eye className="h-3.5 w-3.5" aria-hidden />}
                 {showSpam ? t('hideSpam') : t('showSpam', { count: spamCount })}
@@ -179,7 +182,14 @@ export function RecentTransactions() {
             </div>
           </div>
         )}
-        {partialError && <p className="mt-2 text-xs text-warning">{t('partialError')}</p>}
+        {partialError && <div className="mt-3 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
+          <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <p className="text-xs leading-relaxed">
+            {unavailableNetworkNames
+              ? t('partialError', { networks: unavailableNetworkNames })
+              : t('partialErrorUnknown')}
+          </p>
+        </div>}
       </CardHeader>
       <CardContent className="p-0">
         {transactions === null ? <TransactionSkeleton />
@@ -242,14 +252,11 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
     ? `${transaction.sentValue == null ? '—' : formatTokenBalance(transaction.sentValue)} ${outSymbol} → ${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${inSymbol}`
     : `${transaction.type === 'send' ? '−' : transaction.type === 'receive' || transaction.type === 'transfer' ? '+' : ''}${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${transaction.tokenSymbol ?? ''}`;
   const content = <>
-    <div className="relative h-11 w-12 shrink-0">
+    <div className="relative grid h-11 w-12 shrink-0 place-items-center">
       {isSwap ? <>
         <TokenLogo src={transaction.logoUrl} symbol={outSymbol} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={34} className="absolute left-0 top-0 ring-2 ring-surface" />
         <TokenLogo src={transaction.swapLogoUrl} symbol={inSymbol} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[1]} size={30} className="absolute bottom-0 right-0 ring-2 ring-surface" />
       </> : <TokenLogo src={transaction.logoUrl} symbol={transaction.tokenSymbol ?? tokenLabel} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={40} />}
-      <span className={cn('absolute bottom-0 left-7 grid h-4 w-4 place-items-center rounded-full ring-2 ring-surface', meta.bg, meta.color)}>
-        <Icon className="h-2.5 w-2.5" aria-hidden />
-      </span>
     </div>
     <div className="min-w-0 flex-1">
       <div className="flex items-start justify-between gap-3">
@@ -258,8 +265,12 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
         <span className="shrink-0 pt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>{formatRelativeCompact(transaction.timestamp, locale)}</span>
       </div>
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-xs text-text-muted" title={`${walletName} · ${transaction.walletAddress}`}>{walletName} · {typeLabel}</p>
+        <p className="min-w-0 truncate text-xs text-text-muted" title={`${walletName} · ${transaction.walletAddress}`}>{walletName}</p>
         <div className="flex shrink-0 items-center gap-1.5">
+          <span className={cn('inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] font-medium', meta.bg, meta.color)}>
+            <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
+            {typeLabel}
+          </span>
           {transaction.isSpam && <span className="rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger">{spamLabel}</span>}
           {transaction.status !== 'success' && <span className="text-[10px] font-medium text-danger">{failedLabel}</span>}
           <ChainBadge chainName={transaction.chainName} />

@@ -16,6 +16,10 @@ interface RecentTransaction {
   [key: string]: unknown;
 }
 
+const EVM_TRANSACTION_NETWORKS = [
+  'ethereum', 'bsc', 'polygon', 'avalanche', 'arbitrum', 'optimism', 'base', 'xlayer',
+];
+
 async function mapWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
@@ -53,8 +57,12 @@ export async function GET(req: Request) {
     });
 
     const sources = wallets.flatMap((wallet) => [
-      { wallet, chain: null as string | null },
-      ...(wallet.network === 'EVM' ? [{ wallet, chain: 'robinhood' }] : []),
+      {
+        wallet,
+        chain: null as string | null,
+        networks: wallet.network === 'EVM' ? EVM_TRANSACTION_NETWORKS : ['solana'],
+      },
+      ...(wallet.network === 'EVM' ? [{ wallet, chain: 'robinhood', networks: ['robinhood'] }] : []),
     ]);
     const settled = await mapWithConcurrency(sources, 4, async ({ wallet, chain }) => {
       const url = new URL(`/api/wallets/${wallet.id}/transactions`, req.url);
@@ -66,23 +74,28 @@ export async function GET(req: Request) {
       );
       if (!response.ok) throw new Error(`Transaction source failed: ${response.status}`);
       const page = await response.json() as { transactions: RecentTransaction[] };
-      return page.transactions.map((transaction) => ({
-        ...transaction,
-        walletId: wallet.id,
-        walletLabel: wallet.label,
-        walletAddress: wallet.address,
-        walletNetwork: wallet.network,
-      }));
+      return {
+        transactions: page.transactions.map((transaction) => ({
+          ...transaction,
+          walletId: wallet.id,
+          walletLabel: wallet.label,
+          walletAddress: wallet.address,
+          walletNetwork: wallet.network,
+        })),
+      };
     });
 
     const byTransaction = new Map<string, RecentTransaction>();
     for (const result of settled) {
       if (result.status !== 'fulfilled') continue;
-      for (const transaction of result.value) {
+      for (const transaction of result.value.transactions) {
         const key = `${transaction.walletId}:${transaction.chainName}:${transaction.id ?? transaction.hash}`;
         byTransaction.set(key, transaction);
       }
     }
+
+    const unavailableNetworks = [...new Set(settled.flatMap((result, index) =>
+      result.status === 'rejected' ? (sources[index]?.networks ?? []) : []))];
 
     const sorted = [...byTransaction.values()]
       .filter((transaction) => Boolean(transaction.timestamp))
@@ -100,7 +113,8 @@ export async function GET(req: Request) {
         label: wallet.label,
         address: wallet.address,
       })),
-      partialError: settled.some((result) => result.status === 'rejected'),
+      partialError: unavailableNetworks.length > 0,
+      unavailableNetworks,
     });
   } catch (error) {
     return handleUnknown(error);
