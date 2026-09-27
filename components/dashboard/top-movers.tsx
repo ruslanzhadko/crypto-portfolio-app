@@ -140,9 +140,10 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
         </Card>
       </div>
 
-      {/* Desktop: compact lists that can be expanded on demand */}
-      <div className="hidden gap-4 sm:grid lg:grid-cols-2">
-        <Card>
+      {/* Desktop: both lists share one card */}
+      <div className="hidden sm:block">
+        <Card className="grid min-w-0 overflow-hidden lg:grid-cols-2">
+          <section className="min-w-0 border-b border-border lg:border-b-0 lg:border-r">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
@@ -153,8 +154,8 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
           <CardContent className="p-0">
             <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
           </CardContent>
-        </Card>
-        <Card>
+          </section>
+          <section className="min-w-0">
           <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
             <div className="flex items-center gap-2">
               <TrendingDown className="h-4 w-4 text-red-500" />
@@ -165,6 +166,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
           <CardContent className="p-0">
             <MoversList tokens={visibleLosers} emptyText={t('emptyLosers')} />
           </CardContent>
+          </section>
         </Card>
       </div>
     </>
