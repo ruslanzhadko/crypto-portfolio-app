@@ -134,13 +134,15 @@ export function DashboardSections({
       </div>
 
       <div className="flex min-w-0 flex-col gap-5">
-        <PortfolioChart
-          totalUsd={overview.totalUsd}
-          priceChange24h={overview.priceChange24h}
-          priceChange24hUsd={overview.priceChange24hUsd}
-          hiddenTokensCount={hiddenTokensCount}
-          summary={<PortfolioSummary data={overview} />}
-        />
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+          <PortfolioChart
+            totalUsd={overview.totalUsd}
+            priceChange24h={overview.priceChange24h}
+            priceChange24hUsd={overview.priceChange24hUsd}
+            hiddenTokensCount={hiddenTokensCount}
+          />
+          <PortfolioSummary data={overview} />
+        </div>
 
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-3">
           <div className="min-w-0 xl:col-span-2">

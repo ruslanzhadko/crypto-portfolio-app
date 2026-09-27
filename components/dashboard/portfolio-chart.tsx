@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
@@ -17,19 +16,16 @@ interface SnapshotPoint {
   totalUsd: number;
 }
 
-type SnapshotSource = 'snapshots' | 'reconstructed' | 'mixed' | 'empty';
-
 interface PortfolioChartProps {
   totalUsd: number;
   priceChange24h: number;
   priceChange24hUsd: number;
   hiddenTokensCount?: number;
-  summary: ReactNode;
 }
 
 const CHART_VISIBILITY_KEY = 'dashboard-portfolio-chart-visible-v1';
 
-export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hiddenTokensCount = 0, summary }: PortfolioChartProps) {
+export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hiddenTokensCount = 0 }: PortfolioChartProps) {
   const t = useTranslations('PortfolioChart');
   const [mounted, setMounted] = useState(false);
   const [preferenceLoaded, setPreferenceLoaded] = useState(false);
@@ -45,7 +41,6 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
     { label: t('range30d'), value: 30 as const },
   ];
   const [points, setPoints] = useState<SnapshotPoint[] | null>(null);
-  const [source, setSource] = useState<SnapshotSource>('empty');
   const anomalousEstimate =
     totalUsd > 0 &&
     (points?.some((point) => point.totalUsd > totalUsd * 20) ?? false);
@@ -67,17 +62,14 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
         if (!res.ok) throw new Error();
         const body = (await res.json()) as {
           points: SnapshotPoint[];
-          source: SnapshotSource;
         };
         if (!cancelled) {
           setPoints(body.points ?? []);
-          setSource(body.source ?? 'empty');
         }
       })
       .catch(() => {
         if (!cancelled) {
           setPoints([]);
-          setSource('empty');
         }
       });
     return () => {
@@ -98,7 +90,6 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
     try {
       await fetch('/api/portfolio/snapshots', { method: 'DELETE' });
       setPoints(null);
-      setSource('empty');
       setRevision((value) => value + 1);
     } finally {
       setResetting(false);
@@ -125,14 +116,6 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
                 </span>
               )}
             </div>
-            {preferenceLoaded && showChart && (source === 'reconstructed' || source === 'mixed') && (
-              <span
-                className="mt-2 inline-flex rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning"
-                title={t('estimateTooltip')}
-              >
-                {t('estimateBadge')}
-              </span>
-            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {preferenceLoaded && showChart && (
@@ -167,7 +150,6 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
             </Button>
           </div>
         </div>
-        <div className="border-t border-border pt-4">{summary}</div>
       </CardHeader>
       <div id="portfolio-history">
       {preferenceLoaded && showChart && hiddenTokensCount > 0 && (
