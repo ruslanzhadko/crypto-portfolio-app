@@ -139,11 +139,11 @@ export function RecentTransactions() {
 
   return (
     <Card className="flex overflow-hidden xl:absolute xl:inset-0 xl:min-h-0 xl:flex-col">
-      <CardHeader className="gap-0 space-y-0 border-b border-border pb-4">
+      <CardHeader className="gap-0 space-y-0 border-b border-border px-5 py-5 sm:px-7 sm:py-7">
         <div className="flex items-center justify-between gap-3">
           <div>
             <CardTitle>{t('title')}</CardTitle>
-            <p className="mt-1.5 text-xs text-text-muted">{t('subtitle')}</p>
+            <p className="mt-2 text-xs text-text-muted">{t('subtitle')}</p>
           </div>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-text-muted"
             onClick={() => void load(limitRef.current, 'refresh')} disabled={refreshing || loadingMore || transactions === null}
@@ -153,7 +153,7 @@ export function RecentTransactions() {
         </div>
 
         {transactions !== null && transactions.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <Select value={walletFilter} onValueChange={setWalletFilter}>
               <SelectTrigger className="col-span-2 h-9 bg-surface text-xs" aria-label={t('walletFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -184,7 +184,7 @@ export function RecentTransactions() {
         )}
 
         {transactions !== null && transactions.length > 0 && (
-          <div className="mt-3 flex min-h-8 items-center justify-between gap-2">
+          <div className="mt-4 flex min-h-8 items-center justify-between gap-3">
             <span className="text-xs tabular-nums text-text-muted">{t('results', { count: filtered.length })}</span>
             <div className="flex items-center gap-1">
               {spamCount > 0 && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2"
@@ -199,7 +199,7 @@ export function RecentTransactions() {
             </div>
           </div>
         )}
-        {partialError && <div className="mt-3 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
+        {partialError && <div className="mt-4 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
           <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <p className="text-xs leading-relaxed">
             {unavailableNetworkNames

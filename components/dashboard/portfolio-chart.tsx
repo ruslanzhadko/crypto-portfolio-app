@@ -109,15 +109,31 @@ export function PortfolioChart({
 
   return (
     <Card className="h-full min-w-0">
-      <CardHeader className="space-y-0 xl:min-h-[132px] xl:py-[17px]">
-        <div className="grid min-w-0 grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
+      <CardHeader
+        className={cn(
+          'space-y-0',
+          preferenceLoaded && !showChart && 'xl:h-full xl:justify-center xl:px-5 xl:py-4',
+        )}
+      >
+        <div className="grid min-w-0 grid-cols-1 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
           <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
-          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3 sm:col-span-2 sm:row-start-2">
+          <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-2 sm:col-span-2 sm:row-start-2">
             <p className="min-w-0 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:text-4xl">
               {formatUsd(totalUsd, { compact: true })}
             </p>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
+                {formatPercent(priceChange24h)}
+              </span>
+              <span className="text-text-muted">{t('deltaLabel')}</span>
+              {priceChange24hUsd !== 0 && (
+                <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
+                  {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
+                </span>
+              )}
+            </div>
             {preferenceLoaded && showChart && hiddenTokensCount > 0 && (
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:ml-auto">
                 <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
                   {t('hiddenTokensBrief', { count: hiddenTokensCount })}
                 </p>
@@ -131,17 +147,6 @@ export function PortfolioChart({
                   {resetting ? t('resetting') : t('resetHistory')}
                 </Button>
               </div>
-            )}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm sm:col-start-1 sm:row-start-3">
-            <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
-              {formatPercent(priceChange24h)}
-            </span>
-            <span className="text-text-muted">{t('deltaLabel')}</span>
-            {priceChange24hUsd !== 0 && (
-              <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
-                {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
-              </span>
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-end">
