@@ -25,12 +25,15 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
   const dashboard = useTranslations('Dashboard');
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
+  const topWallets = [...wallets]
+    .sort((left, right) => right.totalUsd - left.totalUsd)
+    .slice(0, 5);
 
   useEffect(() => setMounted(true), []);
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
+    <Card className="h-full">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4">
         <CardTitle>{t('cardTitle')}</CardTitle>
         <div className="flex flex-wrap items-center gap-1">
           <Button asChild variant="outline" size="sm">
@@ -50,11 +53,11 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
           </p>
         ) : (
           <div className="divide-y divide-border">
-            {wallets.slice(0, 10).map((w) => (
+            {topWallets.map((w) => (
               <Link
                 key={w.id}
                 href={`/wallets/${w.id}`}
-                className="flex items-center gap-3 px-6 py-3 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <WalletIcon className="h-4 w-4" />

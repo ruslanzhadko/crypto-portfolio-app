@@ -10,6 +10,7 @@ import { PortfolioChart } from '@/components/dashboard/portfolio-chart';
 import { TokenTable } from '@/components/dashboard/token-table';
 import { WalletList } from '@/components/dashboard/wallet-list';
 import { TopMovers } from '@/components/dashboard/top-movers';
+import { RecentTransactions } from '@/components/dashboard/recent-transactions';
 import { SyncAllButton } from '@/components/dashboard/sync-all-button';
 import { Button } from '@/components/ui/button';
 import {
@@ -153,17 +154,24 @@ export function DashboardSections({
           </div>
         </div>
 
-        {show.topMovers && (
-          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
-            <TopMovers tokens={overview.tokens} />
+        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+          {show.topMovers && (
+            <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full">
+              <TopMovers tokens={overview.tokens} />
+            </div>
+          )}
+          <div className={show.topMovers ? 'min-w-0 xl:h-full' : 'min-w-0 xl:col-span-2'}>
+            <WalletList wallets={wallets} />
           </div>
-        )}
+        </div>
 
-        <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-3">
-          <div className="min-w-0 xl:col-span-2">
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] xl:items-stretch 2xl:grid-cols-[minmax(0,1fr)_29rem]">
+          <div className="min-w-0">
             <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
           </div>
-          <WalletList wallets={wallets} />
+          <div className="min-w-0 xl:relative xl:min-h-0">
+            <RecentTransactions />
+          </div>
         </div>
 
         {(show.allocation || show.networkAllocation) && (

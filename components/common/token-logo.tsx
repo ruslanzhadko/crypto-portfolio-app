@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { getDexScreenerChainId } from '@/lib/utils/token-links';
+import { getChainInfo } from '@/lib/utils/networks';
 
 interface TokenLogoProps {
   src?: string | null;
@@ -25,6 +26,10 @@ export function TokenLogo({
   const initial = symbol.charAt(0).toUpperCase();
   const dexChain = chainName ? getDexScreenerChainId(chainName) : null;
   const cacheKey = dexChain && tokenAddress ? `${dexChain}:${tokenAddress}` : null;
+  const chainInfo = chainName ? getChainInfo(chainName) : null;
+  const nativeLogo = chainInfo && symbol.toUpperCase() === chainInfo.symbol.toUpperCase()
+    ? chainInfo.nativeLogoUrl
+    : null;
 
   useEffect(() => {
     if ((!src || primaryErrored) && cacheKey && dexChain && tokenAddress && !fallbackErrored) {
@@ -46,7 +51,8 @@ export function TokenLogo({
     }
   }, [src, primaryErrored, fallbackErrored, cacheKey, dexChain, tokenAddress]);
 
-  const imageSrc = src && !primaryErrored ? src : !fallbackErrored ? fallbackSrc : null;
+  const primarySrc = src ?? nativeLogo;
+  const imageSrc = primarySrc && !primaryErrored ? primarySrc : !fallbackErrored ? fallbackSrc : null;
 
   if (!imageSrc) {
     return (
@@ -71,7 +77,7 @@ export function TokenLogo({
       height={size}
       className={cn('rounded-full bg-surface-2', className)}
       onError={() => {
-        if (imageSrc === src) setPrimaryErrored(true);
+        if (imageSrc === primarySrc) setPrimaryErrored(true);
         else setFallbackErrored(true);
       }}
       unoptimized

@@ -16,6 +16,18 @@ interface CacheEntry { payload: object; expiry: number }
 const txCache = new Map<string, CacheEntry>();
 const CACHE_TTL = 5 * 60 * 1000;
 
+interface WalletTransactionPagePayload {
+  transactions: object[];
+  nextPageToken?: string;
+  hasMore: boolean;
+}
+
+interface TransactionWalletRef {
+  id: string;
+  address: string;
+  network: 'EVM' | 'SOLANA';
+}
+
 function cacheGet<T>(key: string): T | null {
   const e = txCache.get(key);
   if (!e) return null;
@@ -157,7 +169,11 @@ async function fetchSolanaTransactionsHelius(
           const assetData = (await assetRes.json()) as {
             result?: Array<{
               id: string;
-              content?: { metadata?: { symbol?: string; name?: string } };
+              content?: {
+                metadata?: { symbol?: string; name?: string };
+                links?: { image?: string };
+                files?: Array<{ uri?: string; mime?: string }>;
+              };
               token_info?: { symbol?: string };
             }>;
           };
@@ -166,7 +182,10 @@ async function fetchSolanaTransactionsHelius(
               asset.token_info?.symbol ||
               asset.content?.metadata?.symbol ||
               asset.id.slice(0, 6);
-            mintMeta.set(asset.id, { symbol, logoUrl: null });
+            const logoUrl = asset.content?.links?.image
+              ?? asset.content?.files?.find((file) => file.mime?.startsWith('image/'))?.uri
+              ?? null;
+            mintMeta.set(asset.id, { symbol, logoUrl });
           }
         }
       } catch { /* ignore — fallback to slice */ }
@@ -458,6 +477,100 @@ async function fetchSolanaTransactionsPage(
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+async function getWalletTransactionsPayload(
+  wallet: TransactionWalletRef,
+  pageToken: string | undefined,
+  chain: string | null,
+  pageSize: number,
+): Promise<WalletTransactionPagePayload> {
+  const cacheKey = `spam-v4::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
+  const cached = cacheGet<WalletTransactionPagePayload>(cacheKey);
+  if (cached) return cached;
+
+  if (wallet.network !== 'EVM') {
+    const heliusKey = process.env.HELIUS_API_KEY;
+    const solPayload = heliusKey
+      ? await fetchSolanaTransactionsHelius(wallet.address, wallet.id, heliusKey, pageToken, pageSize)
+      : await fetchSolanaTransactionsPage(wallet.address, wallet.id, pageToken, pageSize);
+    const solResult: WalletTransactionPagePayload = {
+      ...solPayload,
+      transactions: await markSpam(wallet.id, solPayload.transactions as TransactionSpamCandidate[]),
+      hasMore: !!solPayload.nextPageToken,
+    };
+    cacheSet(cacheKey, solResult);
+    return solResult;
+  }
+
+  const { transactions, nextPageToken } = chain === 'robinhood'
+    ? await fetchRobinhoodTransactions(wallet.address, pageToken)
+    : await fetchTransactionsPage(wallet.address, pageToken, pageSize);
+
+  const symbolChainPairs = new Set<string>();
+  for (const t of transactions) {
+    if (!t.tokenSymbol || !t.chainName) continue;
+    for (const sym of parseSwapSymbols(t.tokenSymbol)) {
+      symbolChainPairs.add(`${sym.toLowerCase()}::${t.chainName}`);
+    }
+  }
+
+  const logoMap = new Map<string, string | null>();
+  if (symbolChainPairs.size > 0) {
+    const pairs = Array.from(symbolChainPairs);
+    const balances = await prisma.tokenBalance.findMany({
+      where: {
+        walletId: wallet.id,
+        OR: pairs.map((pair) => {
+          const [sym, pairChain] = pair.split('::');
+          return { tokenSymbol: { equals: sym, mode: 'insensitive' as const }, chainName: pairChain };
+        }),
+      },
+      select: { tokenSymbol: true, chainName: true, logoUrl: true },
+    });
+    for (const balance of balances) {
+      const key = `${balance.tokenSymbol.toLowerCase()}::${balance.chainName}`;
+      if (!logoMap.has(key) && balance.logoUrl) logoMap.set(key, balance.logoUrl);
+    }
+  }
+
+  const result = transactions.map((transaction) => {
+    const symbols = transaction.tokenSymbol ? parseSwapSymbols(transaction.tokenSymbol) : [];
+    const transactionChain = transaction.chainName ?? '';
+    return {
+      id: 'id' in transaction ? String(transaction.id) : `${transaction.chainName}:${transaction.hash}`,
+      hash: transaction.hash,
+      chainName: transaction.chainName,
+      type: transaction.type,
+      tokenSymbol: transaction.tokenSymbol,
+      tokenName: transaction.tokenName,
+      tokenAddresses: transaction.tokenAddresses ?? [],
+      fromAddress: transaction.fromAddress,
+      toAddress: transaction.toAddress,
+      value: transaction.value,
+      sentValue: transaction.sentValue ?? null,
+      usdValue: transaction.usdValue,
+      status: transaction.status,
+      timestamp: transaction.timestamp.toISOString(),
+      blockNumber: transaction.blockNumber ? transaction.blockNumber.toString() : null,
+      logoUrl: symbols[0]
+        ? (logoMap.get(`${symbols[0].toLowerCase()}::${transactionChain}`) ?? null)
+        : null,
+      swapLogoUrl: symbols[1]
+        ? (logoMap.get(`${symbols[1].toLowerCase()}::${transactionChain}`) ?? null)
+        : null,
+      swapOutSymbol: symbols.length > 1 ? (symbols[0] ?? null) : null,
+      swapInSymbol: symbols.length > 1 ? (symbols[1] ?? null) : null,
+    };
+  });
+
+  const payload = {
+    transactions: await markSpam(wallet.id, result),
+    nextPageToken,
+    hasMore: !!nextPageToken,
+  };
+  cacheSet(cacheKey, payload);
+  return payload;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } },
@@ -483,97 +596,7 @@ export async function GET(
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
     if (chain === 'robinhood' && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
 
-    // Кеш-ключ для обох мереж
-    const cacheKey = `spam-v4::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
-    type PagePayload = { transactions: object[]; nextPageToken?: string; hasMore: boolean };
-
-    const cached = cacheGet<PagePayload>(cacheKey);
-    if (cached) return ok(cached);
-
-    // Solana: Helius (повна архівна історія) або fallback на RPC (обмежена)
-    if (wallet.network !== 'EVM') {
-      const heliusKey = process.env.HELIUS_API_KEY;
-      const solPayload = heliusKey
-        ? await fetchSolanaTransactionsHelius(wallet.address, wallet.id, heliusKey, pageToken, pageSize)
-        : await fetchSolanaTransactionsPage(wallet.address, wallet.id, pageToken, pageSize);
-      const solResult: PagePayload = {
-        ...solPayload,
-        transactions: await markSpam(wallet.id, solPayload.transactions as TransactionSpamCandidate[]),
-        hasMore: !!solPayload.nextPageToken,
-      };
-      cacheSet(cacheKey, solResult);
-      return ok(solResult);
-    }
-
-    const { transactions, nextPageToken } = chain === 'robinhood'
-      ? await fetchRobinhoodTransactions(wallet.address, pageToken)
-      : await fetchTransactionsPage(
-      wallet.address,
-      pageToken,
-      pageSize,
-    );
-
-    // Логотипи з TokenBalance
-    const symbolChainPairs = new Set<string>();
-    for (const t of transactions) {
-      if (!t.tokenSymbol || !t.chainName) continue;
-      for (const sym of parseSwapSymbols(t.tokenSymbol)) {
-        symbolChainPairs.add(`${sym.toLowerCase()}::${t.chainName}`);
-      }
-    }
-
-    const logoMap = new Map<string, string | null>();
-    if (symbolChainPairs.size > 0) {
-      const pairs = Array.from(symbolChainPairs);
-      const balances = await prisma.tokenBalance.findMany({
-        where: {
-          walletId: wallet.id,
-          OR: pairs.map((pair) => {
-            const [sym, chain] = pair.split('::');
-            return { tokenSymbol: { equals: sym, mode: 'insensitive' as const }, chainName: chain };
-          }),
-        },
-        select: { tokenSymbol: true, chainName: true, logoUrl: true },
-      });
-      for (const b of balances) {
-        const key = `${b.tokenSymbol.toLowerCase()}::${b.chainName}`;
-        if (!logoMap.has(key) && b.logoUrl) logoMap.set(key, b.logoUrl);
-      }
-    }
-
-    const result = transactions.map((t) => {
-      const symbols = t.tokenSymbol ? parseSwapSymbols(t.tokenSymbol) : [];
-      const chain = t.chainName ?? '';
-      return {
-        id: 'id' in t ? String(t.id) : `${t.chainName}:${t.hash}`,
-        hash: t.hash,
-        chainName: t.chainName,
-        type: t.type,
-        tokenSymbol: t.tokenSymbol,
-        tokenName: t.tokenName,
-        tokenAddresses: t.tokenAddresses ?? [],
-        fromAddress: t.fromAddress,
-        toAddress: t.toAddress,
-        value: t.value,
-        sentValue: t.sentValue ?? null,
-        usdValue: t.usdValue,
-        status: t.status,
-        timestamp: t.timestamp.toISOString(),
-        blockNumber: t.blockNumber ? t.blockNumber.toString() : null,
-        logoUrl: symbols[0]
-          ? (logoMap.get(`${symbols[0].toLowerCase()}::${chain}`) ?? null)
-          : null,
-        swapLogoUrl: symbols[1]
-          ? (logoMap.get(`${symbols[1].toLowerCase()}::${chain}`) ?? null)
-          : null,
-        swapOutSymbol: symbols.length > 1 ? (symbols[0] ?? null) : null,
-        swapInSymbol: symbols.length > 1 ? (symbols[1] ?? null) : null,
-      };
-    });
-
-    const payload = { transactions: await markSpam(wallet.id, result), nextPageToken, hasMore: !!nextPageToken };
-    cacheSet(cacheKey, payload);
-    return ok(payload);
+    return ok(await getWalletTransactionsPayload(wallet, pageToken, chain, pageSize));
   } catch (err) {
     return handleUnknown(err);
   }
