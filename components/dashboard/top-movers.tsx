@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { TokenLogo } from '@/components/common/token-logo';
 import { PriceChange } from '@/components/common/price-change';
 import { Link } from '@/i18n/navigation';
@@ -106,38 +105,32 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
     <>
       <div className="w-full lg:w-1/2">
         <Card className="min-w-0 overflow-hidden">
-          <Tabs defaultValue="gainers">
-            <CardHeader className="p-3 sm:p-4">
-              <TabsList className="w-full">
-                <TabsTrigger value="gainers" className="flex-1 gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-                  <span>{gainersTitle}</span>
-                </TabsTrigger>
-                <TabsTrigger value="losers" className="flex-1 gap-1.5">
-                  <TrendingDown className="h-3.5 w-3.5 text-red-500" />
-                  <span>{t('losersTitle')}</span>
-                </TabsTrigger>
-              </TabsList>
-            </CardHeader>
-            <CardContent className="p-0">
-              <TabsContent value="gainers" className="mt-0">
+          <div className="grid min-w-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+            <section className="min-w-0">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-500" />
+                  <span className="font-semibold">{gainersTitle}</span>
+                </div>
+                {gainers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedGainers((value) => !value)}>{expandedGainers ? t('showLess') : t('showAll')}</Button>}
+              </CardHeader>
+              <CardContent className="p-0">
                 <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
-                {gainers.length > DEFAULT_VISIBLE_COUNT && (
-                  <Button variant="ghost" size="sm" className="mb-2 ml-2" onClick={() => setExpandedGainers((value) => !value)}>
-                    {expandedGainers ? t('showLess') : t('showAll')}
-                  </Button>
-                )}
-              </TabsContent>
-              <TabsContent value="losers" className="mt-0">
+              </CardContent>
+            </section>
+            <section className="min-w-0">
+              <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+                <div className="flex items-center gap-2">
+                  <TrendingDown className="h-4 w-4 text-red-500" />
+                  <span className="font-semibold">{t('losersTitle')}</span>
+                </div>
+                {losers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedLosers((value) => !value)}>{expandedLosers ? t('showLess') : t('showAll')}</Button>}
+              </CardHeader>
+              <CardContent className="p-0">
                 <MoversList tokens={visibleLosers} emptyText={t('emptyLosers')} />
-                {losers.length > DEFAULT_VISIBLE_COUNT && (
-                  <Button variant="ghost" size="sm" className="mb-2 ml-2" onClick={() => setExpandedLosers((value) => !value)}>
-                    {expandedLosers ? t('showLess') : t('showAll')}
-                  </Button>
-                )}
-              </TabsContent>
-            </CardContent>
-          </Tabs>
+              </CardContent>
+            </section>
+          </div>
         </Card>
       </div>
     </>
