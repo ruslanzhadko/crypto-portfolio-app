@@ -25,6 +25,9 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
   const dashboard = useTranslations('Dashboard');
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
+  const topWallets = [...wallets]
+    .sort((left, right) => right.totalUsd - left.totalUsd)
+    .slice(0, 5);
 
   useEffect(() => setMounted(true), []);
 
@@ -50,7 +53,7 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
           </p>
         ) : (
           <div className="divide-y divide-border">
-            {wallets.slice(0, 10).map((w) => (
+            {topWallets.map((w) => (
               <Link
                 key={w.id}
                 href={`/wallets/${w.id}`}
