@@ -88,6 +88,7 @@
     "networkAllocation": "Network Allocation"
   },
   "PortfolioSummary": {
+    "largestPositions": "Largest positions",
     "totalValue": "Total value",
     "wallets": "Wallets",
     "tokens": "Tokens",

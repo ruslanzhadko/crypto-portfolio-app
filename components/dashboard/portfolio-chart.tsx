@@ -151,17 +151,17 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
       </CardHeader>
       <div id="portfolio-history">
       {preferenceLoaded && showChart && <CardContent className="pt-2">
-          {points === null && <Skeleton className="h-[180px] w-full rounded-lg sm:h-[220px]" />}
+          {points === null && <Skeleton className="h-[160px] w-full rounded-lg sm:h-[190px]" />}
           {points && points.length === 0 && (
             <EmptyState
               icon={TrendingUp}
               title={t('emptyTitle')}
               description={t('emptyDescription')}
-              className="min-h-[180px] p-4 sm:min-h-[220px]"
+              className="min-h-[160px] p-4 sm:min-h-[190px]"
             />
           )}
           {anomalousEstimate && !showAnomalousEstimate && (
-            <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[220px]">
+            <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[190px]">
               <p className="text-sm font-medium">{t('unreliableTitle')}</p>
               <p className="max-w-md text-xs text-text-muted">{t('unreliableDescription')}</p>
               <Button variant="outline" size="sm" onClick={() => setShowAnomalousEstimate(true)}>
@@ -170,7 +170,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
             </div>
           )}
           {points && points.length > 0 && mounted && (!anomalousEstimate || showAnomalousEstimate) && (
-            <div className="h-[180px] sm:h-[220px]">
+            <div className="h-[160px] sm:h-[190px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>

@@ -88,6 +88,7 @@
     "networkAllocation": "Распределение по сетям"
   },
   "PortfolioSummary": {
+    "largestPositions": "Крупнейшие позиции",
     "totalValue": "Общая стоимость",
     "wallets": "Кошельки",
     "tokens": "Токены",

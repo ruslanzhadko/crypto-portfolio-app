@@ -88,6 +88,7 @@
     "networkAllocation": "Розподіл по мережах"
   },
   "PortfolioSummary": {
+    "largestPositions": "Найбільші позиції",
     "totalValue": "Загальна вартість",
     "wallets": "Гаманці",
     "tokens": "Токени",
