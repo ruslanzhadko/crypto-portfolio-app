@@ -148,7 +148,7 @@ export function DashboardSections({
             hiddenTokensCount={hiddenTokensCount}
             onVisibilityChange={setChartVisible}
           />
-          <div className="min-w-0 xl:h-full xl:w-64 xl:min-w-64 xl:shrink-0">
+          <div className="min-w-0 xl:w-64 xl:min-w-64 xl:shrink-0">
             <PortfolioSummary data={overview} showLargestPositions={chartVisible === true} />
           </div>
         </div>

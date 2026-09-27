@@ -14,6 +14,7 @@ import { getTokenPageUrl } from '@/lib/utils/token-links';
 import { Button } from '@/components/ui/button';
 
 const MIN_USD = 1;
+const DEFAULT_VISIBLE_COUNT = 5;
 
 function MoverRow({ tk }: { tk: AggregatedToken }) {
   const tokenPage = getTokenPageUrl(tk);
@@ -98,8 +99,8 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
           .sort((a, b) => b.priceChange24h - a.priceChange24h);
 
   const gainersTitle = t('gainersTitle');
-  const visibleGainers = expandedGainers ? gainers : gainers.slice(0, 3);
-  const visibleLosers = expandedLosers ? losers : losers.slice(0, 3);
+  const visibleGainers = expandedGainers ? gainers : gainers.slice(0, DEFAULT_VISIBLE_COUNT);
+  const visibleLosers = expandedLosers ? losers : losers.slice(0, DEFAULT_VISIBLE_COUNT);
 
   return (
     <>
@@ -120,7 +121,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
               </TabsList>
               <TabsContent value="gainers" className="mt-0">
                 <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
-                {gainers.length > 3 && (
+                {gainers.length > DEFAULT_VISIBLE_COUNT && (
                   <Button variant="ghost" size="sm" className="mb-2 ml-2" onClick={() => setExpandedGainers((value) => !value)}>
                     {expandedGainers ? t('showLess') : t('showAll')}
                   </Button>
@@ -128,7 +129,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
               </TabsContent>
               <TabsContent value="losers" className="mt-0">
                 <MoversList tokens={visibleLosers} emptyText={t('emptyLosers')} />
-                {losers.length > 3 && (
+                {losers.length > DEFAULT_VISIBLE_COUNT && (
                   <Button variant="ghost" size="sm" className="mb-2 ml-2" onClick={() => setExpandedLosers((value) => !value)}>
                     {expandedLosers ? t('showLess') : t('showAll')}
                   </Button>
@@ -147,7 +148,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
               <TrendingUp className="h-4 w-4 text-green-500" />
               <span className="font-semibold">{gainersTitle}</span>
             </div>
-            {gainers.length > 3 && <Button variant="ghost" size="sm" onClick={() => setExpandedGainers((value) => !value)}>{expandedGainers ? t('showLess') : t('showAll')}</Button>}
+            {gainers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedGainers((value) => !value)}>{expandedGainers ? t('showLess') : t('showAll')}</Button>}
           </CardHeader>
           <CardContent className="p-0">
             <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
@@ -159,7 +160,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
               <TrendingDown className="h-4 w-4 text-red-500" />
               <span className="font-semibold">{t('losersTitle')}</span>
             </div>
-            {losers.length > 3 && <Button variant="ghost" size="sm" onClick={() => setExpandedLosers((value) => !value)}>{expandedLosers ? t('showLess') : t('showAll')}</Button>}
+            {losers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedLosers((value) => !value)}>{expandedLosers ? t('showLess') : t('showAll')}</Button>}
           </CardHeader>
           <CardContent className="p-0">
             <MoversList tokens={visibleLosers} emptyText={t('emptyLosers')} />
