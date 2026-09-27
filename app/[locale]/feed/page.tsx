@@ -5,6 +5,9 @@ import { auth } from "@/lib/auth";
 import { Link } from "@/i18n/navigation";
 import { FeedStream } from "@/components/feed/feed-stream";
 import { LocaleSwitcher } from "@/components/common/locale-switcher";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { Navbar } from "@/components/layout/navbar";
+import { Sidebar } from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +24,48 @@ export default async function FeedPage({
     getTranslations("Landing"),
     auth(),
   ]);
+
+  const feedContent = (
+    <div className="mx-auto max-w-5xl">
+      <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+            {t("pageTitle")}
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted md:text-base">
+            {t("pageDescription")}
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-text-muted">
+          <RefreshCw className="h-3.5 w-3.5" />
+          {t("autoRefresh")}
+        </div>
+      </div>
+      <div className="pt-5">
+        <FeedStream />
+      </div>
+    </div>
+  );
+
+  if (session?.user?.id) {
+    return (
+      <div className="flex min-h-screen">
+        <Sidebar userRole={session.user.role} />
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <Navbar
+            email={session.user.email ?? ""}
+            name={session.user.name}
+            role={session.user.role}
+          />
+          <main className="relative min-w-0 flex-1 overflow-x-clip px-4 pb-20 pt-6 md:px-8 md:pb-8">
+            <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[400px] bg-primary/5 blur-[120px]" />
+            {feedContent}
+          </main>
+        </div>
+        <MobileNav userRole={session.user.role} />
+      </div>
+    );
+  }
 
   return (
     <main className="relative min-h-screen overflow-x-clip">
@@ -77,27 +122,7 @@ export default async function FeedPage({
         </div>
       </header>
 
-      <div className="container relative py-8 md:py-12">
-        <div className="mx-auto max-w-5xl">
-          <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
-                {t("pageTitle")}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted md:text-base">
-                {t("pageDescription")}
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-2 text-xs font-medium text-text-muted">
-              <RefreshCw className="h-3.5 w-3.5" />
-              {t("autoRefresh")}
-            </div>
-          </div>
-          <div className="pt-5">
-            <FeedStream />
-          </div>
-        </div>
-      </div>
+      <div className="container relative py-8 md:py-12">{feedContent}</div>
     </main>
   );
 }
