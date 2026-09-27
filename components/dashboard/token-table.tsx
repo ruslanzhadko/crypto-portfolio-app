@@ -174,9 +174,9 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
           <table className="w-full table-fixed text-sm 2xl:table-auto">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="w-3/5 px-3 py-3 text-left sm:px-4 2xl:w-auto">{t('colToken')}</th>
+                <th className="w-3/5 px-3 py-3 text-left sm:px-4 lg:w-1/2 2xl:w-auto">{t('colToken')}</th>
                 <th className="hidden px-4 py-3 text-left 2xl:table-cell">{t('colNetworks')}</th>
-                <th className="hidden px-4 py-3 text-right xl:table-cell">
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell">
                   <SortButton active={sortKey === 'balance'} desc={desc} onClick={() => toggleSort('balance')}>
                     {t('colBalance')}
                   </SortButton>
@@ -187,7 +187,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                     {t('colUsd')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right 2xl:table-cell">
+                <th className="hidden px-4 py-3 text-right lg:table-cell">
                   <SortButton active={sortKey === 'change'} desc={desc} onClick={() => toggleSort('change')}>
                     {t('col24h')}
                   </SortButton>
@@ -261,16 +261,16 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                           ))}
                         </div>
                       </td>
-                      <td className="hidden px-4 py-3 text-right font-mono text-xs xl:table-cell">
+                      <td className="hidden px-4 py-3 text-right font-mono text-xs text-text-muted 2xl:table-cell">
                         {formatTokenBalance(tok.totalBalance)}
                       </td>
                       <td className="hidden px-4 py-3 text-right 2xl:table-cell">
                         {tok.currentPrice ? formatUsd(tok.currentPrice) : '—'}
                       </td>
-                      <td className="px-3 py-3 text-right font-medium sm:px-4">
+                      <td className="px-3 py-3 text-right font-semibold tabular-nums sm:px-4">
                         {formatUsd(tok.totalUsd)}
                       </td>
-                      <td className="hidden px-4 py-3 text-right 2xl:table-cell">
+                      <td className="hidden px-4 py-3 text-right lg:table-cell">
                         {tok.priceChange24h !== 0 ? (
                           <PriceChange value={tok.priceChange24h} size="sm" />
                         ) : (
@@ -290,8 +290,8 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                             colSpan={span}
                             className={cn(
                               'min-w-0 px-2 py-1.5 md:px-4 md:py-3',
-                              index === 0 && 'xl:hidden',
-                              index === 1 && 'hidden xl:table-cell 2xl:hidden',
+                              index === 0 && 'lg:hidden',
+                              index === 1 && 'hidden lg:table-cell 2xl:hidden',
                               index === 2 && 'hidden 2xl:table-cell',
                             )}
                           >

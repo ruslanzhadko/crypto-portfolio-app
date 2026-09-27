@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { SlidersHorizontal } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
 import { PortfolioSummary } from '@/components/dashboard/portfolio-summary';
 import { AllocationChart } from '@/components/dashboard/allocation-chart';
 import { NetworkAllocationChart } from '@/components/dashboard/network-allocation';
@@ -94,9 +93,8 @@ export function DashboardSections({
 
   return (
     <div className="min-w-0 space-y-6">
-      {/* Header action bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           {lastPriceUpdateAt && (
             <span className="text-xs text-text-muted" suppressHydrationWarning>
               {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt), locale)}
@@ -108,16 +106,14 @@ export function DashboardSections({
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2">
           <SyncAllButton />
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/compare">{t('compareWallets')}</Link>
-          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5">
                 <SlidersHorizontal className="h-4 w-4" />
                 <span className="hidden sm:inline">{t('sectionsButton')}</span>
+                <span className="sr-only sm:hidden">{t('sectionsButton')}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-60">
@@ -137,42 +133,34 @@ export function DashboardSections({
         </div>
       </div>
 
-      {/*
-        Mobile order:  Stats → PfChart → Tokens → TopMovers → AllocCharts
-        Desktop order: Stats → TopMovers → AllocCharts → PfChart → Tokens
-      */}
-      <div className="flex min-w-0 flex-col gap-6">
-        <PortfolioSummary data={overview} />
-
-        <div className="sm:order-4">
-          <PortfolioChart
-            totalUsd={overview.totalUsd}
-            priceChange24h={overview.priceChange24h}
-            hiddenTokensCount={hiddenTokensCount}
-          />
+      <div className="flex min-w-0 flex-col gap-5">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-3">
+          <div className="min-w-0 xl:col-span-2">
+            <PortfolioChart
+              totalUsd={overview.totalUsd}
+              priceChange24h={overview.priceChange24h}
+              priceChange24hUsd={overview.priceChange24hUsd}
+              hiddenTokensCount={hiddenTokensCount}
+            />
+          </div>
+          <PortfolioSummary data={overview} />
         </div>
 
-        <div className="min-w-0 sm:order-5">
-          <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="min-w-0 lg:col-span-2">
-              <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
-            </div>
-            <WalletList wallets={wallets} />
+        <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-3">
+          <div className="min-w-0 xl:col-span-2">
+            <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
           </div>
+          <WalletList wallets={wallets} />
         </div>
 
         {show.topMovers && (
-          <div className="sm:order-1">
-            <TopMovers tokens={overview.tokens} />
-          </div>
+          <TopMovers tokens={overview.tokens} />
         )}
 
         {(show.allocation || show.networkAllocation) && (
-          <div className="sm:order-2">
-            <div className="grid gap-4 lg:grid-cols-2">
-              {show.allocation && <AllocationChart tokens={overview.tokens} />}
-              {show.networkAllocation && <NetworkAllocationChart chains={overview.chains} />}
-            </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {show.allocation && <AllocationChart tokens={overview.tokens} />}
+            {show.networkAllocation && <NetworkAllocationChart chains={overview.chains} />}
           </div>
         )}
       </div>

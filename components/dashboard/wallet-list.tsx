@@ -22,6 +22,7 @@ interface WalletDTO {
 
 export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
   const t = useTranslations('WalletList');
+  const dashboard = useTranslations('Dashboard');
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
 
@@ -29,13 +30,18 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
         <CardTitle>{t('cardTitle')}</CardTitle>
-        <Button asChild variant="ghost" size="sm">
-          <Link href="/wallets">
-            {t('viewAll')} <ArrowRight className="h-3 w-3" />
-          </Link>
-        </Button>
+        <div className="flex flex-wrap items-center gap-1">
+          <Button asChild variant="outline" size="sm">
+            <Link href="/dashboard/compare">{dashboard('compareWallets')}</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/wallets">
+              {t('viewAll')} <ArrowRight className="h-3 w-3" />
+            </Link>
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {wallets.length === 0 ? (

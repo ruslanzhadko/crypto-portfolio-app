@@ -8,9 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
 import { formatDate, formatUsd, formatPercent } from '@/lib/utils/format';
-import { TrendingUp, ChevronDown } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
-
 
 interface SnapshotPoint {
   timestamp: number;
@@ -22,15 +21,17 @@ type SnapshotSource = 'snapshots' | 'reconstructed' | 'mixed' | 'empty';
 interface PortfolioChartProps {
   totalUsd: number;
   priceChange24h: number;
+  priceChange24hUsd: number;
   hiddenTokensCount?: number;
 }
 
-export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0 }: PortfolioChartProps) {
+export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hiddenTokensCount = 0 }: PortfolioChartProps) {
   const t = useTranslations('PortfolioChart');
   const [mounted, setMounted] = useState(false);
-  const [open, setOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [days, setDays] = useState<number>(30);
+  const [revision, setRevision] = useState(0);
+  const [showAnomalousEstimate, setShowAnomalousEstimate] = useState(false);
 
   const ranges = [
     { label: t('range1d'), value: 1 as const },
@@ -39,11 +40,13 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
   ];
   const [points, setPoints] = useState<SnapshotPoint[] | null>(null);
   const [source, setSource] = useState<SnapshotSource>('empty');
+  const anomalousEstimate =
+    totalUsd > 0 &&
+    (points?.some((point) => point.totalUsd > totalUsd * 20) ?? false);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    if (!open) return;
     let cancelled = false;
     setPoints(null);
     fetch(`/api/portfolio/snapshot?days=${days}`)
@@ -67,7 +70,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
     return () => {
       cancelled = true;
     };
-  }, [open, days]);
+  }, [days, revision]);
 
   async function resetHistory() {
     setResetting(true);
@@ -75,87 +78,95 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
       await fetch('/api/portfolio/snapshots', { method: 'DELETE' });
       setPoints(null);
       setSource('empty');
-      // Перезапускаємо fetch
-      setDays((d) => d);
+      setRevision((value) => value + 1);
     } finally {
       setResetting(false);
     }
   }
 
   return (
-    <Card>
-      <CardHeader
-        className={cn(
-          'flex cursor-pointer gap-2 space-y-0 select-none sm:flex-row sm:items-center sm:justify-between',
-          open ? 'flex-col items-stretch pb-2' : 'flex-row items-start justify-between pb-6',
-        )}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <CardTitle className="w-full sm:w-auto">{t('cardTitle')}</CardTitle>
-          <span className="font-mono text-lg font-bold tabular-nums text-text sm:text-xl">
+    <Card className="h-full min-w-0">
+      <CardHeader className="gap-4 space-y-0 pb-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
+          <p className="mt-3 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:text-4xl">
             {formatUsd(totalUsd, { compact: true })}
-          </span>
-          <span className={cn('text-xs font-medium', (priceChange24h ?? 0) >= 0 ? 'text-green-500' : 'text-red-500')}>
-            {formatPercent(priceChange24h)}
-          </span>
-          {open && (source === 'reconstructed' || source === 'mixed') && (
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
+              {formatPercent(priceChange24h)}
+            </span>
+            <span className="text-text-muted">{t('deltaLabel')}</span>
+            {priceChange24hUsd !== 0 && (
+              <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
+                {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
+              </span>
+            )}
+          </div>
+          {(source === 'reconstructed' || source === 'mixed') && (
             <span
-              className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning"
+              className="mt-2 inline-flex rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning"
               title={t('estimateTooltip')}
             >
               {t('estimateBadge')}
             </span>
           )}
         </div>
-        <div className="flex shrink-0 items-center justify-end gap-1">
-          {open &&
-            ranges.map((r) => (
-              <Button
-                key={r.value}
-                variant={days === r.value ? 'default' : 'ghost'}
-                size="sm"
-                className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setDays(r.value);
-                }}
-              >
-                {r.label}
-              </Button>
-            ))}
-          <ChevronDown
-            className={cn('h-4 w-4 text-text-muted transition-transform duration-200', open && 'rotate-180')}
-          />
+        <div className="flex shrink-0 items-center gap-1" role="group" aria-label={t('rangeLabel')}>
+          {ranges.map((r) => (
+            <Button
+              key={r.value}
+              variant={days === r.value ? 'default' : 'ghost'}
+              size="sm"
+              className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
+              aria-pressed={days === r.value}
+              onClick={() => {
+                setShowAnomalousEstimate(false);
+                setDays(r.value);
+              }}
+            >
+              {r.label}
+            </Button>
+          ))}
         </div>
       </CardHeader>
-      {open && hiddenTokensCount > 0 && (
-        <div className="flex items-center justify-between border-b border-border px-6 py-2">
-          <p className="text-xs text-text-muted">
-            {t('hiddenTokensNote', { count: hiddenTokensCount })}
+      {hiddenTokensCount > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-6">
+          <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
+            {t('hiddenTokensBrief', { count: hiddenTokensCount })}
           </p>
           <Button
             variant="ghost"
             size="sm"
             className="h-7 shrink-0 text-xs text-destructive hover:text-destructive"
             disabled={resetting}
-            onClick={(e) => { e.stopPropagation(); void resetHistory(); }}
+            onClick={() => void resetHistory()}
           >
             {resetting ? t('resetting') : t('resetHistory')}
           </Button>
         </div>
       )}
-      {open && (
-        <CardContent className="h-[300px]">
-          {points === null && <Skeleton className="h-full w-full rounded-lg" />}
+      <CardContent className="pt-2">
+          {points === null && <Skeleton className="h-[180px] w-full rounded-lg sm:h-[220px]" />}
           {points && points.length === 0 && (
             <EmptyState
               icon={TrendingUp}
               title={t('emptyTitle')}
               description={t('emptyDescription')}
+              className="min-h-[180px] p-4 sm:min-h-[220px]"
             />
           )}
-          {points && points.length > 0 && mounted && (
+          {anomalousEstimate && !showAnomalousEstimate && (
+            <div className="flex min-h-[180px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[220px]">
+              <p className="text-sm font-medium">{t('unreliableTitle')}</p>
+              <p className="max-w-md text-xs text-text-muted">{t('unreliableDescription')}</p>
+              <Button variant="outline" size="sm" onClick={() => setShowAnomalousEstimate(true)}>
+                {t('showEstimate')}
+              </Button>
+            </div>
+          )}
+          {points && points.length > 0 && mounted && (!anomalousEstimate || showAnomalousEstimate) && (
+            <div className="h-[180px] sm:h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
@@ -189,9 +200,9 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
                 />
               </AreaChart>
             </ResponsiveContainer>
+            </div>
           )}
-        </CardContent>
-      )}
+      </CardContent>
     </Card>
   );
 }

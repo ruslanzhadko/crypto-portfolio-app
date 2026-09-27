@@ -1,8 +1,8 @@
 {
   "Nav": {
-    "dashboard": "Dashboard",
+    "dashboard": "Огляд",
     "wallets": "Гаманці",
-    "market": "Market",
+    "market": "Ринок",
     "feed": "Криптострічка",
     "alerts": "Сповіщення",
     "settings": "Налаштування",
@@ -72,13 +72,13 @@
     }
   },
   "Dashboard": {
-    "pageTitle": "Dashboard",
+    "pageTitle": "Огляд портфеля",
     "emptyTitle": "Ще немає гаманців",
     "emptyDescription": "Додайте першу публічну адресу, щоб побачити аналітику портфеля.",
     "addWalletButton": "Додати гаманець",
     "compareWallets": "Порівняти гаманці",
-    "sectionsButton": "Розділи",
-    "showSections": "Показувати розділи",
+    "sectionsButton": "Налаштувати огляд",
+    "showSections": "Показувати в огляді",
     "pricesPrefix": "Ціни:",
     "syncPrefix": "Sync:"
   },
@@ -99,9 +99,15 @@
   },
   "PortfolioChart": {
     "cardTitle": "Вартість портфеля",
+    "deltaLabel": "за 24 год",
+    "rangeLabel": "Період графіка",
+    "unreliableTitle": "На графіку великий стрибок",
+    "unreliableDescription": "Одне з минулих значень більш ніж у 20 разів перевищує поточний баланс. Графік можна відкрити, щоб переглянути всю історію.",
+    "showEstimate": "Показати графік",
     "estimateBadge": "≈ оцінка",
     "estimateTooltip": "Графік реконструйовано з історії цін CoinGecko на основі поточних балансів. Не враховує реальних змін балансу у часі.",
     "hiddenTokensNote": "{count} прихованих токен(ів) виключено зі статистики. Якщо ви нещодавно приховали токен з великою вартістю — скиньте історію.",
+    "hiddenTokensBrief": "Приховані токени не враховано: {count}",
     "resetHistory": "Скинути історію",
     "resetting": "Скидання…",
     "emptyTitle": "Історія недоступна",
@@ -126,6 +132,8 @@
     "losersTitle": "Лідери падіння",
     "gainersTab": "Зростання",
     "losersTab": "Падіння",
+    "showAll": "Показати всі",
+    "showLess": "Згорнути",
     "emptyGainers": "Немає даних про цінову динаміку.",
     "emptyLosers": "Немає активів з негативною динамікою за 24г."
   },
