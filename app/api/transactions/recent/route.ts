@@ -44,8 +44,8 @@ export async function GET(req: Request) {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
-    const requestedLimit = Number.parseInt(new URL(req.url).searchParams.get('limit') ?? '10', 10);
-    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 5), 20) : 10;
+    const requestedLimit = Number.parseInt(new URL(req.url).searchParams.get('limit') ?? '20', 10);
+    const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 5), 40) : 20;
     const wallets = await prisma.wallet.findMany({
       where: { userId: guard.user.id, isActive: true },
       select: { id: true, address: true, network: true, label: true },
@@ -58,7 +58,7 @@ export async function GET(req: Request) {
     ]);
     const settled = await mapWithConcurrency(sources, 4, async ({ wallet, chain }) => {
       const url = new URL(`/api/wallets/${wallet.id}/transactions`, req.url);
-      url.searchParams.set('pageSize', String(Math.min(limit, 12)));
+      url.searchParams.set('pageSize', String(Math.min(limit, 20)));
       if (chain) url.searchParams.set('chain', chain);
       const response = await getWalletTransactions(
         new NextRequest(url, { headers: req.headers }),
@@ -79,19 +79,27 @@ export async function GET(req: Request) {
     for (const result of settled) {
       if (result.status !== 'fulfilled') continue;
       for (const transaction of result.value) {
-        if (transaction.isSpam) continue;
         const key = `${transaction.walletId}:${transaction.chainName}:${transaction.id ?? transaction.hash}`;
         byTransaction.set(key, transaction);
       }
     }
 
-    const transactions = [...byTransaction.values()]
+    const sorted = [...byTransaction.values()]
       .filter((transaction) => Boolean(transaction.timestamp))
-      .sort((a, b) => Date.parse(String(b.timestamp)) - Date.parse(String(a.timestamp)))
-      .slice(0, limit);
+      .sort((a, b) => Date.parse(String(b.timestamp)) - Date.parse(String(a.timestamp)));
+    const clean = sorted.filter((transaction) => !transaction.isSpam).slice(0, limit);
+    const spam = sorted.filter((transaction) => transaction.isSpam).slice(0, 10);
+    const transactions = [...clean, ...spam]
+      .sort((a, b) => Date.parse(String(b.timestamp)) - Date.parse(String(a.timestamp)));
 
     return ok({
       transactions,
+      spamCount: spam.length,
+      wallets: wallets.map((wallet) => ({
+        id: wallet.id,
+        label: wallet.label,
+        address: wallet.address,
+      })),
       partialError: settled.some((result) => result.status === 'rejected'),
     });
   } catch (error) {

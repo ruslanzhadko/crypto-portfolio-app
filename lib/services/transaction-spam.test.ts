@@ -28,7 +28,14 @@ describe('transaction spam classification', () => {
 
   it('recognizes promotional links without labeling unknown tokens as spam', () => {
     expect(transactionIsSpam({ chainName: 'bsc', tokenSymbol: 'claim.example.com' }, [])).toBe(true);
+    expect(transactionIsSpam({ chainName: 'bsc', tokenName: 'USDT Gift Voucher' }, [])).toBe(true);
     expect(transactionIsSpam({ chainName: 'robinhood', tokenSymbol: 'ODYSSEUS' }, [])).toBe(false);
+  });
+
+  it('hides unsolicited native dust but keeps meaningful and outgoing amounts', () => {
+    expect(transactionIsSpam({ chainName: 'solana', type: 'receive', tokenSymbol: 'SOL', value: 0.000001 }, [])).toBe(true);
+    expect(transactionIsSpam({ chainName: 'solana', type: 'receive', tokenSymbol: 'SOL', value: 0.01 }, [])).toBe(false);
+    expect(transactionIsSpam({ chainName: 'solana', type: 'send', tokenSymbol: 'SOL', value: 0.000001 }, [])).toBe(false);
   });
 
   it('quarantines incoming unknown tokens of any amount, but keeps interacted contracts', () => {

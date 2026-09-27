@@ -169,7 +169,11 @@ async function fetchSolanaTransactionsHelius(
           const assetData = (await assetRes.json()) as {
             result?: Array<{
               id: string;
-              content?: { metadata?: { symbol?: string; name?: string } };
+              content?: {
+                metadata?: { symbol?: string; name?: string };
+                links?: { image?: string };
+                files?: Array<{ uri?: string; mime?: string }>;
+              };
               token_info?: { symbol?: string };
             }>;
           };
@@ -178,7 +182,10 @@ async function fetchSolanaTransactionsHelius(
               asset.token_info?.symbol ||
               asset.content?.metadata?.symbol ||
               asset.id.slice(0, 6);
-            mintMeta.set(asset.id, { symbol, logoUrl: null });
+            const logoUrl = asset.content?.links?.image
+              ?? asset.content?.files?.find((file) => file.mime?.startsWith('image/'))?.uri
+              ?? null;
+            mintMeta.set(asset.id, { symbol, logoUrl });
           }
         }
       } catch { /* ignore — fallback to slice */ }
