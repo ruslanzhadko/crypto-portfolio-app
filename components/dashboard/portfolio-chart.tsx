@@ -126,53 +126,71 @@ export function PortfolioChart({
               </span>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-end">
-            {preferenceLoaded && showChart && (
-              <div className="flex items-center gap-1" role="group" aria-label={t('rangeLabel')}>
-                {ranges.map((r) => (
-                  <Button
-                    key={r.value}
-                    variant={days === r.value ? 'default' : 'ghost'}
-                    size="sm"
-                    className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
-                    aria-pressed={days === r.value}
-                    onClick={() => {
-                      setShowAnomalousEstimate(false);
-                      setDays(r.value);
-                    }}
-                  >
-                    {r.label}
-                  </Button>
-                ))}
+          <div className="flex flex-col items-start gap-2 sm:col-start-2 sm:row-start-1 sm:items-end">
+            <div className="flex flex-wrap items-center gap-2">
+              {preferenceLoaded && showChart && (
+                <div className="flex items-center gap-1" role="group" aria-label={t('rangeLabel')}>
+                  {ranges.map((r) => (
+                    <Button
+                      key={r.value}
+                      variant={days === r.value ? 'default' : 'ghost'}
+                      size="sm"
+                      className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
+                      aria-pressed={days === r.value}
+                      onClick={() => {
+                        setShowAnomalousEstimate(false);
+                        setDays(r.value);
+                      }}
+                    >
+                      {r.label}
+                    </Button>
+                  ))}
+                </div>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                aria-expanded={preferenceLoaded && showChart}
+                aria-controls="portfolio-history"
+                onClick={toggleChart}
+              >
+                {preferenceLoaded && showChart ? t('hideChart') : t('showChart')}
+                <ChevronDown className={cn('h-4 w-4 transition-transform', preferenceLoaded && showChart && 'rotate-180')} aria-hidden />
+              </Button>
+            </div>
+            {preferenceLoaded && showChart && hiddenTokensCount > 0 && (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:justify-end">
+                <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
+                  {t('hiddenTokensBrief', { count: hiddenTokensCount })}
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 shrink-0 px-2 text-xs text-destructive hover:text-destructive"
+                  disabled={resetting}
+                  onClick={() => void resetHistory()}
+                >
+                  {resetting ? t('resetting') : t('resetHistory')}
+                </Button>
               </div>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              aria-expanded={preferenceLoaded && showChart}
-              aria-controls="portfolio-history"
-              onClick={toggleChart}
-            >
-              {preferenceLoaded && showChart ? t('hideChart') : t('showChart')}
-              <ChevronDown className={cn('h-4 w-4 transition-transform', preferenceLoaded && showChart && 'rotate-180')} aria-hidden />
-            </Button>
           </div>
         </div>
       </CardHeader>
       <div id="portfolio-history">
       {preferenceLoaded && showChart && <CardContent className="pt-2">
-          {points === null && <Skeleton className="h-[160px] w-full rounded-lg sm:h-[190px]" />}
+          {points === null && <Skeleton className="h-[130px] w-full rounded-lg sm:h-[160px]" />}
           {points && points.length === 0 && (
             <EmptyState
               icon={TrendingUp}
               title={t('emptyTitle')}
               description={t('emptyDescription')}
-              className="min-h-[160px] p-4 sm:min-h-[190px]"
+              className="min-h-[130px] p-4 sm:min-h-[160px]"
             />
           )}
           {anomalousEstimate && !showAnomalousEstimate && (
-            <div className="flex min-h-[160px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[190px]">
+            <div className="flex min-h-[130px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border px-4 text-center sm:min-h-[160px]">
               <p className="text-sm font-medium">{t('unreliableTitle')}</p>
               <p className="max-w-md text-xs text-text-muted">{t('unreliableDescription')}</p>
               <Button variant="outline" size="sm" onClick={() => setShowAnomalousEstimate(true)}>
@@ -181,7 +199,7 @@ export function PortfolioChart({
             </div>
           )}
           {points && points.length > 0 && mounted && (!anomalousEstimate || showAnomalousEstimate) && (
-            <div className="h-[160px] sm:h-[190px]">
+            <div className="h-[130px] sm:h-[160px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
@@ -215,22 +233,6 @@ export function PortfolioChart({
                 />
               </AreaChart>
             </ResponsiveContainer>
-            </div>
-          )}
-          {hiddenTokensCount > 0 && (
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-              <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
-                {t('hiddenTokensBrief', { count: hiddenTokensCount })}
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 shrink-0 text-xs text-destructive hover:text-destructive"
-                disabled={resetting}
-                onClick={() => void resetHistory()}
-              >
-                {resetting ? t('resetting') : t('resetHistory')}
-              </Button>
             </div>
           )}
       </CardContent>}

@@ -140,7 +140,7 @@ export function DashboardSections({
       </div>
 
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
           <PortfolioChart
             totalUsd={overview.totalUsd}
             priceChange24h={overview.priceChange24h}
