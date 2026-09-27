@@ -104,21 +104,22 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
 
   return (
     <>
-      {/* Mobile: one card with tabs */}
-      <div className="sm:hidden">
-        <Card>
-          <CardHeader className="px-4 pb-0 pt-3">
-            <Tabs defaultValue="gainers">
+      <div className="w-full lg:w-1/2">
+        <Card className="min-w-0 overflow-hidden">
+          <Tabs defaultValue="gainers">
+            <CardHeader className="p-3 sm:p-4">
               <TabsList className="w-full">
                 <TabsTrigger value="gainers" className="flex-1 gap-1.5">
-                  <TrendingUp className="h-3.5 w-3.5" />
-                  {t('gainersTab')}
+                  <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+                  <span>{gainersTitle}</span>
                 </TabsTrigger>
                 <TabsTrigger value="losers" className="flex-1 gap-1.5">
-                  <TrendingDown className="h-3.5 w-3.5" />
-                  {t('losersTab')}
+                  <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+                  <span>{t('losersTitle')}</span>
                 </TabsTrigger>
               </TabsList>
+            </CardHeader>
+            <CardContent className="p-0">
               <TabsContent value="gainers" className="mt-0">
                 <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
                 {gainers.length > DEFAULT_VISIBLE_COUNT && (
@@ -135,38 +136,8 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
                   </Button>
                 )}
               </TabsContent>
-            </Tabs>
-          </CardHeader>
-        </Card>
-      </div>
-
-      {/* Desktop: both lists share one card */}
-      <div className="hidden sm:block">
-        <Card className="grid min-w-0 overflow-hidden lg:grid-cols-2">
-          <section className="min-w-0 border-b border-border lg:border-b-0 lg:border-r">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <span className="font-semibold">{gainersTitle}</span>
-            </div>
-            {gainers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedGainers((value) => !value)}>{expandedGainers ? t('showLess') : t('showAll')}</Button>}
-          </CardHeader>
-          <CardContent className="p-0">
-            <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
-          </CardContent>
-          </section>
-          <section className="min-w-0">
-          <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-500" />
-              <span className="font-semibold">{t('losersTitle')}</span>
-            </div>
-            {losers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedLosers((value) => !value)}>{expandedLosers ? t('showLess') : t('showAll')}</Button>}
-          </CardHeader>
-          <CardContent className="p-0">
-            <MoversList tokens={visibleLosers} emptyText={t('emptyLosers')} />
-          </CardContent>
-          </section>
+            </CardContent>
+          </Tabs>
         </Card>
       </div>
     </>
