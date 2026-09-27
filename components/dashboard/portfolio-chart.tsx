@@ -98,14 +98,13 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
 
   return (
     <Card className="min-w-0">
-      <CardHeader className="gap-4 space-y-0 pb-4">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
-            <p className="mt-3 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:text-4xl">
-              {formatUsd(totalUsd, { compact: true })}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+      <CardHeader className="space-y-0 xl:min-h-[132px]">
+        <div className="grid min-w-0 grid-cols-1 gap-y-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
+          <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
+          <p className="min-w-0 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:col-start-1 sm:row-start-2 sm:text-4xl">
+            {formatUsd(totalUsd, { compact: true })}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm sm:col-start-2 sm:row-start-2 sm:justify-end sm:self-end">
               <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
                 {formatPercent(priceChange24h)}
               </span>
@@ -115,9 +114,8 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
                   {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
                 </span>
               )}
-            </div>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-end">
             {preferenceLoaded && showChart && (
               <div className="flex items-center gap-1" role="group" aria-label={t('rangeLabel')}>
                 {ranges.map((r) => (
@@ -152,22 +150,6 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
         </div>
       </CardHeader>
       <div id="portfolio-history">
-      {preferenceLoaded && showChart && hiddenTokensCount > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-2 sm:px-6">
-          <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
-            {t('hiddenTokensBrief', { count: hiddenTokensCount })}
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 shrink-0 text-xs text-destructive hover:text-destructive"
-            disabled={resetting}
-            onClick={() => void resetHistory()}
-          >
-            {resetting ? t('resetting') : t('resetHistory')}
-          </Button>
-        </div>
-      )}
       {preferenceLoaded && showChart && <CardContent className="pt-2">
           {points === null && <Skeleton className="h-[180px] w-full rounded-lg sm:h-[220px]" />}
           {points && points.length === 0 && (
@@ -222,6 +204,22 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
                 />
               </AreaChart>
             </ResponsiveContainer>
+            </div>
+          )}
+          {hiddenTokensCount > 0 && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+              <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
+                {t('hiddenTokensBrief', { count: hiddenTokensCount })}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 shrink-0 text-xs text-destructive hover:text-destructive"
+                disabled={resetting}
+                onClick={() => void resetHistory()}
+              >
+                {resetting ? t('resetting') : t('resetHistory')}
+              </Button>
             </div>
           )}
       </CardContent>}

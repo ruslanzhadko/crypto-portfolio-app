@@ -45,6 +45,7 @@ export interface WalletDto {
 }
 
 interface Props {
+  pageTitle: string;
   overview: PortfolioOverview;
   spamTokens: AggregatedToken[];
   wallets: WalletDto[];
@@ -54,6 +55,7 @@ interface Props {
 }
 
 export function DashboardSections({
+  pageTitle,
   overview,
   spamTokens,
   wallets,
@@ -92,44 +94,47 @@ export function DashboardSections({
   };
 
   return (
-    <div className="min-w-0 space-y-6">
-      <div className="flex flex-wrap items-center justify-end gap-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-          {lastPriceUpdateAt && (
-            <span className="text-xs text-text-muted" suppressHydrationWarning>
-              {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt), locale)}
-            </span>
-          )}
-          {latestSyncAt && (
-            <span className="text-xs text-text-muted" suppressHydrationWarning>
-              {t('syncPrefix')} {formatRelative(new Date(latestSyncAt), locale)}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <SyncAllButton />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <SlidersHorizontal className="h-4 w-4" />
-                <span className="hidden sm:inline">{t('sectionsButton')}</span>
-                <span className="sr-only sm:hidden">{t('sectionsButton')}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-60">
-              <DropdownMenuLabel>{t('showSections')}</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {(Object.keys(sectionLabels) as SectionKey[]).map((key) => (
-                <DropdownMenuCheckboxItem
-                  key={key}
-                  checked={show[key]}
-                  onCheckedChange={() => toggle(key)}
-                >
-                  {sectionLabels[key]}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+    <div className="min-w-0 space-y-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-xl font-bold tracking-tight md:text-3xl">{pageTitle}</h1>
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {lastPriceUpdateAt && (
+              <span className="text-xs text-text-muted" suppressHydrationWarning>
+                {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt), locale)}
+              </span>
+            )}
+            {latestSyncAt && (
+              <span className="text-xs text-text-muted" suppressHydrationWarning>
+                {t('syncPrefix')} {formatRelative(new Date(latestSyncAt), locale)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <SyncAllButton />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  <span className="hidden sm:inline">{t('sectionsButton')}</span>
+                  <span className="sr-only sm:hidden">{t('sectionsButton')}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60">
+                <DropdownMenuLabel>{t('showSections')}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {(Object.keys(sectionLabels) as SectionKey[]).map((key) => (
+                  <DropdownMenuCheckboxItem
+                    key={key}
+                    checked={show[key]}
+                    onCheckedChange={() => toggle(key)}
+                  >
+                    {sectionLabels[key]}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

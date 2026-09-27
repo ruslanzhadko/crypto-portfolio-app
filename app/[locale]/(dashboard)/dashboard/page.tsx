@@ -78,16 +78,14 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
-      <DashboardSections
-        overview={overview}
-        spamTokens={spamTokens}
-        wallets={walletDtos}
-        hiddenTokensCount={hiddenTokensCount}
-        lastPriceUpdateAt={lastPriceUpdate?.updatedAt?.toISOString() ?? null}
-        latestSyncAt={latestSyncAt?.toISOString() ?? null}
-      />
-    </div>
+    <DashboardSections
+      pageTitle={t('pageTitle')}
+      overview={overview}
+      spamTokens={spamTokens}
+      wallets={walletDtos}
+      hiddenTokensCount={hiddenTokensCount}
+      lastPriceUpdateAt={lastPriceUpdate?.updatedAt?.toISOString() ?? null}
+      latestSyncAt={latestSyncAt?.toISOString() ?? null}
+    />
   );
 }
