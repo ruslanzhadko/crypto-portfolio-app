@@ -151,16 +151,14 @@ export function DashboardSections({
           <PortfolioSummary data={overview} showLargestPositions={chartVisible === true} />
         </div>
 
+        {show.topMovers && <TopMovers tokens={overview.tokens} />}
+
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-3">
           <div className="min-w-0 xl:col-span-2">
             <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
           </div>
           <WalletList wallets={wallets} />
         </div>
-
-        {show.topMovers && (
-          <TopMovers tokens={overview.tokens} />
-        )}
 
         {(show.allocation || show.networkAllocation) && (
           <div className="grid gap-4 lg:grid-cols-2">
