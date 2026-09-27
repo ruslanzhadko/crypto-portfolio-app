@@ -93,7 +93,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, hiddenTokensCount = 0
       >
         <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <CardTitle className="w-full sm:w-auto">{t('cardTitle')}</CardTitle>
-          <span className="font-mono text-sm font-semibold text-text">
+          <span className="font-mono text-lg font-bold tabular-nums text-text sm:text-xl">
             {formatUsd(totalUsd, { compact: true })}
           </span>
           <span className={cn('text-xs font-medium', (priceChange24h ?? 0) >= 0 ? 'text-green-500' : 'text-red-500')}>
