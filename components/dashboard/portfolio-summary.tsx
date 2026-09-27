@@ -8,7 +8,13 @@ import { TokenLogo } from '@/components/common/token-logo';
 import { formatUsd } from '@/lib/utils/format';
 import type { PortfolioOverview } from '@/lib/services/portfolio';
 
-export function PortfolioSummary({ data }: { data: PortfolioOverview }) {
+export function PortfolioSummary({
+  data,
+  showLargestPositions,
+}: {
+  data: PortfolioOverview;
+  showLargestPositions: boolean;
+}) {
   const t = useTranslations('PortfolioSummary');
   const largestPositions = [...data.tokens]
     .filter((token) => token.totalUsd > 0)
@@ -41,7 +47,7 @@ export function PortfolioSummary({ data }: { data: PortfolioOverview }) {
         </div>
         <span className="text-lg font-semibold tabular-nums sm:text-xl">{data.chains.length}</span>
       </div>
-      {largestPositions.length > 0 && (
+      {showLargestPositions && largestPositions.length > 0 && (
         <div className="col-span-3 border-t border-border px-3 py-3 xl:col-span-1 xl:px-3 xl:py-3">
           <h2 className="mb-2 text-xs font-medium text-text-muted">{t('largestPositions')}</h2>
           <ul className="space-y-2">

@@ -21,11 +21,18 @@ interface PortfolioChartProps {
   priceChange24h: number;
   priceChange24hUsd: number;
   hiddenTokensCount?: number;
+  onVisibilityChange: (visible: boolean) => void;
 }
 
 const CHART_VISIBILITY_KEY = 'dashboard-portfolio-chart-visible-v1';
 
-export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hiddenTokensCount = 0 }: PortfolioChartProps) {
+export function PortfolioChart({
+  totalUsd,
+  priceChange24h,
+  priceChange24hUsd,
+  hiddenTokensCount = 0,
+  onVisibilityChange,
+}: PortfolioChartProps) {
   const t = useTranslations('PortfolioChart');
   const [mounted, setMounted] = useState(false);
   const [preferenceLoaded, setPreferenceLoaded] = useState(false);
@@ -47,11 +54,14 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
 
   useEffect(() => {
     setMounted(true);
+    let visible = true;
     try {
-      setShowChart(localStorage.getItem(CHART_VISIBILITY_KEY) !== 'false');
+      visible = localStorage.getItem(CHART_VISIBILITY_KEY) !== 'false';
     } catch {}
+    setShowChart(visible);
+    onVisibilityChange(visible);
     setPreferenceLoaded(true);
-  }, []);
+  }, [onVisibilityChange]);
 
   useEffect(() => {
     if (!preferenceLoaded || !showChart) return;
@@ -80,6 +90,7 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
   function toggleChart() {
     const next = !showChart;
     setShowChart(next);
+    onVisibilityChange(next);
     try {
       localStorage.setItem(CHART_VISIBILITY_KEY, String(next));
     } catch {}
@@ -104,16 +115,16 @@ export function PortfolioChart({ totalUsd, priceChange24h, priceChange24hUsd, hi
           <p className="min-w-0 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:col-start-1 sm:row-start-2 sm:text-4xl">
             {formatUsd(totalUsd, { compact: true })}
           </p>
-          <div className="flex flex-wrap items-center gap-2 text-sm sm:col-start-2 sm:row-start-2 sm:justify-end sm:self-end">
-              <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
-                {formatPercent(priceChange24h)}
+          <div className="flex flex-wrap items-center gap-2 text-sm sm:col-start-1 sm:row-start-3">
+            <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
+              {formatPercent(priceChange24h)}
+            </span>
+            <span className="text-text-muted">{t('deltaLabel')}</span>
+            {priceChange24hUsd !== 0 && (
+              <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
+                {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
               </span>
-              <span className="text-text-muted">{t('deltaLabel')}</span>
-              {priceChange24hUsd !== 0 && (
-                <span className={cn('font-medium tabular-nums', priceChange24hUsd >= 0 ? 'text-success' : 'text-danger')}>
-                  {priceChange24hUsd > 0 ? '+' : '-'}{formatUsd(Math.abs(priceChange24hUsd))}
-                </span>
-              )}
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-end">
             {preferenceLoaded && showChart && (

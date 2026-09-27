@@ -65,6 +65,7 @@ export function DashboardSections({
 }: Props) {
   const [sections, setSections] = useState<Record<SectionKey, boolean>>(DEFAULTS);
   const [mounted, setMounted] = useState(false);
+  const [chartVisible, setChartVisible] = useState<boolean | null>(null);
   const t = useTranslations('Dashboard');
   const ts = useTranslations('DashboardSections');
   const locale = useLocale();
@@ -145,8 +146,9 @@ export function DashboardSections({
             priceChange24h={overview.priceChange24h}
             priceChange24hUsd={overview.priceChange24hUsd}
             hiddenTokensCount={hiddenTokensCount}
+            onVisibilityChange={setChartVisible}
           />
-          <PortfolioSummary data={overview} />
+          <PortfolioSummary data={overview} showLargestPositions={chartVisible === true} />
         </div>
 
         <div className="grid min-w-0 grid-cols-1 items-start gap-4 xl:grid-cols-3">
