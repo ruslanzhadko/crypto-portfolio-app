@@ -19,7 +19,7 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
   const tokenPage = getTokenPageUrl(tk);
 
   const inner = (
-    <div className="flex items-center gap-3 px-4 py-2">
+    <div className="flex h-full min-h-12 w-full items-center gap-3 px-3 py-1.5 sm:px-4">
       <TokenLogo
         src={tk.logoUrl}
         symbol={tk.symbol}
@@ -40,20 +40,20 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
 
   if (tokenPage?.external) {
     return (
-      <a href={tokenPage.href} target="_blank" rel="noreferrer" className="block transition-colors hover:bg-muted/40">
+      <a href={tokenPage.href} target="_blank" rel="noreferrer" className="flex min-h-12 flex-1 transition-colors hover:bg-muted/40">
         {inner}
       </a>
     );
   }
   if (tokenPage) {
     return (
-      <Link href={`${tokenPage.href}?from=dashboard`} className="block transition-colors hover:bg-muted/40">
+      <Link href={`${tokenPage.href}?from=dashboard`} className="flex min-h-12 flex-1 transition-colors hover:bg-muted/40">
         {inner}
       </Link>
     );
   }
   return (
-    <div className="block w-full text-left">
+    <div className="flex min-h-12 flex-1 w-full text-left">
       {inner}
     </div>
   );
@@ -64,9 +64,11 @@ function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyTex
     return <p className="px-4 pb-4 text-sm text-text-muted">{emptyText}</p>;
   }
   return (
-    <div className="divide-y divide-border">
+    <div className="flex flex-1 flex-col divide-y divide-border">
       {tokens.map((tk) => (
-        <MoverRow key={tk.key} tk={tk} />
+        <div key={tk.key} className="flex flex-1">
+          <MoverRow tk={tk} />
+        </div>
       ))}
     </div>
   );
@@ -103,10 +105,10 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
 
   return (
     <>
-      <div className="w-full">
-        <Card className="min-w-0 overflow-hidden">
-          <div className="grid min-w-0 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-            <section className="min-w-0">
+      <div className="h-full w-full">
+        <Card className="flex h-full min-w-0 flex-col overflow-hidden">
+          <div className="grid min-w-0 flex-1 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+            <section className="flex min-w-0 flex-col">
               <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4 text-green-500" />
@@ -114,11 +116,11 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
                 </div>
                 {gainers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedGainers((value) => !value)}>{expandedGainers ? t('showLess') : t('showAll')}</Button>}
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="flex flex-1 flex-col p-0">
                 <MoversList tokens={visibleGainers} emptyText={t('emptyGainers')} />
               </CardContent>
             </section>
-            <section className="min-w-0">
+            <section className="flex min-w-0 flex-col">
               <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
                 <div className="flex items-center gap-2">
                   <TrendingDown className="h-4 w-4 text-red-500" />
@@ -126,7 +128,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
                 </div>
                 {losers.length > DEFAULT_VISIBLE_COUNT && <Button variant="ghost" size="sm" onClick={() => setExpandedLosers((value) => !value)}>{expandedLosers ? t('showLess') : t('showAll')}</Button>}
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="flex flex-1 flex-col p-0">
                 <MoversList tokens={visibleLosers} emptyText={t('emptyLosers')} />
               </CardContent>
             </section>

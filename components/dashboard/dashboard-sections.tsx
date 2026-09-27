@@ -153,13 +153,13 @@ export function DashboardSections({
           </div>
         </div>
 
-        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
           {show.topMovers && (
-            <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none">
+            <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full">
               <TopMovers tokens={overview.tokens} />
             </div>
           )}
-          <div className={show.topMovers ? 'min-w-0' : 'min-w-0 xl:col-span-2'}>
+          <div className={show.topMovers ? 'min-w-0 xl:h-full' : 'min-w-0 xl:col-span-2'}>
             <WalletList wallets={wallets} />
           </div>
         </div>
