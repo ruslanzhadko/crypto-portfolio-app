@@ -138,14 +138,14 @@ export function RecentTransactions() {
   };
 
   return (
-    <Card className="flex overflow-hidden xl:absolute xl:inset-0 xl:min-h-0 xl:flex-col">
-      <CardHeader className="gap-0 space-y-0 border-b border-border px-5 py-5 sm:px-7 sm:py-7">
+    <Card className="flex min-w-0 flex-col overflow-hidden">
+      <CardHeader className="min-w-0 gap-0 space-y-0 border-b border-border p-4 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <CardTitle>{t('title')}</CardTitle>
+          <div className="min-w-0">
+            <CardTitle className="text-base leading-snug sm:text-lg">{t('title')}</CardTitle>
             <p className="mt-2 text-xs text-text-muted">{t('subtitle')}</p>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-text-muted"
+          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-text-muted sm:h-9 sm:w-9"
             onClick={() => void load(limitRef.current, 'refresh')} disabled={refreshing || loadingMore || transactions === null}
             aria-label={t('refresh')} title={t('refresh')}>
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} aria-hidden />
@@ -153,9 +153,9 @@ export function RecentTransactions() {
         </div>
 
         {transactions !== null && transactions.length > 0 && (
-          <div className="mt-5 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
             <Select value={walletFilter} onValueChange={setWalletFilter}>
-              <SelectTrigger className="col-span-2 h-9 bg-surface text-xs" aria-label={t('walletFilter')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className="col-span-2 h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('walletFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allWallets')}</SelectItem>
                 {wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>
@@ -164,14 +164,14 @@ export function RecentTransactions() {
               </SelectContent>
             </Select>
             <Select value={chainFilter} onValueChange={setChainFilter}>
-              <SelectTrigger className="h-9 bg-surface text-xs" aria-label={t('networkFilter')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('networkFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allNetworks')}</SelectItem>
                 {chains.map((chain) => <SelectItem key={chain} value={chain}>{getChainDisplayName(chain)}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-9 bg-surface text-xs" aria-label={t('typeFilter')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('typeFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allTypes')}</SelectItem>
                 <SelectItem value="receive">{t('typeReceive')}</SelectItem>
@@ -184,15 +184,15 @@ export function RecentTransactions() {
         )}
 
         {transactions !== null && transactions.length > 0 && (
-          <div className="mt-4 flex min-h-8 items-center justify-between gap-3">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-text-muted">{t('results', { count: filtered.length })}</span>
             <div className="flex items-center gap-1">
-              {spamCount > 0 && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2"
+              {spamCount > 0 && <Button variant="ghost" size="sm" className="h-11 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2 sm:h-8"
                 onClick={() => setShowSpam((current) => !current)} aria-pressed={showSpam}>
                 {showSpam ? <EyeOff className="h-3.5 w-3.5" aria-hidden /> : <Eye className="h-3.5 w-3.5" aria-hidden />}
                 {showSpam ? t('hideSpam') : t('showSpam', { count: spamCount })}
               </Button>}
-              {filtersActive && <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted"
+              {filtersActive && <Button variant="ghost" size="icon" className="h-11 w-11 text-text-muted sm:h-8 sm:w-8"
                 onClick={resetFilters} aria-label={t('resetFilters')} title={t('resetFilters')}>
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden />
               </Button>}
@@ -208,7 +208,7 @@ export function RecentTransactions() {
           </p>
         </div>}
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col p-0">
+      <CardContent className="flex min-w-0 flex-col p-0" aria-busy={refreshing || loadingMore}>
         {transactions === null ? <TransactionSkeleton />
           : error && transactions.length === 0 ? <MessageState title={t('errorTitle')} description={t('errorDescription')}>
             <Button variant="outline" size="sm" className="mt-4" onClick={() => void load()}>{t('retry')}</Button>
@@ -220,7 +220,7 @@ export function RecentTransactions() {
             </Button>
           </MessageState>
           : <>
-            <div className={cn('min-h-0 max-h-[46rem] divide-y divide-border/70 overflow-y-auto transition-opacity xl:max-h-none xl:flex-1', refreshing && 'opacity-60')}>
+            <div className={cn('min-w-0 divide-y divide-border/70 transition-opacity', refreshing && 'opacity-60')}>
               {filtered.map((transaction) => <TransactionRow
                 key={`${transaction.walletId}:${transaction.chainName}:${transaction.id}`}
                 transaction={transaction} locale={locale} walletFallback={t('walletFallback')}
@@ -228,13 +228,14 @@ export function RecentTransactions() {
                 typeLabel={typeLabels[transaction.type] ?? t('typeContract')}
               />)}
             </div>
-            {hasMore && <div className="border-t border-border p-3">
-              <Button variant="outline" size="sm" className="w-full gap-2" onClick={loadMore} disabled={loadingMore || refreshing}>
-                {loadingMore && <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-                {loadingMore ? t('loadingMore') : t('loadMore')}
-              </Button>
-            </div>}
           </>}
+        {hasMore && <div className="border-t border-border p-3">
+          {error && <p className="mb-2 text-sm text-danger" role="alert">{t('errorDescription')}</p>}
+          <Button variant="outline" size="sm" className="h-11 w-full gap-2 sm:h-9" onClick={loadMore} disabled={loadingMore || refreshing}>
+            {loadingMore && <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+            {loadingMore ? t('loadingMore') : t('loadMore')}
+          </Button>
+        </div>}
       </CardContent>
     </Card>
   );
@@ -284,14 +285,14 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
       </> : <TokenLogo src={transaction.logoUrl} symbol={transaction.tokenSymbol ?? tokenLabel} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={40} />}
     </div>
     <div className="min-w-0 flex-1">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
         <div className="min-w-0"><p className="truncate text-sm font-semibold">{tokenLabel}</p>
-          <p className={cn('mt-0.5 truncate text-xs font-medium tabular-nums', meta.color)}>{valueLabel}</p></div>
+          <p className={cn('mt-0.5 break-words text-xs font-medium tabular-nums', meta.color)}>{valueLabel}</p></div>
         <span className="shrink-0 pt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>{formatRelativeCompact(transaction.timestamp, locale)}</span>
       </div>
-      <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
+      <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
         <p className="min-w-0 truncate text-xs text-text-muted" title={`${walletName} · ${transaction.walletAddress}`}>{walletName}</p>
-        <div className="flex shrink-0 items-center gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <span className={cn('inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] font-medium', meta.bg, meta.color)}>
             <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
             {typeLabel}
@@ -303,7 +304,7 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
       </div>
     </div>
   </>;
-  const className = 'flex min-w-0 gap-3 px-5 py-4 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary';
+  const className = 'flex min-w-0 gap-2.5 px-4 py-3 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:gap-3 sm:px-5 sm:py-4';
   return explorer
     ? <a href={`${explorer}${transaction.hash}`} target="_blank" rel="noopener noreferrer" className={className}>{content}</a>
     : <div className={className}>{content}</div>;

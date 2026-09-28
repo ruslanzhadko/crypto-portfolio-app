@@ -96,27 +96,27 @@ export function DashboardSections({
   };
 
   return (
-    <div className="min-w-0 space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-bold tracking-tight md:text-3xl">{pageTitle}</h1>
-        <div className="flex flex-wrap items-center justify-end gap-3">
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+    <div className="min-w-0 space-y-3 sm:space-y-5">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 md:flex md:flex-wrap md:justify-between md:gap-3">
+        <h1 className="min-w-0 text-lg font-bold tracking-tight sm:text-xl md:text-3xl">{pageTitle}</h1>
+        <div className="contents md:flex md:flex-wrap md:items-center md:justify-end md:gap-3">
+          <div className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-3 gap-y-1">
             {lastPriceUpdateAt && (
-              <span className="text-xs text-text-muted" suppressHydrationWarning>
+              <span className="text-[11px] text-text-muted sm:text-xs" suppressHydrationWarning>
                 {t('pricesPrefix')} {formatRelative(new Date(lastPriceUpdateAt), locale)}
               </span>
             )}
             {latestSyncAt && (
-              <span className="text-xs text-text-muted" suppressHydrationWarning>
+              <span className="text-[11px] text-text-muted sm:text-xs" suppressHydrationWarning>
                 {t('syncPrefix')} {formatRelative(new Date(latestSyncAt), locale)}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <SyncAllButton />
+          <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2">
+            <SyncAllButton compactOnMobile />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5">
+                <Button variant="outline" size="sm" className="h-11 w-11 gap-1.5 px-0 sm:h-9 sm:w-auto sm:px-3">
                   <SlidersHorizontal className="h-4 w-4" />
                   <span className="hidden sm:inline">{t('sectionsButton')}</span>
                   <span className="sr-only sm:hidden">{t('sectionsButton')}</span>
@@ -140,8 +140,8 @@ export function DashboardSections({
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-col gap-5">
-        <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+      <div className="flex min-w-0 flex-col gap-3 sm:gap-5">
+        <div className="grid min-w-0 items-stretch gap-2 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
           <PortfolioChart
             totalUsd={overview.totalUsd}
             priceChange24h={overview.priceChange24h}
@@ -165,11 +165,11 @@ export function DashboardSections({
           </div>
         </div>
 
-        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] xl:items-stretch 2xl:grid-cols-[minmax(0,1fr)_29rem]">
+        <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] 2xl:grid-cols-[minmax(0,1fr)_29rem]">
           <div className="min-w-0">
             <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
           </div>
-          <div className="min-w-0 xl:relative xl:min-h-0">
+          <div className="min-w-0">
             <RecentTransactions />
           </div>
         </div>

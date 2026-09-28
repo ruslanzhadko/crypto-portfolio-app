@@ -19,6 +19,7 @@ interface SyncResponse {
 }
 
 interface SyncAllButtonProps {
+  compactOnMobile?: boolean;
   /** Якщо найстаріший lastSyncAt старший за цю кількість хвилин — авто-sync у фоні. null = вимкнено */
   autoSyncStaleMinutes?: number | null;
   /** Час останнього sync найстарішого гаманця (ISO або Date) — для auto-sync рішення */
@@ -26,6 +27,7 @@ interface SyncAllButtonProps {
 }
 
 export function SyncAllButton({
+  compactOnMobile = false,
   autoSyncStaleMinutes = 10,
   oldestSyncAt = null,
 }: SyncAllButtonProps) {
@@ -112,6 +114,7 @@ export function SyncAllButton({
     <Button
       variant="outline"
       size="sm"
+      className={cn(compactOnMobile && 'h-11 w-11 px-0 sm:h-9 sm:w-auto sm:px-3')}
       onClick={() => runSync()}
       disabled={isPending}
       title={t('title')}
@@ -124,7 +127,9 @@ export function SyncAllButton({
       }}
     >
       <RefreshCw className={cn('h-4 w-4', isPending && 'animate-spin')} />
-      {isPending ? t('syncing') : t('sync')}
+      <span className={cn(compactOnMobile && 'sr-only sm:not-sr-only')}>
+        {isPending ? t('syncing') : t('sync')}
+      </span>
     </Button>
   );
 }

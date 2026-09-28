@@ -57,7 +57,7 @@ export default async function FeedPage({
             name={session.user.name}
             role={session.user.role}
           />
-          <main className="relative min-w-0 flex-1 overflow-x-clip px-4 pb-20 pt-6 md:px-8 md:pb-8">
+          <main className="relative min-w-0 flex-1 overflow-x-clip px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6 md:px-8 md:pb-8">
             <div className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[400px] bg-primary/5 blur-[120px]" />
             {feedContent}
           </main>

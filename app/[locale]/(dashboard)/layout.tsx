@@ -29,7 +29,7 @@ export default async function DashboardLayout({
           name={session!.user.name}
           role={session!.user.role}
         />
-        <main className="min-w-0 flex-1 px-4 pb-20 pt-6 md:px-8 md:pb-8">
+        <main className="min-w-0 flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6 md:px-8 md:pb-8">
           {children}
         </main>
       </div>

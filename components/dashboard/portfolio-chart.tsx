@@ -111,17 +111,17 @@ export function PortfolioChart({
     <Card className="h-full min-w-0">
       <CardHeader
         className={cn(
-          'space-y-0',
+          'space-y-0 p-3 sm:p-6',
           preferenceLoaded && !showChart && 'xl:h-full xl:justify-center xl:px-5 xl:py-4',
         )}
       >
-        <div className="grid min-w-0 grid-cols-1 gap-y-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-x-4">
-          <CardTitle className="text-sm font-medium text-text-muted">{t('cardTitle')}</CardTitle>
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-5 gap-y-2 sm:col-span-2 sm:row-start-2">
-            <p className="min-w-0 font-mono text-3xl font-bold tracking-tight tabular-nums text-text sm:text-4xl">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-x-2 gap-y-1 sm:gap-x-4 sm:gap-y-3">
+          <CardTitle className="self-center text-xs font-medium text-text-muted sm:text-sm">{t('cardTitle')}</CardTitle>
+          <div className="col-span-2 row-start-2 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1 sm:gap-x-5 sm:gap-y-2">
+            <p className="min-w-0 font-mono text-[28px] font-bold leading-8 tracking-tight tabular-nums text-text sm:text-4xl">
               {formatUsd(totalUsd, { compact: true })}
             </p>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-1 text-xs sm:gap-2 sm:text-sm">
               <span className={cn('font-semibold tabular-nums', priceChange24h >= 0 ? 'text-success' : 'text-danger')}>
                 {formatPercent(priceChange24h)}
               </span>
@@ -149,15 +149,15 @@ export function PortfolioChart({
               </div>
             )}
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:col-start-2 sm:row-start-1 sm:justify-end">
+          <div className="contents sm:col-start-2 sm:row-start-1 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-2">
             {preferenceLoaded && showChart && (
-              <div className="flex items-center gap-1" role="group" aria-label={t('rangeLabel')}>
+              <div className="col-span-2 row-start-3 flex items-center gap-1" role="group" aria-label={t('rangeLabel')}>
                 {ranges.map((r) => (
                   <Button
                     key={r.value}
                     variant={days === r.value ? 'default' : 'ghost'}
                     size="sm"
-                    className={cn('h-7 px-2 text-xs', days === r.value && 'text-primary-foreground')}
+                    className={cn('h-11 px-3 text-xs sm:h-7 sm:px-2', days === r.value && 'text-primary-foreground')}
                     aria-pressed={days === r.value}
                     onClick={() => {
                       setShowAnomalousEstimate(false);
@@ -172,7 +172,7 @@ export function PortfolioChart({
             <Button
               variant="outline"
               size="sm"
-              className="gap-1.5"
+              className="col-start-2 row-start-1 h-11 gap-1 px-2 text-[11px] sm:h-9 sm:gap-1.5 sm:px-3 sm:text-xs"
               aria-expanded={preferenceLoaded && showChart}
               aria-controls="portfolio-history"
               onClick={toggleChart}
