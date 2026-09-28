@@ -77,19 +77,28 @@ export function RecentTransactions() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [showSpam, setShowSpam] = useState(false);
   const limitRef = useRef(INITIAL_LIMIT);
+  const requestRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async (requestedLimit = INITIAL_LIMIT, mode: LoadMode = 'initial') => {
+    requestRef.current?.abort();
+    const controller = new AbortController();
+    requestRef.current = controller;
+    setRefreshing(false);
+    setLoadingMore(false);
     if (mode === 'refresh') setRefreshing(true);
     else if (mode === 'more') setLoadingMore(true);
     else setTransactions(null);
     setError(false);
     try {
-      const response = await fetch(`/api/transactions/recent?limit=${requestedLimit}`);
+      const params = new URLSearchParams({ limit: String(requestedLimit) });
+      if (walletFilter !== 'all') params.set('walletId', walletFilter);
+      const response = await fetch(`/api/transactions/recent?${params}`, { signal: controller.signal });
       if (!response.ok) throw new Error('Recent transactions request failed');
       const data = await response.json() as {
         transactions: RecentTransaction[]; wallets?: WalletOption[];
         spamCount?: number; partialError?: boolean; unavailableNetworks?: string[]; hasMore?: boolean;
       };
+      if (controller.signal.aborted) return;
       setTransactions(Array.isArray(data.transactions) ? data.transactions : []);
       setWallets(Array.isArray(data.wallets) ? data.wallets : []);
       setSpamCount(data.spamCount ?? 0);
@@ -98,15 +107,23 @@ export function RecentTransactions() {
       setHasMore(Boolean(data.hasMore) && requestedLimit < MAX_LIMIT);
       limitRef.current = requestedLimit;
     } catch {
+      if (controller.signal.aborted) return;
       setError(true);
       setTransactions((current) => current ?? []);
     } finally {
-      setRefreshing(false);
-      setLoadingMore(false);
+      if (!controller.signal.aborted) {
+        setRefreshing(false);
+        setLoadingMore(false);
+      }
     }
-  }, []);
+  }, [walletFilter]);
 
-  useEffect(() => { void load(INITIAL_LIMIT); }, [load]);
+  useEffect(() => {
+    limitRef.current = INITIAL_LIMIT;
+    setHasMore(false);
+    void load(INITIAL_LIMIT);
+    return () => requestRef.current?.abort();
+  }, [load]);
   useEffect(() => {
     const refresh = () => void load(limitRef.current, 'refresh');
     window.addEventListener('wallet-synced', refresh);
@@ -141,7 +158,7 @@ export function RecentTransactions() {
 
   return (
     <Card className="flex min-w-0 flex-col overflow-hidden">
-      <CardHeader className="min-w-0 gap-0 space-y-0 border-b border-border p-4 sm:px-6 sm:py-5">
+      <CardHeader className="min-w-0 gap-4 space-y-0 border-b border-border p-4 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <CardTitle className="text-base leading-snug sm:text-lg">{t('title')}</CardTitle>
@@ -154,8 +171,8 @@ export function RecentTransactions() {
           </Button>
         </div>
 
-        {transactions !== null && transactions.length > 0 && (
-          <div className="mt-4 grid min-w-0 grid-cols-2 gap-2">
+        {wallets.length > 0 && (
+          <div className="grid min-w-0 grid-cols-2 gap-3">
             <Select value={walletFilter} onValueChange={setWalletFilter}>
               <SelectTrigger className="col-span-2 h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('walletFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -185,8 +202,8 @@ export function RecentTransactions() {
           </div>
         )}
 
-        {transactions !== null && transactions.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        {transactions !== null && wallets.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="text-xs tabular-nums text-text-muted">{t('results', { count: filtered.length })}</span>
             <div className="flex items-center gap-1">
               {spamCount > 0 && <Button variant="ghost" size="sm" className="h-11 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2 sm:h-8"
@@ -201,7 +218,7 @@ export function RecentTransactions() {
             </div>
           </div>
         )}
-        {partialError && <div className="mt-4 flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
+        {partialError && <div className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
           <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <p className="text-xs leading-relaxed">
             {unavailableNetworkNames
@@ -210,7 +227,7 @@ export function RecentTransactions() {
           </p>
         </div>}
       </CardHeader>
-      <CardContent className="flex min-w-0 flex-col p-0" aria-busy={refreshing || loadingMore}>
+      <CardContent className="flex min-w-0 flex-col p-0" aria-busy={transactions === null || refreshing || loadingMore}>
         {transactions === null ? <TransactionSkeleton />
           : error && transactions.length === 0 ? <MessageState title={t('errorTitle')} description={t('errorDescription')}>
             <Button variant="outline" size="sm" className="mt-4" onClick={() => void load()}>{t('retry')}</Button>

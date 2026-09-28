@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
-import { handleUnknown, ok } from '@/lib/api/response';
+import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { GET as getWalletTransactions } from '@/app/api/wallets/[id]/transactions/route';
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +48,9 @@ export async function GET(req: Request) {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
-    const requestedLimit = Number.parseInt(new URL(req.url).searchParams.get('limit') ?? '20', 10);
+    const searchParams = new URL(req.url).searchParams;
+    const walletId = searchParams.get('walletId');
+    const requestedLimit = Number.parseInt(searchParams.get('limit') ?? '20', 10);
     const limit = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 5), 100) : 20;
     const wallets = await prisma.wallet.findMany({
       where: { userId: guard.user.id, isActive: true },
@@ -56,7 +58,10 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const sources = wallets.flatMap((wallet) => [
+    const selectedWallets = walletId ? wallets.filter((wallet) => wallet.id === walletId) : wallets;
+    if (walletId && selectedWallets.length === 0) return apiError('NOT_FOUND', 'Wallet not found');
+
+    const sources = selectedWallets.flatMap((wallet) => [
       {
         wallet,
         chain: null as string | null,
