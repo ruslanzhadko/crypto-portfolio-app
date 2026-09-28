@@ -32,6 +32,8 @@ interface TransactionDTO {
   swapLogoUrl?: string | null;
   swapOutSymbol?: string | null;
   swapInSymbol?: string | null;
+  swapOutTokenAddress?: string | null;
+  swapInTokenAddress?: string | null;
   isSpam?: boolean;
 }
 
@@ -349,9 +351,9 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
                             −{formatNumber(tx.sentValue, tx.sentValue < 0.01 ? 6 : tx.sentValue < 1 ? 4 : 2)}
                           </span>
                         )}
-                        <TokenLogo src={tx.logoUrl} symbol={tx.swapOutSymbol ?? '?'} size={20} />
+                        <TokenLogo src={tx.logoUrl} symbol={tx.swapOutSymbol ?? '?'} chainName={tx.chainName} tokenAddress={tx.swapOutTokenAddress ?? undefined} size={20} />
                         <span className="text-xs text-text-muted">→</span>
-                        <TokenLogo src={tx.swapLogoUrl} symbol={tx.swapInSymbol ?? '?'} size={20} />
+                        <TokenLogo src={tx.swapLogoUrl} symbol={tx.swapInSymbol ?? '?'} chainName={tx.chainName} tokenAddress={tx.swapInTokenAddress ?? undefined} size={20} />
                         <span className="text-sm font-semibold tabular-nums text-primary">
                           +{formatNumber(tx.value, tx.value < 0.01 ? 6 : tx.value < 1 ? 4 : 2)}
                         </span>

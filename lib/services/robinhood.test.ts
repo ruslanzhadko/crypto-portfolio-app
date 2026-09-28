@@ -7,7 +7,7 @@ const get = vi.mocked(axios.get);
 const address = '0x1111111111111111111111111111111111111111';
 const token = {
   address_hash: '0x2222222222222222222222222222222222222222',
-  symbol: 'USDC', name: 'USD Coin', decimals: '6', exchange_rate: '1', icon_url: null, type: 'ERC-20',
+  symbol: 'USDC', name: 'USD Coin', decimals: '6', exchange_rate: '1', icon_url: 'https://example.com/token.png', type: 'ERC-20',
 };
 const respond = (data: unknown) => get.mockResolvedValueOnce({ data });
 beforeEach(() => { vi.clearAllMocks(); vi.unstubAllEnvs(); vi.stubEnv('ROBINHOOD_BLOCKSCOUT_API_KEY', ''); });
@@ -69,6 +69,8 @@ describe('Robinhood transaction pagination', () => {
     expect(page.transactions[0]).toMatchObject({
       id: '0xswap:swap', type: 'swap', tokenSymbol: 'ETH → USDC',
       sentValue: 0.01, value: 1.5,
+      swapOutTokenAddress: null, swapInTokenAddress: token.address_hash,
+      logoUrl: null, swapLogoUrl: token.icon_url,
     });
   });
   it('keeps multiple transfer events in a transaction and resumes only unfinished streams', async () => {
@@ -113,6 +115,7 @@ describe('Robinhood transaction pagination', () => {
     const page = await fetchRobinhoodTransactions(address);
     expect(page.transactions).toHaveLength(1);
     expect(page.transactions[0]).toMatchObject({ id: '0xsale:swap', type: 'swap', tokenSymbol: `${symbol} → ETH` });
+    expect(page.transactions[0]).toMatchObject({ swapOutTokenAddress: token.address_hash, swapInTokenAddress: null, logoUrl: token.icon_url });
     expect(page.transactions[0]?.sentValue).toBeCloseTo(expectedSent, 8);
     expect(page.transactions[0]?.value).toBeCloseTo(expectedReceived, 12);
   });

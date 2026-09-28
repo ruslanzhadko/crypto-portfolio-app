@@ -25,6 +25,10 @@ export interface NormalizedTransaction {
   tokenName: string | null;
   /** Exact token contracts/mints involved in this transaction (native assets omitted). */
   tokenAddresses?: string[];
+  swapOutTokenAddress?: string | null;
+  swapInTokenAddress?: string | null;
+  logoUrl?: string | null;
+  swapLogoUrl?: string | null;
   fromAddress: string | null;
   toAddress: string | null;
   value: number | null;

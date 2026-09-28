@@ -20,6 +20,8 @@ interface RecentTransaction {
   type: string;
   tokenSymbol: string | null;
   tokenAddresses?: string[];
+  swapOutTokenAddress?: string | null;
+  swapInTokenAddress?: string | null;
   value: number | null;
   sentValue?: number | null;
   status: string;
@@ -280,8 +282,8 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
   const content = <>
     <div className="relative grid h-11 w-12 shrink-0 place-items-center">
       {isSwap ? <>
-        <TokenLogo src={transaction.logoUrl} symbol={outSymbol} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={34} className="absolute left-0 top-0 ring-2 ring-surface" />
-        <TokenLogo src={transaction.swapLogoUrl} symbol={inSymbol} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[1]} size={30} className="absolute bottom-0 right-0 ring-2 ring-surface" />
+        <TokenLogo src={transaction.logoUrl} symbol={outSymbol} chainName={transaction.chainName} tokenAddress={transaction.swapOutTokenAddress ?? undefined} size={34} className="absolute left-0 top-0 ring-2 ring-surface" />
+        <TokenLogo src={transaction.swapLogoUrl} symbol={inSymbol} chainName={transaction.chainName} tokenAddress={transaction.swapInTokenAddress ?? undefined} size={30} className="absolute bottom-0 right-0 ring-2 ring-surface" />
       </> : <TokenLogo src={transaction.logoUrl} symbol={transaction.tokenSymbol ?? tokenLabel} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={40} />}
     </div>
     <div className="min-w-0 flex-1">

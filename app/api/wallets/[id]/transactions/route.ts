@@ -5,6 +5,8 @@ import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { fetchTransactionsPage } from '@/lib/services/ankr';
 import { fetchRobinhoodTransactions, parseRobinhoodCursor } from '@/lib/services/robinhood';
 import { transactionIsSpam, type TransactionSpamCandidate } from '@/lib/services/transaction-spam';
+import { transactionInitiators } from '@/lib/services/transaction-verification';
+import { transactionAssets } from '@/lib/services/transaction-assets';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -39,22 +41,22 @@ function cacheSet(key: string, payload: object): void {
 }
 // ────────────────────────────────────────────────────────────────────────────
 
-function parseSwapSymbols(tokenSymbol: string): string[] {
-  if (tokenSymbol.includes('→')) {
-    return tokenSymbol.split('→').map((s) => s.trim()).filter(Boolean);
-  }
-  return [tokenSymbol];
-}
-
-async function markSpam<T extends TransactionSpamCandidate>(walletId: string, transactions: T[]) {
+async function markSpam<T extends TransactionSpamCandidate>(walletId: string, transactions: T[], walletAddress?: string) {
   const walletTokens = await prisma.tokenBalance.findMany({
     where: { walletId },
     select: { chainName: true, tokenAddress: true, isSpam: true },
   });
-  const interactedAddresses = new Set(transactions
+  const knownAddresses = new Set(walletTokens.filter((token) => !token.isSpam).map((token) => `${token.chainName}:${token.tokenAddress.toLowerCase()}`));
+  const candidates = transactions.filter((tx) => (tx.type === 'send' || tx.type === 'swap')
+    && tx.hash && tx.tokenAddresses?.some((address) => !knownAddresses.has(`${tx.chainName}:${address.toLowerCase()}`)));
+  const initiators = walletAddress ? await transactionInitiators(candidates.map((tx) => ({ hash: tx.hash!, chainName: tx.chainName }))) : new Map<string, string>();
+  const checked = transactions.map((tx) => ({ ...tx, walletAddress,
+    transactionInitiator: tx.hash ? initiators.get(`${tx.chainName}:${tx.hash}`) : undefined }));
+  const interactedAddresses = new Set(checked
+    .filter((tx) => !transactionIsSpam(tx, walletTokens))
     .filter((tx) => tx.type === 'send' || tx.type === 'swap')
     .flatMap((tx) => (tx.tokenAddresses ?? []).map((address) => `${tx.chainName}:${address.toLowerCase()}`)));
-  return transactions.map((tx) => ({ ...tx, isSpam: transactionIsSpam(tx, walletTokens, interactedAddresses) }));
+  return transactions.map((tx, index) => ({ ...tx, isSpam: transactionIsSpam(checked[index]!, walletTokens, interactedAddresses) }));
 }
 
 // ─── Solana transactions via public JSON-RPC (batch) ────────────────────────
@@ -265,6 +267,8 @@ async function fetchSolanaTransactionsHelius(
         timestamp: new Date(tx.timestamp * 1000).toISOString(),
         blockNumber: String(tx.slot),
         logoUrl, swapLogoUrl, swapOutSymbol, swapInSymbol,
+        swapOutTokenAddress: type === 'swap' ? (netOut[0]?.[0] === WSOL ? null : netOut[0]?.[0] ?? null) : null,
+        swapInTokenAddress: type === 'swap' ? (netIn[0]?.[0] === WSOL ? null : netIn[0]?.[0] ?? null) : null,
       });
 
       if (results.length >= pageSize) break;
@@ -469,6 +473,8 @@ async function fetchSolanaTransactionsPage(
       timestamp: sig.blockTime ? new Date(sig.blockTime * 1000).toISOString() : new Date().toISOString(),
       blockNumber: String(sig.slot ?? txResult?.slot ?? 0),
       logoUrl, swapLogoUrl, swapOutSymbol, swapInSymbol,
+      swapOutTokenAddress: type === 'swap' ? outTokens[0]?.mint ?? null : null,
+      swapInTokenAddress: type === 'swap' ? inTokens[0]?.mint ?? null : null,
     });
   }
 
@@ -483,7 +489,7 @@ async function getWalletTransactionsPayload(
   chain: string | null,
   pageSize: number,
 ): Promise<WalletTransactionPagePayload> {
-  const cacheKey = `tx-v5::${wallet.id}::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
+  const cacheKey = `tx-v6::${wallet.id}::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
   const cached = cacheGet<WalletTransactionPagePayload>(cacheKey);
   if (cached) return cached;
 
@@ -505,36 +511,12 @@ async function getWalletTransactionsPayload(
     ? await fetchRobinhoodTransactions(wallet.address, pageToken)
     : await fetchTransactionsPage(wallet.address, pageToken, pageSize);
 
-  const symbolChainPairs = new Set<string>();
-  for (const t of transactions) {
-    if (!t.tokenSymbol || !t.chainName) continue;
-    for (const sym of parseSwapSymbols(t.tokenSymbol)) {
-      symbolChainPairs.add(`${sym.toLowerCase()}::${t.chainName}`);
-    }
-  }
-
-  const logoMap = new Map<string, string | null>();
-  if (symbolChainPairs.size > 0) {
-    const pairs = Array.from(symbolChainPairs);
-    const balances = await prisma.tokenBalance.findMany({
-      where: {
-        walletId: wallet.id,
-        OR: pairs.map((pair) => {
-          const [sym, pairChain] = pair.split('::');
-          return { tokenSymbol: { equals: sym, mode: 'insensitive' as const }, chainName: pairChain };
-        }),
-      },
-      select: { tokenSymbol: true, chainName: true, logoUrl: true },
-    });
-    for (const balance of balances) {
-      const key = `${balance.tokenSymbol.toLowerCase()}::${balance.chainName}`;
-      if (!logoMap.has(key) && balance.logoUrl) logoMap.set(key, balance.logoUrl);
-    }
-  }
+  const balances = await prisma.tokenBalance.findMany({
+    where: { walletId: wallet.id },
+    select: { tokenAddress: true, chainName: true, logoUrl: true },
+  });
 
   const result = transactions.map((transaction) => {
-    const symbols = transaction.tokenSymbol ? parseSwapSymbols(transaction.tokenSymbol) : [];
-    const transactionChain = transaction.chainName ?? '';
     return {
       id: 'id' in transaction ? String(transaction.id) : `${transaction.chainName}:${transaction.hash}`,
       hash: transaction.hash,
@@ -551,19 +533,12 @@ async function getWalletTransactionsPayload(
       status: transaction.status,
       timestamp: transaction.timestamp.toISOString(),
       blockNumber: transaction.blockNumber ? transaction.blockNumber.toString() : null,
-      logoUrl: symbols[0]
-        ? (logoMap.get(`${symbols[0].toLowerCase()}::${transactionChain}`) ?? null)
-        : null,
-      swapLogoUrl: symbols[1]
-        ? (logoMap.get(`${symbols[1].toLowerCase()}::${transactionChain}`) ?? null)
-        : null,
-      swapOutSymbol: symbols.length > 1 ? (symbols[0] ?? null) : null,
-      swapInSymbol: symbols.length > 1 ? (symbols[1] ?? null) : null,
+      ...transactionAssets(transaction, balances),
     };
   });
 
   const payload = {
-    transactions: await markSpam(wallet.id, result),
+    transactions: await markSpam(wallet.id, result, wallet.address),
     nextPageToken,
     hasMore: !!nextPageToken,
   };

@@ -45,4 +45,23 @@ describe('transaction spam classification', () => {
     expect(transactionIsSpam(tx, flagged, new Set(['bsc:0xdef']))).toBe(false);
     expect(transactionIsSpam({ ...tx, type: 'send' }, flagged)).toBe(false);
   });
+
+  it('quarantines forged outgoing Transfer events initiated by another address', () => {
+    const tx = { chainName: 'bsc', type: 'send', tokenSymbol: 'U5DT', value: 100,
+      tokenAddresses: ['0x1a81eccfcc8a25be3de130e16495c4b6d92a06bf'],
+      walletAddress: '0xa96ce363034c99f137fa19cec7def645098f2787',
+      transactionInitiator: '0x3843c61d6f8fc8b925e37f76df4fd94812745700' };
+    expect(transactionIsSpam(tx, [])).toBe(true);
+    expect(transactionIsSpam({ ...tx, tokenSymbol: 'USDT' }, [])).toBe(true);
+    expect(transactionIsSpam(tx, [{ chainName: 'bsc', tokenAddress: tx.tokenAddresses[0]!, isSpam: true }])).toBe(true);
+    expect(transactionIsSpam({ ...tx, transactionInitiator: tx.walletAddress.toUpperCase() }, [])).toBe(false);
+    expect(transactionIsSpam({ ...tx, transactionInitiator: undefined }, [])).toBe(false);
+  });
+
+  it('keeps approved transfers of known real contracts even if another account submits them', () => {
+    const tx = { chainName: 'bsc', type: 'send', tokenSymbol: 'USDT', value: 100,
+      tokenAddresses: ['0x55d398326f99059ff775485246999027b3197955'],
+      walletAddress: '0xwallet', transactionInitiator: '0xspender' };
+    expect(transactionIsSpam(tx, [{ chainName: 'bsc', tokenAddress: tx.tokenAddresses[0]!, isSpam: false }])).toBe(false);
+  });
 });

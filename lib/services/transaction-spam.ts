@@ -5,6 +5,9 @@ export interface TransactionSpamCandidate {
   tokenName?: string | null;
   type?: string;
   value?: number | null;
+  hash?: string;
+  walletAddress?: string;
+  transactionInitiator?: string;
 }
 
 export interface SpamTokenIdentity {
@@ -38,6 +41,10 @@ export function transactionIsSpam(
   if (SCAM_NAME.test(symbol) || SCAM_NAME.test(name)) return true;
 
   const relevant = walletTokens.filter((token) => token.chainName === tx.chainName && token.tokenAddress);
+  const knownAddresses = new Set(relevant.filter((token) => !token.isSpam).map((token) => token.tokenAddress.toLowerCase()));
+  if ((tx.type === 'send' || tx.type === 'swap') && tx.walletAddress && tx.transactionInitiator
+    && tx.walletAddress.toLowerCase() !== tx.transactionInitiator.toLowerCase()
+    && tx.tokenAddresses?.some((address) => !knownAddresses.has(address.toLowerCase()))) return true;
   const spamAddresses = new Set(relevant
     .filter((token) => token.isSpam)
     .map((token) => token.tokenAddress.toLowerCase()));
@@ -47,7 +54,6 @@ export function transactionIsSpam(
   // A send/swap of the same contract on this page is evidence of interaction.
   // This is a suspicion, not proof of a scam; the UI allows reviewing it.
   if (tx.type === 'receive' && tx.tokenAddresses?.length) {
-    const knownAddresses = new Set(relevant.map((token) => token.tokenAddress.toLowerCase()));
     if (tx.tokenAddresses.some((address) =>
       !knownAddresses.has(address.toLowerCase()) &&
       !interactedAddresses.has(`${tx.chainName}:${address.toLowerCase()}`),
