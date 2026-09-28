@@ -323,7 +323,7 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
       </div>
     </div>
   </>;
-  const className = 'flex min-w-0 gap-2.5 px-4 py-3 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:gap-3 sm:px-5 sm:py-4';
+  const className = 'flex min-w-0 items-center gap-2.5 px-4 py-3 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:gap-3 sm:px-5 sm:py-4';
   return explorer
     ? <a href={`${explorer}${transaction.hash}`} target="_blank" rel="noopener noreferrer" className={className}>{content}</a>
     : <div className={className}>{content}</div>;
