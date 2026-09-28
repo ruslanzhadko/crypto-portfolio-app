@@ -2,6 +2,7 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { TelegramClient } from "teleproto";
 import { StringSession } from "teleproto/sessions";
+import qrcode from "qrcode-terminal";
 
 const apiId = Number(process.env.TELEGRAM_API_ID);
 const apiHash = process.env.TELEGRAM_API_HASH ?? "";
@@ -19,9 +20,22 @@ async function main() {
   });
 
   try {
-    await client.start({
+    if (process.argv.includes("--qr")) {
+      await client.connect();
+      console.log("Telegram на телефоне → Настройки → Устройства → Подключить устройство.\n");
+      await client.signInUserWithQrCode({ apiId, apiHash }, {
+        qrCode: async ({ token }) => {
+          console.log("Отсканируйте этот QR-код (он обновляется автоматически):");
+          qrcode.generate(`tg://login?token=${token.toString("base64url")}`, { small: true });
+        },
+        password: () => rl.question("2FA password (if enabled): "),
+        onError: (error) => { console.error("[telegram-auth]", error.message); return Promise.resolve(true); },
+      });
+    } else await client.start({
       phoneNumber: () => rl.question("Telegram phone number: "),
-      phoneCode: () => rl.question("Login code: "),
+      phoneCode: (viaApp) => rl.question(viaApp
+        ? "Код отправлен в служебный чат Telegram. Login code: "
+        : "Проверьте способ доставки кода Telegram (SMS/email). Login code: "),
       password: () => rl.question("2FA password (if enabled): "),
       onError: (error) => console.error("[telegram-auth]", error),
     });

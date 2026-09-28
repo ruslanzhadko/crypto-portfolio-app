@@ -5,6 +5,7 @@ import { prisma } from "../lib/db/prisma";
 import { classifyFeedPost } from "../lib/feed/classify-post";
 import { extractTelegramLinks } from "../lib/feed/links";
 import { prepareFeedImage, type FeedImagePayload } from "../lib/feed/media";
+import { compatiblePhotoThumb } from "../lib/feed/telegram-photo";
 
 const DEFAULT_CHANNELS = [
   "arbitrageaggregator",
@@ -66,10 +67,11 @@ function selectPhotoThumb(
     .map((size) => ({ size, bytes: photoSizeBytes(size) }))
     .filter((item) => item.bytes > 0)
     .sort((a, b) => b.bytes - a.bytes);
-  return (
+  const selected = (
     candidates.find((item) => item.bytes <= MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES)
       ?.size ?? candidates.at(-1)?.size
   );
+  return selected ? compatiblePhotoThumb(selected) : undefined;
 }
 
 async function downloadPhoto(
@@ -84,7 +86,7 @@ async function downloadPhoto(
     if (!Buffer.isBuffer(downloaded)) return null;
     const image = prepareFeedImage(downloaded);
     if (!image)
-      console.warn(`[feed] skipped invalid or oversized photo #${message.id}`);
+      console.warn(`[feed] skipped photo #${message.id}: bytes=${downloaded.length}, signature=${downloaded.subarray(0, 8).toString("hex")}`);
     return image;
   } catch (error) {
     console.warn(`[feed] photo download failed #${message.id}`, error);
