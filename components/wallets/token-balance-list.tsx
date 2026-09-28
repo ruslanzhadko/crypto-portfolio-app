@@ -34,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MIN_TOKEN_USD } from '@/lib/services/token-types';
 import { cn } from '@/lib/utils/cn';
 import { getTokenPageUrl } from '@/lib/utils/token-links';
-import { getTokenGroupingKey } from '@/lib/utils/token-grouping';
+import { getGroupedTokenName, getTokenGroupingKey } from '@/lib/utils/token-grouping';
 import { getChainDisplayName } from '@/lib/utils/networks';
 
 interface TokenBalanceListProps {
@@ -92,7 +92,7 @@ function groupBalances(tokens: TokenBalance[]): BalanceGroup[] {
       map.set(key, {
         key,
         symbol: t.tokenSymbol,
-        name: t.tokenName,
+        name: getGroupedTokenName(t.tokenSymbol, t.tokenName),
         logoUrl: t.logoUrl,
         coingeckoId: marketId,
         totalBalance: t.balance,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getTokenGroupingKey } from './token-grouping';
+import { getGroupedTokenName, getTokenGroupingKey } from './token-grouping';
 
 const token = (chainName: string, tokenAddress: string, tokenSymbol = 'WETH') => ({
   chainName, tokenAddress, tokenSymbol, coingeckoId: null,
@@ -25,5 +25,20 @@ describe('getTokenGroupingKey', () => {
     const eth = { ...token('base', '', 'ETH'), coingeckoId: 'ethereum' };
     expect(getTokenGroupingKey(eth)).toBe('market:ethereum');
     expect(getTokenGroupingKey(eth)).not.toBe(getTokenGroupingKey(token('base', '0x4200000000000000000000000000000000000006')));
+  });
+
+  it('groups every USDC balance across networks and contracts', () => {
+    const arbitrum = token('arbitrum', '0xaf88d065e77c8cc2239327c5edb3a432268e5831', 'USDC');
+    const solana = token('solana', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', 'usdc');
+    const bsc = token('bsc', '0x8ac76a51cc950d9822d68b83fe1ad97b32cd580d', 'USDC');
+
+    expect(new Set([arbitrum, solana, bsc].map(getTokenGroupingKey))).toEqual(
+      new Set(['stablecoin:usd-coin']),
+    );
+  });
+
+  it('uses a canonical name for the combined USDC row', () => {
+    expect(getGroupedTokenName('USDC', 'USD Coin (Arb1)')).toBe('USD Coin');
+    expect(getGroupedTokenName('ETH', 'Ethereum')).toBe('Ethereum');
   });
 });

@@ -6,6 +6,10 @@ const WETH_CONTRACTS: Record<string, string> = {
   base: '0x4200000000000000000000000000000000000006',
 };
 
+const CROSS_CHAIN_GROUPS: Record<string, string> = {
+  USDC: 'stablecoin:usd-coin',
+};
+
 export function getTokenGroupingKey(token: {
   chainName: string;
   tokenAddress: string;
@@ -14,9 +18,13 @@ export function getTokenGroupingKey(token: {
 }): string {
   const chain = token.chainName.toLowerCase();
   const address = token.tokenAddress.toLowerCase();
+  const symbol = token.tokenSymbol.toUpperCase();
+
+  const crossChainGroup = CROSS_CHAIN_GROUPS[symbol];
+  if (crossChainGroup) return crossChainGroup;
 
   if (address) {
-    if (token.tokenSymbol.toUpperCase() === 'WETH' && WETH_CONTRACTS[chain] === address) {
+    if (symbol === 'WETH' && WETH_CONTRACTS[chain] === address) {
       return 'wrapped:ethereum';
     }
     return `${chain}:${address}`;
@@ -25,4 +33,9 @@ export function getTokenGroupingKey(token: {
   return token.coingeckoId
     ? `market:${token.coingeckoId}`
     : `${chain}:native:${token.tokenSymbol.toLowerCase()}`;
+}
+
+/** Keep a cross-chain group label independent of which network was read first. */
+export function getGroupedTokenName(tokenSymbol: string, tokenName: string): string {
+  return tokenSymbol.toUpperCase() === 'USDC' ? 'USD Coin' : tokenName;
 }

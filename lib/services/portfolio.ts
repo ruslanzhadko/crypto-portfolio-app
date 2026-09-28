@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { getChainDisplayName, getChainColor } from '@/lib/utils/networks';
 import { fetchMarketChart } from '@/lib/services/coingecko';
 import { computePortfolioValue, computeShare, computePnL, computePortfolio24hChange } from '@/lib/services/portfolio-math';
-import { getTokenGroupingKey } from '@/lib/utils/token-grouping';
+import { getGroupedTokenName, getTokenGroupingKey } from '@/lib/utils/token-grouping';
 
 export interface WalletTokenBreakdown {
   walletId: string;
@@ -132,7 +132,7 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
         tokenMap.set(key, {
           key,
           symbol: b.tokenSymbol,
-          name: b.tokenName,
+          name: getGroupedTokenName(b.tokenSymbol, b.tokenName),
           logoUrl: b.logoUrl,
           coingeckoId: b.coingeckoId,
           chainName: b.chainName,
@@ -256,7 +256,7 @@ export async function getDashboardSpamTokens(userId: string): Promise<Aggregated
         grouped.set(key, {
           key,
           symbol: balance.tokenSymbol,
-          name: balance.tokenName,
+          name: getGroupedTokenName(balance.tokenSymbol, balance.tokenName),
           logoUrl: balance.logoUrl,
           coingeckoId: balance.coingeckoId,
           chainName: balance.chainName,
