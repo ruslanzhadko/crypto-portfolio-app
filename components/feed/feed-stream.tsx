@@ -27,6 +27,7 @@ import { resolveFeedTextLinks, type FeedTextLink } from "@/lib/feed/links";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FeedPhoto } from "@/components/feed/feed-photo";
 
 type PostType =
   | "NEWS"
@@ -465,7 +466,6 @@ export function FeedStream() {
 function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
   const t = useTranslations("Feed");
   const [expanded, setExpanded] = useState(false);
-  const [mediaFailed, setMediaFailed] = useState(false);
   const post = group.latest;
   const type = typeMeta(post.type, post.direction);
   const Icon = type.icon;
@@ -543,26 +543,12 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
             </div>
           )}
 
-          {post.mediaUrl && !mediaFailed && (
-            <a
-              href={post.telegramUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 block max-w-2xl overflow-hidden rounded-xl bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
-              aria-label={t("openTelegram")}
-            >
-              {/* Telegram photos have unknown intrinsic dimensions, so a native
-                  responsive image avoids imposing an incorrect aspect ratio. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={post.mediaUrl}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                onError={() => setMediaFailed(true)}
-                className="max-h-[32rem] w-full object-contain"
-              />
-            </a>
+          {post.mediaUrl && (
+            <FeedPhoto
+              key={post.mediaUrl}
+              src={post.mediaUrl}
+              source={post.source.title}
+            />
           )}
 
           <a
