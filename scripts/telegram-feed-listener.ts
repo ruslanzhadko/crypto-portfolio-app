@@ -1,9 +1,10 @@
-import { TelegramClient } from "teleproto";
+import { Api, TelegramClient } from "teleproto";
 import { StringSession } from "teleproto/sessions";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db/prisma";
 import { classifyFeedPost } from "../lib/feed/classify-post";
 import { extractTelegramLinks } from "../lib/feed/links";
+import { prepareFeedImage, type FeedImagePayload } from "../lib/feed/media";
 
 const DEFAULT_CHANNELS = [
   "arbitrageaggregator",
@@ -31,22 +32,7 @@ if (!Number.isInteger(apiId) || !apiHash || !session) {
   );
 }
 
-type ChannelUpdate = {
-  message?: {
-    id?: number;
-    message?: string;
-    entities?: Array<{
-      className?: string;
-      offset?: number;
-      length?: number;
-      url?: string;
-    }>;
-    date?: number;
-    editDate?: number;
-  };
-};
-
-type ChannelMessage = NonNullable<ChannelUpdate["message"]>;
+type ChannelUpdate = { message?: Api.Message };
 
 const client = new TelegramClient(new StringSession(session), apiId, apiHash, {
   connectionRetries: 10,
@@ -56,6 +42,55 @@ const client = new TelegramClient(new StringSession(session), apiId, apiHash, {
 const watchers = new Map<string, () => void>();
 let syncTimer: ReturnType<typeof setInterval> | undefined;
 let syncing = false;
+const MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES = 2 * 1024 * 1024;
+
+function photoSizeBytes(size: Api.TypePhotoSize): number {
+  if (size instanceof Api.PhotoSize) return size.size;
+  if (size instanceof Api.PhotoSizeProgressive) {
+    return Math.max(0, ...size.sizes);
+  }
+  if (
+    size instanceof Api.PhotoCachedSize ||
+    size instanceof Api.PhotoStrippedSize
+  ) {
+    return size.bytes.length;
+  }
+  return 0;
+}
+
+function selectPhotoThumb(
+  media: Api.MessageMediaPhoto,
+): Api.TypePhotoSize | undefined {
+  if (!(media.photo instanceof Api.Photo)) return undefined;
+  const candidates = media.photo.sizes
+    .map((size) => ({ size, bytes: photoSizeBytes(size) }))
+    .filter((item) => item.bytes > 0)
+    .sort((a, b) => b.bytes - a.bytes);
+  return (
+    candidates.find((item) => item.bytes <= MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES)
+      ?.size ?? candidates.at(-1)?.size
+  );
+}
+
+async function downloadPhoto(
+  message: Api.Message,
+): Promise<FeedImagePayload | null> {
+  if (!(message.media instanceof Api.MessageMediaPhoto)) return null;
+  try {
+    const downloaded = await client.downloadMedia(message, {
+      thumb: selectPhotoThumb(message.media),
+      requestTimeout: 30_000,
+    });
+    if (!Buffer.isBuffer(downloaded)) return null;
+    const image = prepareFeedImage(downloaded);
+    if (!image)
+      console.warn(`[feed] skipped invalid or oversized photo #${message.id}`);
+    return image;
+  } catch (error) {
+    console.warn(`[feed] photo download failed #${message.id}`, error);
+    return null;
+  }
+}
 
 async function ensureSource(username: string) {
   const entity = await client.getEntity(username);
@@ -81,11 +116,14 @@ async function ensureSource(username: string) {
 async function saveMessage(
   username: string,
   sourceId: string,
-  message: ChannelMessage | undefined,
+  message: Api.Message | undefined,
 ) {
-  if (!message?.id || !message.message?.trim() || !message.date) return;
+  if (!message?.id || !message.date) return;
 
-  const rawText = message.message;
+  const hasPhoto = message.media instanceof Api.MessageMediaPhoto;
+  if (!message.message?.trim() && !hasPhoto) return;
+
+  const rawText = message.message ?? "";
   const leadingWhitespace = rawText.length - rawText.trimStart().length;
   const text = rawText.trim();
   const links = extractTelegramLinks(
@@ -108,9 +146,10 @@ async function saveMessage(
   const classified = classifyFeedPost(text);
   const publishedAt = new Date(message.date * 1000);
   const editedAt = message.editDate ? new Date(message.editDate * 1000) : null;
+  const image = hasPhoto ? await downloadPhoto(message) : null;
 
-  await prisma.$transaction([
-    prisma.telegramFeedPost.upsert({
+  await prisma.$transaction(async (tx) => {
+    const post = await tx.telegramFeedPost.upsert({
       where: {
         sourceId_telegramMessageId: {
           sourceId,
@@ -133,12 +172,25 @@ async function saveMessage(
         editedAt,
         ...classified,
       },
-    }),
-    prisma.telegramFeedSource.update({
+    });
+
+    if (image) {
+      await tx.telegramFeedMedia.upsert({
+        where: { postId: post.id },
+        create: { postId: post.id, ...image },
+        update: image,
+      });
+      await tx.telegramFeedPost.update({
+        where: { id: post.id },
+        data: { mediaUrl: `/api/feed/media/${post.id}` },
+      });
+    }
+
+    await tx.telegramFeedSource.update({
       where: { id: sourceId },
       data: { lastMessageId: message.id },
-    }),
-  ]);
+    });
+  });
 
   console.log(`[feed] @${username} #${message.id} ${classified.type}`);
 }
@@ -177,7 +229,11 @@ async function startWatching(username: string) {
   try {
     const recentMessages = await client.getMessages(username, { limit: 30 });
     for (const message of [...recentMessages].reverse()) {
-      await saveMessage(username, source.id, message as ChannelMessage);
+      await saveMessage(
+        username,
+        source.id,
+        message instanceof Api.Message ? message : undefined,
+      );
     }
     console.log(
       `[feed] backfilled @${username}: ${recentMessages.length} messages`,

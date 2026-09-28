@@ -321,11 +321,23 @@ model TelegramFeedPost {
   updatedAt         DateTime     @updatedAt
 
   source TelegramFeedSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  media  TelegramFeedMedia?
 
   @@unique([sourceId, telegramMessageId])
   @@index([publishedAt])
   @@index([type, publishedAt])
   @@index([symbol, publishedAt])
+}
+
+model TelegramFeedMedia {
+  postId    String   @id
+  data      Bytes
+  mimeType  String
+  byteSize  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  post TelegramFeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 enum FeedPostType {
