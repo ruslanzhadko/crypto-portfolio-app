@@ -167,7 +167,7 @@ export async function fetchEVMBalancesFromAnkr(
  * value — рядок з великим цілим числом (напр. "50000000000000000000" = 50 USDT/18dec).
  * Використовує BigInt щоб уникнути втрати точності при parseFloat великих чисел.
  */
-function parseTokenAmount(value: string | undefined | null, decimals: number): number | null {
+function parseRawTokenAmount(value: string | undefined | null, decimals: number): number | null {
   if (!value || value === '0') return null;
   try {
     const raw = BigInt(value);
@@ -256,7 +256,8 @@ interface AnkrTokenTransfer {
   fromAddress?: string;
   toAddress?: string;
   contractAddress?: string;
-  value?: string;          // raw кількість у найменших одиницях токена
+  value?: string;          // human-readable amount (including integer strings)
+  valueRawInteger?: string; // amount in smallest units
   tokenDecimals?: number;
   tokenName?: string;
   tokenSymbol?: string;
@@ -276,6 +277,15 @@ interface AnkrTokenTransferResponse {
     nextPageToken: string;
   };
   error?: { code: number; message: string };
+}
+
+function tokenTransferAmount(transfer: AnkrTokenTransfer): number | null {
+  if (transfer.valueRawInteger !== undefined) {
+    return parseRawTokenAmount(transfer.valueRawInteger, transfer.tokenDecimals ?? 18);
+  }
+  // Integer-looking values are still human amounts: "100" means 100 USDT.
+  const value = Number(transfer.value);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 // URL-паттерни скам-токенів
@@ -347,8 +357,9 @@ export async function fetchTransactionsPage(
 
   const sorted = collected.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   return {
-    // Рівно pageSize або менше якщо Ankr вичерпався
-    transactions: sorted.slice(0, pageSize),
+    // The cursor is after ALL raw events in this batch. Callers reveal 20 at
+    // a time and keep the remainder, even on the final provider page.
+    transactions: sorted,
     nextPageToken: finalNextToken,
   };
 }
@@ -512,8 +523,8 @@ export function classifyTokenTransfers(
       const inSymbols  = [...new Set(received.map((t) => t.tokenSymbol).filter(Boolean))];
       tokenSymbol = `${outSymbols.join(', ')} → ${inSymbols.join(', ')}`;
       tokenName   = tokenSymbol;
-      value     = received.reduce((sum, t) => sum + (parseTokenAmount(t.value, t.tokenDecimals ?? 18) ?? 0), 0) || null;
-      sentValue = sent.reduce(    (sum, t) => sum + (parseTokenAmount(t.value, t.tokenDecimals ?? 18) ?? 0), 0) || null;
+      value     = received.reduce((sum, t) => sum + (tokenTransferAmount(t) ?? 0), 0) || null;
+      sentValue = sent.reduce(    (sum, t) => sum + (tokenTransferAmount(t) ?? 0), 0) || null;
       fromAddress = wallet;
       toAddress   = wallet;
     } else if (sent.length > 0) {
@@ -521,7 +532,7 @@ export function classifyTokenTransfers(
       const s  = sent[0]!;
       tokenSymbol = s.tokenSymbol?.trim() || null;
       tokenName   = s.tokenName?.trim()   || tokenSymbol;
-      value       = parseTokenAmount(s.value, s.tokenDecimals ?? 18);
+      value       = tokenTransferAmount(s);
       fromAddress = wallet;
       toAddress   = s.toAddress?.toLowerCase() ?? null;
     } else {
@@ -529,7 +540,7 @@ export function classifyTokenTransfers(
       const r  = received[0]!;
       tokenSymbol = r.tokenSymbol?.trim() || null;
       tokenName   = r.tokenName?.trim()   || tokenSymbol;
-      value       = parseTokenAmount(r.value, r.tokenDecimals ?? 18);
+      value       = tokenTransferAmount(r);
       fromAddress = r.fromAddress?.toLowerCase() ?? null;
       toAddress   = wallet;
     }

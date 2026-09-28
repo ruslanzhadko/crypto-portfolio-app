@@ -97,6 +97,10 @@ const transferSchema = commonTxSchema.extend({
   transaction_hash: z.string(), log_index: z.number(), token: tokenSchema,
   total: z.object({ value: z.string(), decimals: z.string() }),
 });
+const internalTxSchema = commonTxSchema.extend({
+  transaction_hash: z.string(), index: z.number(), value: z.string(),
+  success: z.boolean(), error: z.string().nullable(), type: z.string(),
+});
 const historyCursorSchema = z.object({
   native: cursorSchema.nullable(), transfers: cursorSchema.nullable(),
 });
@@ -108,6 +112,58 @@ export function parseRobinhoodCursor(cursor: string) {
 interface RobinhoodEvent extends NormalizedTransaction {
   id: string;
   assetKey: string;
+}
+
+// Address-level internal transfers are much smaller than complete execution
+// traces. Walk until the oldest transaction in this provider batch, so older
+// token pages can still find their ETH payouts (not just the latest 50 calls).
+async function internalFlowsForBatch(
+  path: string, events: RobinhoodEvent[], wallet: string, signal: AbortSignal,
+): Promise<RobinhoodEvent[]> {
+  if (events.length === 0) return [];
+  const hashes = new Set(events.map((event) => event.hash));
+  const oldest = Math.min(...events.map((event) => event.timestamp.getTime()));
+  const flows: RobinhoodEvent[] = [];
+  const seen = new Set<string>();
+  let cursor: z.infer<typeof cursorSchema> | null = null;
+  for (let page = 0; page < 20; page++) {
+    const result = z.object({
+      items: z.array(internalTxSchema), next_page_params: cursorSchema.nullable(),
+    }).parse(await get(`${path}/internal-transactions`, cursor ?? {}, signal));
+    for (const tx of result.items) {
+      if (!tx.timestamp || !tx.success || tx.error || !hashes.has(tx.transaction_hash)) continue;
+      // DELEGATECALL repeats msg.value without transferring ETH again.
+      if (!['call', 'create', 'create2', 'selfdestruct'].includes(tx.type)) continue;
+      const from = tx.from.hash.toLowerCase();
+      const to = tx.to?.hash.toLowerCase() ?? null;
+      if (from !== wallet && to !== wallet) continue;
+      const value = amount(tx.value, 18);
+      if (value <= 0) continue;
+      // Some explorers include the root call as internal index 0.
+      if (tx.index === 0 && events.some((event) => event.hash === tx.transaction_hash
+        && event.assetKey === 'native' && event.value === value
+        && event.fromAddress?.toLowerCase() === from && event.toAddress?.toLowerCase() === to)) continue;
+      const id = `${tx.transaction_hash}:internal:${tx.index}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      flows.push({
+        id, hash: tx.transaction_hash, chainName: 'robinhood', assetKey: 'native',
+        type: from === wallet ? 'send' : 'receive', tokenSymbol: 'ETH', tokenName: 'Ethereum',
+        fromAddress: tx.from.hash, toAddress: tx.to?.hash ?? null,
+        value, usdValue: null, gasUsed: null, status: 'success',
+        blockNumber: tx.block_number === null ? null : BigInt(tx.block_number),
+        timestamp: new Date(tx.timestamp),
+      });
+    }
+    if (!result.next_page_params || result.items.some((tx) => tx.timestamp
+      && Date.parse(tx.timestamp) < oldest)) return flows;
+    const next = JSON.stringify(result.next_page_params);
+    if (seen.has(`cursor:${next}`)) throw new Error('Repeated Robinhood internal cursor');
+    seen.add(`cursor:${next}`);
+    cursor = result.next_page_params;
+  }
+  // Never silently call a sale a send when its payout could not be checked.
+  throw new Error('Robinhood internal transaction pagination limit reached');
 }
 
 function combineRobinhoodSwaps(events: RobinhoodEvent[], wallet: string): RobinhoodEvent[] {
@@ -122,7 +178,7 @@ function combineRobinhoodSwaps(events: RobinhoodEvent[], wallet: string): Robinh
   for (const [hash, group] of byHash) {
     const net = new Map<string, { amount: number; event: RobinhoodEvent }>();
     for (const event of group) {
-      if (!event.value || event.value <= 0) continue;
+      if (!event.value || event.value <= 0 || event.status !== 'success') continue;
       const outgoing = event.fromAddress?.toLowerCase() === wallet;
       const incoming = event.toAddress?.toLowerCase() === wallet;
       if (outgoing === incoming) continue;
@@ -160,15 +216,16 @@ function combineRobinhoodSwaps(events: RobinhoodEvent[], wallet: string): Robinh
 }
 
 export async function fetchRobinhoodTransactions(address: string, pageToken?: string) {
+  const signal = AbortSignal.timeout(20_000);
   const cursor = pageToken ? parseRobinhoodCursor(pageToken) : undefined;
   const path = `/addresses/${address}`;
   const [native, transfers] = await Promise.all([
     cursor?.native === null ? { items: [], next_page_params: null } :
-      get(`${path}/transactions`, cursor?.native ?? {}).then((data) => z.object({
+      get(`${path}/transactions`, cursor?.native ?? {}, signal).then((data) => z.object({
         items: z.array(nativeTxSchema), next_page_params: cursorSchema.nullable(),
       }).parse(data)),
     cursor?.transfers === null ? { items: [], next_page_params: null } :
-      get(`${path}/token-transfers`, { ...cursor?.transfers, type: 'ERC-20' }).then((data) => z.object({
+      get(`${path}/token-transfers`, { ...cursor?.transfers, type: 'ERC-20' }, signal).then((data) => z.object({
         items: z.array(transferSchema), next_page_params: cursorSchema.nullable(),
       }).parse(data)),
   ]);
@@ -199,6 +256,7 @@ export async function fetchRobinhoodTransactions(address: string, pageToken?: st
       blockNumber: tx.block_number === null ? null : BigInt(tx.block_number), timestamp: new Date(tx.timestamp),
     });
   }
+  transactions.push(...await internalFlowsForBatch(path, transactions, wallet, signal));
   const next = { native: native.next_page_params, transfers: transfers.next_page_params };
   return {
     // Keep every event from both provider pages; truncating would skip transfers.

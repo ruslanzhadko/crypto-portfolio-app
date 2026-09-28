@@ -65,14 +65,14 @@ describe('classifyTokenTransfers (net-change)', () => {
 
   it('поріг THRESHOLD рівно на межі: value === 0.001 → включається', () => {
     // 0.001 токена з 18 decimals = 1e15 raw
-    const r = classify([transfer({ value: '1000000000000000', tokenDecimals: 18, tokenSymbol: 'TKN' })]);
+    const r = classify([transfer({ value: '0.001', valueRawInteger: '1000000000000000', tokenDecimals: 18, tokenSymbol: 'TKN' })]);
     expect(r).toHaveLength(1);
     expect(r[0]!.value).toBeCloseTo(0.001);
   });
 
   it('пил нижче порога: value < 0.001 → відфільтровано', () => {
     // 0.0009 токена з 18 decimals = 9e14 raw
-    const r = classify([transfer({ value: '900000000000000', tokenDecimals: 18, tokenSymbol: 'TKN' })]);
+    const r = classify([transfer({ value: '0.0009', valueRawInteger: '900000000000000', tokenDecimals: 18, tokenSymbol: 'TKN' })]);
     expect(r).toHaveLength(0);
   });
 
@@ -98,6 +98,27 @@ describe('classifyTokenTransfers (net-change)', () => {
 
   it('порожній масив → порожній результат', () => {
     expect(classify([])).toHaveLength(0);
+  });
+
+  it('keeps the real BSC 100 USDT send with Ankr human and raw amounts', () => {
+    const r = classify([transfer({
+      blockchain: 'bsc', fromAddress: WALLET, toAddress: '0xrecipient',
+      transactionHash: '0x46c56afb5fbd56cb9b2c445fbcee7beb687e4614e987107b6cae9aca2c8dfbd6',
+      tokenSymbol: 'USDT', tokenName: 'Tether USD', tokenDecimals: 18,
+      value: '100', valueRawInteger: '100000000000000000000',
+    })]);
+    expect(r).toHaveLength(1);
+    expect(r[0]).toMatchObject({ type: 'send', chainName: 'bsc', value: 100 });
+  });
+
+  it('does not scale integer human amounts when raw amounts are absent', () => {
+    const r = classify([transfer({ value: '100', tokenDecimals: 18 })]);
+    expect(r[0]?.value).toBe(100);
+  });
+
+  it('uses explicit raw units without losing the fractional remainder', () => {
+    const r = classify([transfer({ value: '1.234567', valueRawInteger: '1234567', tokenDecimals: 6 })]);
+    expect(r[0]?.value).toBeCloseTo(1.234567);
   });
 
   it('кілька різних транзакцій → кілька результатів', () => {

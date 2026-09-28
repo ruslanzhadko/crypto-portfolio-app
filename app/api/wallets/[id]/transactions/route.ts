@@ -483,7 +483,7 @@ async function getWalletTransactionsPayload(
   chain: string | null,
   pageSize: number,
 ): Promise<WalletTransactionPagePayload> {
-  const cacheKey = `spam-v4::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
+  const cacheKey = `tx-v5::${wallet.id}::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
   const cached = cacheGet<WalletTransactionPagePayload>(cacheKey);
   if (cached) return cached;
 

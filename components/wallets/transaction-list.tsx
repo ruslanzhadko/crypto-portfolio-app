@@ -91,6 +91,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
   const [typeFilter, setTypeFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [showSpam, setShowSpam] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
   const cursorsRef = useRef<CursorState>({ default: undefined, robinhood: undefined });
   const requestIdRef = useRef(0);
   const loadingRef = useRef(false);
@@ -103,6 +104,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
       setItems(null);
       setError(null);
       setHasMore(false);
+      setVisibleCount(20);
     } else {
       setLoadingMore(true);
     }
@@ -135,6 +137,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
     } else {
       const nextItems = successes.flatMap((response) => response.payload!.transactions);
       setItems((previous) => mergeTransactions(reset ? [] : previous ?? [], nextItems));
+      if (!reset) setVisibleCount((previous) => previous + 20);
       setError(null);
     }
     setPartialError(failed);
@@ -144,6 +147,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
   }, [walletId, network, t]);
 
   useEffect(() => { void load(true); }, [load]);
+  useEffect(() => { setVisibleCount(20); }, [chainFilter, typeFilter, query, showSpam]);
 
   // Рефетч після wallet sync
   useEffect(() => {
@@ -279,7 +283,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
               {spamCount > 0 && !showSpam && !filtersActive ? t('spamHidden') : t('noMatches')}
             </p>
           )}
-          {filtered.map((tx) => {
+          {filtered.slice(0, visibleCount).map((tx) => {
             if (!tx.tokenSymbol && (!tx.value || tx.value <= 0)) return null;
 
             const isOutgoing = tx.fromAddress?.toLowerCase() === normalizedSelf && tx.type !== 'receive';
@@ -371,10 +375,13 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
           })}
         </div>
 
-        {hasMore && (
+        {(hasMore || filtered.length > visibleCount) && (
           <div className="flex justify-center border-t border-border p-4">
             <Button variant="outline" size="sm" disabled={loadingMore}
-              onClick={() => void load(false)}>
+              onClick={() => {
+                if (filtered.length > visibleCount) setVisibleCount((previous) => previous + 20);
+                else void load(false);
+              }}>
               {loadingMore ? t('loadingMore') : t('loadMore')}
             </Button>
           </div>
