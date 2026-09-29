@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, JetBrains_Mono } from 'next/font/google';
+import { JetBrains_Mono, Manrope } from 'next/font/google';
 import { SessionProvider } from 'next-auth/react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
@@ -11,9 +11,9 @@ import { routing } from '@/i18n/routing';
 import { notFound } from 'next/navigation';
 import '../globals.css';
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ['latin', 'cyrillic'],
-  variable: '--font-inter',
+  variable: '--font-manrope',
   display: 'swap',
 });
 
@@ -25,7 +25,8 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'CryptoPortfolio',
-  description: 'Track your crypto portfolio across 10 networks with real-time price analytics.',
+  description:
+    'Track your crypto portfolio across 10 networks with real-time price analytics.',
 };
 
 export const viewport: Viewport = {
@@ -56,7 +57,7 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className={`dark ${inter.variable} ${mono.variable}`}>
+    <html lang={locale} className={`dark ${manrope.variable} ${mono.variable}`}>
       <body className="min-h-screen bg-background font-sans text-text antialiased">
         <NextIntlClientProvider messages={messages}>
           <SessionProvider>

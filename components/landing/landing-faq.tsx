@@ -14,17 +14,30 @@ function FaqRow({ item }: { item: FaqItem }) {
   return (
     <div className="border-b border-border last:border-0">
       <button
-        className="flex w-full items-center justify-between gap-4 py-4 text-left text-sm font-medium transition-colors hover:text-primary"
+        className="flex min-h-14 w-full items-center justify-between gap-4 py-5 text-left text-base font-semibold tracking-[-0.01em] transition-colors hover:text-primary focus-visible:text-primary"
         onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
       >
         {item.q}
         <ChevronDown
-          className={cn('h-4 w-4 shrink-0 text-text-muted transition-transform duration-200', open && 'rotate-180')}
+          className={cn(
+            'h-4 w-4 shrink-0 text-text-muted transition-transform duration-300',
+            open && 'rotate-180 text-primary',
+          )}
         />
       </button>
-      {open && (
-        <p className="pb-4 text-sm text-text-muted leading-relaxed">{item.a}</p>
-      )}
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out',
+          open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <p className="landing-copy max-w-[65ch] pb-5 pr-8 text-sm text-text-muted">
+            {item.a}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
