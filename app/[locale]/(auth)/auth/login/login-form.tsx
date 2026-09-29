@@ -36,21 +36,22 @@ export function LoginForm() {
           password,
           redirect: false,
         });
-        if (res?.error) {
-          setError(t('loginErrorMessage'));
+        if (!res?.ok || res.error) {
+          const invalidCredentials = res?.error === 'CredentialsSignin';
+          setError(t(invalidCredentials ? 'loginErrorMessage' : 'loginServiceErrorMessage'));
           toast({
             variant: 'destructive',
             title: t('loginToastFailTitle'),
-            description: t('loginToastFailDescription'),
+            description: t(invalidCredentials ? 'loginToastFailDescription' : 'loginToastServiceFailDescription'),
           });
           return;
         }
       } catch {
-        setError(t('loginErrorMessage'));
+        setError(t('loginServiceErrorMessage'));
         toast({
           variant: 'destructive',
           title: t('loginToastFailTitle'),
-          description: t('loginToastFailDescription'),
+          description: t('loginToastServiceFailDescription'),
         });
         return;
       }
