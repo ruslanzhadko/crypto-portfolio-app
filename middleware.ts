@@ -1,6 +1,7 @@
 import createIntlMiddleware from "next-intl/middleware";
 import { routing } from "@/i18n/routing";
 import { type NextRequest, NextResponse } from "next/server";
+import { isPublicPath } from "@/lib/auth/public-paths";
 
 const handleI18nRouting = createIntlMiddleware(routing);
 
@@ -17,20 +18,6 @@ function stripLocalePrefix(pathname: string): {
     if (pathname === `/${locale}`) return { path: "/", locale };
   }
   return { path: pathname, locale: null };
-}
-
-function isPublicPath(path: string): boolean {
-  return (
-    path === "/" ||
-    path === "/feed" ||
-    path === "/api/feed" ||
-    path === "/api/public/market" ||
-    path.startsWith("/auth") ||
-    path.startsWith("/api/auth") ||
-    path.startsWith("/api/health") ||
-    path.startsWith("/api/cron") ||
-    path === "/api/telegram/webhook"
-  );
 }
 
 export default function middleware(req: NextRequest) {
