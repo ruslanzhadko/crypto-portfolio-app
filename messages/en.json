@@ -509,6 +509,9 @@
     "emptyDescription": "Add a few wallets to compare."
   },
   "WalletDetail": {
+    "copyWalletAddress": "Copy wallet address",
+    "walletAddressCopied": "Wallet address copied",
+    "walletAddressCopyFailed": "Could not copy wallet address",
     "backToWallets": "Back to wallets",
     "noLabel": "Unnamed",
     "valueLabel": "Value",

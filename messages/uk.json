@@ -509,6 +509,9 @@
     "emptyDescription": "Додайте кілька гаманців для порівняння."
   },
   "WalletDetail": {
+    "copyWalletAddress": "Скопіювати адресу гаманця",
+    "walletAddressCopied": "Адресу гаманця скопійовано",
+    "walletAddressCopyFailed": "Не вдалося скопіювати адресу гаманця",
     "backToWallets": "До списку гаманців",
     "noLabel": "Без назви",
     "valueLabel": "Вартість",

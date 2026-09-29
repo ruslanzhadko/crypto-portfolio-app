@@ -509,6 +509,9 @@
     "emptyDescription": "Добавьте несколько кошельков для сравнения."
   },
   "WalletDetail": {
+    "copyWalletAddress": "Скопировать адрес кошелька",
+    "walletAddressCopied": "Адрес кошелька скопирован",
+    "walletAddressCopyFailed": "Не удалось скопировать адрес кошелька",
     "backToWallets": "К списку кошельков",
     "noLabel": "Без названия",
     "valueLabel": "Стоимость",

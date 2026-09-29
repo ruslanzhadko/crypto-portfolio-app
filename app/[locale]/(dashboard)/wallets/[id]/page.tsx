@@ -10,6 +10,7 @@ import { NetworkBadge } from '@/components/common/network-badge';
 import { TokenBalanceList } from '@/components/wallets/token-balance-list';
 import { WalletTransactions } from '@/components/wallets/wallet-transactions';
 import { WalletSyncButton } from '@/components/wallets/wallet-sync-button';
+import { CopyWalletAddressButton } from '@/components/wallets/copy-wallet-address-button';
 import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
 
 export const dynamic = 'force-dynamic';
@@ -54,33 +55,29 @@ export default async function WalletDetailPage({
 
       <Card className="card-gradient shadow-none">
         <CardContent className="p-3 sm:p-5">
-          <div className="flex flex-col gap-2 sm:gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="min-w-0 space-y-1 sm:space-y-2">
-              <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <h1 className="text-lg font-bold sm:text-2xl md:text-3xl">
-                  {wallet.label ?? t('noLabel')}
-                </h1>
-                <NetworkBadge network={wallet.network} />
-              </div>
-              <p className="truncate font-mono text-xs text-text-muted sm:text-sm" title={wallet.address}>
-                {shortAddress(wallet.address, 8)}
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:gap-x-5 sm:gap-y-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <h1 className="text-lg font-bold sm:text-2xl md:text-3xl">
+                {wallet.label ?? t('noLabel')}
+              </h1>
+              <NetworkBadge network={wallet.network} />
+            </div>
+            <div className="row-span-2 self-center text-right">
+              <p className="text-[10px] text-text-muted sm:text-xs">{t('valueLabel')}</p>
+              <p className="text-lg font-semibold tracking-tight tabular-nums sm:text-2xl">
+                {formatUsd(totalUsd, { minimumFractionDigits: 2 })}
               </p>
             </div>
-            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-border/60 pt-2 md:min-w-64 md:border-0 md:pt-0">
+            <div className="min-w-0">
+              <CopyWalletAddressButton address={wallet.address} displayAddress={shortAddress(wallet.address, 8)} />
+            </div>
+            <div className="col-span-2 flex items-center justify-between gap-2 border-t border-border/60 pt-2">
               <p className="truncate text-[11px] text-text-muted sm:text-xs">
                 {wallet.lastSyncAt
                   ? t('lastSync', { time: formatRelative(wallet.lastSyncAt, locale) })
                   : t('notSynced')}
               </p>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="text-right">
-                  <p className="text-[10px] text-text-muted sm:text-xs">{t('valueLabel')}</p>
-                  <p className="text-lg font-semibold tracking-tight tabular-nums sm:text-2xl">
-                    {formatUsd(totalUsd, { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <WalletSyncButton walletId={wallet.id} className="h-9 shrink-0 px-3" />
-              </div>
+              <WalletSyncButton walletId={wallet.id} className="h-9 shrink-0 px-3" />
             </div>
           </div>
         </CardContent>
