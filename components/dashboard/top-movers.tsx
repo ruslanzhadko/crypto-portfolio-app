@@ -17,6 +17,10 @@ const DEFAULT_VISIBLE_COUNT = 5;
 
 function MoverRow({ tk }: { tk: AggregatedToken }) {
   const tokenPage = getTokenPageUrl(tk);
+  // Convert the 24h price percentage into the dollar change of this position.
+  // totalUsd is the current value, so compare it with the implied previous value.
+  const changeFraction = Math.max(-0.999, tk.priceChange24h / 100);
+  const changeUsd = tk.totalUsd - tk.totalUsd / (1 + changeFraction);
 
   const inner = (
     <div className="flex h-full min-h-12 w-full items-center gap-3 px-3 py-1.5 sm:px-4">
@@ -33,7 +37,9 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
       </div>
       <div className="text-right">
         <PriceChange value={tk.priceChange24h} />
-        <p className="text-xs text-text-muted">{formatUsd(tk.totalUsd, { compact: true })}</p>
+        <p className={`text-[11px] tabular-nums ${changeUsd > 0 ? 'text-success' : changeUsd < 0 ? 'text-danger' : 'text-text-muted'}`}>
+          {changeUsd > 0 ? '+' : changeUsd < 0 ? '−' : ''}{formatUsd(Math.abs(changeUsd), { compact: true })}
+        </p>
       </div>
     </div>
   );
@@ -78,6 +84,7 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
   const t = useTranslations('TopMovers');
   const [expandedGainers, setExpandedGainers] = useState(false);
   const [expandedLosers, setExpandedLosers] = useState(false);
+  const [mobileView, setMobileView] = useState<'gainers' | 'losers'>('gainers');
 
   // Only include tokens worth more than $1 (avoids spam/dust noise)
   const withChange = tokens
@@ -102,12 +109,18 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
   const gainersTitle = t('gainersTitle');
   const visibleGainers = expandedGainers ? gainers : gainers.slice(0, DEFAULT_VISIBLE_COUNT);
   const visibleLosers = expandedLosers ? losers : losers.slice(0, DEFAULT_VISIBLE_COUNT);
+  const isMobileGainers = mobileView === 'gainers';
+  const mobileTokens = isMobileGainers ? visibleGainers : visibleLosers;
+  const mobileEmptyText = isMobileGainers ? t('emptyGainers') : t('emptyLosers');
+  const mobileExpanded = isMobileGainers ? expandedGainers : expandedLosers;
+  const setMobileExpanded = isMobileGainers ? setExpandedGainers : setExpandedLosers;
+  const mobileTotal = isMobileGainers ? gainers.length : losers.length;
 
   return (
     <>
       <div className="h-full w-full">
         <Card className="flex h-full min-w-0 flex-col overflow-hidden">
-          <div className="grid min-w-0 flex-1 grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+          <div className="hidden min-w-0 flex-1 grid-cols-2 divide-x divide-border lg:grid">
             <section className="flex min-w-0 flex-col">
               <CardHeader className="flex flex-row items-center justify-between gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
                 <div className="flex items-center gap-2">
@@ -133,6 +146,38 @@ export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
               </CardContent>
             </section>
           </div>
+          <section className="flex min-w-0 flex-col lg:hidden">
+            <CardHeader className="flex flex-row items-center gap-2 p-3 pb-2 sm:p-4 sm:pb-2">
+              <div className="flex flex-1 rounded-lg bg-surface-2 p-1" role="group" aria-label={`${t('gainersTitle')} / ${t('losersTitle')}`}>
+                <button
+                  type="button"
+                  aria-pressed={isMobileGainers}
+                  onClick={() => setMobileView('gainers')}
+                  className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors ${isMobileGainers ? 'bg-background text-success shadow-sm' : 'text-text-muted'}`}
+                >
+                  <TrendingUp className="h-4 w-4" aria-hidden />
+                  {gainersTitle}
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={!isMobileGainers}
+                  onClick={() => setMobileView('losers')}
+                  className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors ${!isMobileGainers ? 'bg-background text-danger shadow-sm' : 'text-text-muted'}`}
+                >
+                  <TrendingDown className="h-4 w-4" aria-hidden />
+                  {t('losersTitle')}
+                </button>
+              </div>
+              {mobileTotal > DEFAULT_VISIBLE_COUNT && (
+                <Button variant="ghost" size="sm" className="shrink-0" onClick={() => setMobileExpanded((value) => !value)}>
+                  {mobileExpanded ? t('showLess') : t('showAll')}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent className="flex flex-col p-0">
+              <MoversList tokens={mobileTokens} emptyText={mobileEmptyText} />
+            </CardContent>
+          </section>
         </Card>
       </div>
     </>

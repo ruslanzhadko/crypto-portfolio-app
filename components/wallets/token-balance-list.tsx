@@ -207,15 +207,15 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
 
   return (
     <Card>
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-        <CardTitle>
+      <CardHeader className="flex flex-col items-stretch gap-2 space-y-0 px-3 pb-2 pt-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:pt-6">
+        <CardTitle className="text-base sm:text-lg">
           {t('cardTitle')}{' '}
           <span className="text-sm font-normal text-text-muted">
             ({groups.length} · {t('networksCount', { count: uniqueChainCount })})
           </span>
         </CardTitle>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-text-muted">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="mr-auto text-xs text-text-muted sm:mr-0 sm:text-sm">
             {formatUsd(visibleTotalUsd, { compact: true })}
           </span>
 
@@ -224,7 +224,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
               variant="ghost"
               size="sm"
               onClick={() => setShowHidden((s) => !s)}
-              className="h-7 gap-1 text-xs"
+              className="h-7 gap-1 px-2 text-[11px] sm:text-xs"
             >
               {showHidden ? (
                 <><EyeOff className="h-3 w-3" />{t('hideHidden', { count: manuallyHidden.length })}</>
@@ -239,7 +239,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
               variant="ghost"
               size="sm"
               onClick={() => setShowSpam((s) => !s)}
-              className="h-7 gap-1 text-xs"
+              className="h-7 gap-1 px-2 text-[11px] sm:text-xs"
             >
               {showSpam ? (
                 <><EyeOff className="h-3 w-3" />{t('hideSpam', { count: spamTokens.length })}</>
@@ -252,7 +252,7 @@ export function TokenBalanceList({ walletId, tokens, totalUsd }: TokenBalanceLis
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="flex flex-col gap-2 px-4 pb-3 pt-2 sm:flex-row sm:items-center">
+        <div className="grid grid-cols-[minmax(0,1fr)_8.5rem] gap-2 px-3 pb-3 pt-1 sm:flex sm:items-center sm:px-4 sm:pt-2">
           <div className="relative min-w-0 flex-1">
             <Search aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
             <Input
@@ -353,7 +353,7 @@ function TokenGroupRow({
       <TokenLogo
         src={group.logoUrl}
         symbol={group.symbol}
-        size={36}
+        size={32}
         chainName={group.chains[0]?.chainName}
         tokenAddress={group.chains[0]?.tokenAddress}
       />
@@ -379,12 +379,12 @@ function TokenGroupRow({
             </span>
           )}
         </div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-text-muted">
-          <span className="truncate">{group.name}</span>
+        <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-text-muted sm:text-xs">
+          <span className="max-w-full truncate">{group.name}</span>
           {group.priceUsd > 0 && (
             <>
               <span aria-hidden>·</span>
-              <span className="font-medium text-text">{formatUsd(group.priceUsd)}</span>
+              <span className="font-medium text-text">{formatUsd(group.priceUsd, { compact: true })}</span>
               {group.priceChange24h !== 0 && (
                 <PriceChange value={group.priceChange24h} size="sm" />
               )}
@@ -392,19 +392,23 @@ function TokenGroupRow({
           )}
           {/* Чейн-бейджі: для single-chain — тут інлайн; для multi — у розкритті */}
           {!isMulti && group.chains[0]?.chainName && (
-            <ChainBadge chainName={group.chains[0].chainName} />
+            <span className="hidden sm:inline-flex"><ChainBadge chainName={group.chains[0].chainName} /></span>
           )}
         </div>
       </div>
 
-      {/* Compact right block — фіксована ширина для вирівнювання між рядками */}
-      <div className="w-36 shrink-0 text-right">
-        <p className="text-sm font-medium tabular-nums">
-          {formatTokenBalance(group.totalBalance)}{' '}
-          <span className="text-xs text-text-muted">{group.symbol}</span>
+      {/* Keep value aligned while allowing the token description to use the remaining width. */}
+      <div className="w-auto min-w-[5.25rem] max-w-[7.5rem] shrink-0 text-right sm:w-36 sm:max-w-none">
+        <p className="truncate text-sm font-semibold tabular-nums sm:text-base">
+          {group.totalUsd > 0 ? (
+            <>
+              <span className="sm:hidden">{formatUsd(group.totalUsd, { compact: true })}</span>
+              <span className="hidden sm:inline">{formatUsd(group.totalUsd)}</span>
+            </>
+          ) : '—'}
         </p>
-        <p className="text-xs text-text-muted tabular-nums">
-          {group.totalUsd > 0 ? formatUsd(group.totalUsd) : '—'}
+        <p className="truncate text-[10px] text-text-muted tabular-nums sm:text-xs">
+          {formatTokenBalance(group.totalBalance)} {group.symbol}
           {share >= 0.1 ? ` · ${share.toFixed(1)}%` : ''}
         </p>
       </div>
@@ -415,7 +419,7 @@ function TokenGroupRow({
     <div>
       <div
         className={cn(
-          'flex items-center gap-3 px-4 py-3 transition-colors',
+          'flex items-center gap-2 px-3 py-2 transition-colors sm:gap-3 sm:px-4 sm:py-3',
           'hover:bg-surface-2/50',
           isMulti && expanded && 'bg-surface-2/30',
         )}
@@ -426,7 +430,7 @@ function TokenGroupRow({
             type="button"
             onClick={onToggleExpand}
             aria-label={expanded ? t('collapseNetworks') : t('expandNetworks')}
-            className="flex h-7 w-4 shrink-0 items-center justify-center rounded text-text-muted hover:text-text"
+            className="flex h-8 w-3 shrink-0 items-center justify-center rounded text-text-muted hover:text-text sm:w-4"
           >
             <ChevronRight
               className={cn(
@@ -437,7 +441,7 @@ function TokenGroupRow({
             />
           </button>
         ) : (
-          <span aria-hidden className="inline-block w-4 shrink-0" />
+          <span aria-hidden className="inline-block w-3 shrink-0 sm:w-4" />
         )}
 
         {/* Основна клікабельна зона */}
@@ -447,20 +451,20 @@ function TokenGroupRow({
               href={tokenPage.href}
               target="_blank"
               rel="noreferrer"
-              className="flex min-w-0 flex-1 items-center gap-3"
+              className="grid min-w-0 flex-1 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3"
             >
               {mainContent}
             </a>
           ) : (
           <Link
             href={`${tokenPage.href}?from=wallet:${encodeURIComponent(walletId)}`}
-            className="flex min-w-0 flex-1 items-center gap-3"
+            className="grid min-w-0 flex-1 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3"
           >
             {mainContent}
           </Link>
           )
         ) : (
-          <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="grid min-w-0 flex-1 grid-cols-[2rem_minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:gap-3">
             {mainContent}
           </div>
         )}
