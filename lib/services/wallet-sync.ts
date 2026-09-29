@@ -4,6 +4,7 @@ import { MIN_TOKEN_USD, type NormalizedToken } from '@/lib/services/token-types'
 import { fetchSolanaBalances } from '@/lib/services/helius';
 import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
 import { fetchRobinhoodBalances } from '@/lib/services/robinhood';
+import { fetchHyperCoreBalances, fetchHyperEvmBalances } from '@/lib/services/hyperliquid';
 import { fetchCoinGeckoContractIds, fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { getChainInfo } from '@/lib/utils/networks';
@@ -38,20 +39,31 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
 
   // Транзакції більше не синхронізуються в БД — підтягуються live з Ankr при перегляді.
   const isEvm = wallet.network === Network.EVM;
-  let robinhoodSynced = false;
   const tokens = isEvm
     ? await fetchEVMBalancesFromAnkr(wallet.address)
     : await fetchSolanaBalances(wallet.address);
   if (isEvm) {
-    try {
-      tokens.push(...await fetchRobinhoodBalances(wallet.address));
-      robinhoodSynced = true;
-    } catch {
-      // Preserve this chain's stored balances on provider failure.
-      console.warn('[wallet-sync] Robinhood unavailable; keeping its previous balances');
-    }
+    const results = await Promise.allSettled([
+      fetchRobinhoodBalances(wallet.address),
+      fetchHyperEvmBalances(wallet.address),
+      fetchHyperCoreBalances(wallet.address),
+    ]);
+    for (const result of results) if (result.status === 'fulfilled') tokens.push(...result.value);
+    const robinhoodSynced = results[0]?.status === 'fulfilled';
+    if (!robinhoodSynced) console.warn('[wallet-sync] Robinhood unavailable; keeping its previous balances');
+    if (results[1]?.status === 'rejected') console.warn('[wallet-sync] HyperEVM unavailable; keeping its previous balances');
+    if (results[2]?.status === 'rejected') console.warn('[wallet-sync] HyperCore unavailable; keeping its previous balances');
+    const unavailableChains = [
+      ...(!robinhoodSynced ? ['robinhood'] : []),
+      ...(results[1]?.status === 'rejected' ? ['hyperevm'] : []),
+      ...(results[2]?.status === 'rejected' ? ['hypercore', 'hypercore-perps'] : []),
+    ];
+    return saveBalances(walletId, tokens, unavailableChains);
   }
-  const unavailableChains = isEvm && !robinhoodSynced ? ['robinhood'] : [];
+  return saveBalances(walletId, tokens, []);
+}
+
+async function saveBalances(walletId: string, tokens: NormalizedToken[], unavailableChains: string[]): Promise<SyncResult> {
 
   const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
@@ -74,7 +86,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
 
   await prisma.$transaction(async (tx) => {
     await tx.tokenBalance.deleteMany({
-      where: { walletId, ...(isEvm && !robinhoodSynced ? { chainName: { not: 'robinhood' } } : {}) },
+      where: { walletId, ...(unavailableChains.length ? { chainName: { notIn: unavailableChains } } : {}) },
     });
 
     if (toSave.length > 0) {
@@ -147,7 +159,7 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
   if (needPricing.length === 0) return;
 
   // ── 1. price-feed (Binance + DexScreener) ──
-  const queries: PriceQuery[] = needPricing.map((t) => ({
+  const queries: PriceQuery[] = needPricing.filter((t) => !t.chainName.startsWith('hypercore')).map((t) => ({
     key: priceFeedKey(t),
     isNative: t.isNative,
     chainName: t.chainName,
@@ -342,7 +354,7 @@ async function applyCachedPrices(
 ): Promise<EnrichedToken[]> {
   if (tokens.length === 0) return [];
 
-  const contractIds = tokens.some((t) => !t.isNative && t.address && t.chainName !== 'solana')
+  const contractIds = tokens.some((t) => !t.isNative && t.address && t.chainName !== 'solana' && !t.chainName.startsWith('hypercore'))
     ? await fetchCoinGeckoContractIds().catch(() => new Map<string, string>())
     : new Map<string, string>();
 

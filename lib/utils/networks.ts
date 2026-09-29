@@ -25,6 +25,12 @@ const ETH_LOGO = `${TW}/ethereum/info/logo.png`;
 
 export const EVM_CHAINS: ChainInfo[] = [
   {
+    chainName: 'hyperevm', displayName: 'HyperEVM', symbol: 'HYPE', chainId: '0x3e7',
+    coingeckoPlatform: 'hyperevm', coingeckoNativeId: 'hyperliquid',
+    nativeLogoUrl: `${TW}/hyperliquid/info/logo.png`, chainLogoUrl: `${TW}/hyperliquid/info/logo.png`,
+    color: '#97fce4', network: Network.EVM,
+  },
+  {
     chainName: 'robinhood',
     displayName: 'Robinhood',
     symbol: 'ETH',
@@ -134,6 +140,17 @@ export const EVM_CHAINS: ChainInfo[] = [
   },
 ];
 
+export const HYPERCORE_CHAINS: ChainInfo[] = [
+  { chainName: 'hypercore', displayName: 'HyperCore Spot', symbol: 'HYPE', chainId: null,
+    coingeckoPlatform: null, coingeckoNativeId: 'hyperliquid',
+    nativeLogoUrl: `${TW}/hyperliquid/info/logo.png`, chainLogoUrl: `${TW}/hyperliquid/info/logo.png`,
+    color: '#62d9ba', network: Network.EVM },
+  { chainName: 'hypercore-perps', displayName: 'HyperCore Perps', symbol: 'USD', chainId: null,
+    coingeckoPlatform: null, coingeckoNativeId: 'usd-coin',
+    nativeLogoUrl: `${TW}/ethereum/assets/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48/logo.png`,
+    chainLogoUrl: `${TW}/hyperliquid/info/logo.png`, color: '#39b899', network: Network.EVM },
+];
+
 export const SOLANA_CHAIN: ChainInfo = {
   chainName: 'solana',
   displayName: 'Solana',
@@ -147,7 +164,7 @@ export const SOLANA_CHAIN: ChainInfo = {
   network: Network.SOLANA,
 };
 
-export const ALL_CHAINS: ChainInfo[] = [...EVM_CHAINS, SOLANA_CHAIN];
+export const ALL_CHAINS: ChainInfo[] = [...EVM_CHAINS, ...HYPERCORE_CHAINS, SOLANA_CHAIN];
 
 const CHAIN_MAP = new Map<string, ChainInfo>(ALL_CHAINS.map((c) => [c.chainName, c]));
 

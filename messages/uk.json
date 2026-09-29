@@ -190,7 +190,7 @@
     "toastErrors": "{count} з помилкою",
     "toastSyncDoneTitle": "Sync завершено · {count} гаманц(ів)",
     "toastTokensCount": "{count} токенів",
-    "robinhoodUnavailable": "Robinhood тимчасово недоступна. Попередні баланси збережено; дані цієї мережі не оновлено."
+    "unavailableChains": "Не вдалося оновити: {chains}. Попередні баланси збережено."
   },
   "Wallets": {
     "pageTitle": "Гаманці",
@@ -233,7 +233,7 @@
     "toastSyncDoneDescription": "{tokens} токенів · {spam} спам відфільтровано",
     "toastDeleteFailedTitle": "Не вдалось видалити",
     "toastDeletedTitle": "Гаманець видалено",
-    "robinhoodUnavailable": "Robinhood тимчасово недоступна. Попередні баланси збережено; дані цієї мережі не оновлено."
+    "unavailableChains": "Не вдалося оновити: {chains}. Попередні баланси збережено."
   },
   "AddWalletDialog": {
     "triggerButton": "Додати гаманець",
@@ -241,7 +241,7 @@
     "dialogDescription": "Read-only режим — приватні ключі не потрібні.",
     "addressTypeLabel": "Тип адреси",
     "evmLabel": "EVM-адреса",
-    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood",
+    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood, HyperEVM і HyperCore",
     "evmPlaceholder": "0x...",
     "solanaLabel": "Solana-адреса",
     "solanaDesc": "Мережа Solana (окрема адреса)",
@@ -256,13 +256,13 @@
     "addFailedDefault": "Не вдалось додати гаманець",
     "toastErrorTitle": "Помилка",
     "toastAddedTitle": "Гаманець додано",
-    "toastSyncStartedEvm": "Синхронізація 9 мереж розпочата, це займе кілька секунд...",
+    "toastSyncStartedEvm": "Синхронізація EVM-мереж і HyperCore розпочата, це займе кілька секунд...",
     "toastSyncStartedSolana": "Синхронізація розпочата...",
     "toastSyncDoneTitle": "Sync завершено",
     "toastSyncDoneDescription": "{tokens} токенів знайдено ({spam} спам відфільтровано)",
     "toastSyncFailedTitle": "Sync не вдався",
     "toastSyncFailedDescription": "Спробуйте натиснути Sync вручну",
-    "robinhoodUnavailable": "Robinhood тимчасово недоступна. Попередні баланси збережено; дані цієї мережі не оновлено."
+    "unavailableChains": "Не вдалося оновити: {chains}. Попередні баланси збережено."
   },
   "Alerts": {
     "pageTitle": "Сповіщення",

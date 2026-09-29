@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { fetchTransactionsPage } from '@/lib/services/ankr';
 import { fetchRobinhoodTransactions, parseRobinhoodCursor } from '@/lib/services/robinhood';
+import { fetchHyperCoreTransactions, fetchHyperEvmTransactions, parseHyperEvmCursor } from '@/lib/services/hyperliquid';
 import { transactionIsSpam, type TransactionSpamCandidate } from '@/lib/services/transaction-spam';
 import { transactionInitiators } from '@/lib/services/transaction-verification';
 import { transactionAssets } from '@/lib/services/transaction-assets';
@@ -507,9 +508,18 @@ async function getWalletTransactionsPayload(
     return solResult;
   }
 
-  const { transactions, nextPageToken } = chain === 'robinhood'
+  const coreOffset = chain === 'hypercore' ? Number(pageToken ?? 0) : 0;
+  const source = chain === 'robinhood'
     ? await fetchRobinhoodTransactions(wallet.address, pageToken)
-    : await fetchTransactionsPage(wallet.address, pageToken, pageSize);
+    : chain === 'hyperevm'
+      ? await fetchHyperEvmTransactions(wallet.address, pageToken)
+      : chain === 'hypercore'
+        ? await fetchHyperCoreTransactions(wallet.address).then((all) => ({
+          transactions: all.slice(coreOffset, coreOffset + pageSize),
+          nextPageToken: coreOffset + pageSize < all.length ? String(coreOffset + pageSize) : undefined,
+        }))
+        : await fetchTransactionsPage(wallet.address, pageToken, pageSize);
+  const { transactions, nextPageToken } = source;
 
   const balances = await prisma.tokenBalance.findMany({
     where: { walletId: wallet.id },
@@ -557,19 +567,27 @@ export async function GET(
     const sp = req.nextUrl.searchParams;
     const pageToken = sp.get('pageToken') ?? undefined;
     const chain = sp.get('chain');
-    if (chain && chain !== 'robinhood') return apiError('BAD_REQUEST', 'Невідома мережа');
+    if (chain && !['robinhood', 'hyperevm', 'hypercore'].includes(chain)) return apiError('BAD_REQUEST', 'Невідома мережа');
     if (chain === 'robinhood' && pageToken) {
       try { parseRobinhoodCursor(pageToken); }
       catch { return apiError('BAD_REQUEST', 'Некоректна сторінка транзакцій'); }
     }
-    const pageSize = Math.min(Number.parseInt(sp.get('pageSize') ?? '20', 10), 50);
+    if (chain === 'hyperevm' && pageToken) {
+      try { parseHyperEvmCursor(pageToken); }
+      catch { return apiError('BAD_REQUEST', 'Некоректна сторінка транзакцій'); }
+    }
+    if (chain === 'hypercore' && pageToken && (!/^\d{1,5}$/.test(pageToken) || Number(pageToken) > 2500)) {
+      return apiError('BAD_REQUEST', 'Некоректна сторінка транзакцій');
+    }
+    const requestedSize = Number.parseInt(sp.get('pageSize') ?? '20', 10);
+    const pageSize = Number.isFinite(requestedSize) ? Math.min(Math.max(requestedSize, 1), 50) : 20;
 
     const wallet = await prisma.wallet.findFirst({
       where: { id: params.id, userId: guard.user.id },
       select: { id: true, address: true, network: true },
     });
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
-    if (chain === 'robinhood' && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
+    if (chain && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
 
     return ok(await getWalletTransactionsPayload(wallet, pageToken, chain, pageSize));
   } catch (err) {

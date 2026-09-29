@@ -7,6 +7,7 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
+import { getChainDisplayName } from '@/lib/utils/networks';
 
 interface SyncResponse {
   data?: {
@@ -70,8 +71,9 @@ export function SyncAllButton({
           });
         } else {
           const descParts: string[] = [];
-          if (synced.some((result) => result.unavailableChains?.includes('robinhood'))) {
-            descParts.push(t('robinhoodUnavailable'));
+          const unavailable = [...new Set(synced.flatMap((result) => result.unavailableChains ?? []).map(getChainDisplayName))];
+          if (unavailable.length) {
+            descParts.push(t('unavailableChains', { chains: unavailable.join(', ') }));
           }
           if (tokensTotal > 0) {
             descParts.push(t('toastTokensCount', { count: tokensTotal }));

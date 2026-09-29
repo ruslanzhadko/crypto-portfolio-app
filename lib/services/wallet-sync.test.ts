@@ -2,11 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { syncWallet } from './wallet-sync';
 
 const mocks = vi.hoisted(() => ({
-  ankr: vi.fn(), robinhood: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn(),
+  ankr: vi.fn(), robinhood: vi.fn(), hyperevm: vi.fn(), hypercore: vi.fn(), deleteMany: vi.fn(), createMany: vi.fn(),
   findPrices: vi.fn(), count: vi.fn(), contractIds: vi.fn(), fetchPrices: vi.fn(),
 }));
 vi.mock('./ankr', () => ({ fetchEVMBalancesFromAnkr: mocks.ankr }));
 vi.mock('./robinhood', () => ({ fetchRobinhoodBalances: mocks.robinhood }));
+vi.mock('./hyperliquid', () => ({ fetchHyperEvmBalances: mocks.hyperevm, fetchHyperCoreBalances: mocks.hypercore }));
 vi.mock('./coingecko', () => ({
   fetchCoinGeckoContractIds: mocks.contractIds,
   fetchPricesByIds: vi.fn(), searchCoins: vi.fn(),
@@ -27,6 +28,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.ankr.mockResolvedValue([native]);
   mocks.robinhood.mockResolvedValue([{ ...native, chainName: 'robinhood' }]);
+  mocks.hyperevm.mockResolvedValue([]);
+  mocks.hypercore.mockResolvedValue([]);
   mocks.findPrices.mockResolvedValue([]);
   mocks.count.mockResolvedValue(0);
   mocks.contractIds.mockResolvedValue(new Map());
@@ -92,7 +95,7 @@ describe('Robinhood wallet synchronization', () => {
   it('preserves stored Robinhood balances on upstream failure and reports partial sync', async () => {
     mocks.robinhood.mockRejectedValue(new Error('403'));
     const result = await syncWallet('wallet');
-    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { walletId: 'wallet', chainName: { not: 'robinhood' } } });
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { walletId: 'wallet', chainName: { notIn: ['robinhood'] } } });
     expect(result.unavailableChains).toEqual(['robinhood']);
   });
   it('clears Robinhood balances after a successful empty response', async () => {
@@ -107,7 +110,15 @@ describe('Robinhood wallet synchronization', () => {
     mocks.robinhood.mockRejectedValue(new Error('unavailable'));
     await syncWallet('wallet');
     expect(mocks.deleteMany).toHaveBeenCalledWith({
-      where: { walletId: 'wallet', chainName: { not: 'robinhood' } },
+      where: { walletId: 'wallet', chainName: { notIn: ['robinhood'] } },
     });
+  });
+  it('preserves HyperCore balances when its API fails', async () => {
+    mocks.hypercore.mockRejectedValue(new Error('timeout'));
+    const result = await syncWallet('wallet');
+    expect(result.unavailableChains).toEqual(['hypercore', 'hypercore-perps']);
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: {
+      walletId: 'wallet', chainName: { notIn: ['hypercore', 'hypercore-perps'] },
+    } });
   });
 });

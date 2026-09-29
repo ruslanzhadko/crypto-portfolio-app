@@ -7,6 +7,7 @@ import { RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
+import { getChainDisplayName } from '@/lib/utils/networks';
 
 export function WalletSyncButton({
   walletId,
@@ -39,7 +40,7 @@ export function WalletSyncButton({
       };
       toast({
         title: 'Sync завершено',
-        description: data.result?.unavailableChains?.length ? t('robinhoodUnavailable') : `${data.result?.tokensSynced ?? 0} токенів · ${data.result?.transactionsSynced ?? 0} транзакцій`,
+        description: data.result?.unavailableChains?.length ? t('unavailableChains', { chains: [...new Set(data.result.unavailableChains.map(getChainDisplayName))].join(', ') }) : `${data.result?.tokensSynced ?? 0} токенів · ${data.result?.transactionsSynced ?? 0} транзакцій`,
       });
       // Сигналізуємо клієнтським компонентам (TransactionList тощо) про оновлення
       window.dispatchEvent(new CustomEvent('wallet-synced', { detail: { walletId } }));

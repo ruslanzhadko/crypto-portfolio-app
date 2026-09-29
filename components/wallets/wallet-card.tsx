@@ -11,6 +11,7 @@ import {
   Wallet as WalletIcon,
 } from 'lucide-react';
 import { Network } from '@prisma/client';
+import { getChainDisplayName } from '@/lib/utils/networks';
 import { Link } from '@/i18n/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -90,7 +91,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
       toast({
         title: t('toastSyncDoneTitle'),
         description: data.result?.unavailableChains?.length
-          ? t('robinhoodUnavailable')
+          ? t('unavailableChains', { chains: [...new Set(data.result.unavailableChains.map(getChainDisplayName))].join(', ') })
           : t('toastSyncDoneDescription', {
               tokens: data.result?.tokensSynced ?? 0,
               spam: data.result?.spamFiltered ?? 0,

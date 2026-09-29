@@ -9,6 +9,7 @@ const DEX_CHAIN_BY_INTERNAL: Record<string, string> = {
   optimism: 'optimism',
   base: 'base',
   robinhood: 'robinhood',
+  hyperevm: 'hyperevm',
   avalanche: 'avalanche',
   xlayer: 'xlayer',
 };

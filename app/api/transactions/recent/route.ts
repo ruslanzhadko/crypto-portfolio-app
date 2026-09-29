@@ -67,7 +67,11 @@ export async function GET(req: Request) {
         chain: null as string | null,
         networks: wallet.network === 'EVM' ? EVM_TRANSACTION_NETWORKS : ['solana'],
       },
-      ...(wallet.network === 'EVM' ? [{ wallet, chain: 'robinhood', networks: ['robinhood'] }] : []),
+      ...(wallet.network === 'EVM' ? [
+        { wallet, chain: 'robinhood', networks: ['robinhood'] },
+        { wallet, chain: 'hyperevm', networks: ['hyperevm'] },
+        { wallet, chain: 'hypercore', networks: ['hypercore'] },
+      ] : []),
     ]);
     const settled = await mapWithConcurrency(sources, 4, async ({ wallet, chain }) => {
       const transactions: RecentTransaction[] = [];

@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { isValidAddressForNetwork } from '@/lib/utils/validators';
+import { getChainDisplayName } from '@/lib/utils/networks';
 import { useToast } from '@/hooks/use-toast';
 import { usePrize } from '@/contexts/prize-context';
 
@@ -121,7 +122,7 @@ export function AddWalletDialog() {
           };
           toast({
             title: t('toastSyncDoneTitle'),
-            description: syncData.result?.unavailableChains?.length ? t('robinhoodUnavailable') : t('toastSyncDoneDescription', {
+            description: syncData.result?.unavailableChains?.length ? t('unavailableChains', { chains: [...new Set(syncData.result.unavailableChains.map(getChainDisplayName))].join(', ') }) : t('toastSyncDoneDescription', {
               tokens: syncData.result?.tokensSynced ?? 0,
               spam: syncData.result?.spamFiltered ?? 0,
             }),

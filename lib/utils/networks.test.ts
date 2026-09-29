@@ -41,8 +41,8 @@ describe('getChainDisplayName', () => {
 });
 
 describe('getChainsByNetwork', () => {
-  it('EVM → 9 мереж', () => {
-    expect(getChainsByNetwork(Network.EVM)).toHaveLength(9);
+  it('EVM → 10 EVM мереж, включно з HyperEVM', () => {
+    expect(getChainsByNetwork(Network.EVM)).toHaveLength(10);
   });
   it('SOLANA → лише Solana', () => {
     const chains = getChainsByNetwork(Network.SOLANA);

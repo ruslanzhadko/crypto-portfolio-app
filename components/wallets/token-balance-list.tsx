@@ -63,11 +63,15 @@ function verifiedMarketId(token: TokenBalance): string | null {
 function explorerUrl(token: TokenBalance): string | null {
   if (!token.tokenAddress) return null;
   if (token.chainName === 'solana') return `https://solscan.io/token/${token.tokenAddress}`;
+  if (token.chainName === 'hypercore' && /^0x[\da-f]{32}$/i.test(token.tokenAddress)) {
+    return `https://app.hyperliquid.xyz/explorer/token/${token.tokenAddress}`;
+  }
   const bases: Record<string, string> = {
     ethereum: 'https://etherscan.io/token/', bsc: 'https://bscscan.com/token/',
     polygon: 'https://polygonscan.com/token/', arbitrum: 'https://arbiscan.io/token/',
     optimism: 'https://optimistic.etherscan.io/token/', base: 'https://basescan.org/token/',
     avalanche: 'https://snowtrace.io/token/', xlayer: 'https://www.oklink.com/x-layer/address/',
+    hyperevm: 'https://www.hyperscan.com/token/',
   };
   return bases[token.chainName] ? `${bases[token.chainName]}${token.tokenAddress}` : null;
 }

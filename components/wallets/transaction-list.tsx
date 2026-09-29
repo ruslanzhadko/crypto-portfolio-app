@@ -43,7 +43,7 @@ interface TransactionListProps {
   network: 'EVM' | 'SOLANA';
 }
 
-type Source = 'default' | 'robinhood';
+type Source = 'default' | 'robinhood' | 'hyperevm' | 'hypercore';
 type CursorState = Record<Source, string | null | undefined>;
 
 function mergeTransactions(existing: TransactionDTO[], incoming: TransactionDTO[]): TransactionDTO[] {
@@ -63,6 +63,8 @@ const EXPLORER: Record<string, string> = {
   solana:   'https://solscan.io/tx/',
   xlayer:   'https://explorer.xlayer.xyz/tx/',
   robinhood: 'https://robinhoodchain.blockscout.com/tx/',
+  hyperevm: 'https://www.hyperscan.com/tx/',
+  hypercore: 'https://app.hyperliquid.xyz/explorer/tx/',
 };
 
 function explorerUrl(chainName: string, hash: string): string | null {
@@ -94,7 +96,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
   const [query, setQuery] = useState('');
   const [showSpam, setShowSpam] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
-  const cursorsRef = useRef<CursorState>({ default: undefined, robinhood: undefined });
+  const cursorsRef = useRef<CursorState>({ default: undefined, robinhood: undefined, hyperevm: undefined, hypercore: undefined });
   const requestIdRef = useRef(0);
   const loadingRef = useRef(false);
 
@@ -102,7 +104,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
     if (loadingRef.current && !reset) return;
     if (reset) {
       requestIdRef.current += 1;
-      cursorsRef.current = { default: undefined, robinhood: undefined };
+      cursorsRef.current = { default: undefined, robinhood: undefined, hyperevm: undefined, hypercore: undefined };
       setItems(null);
       setError(null);
       setHasMore(false);
@@ -112,12 +114,12 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
     }
     loadingRef.current = true;
     const requestId = requestIdRef.current;
-    const sources: Source[] = network === 'EVM' ? ['default', 'robinhood'] : ['default'];
+    const sources: Source[] = network === 'EVM' ? ['default', 'robinhood', 'hyperevm', 'hypercore'] : ['default'];
     const active = sources.filter((source) => cursorsRef.current[source] !== null);
     const responses = await Promise.all(active.map(async (source) => {
       try {
         const cursor = cursorsRef.current[source];
-        const url = `/api/wallets/${walletId}/transactions?pageSize=20${source === 'robinhood' ? '&chain=robinhood' : ''}${cursor ? `&pageToken=${encodeURIComponent(cursor)}` : ''}`;
+        const url = `/api/wallets/${walletId}/transactions?pageSize=20${source === 'default' ? '' : `&chain=${source}`}${cursor ? `&pageToken=${encodeURIComponent(cursor)}` : ''}`;
         const res = await fetch(url);
         if (!res.ok) throw new Error('Transaction request failed');
         const payload = (await res.json()) as { transactions: TransactionDTO[]; nextPageToken?: string };

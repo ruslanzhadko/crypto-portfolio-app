@@ -37,9 +37,9 @@ describe('recent transaction wallet selection', () => {
     mocks.getWalletTransactions.mockClear();
 
     const selected = await (await GET(new Request('https://example.com/api/transactions/recent?walletId=quiet'))).json();
-    expect(selected.transactions).toHaveLength(2);
+    expect(selected.transactions).toHaveLength(4);
     expect(selected.transactions.every((tx: { walletId: string }) => tx.walletId === 'quiet')).toBe(true);
-    expect(selected.transactions.map((tx: { chainName: string }) => tx.chainName).sort()).toEqual(['bsc', 'robinhood']);
+    expect(selected.transactions.map((tx: { chainName: string }) => tx.chainName).sort()).toEqual(['bsc', 'hypercore', 'hyperevm', 'robinhood']);
     expect(selected.wallets).toHaveLength(2);
     expect(mocks.getWalletTransactions.mock.calls.every(([, context]) => context.params.id === 'quiet')).toBe(true);
   });

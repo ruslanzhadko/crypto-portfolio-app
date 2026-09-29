@@ -190,7 +190,7 @@
     "toastErrors": "{count} with errors",
     "toastSyncDoneTitle": "Sync done · {count} wallet(s)",
     "toastTokensCount": "{count} tokens",
-    "robinhoodUnavailable": "Robinhood is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
+    "unavailableChains": "Could not refresh: {chains}. Previous balances were preserved."
   },
   "Wallets": {
     "pageTitle": "Wallets",
@@ -233,7 +233,7 @@
     "toastSyncDoneDescription": "{tokens} tokens · {spam} spam filtered",
     "toastDeleteFailedTitle": "Failed to delete",
     "toastDeletedTitle": "Wallet deleted",
-    "robinhoodUnavailable": "Robinhood is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
+    "unavailableChains": "Could not refresh: {chains}. Previous balances were preserved."
   },
   "AddWalletDialog": {
     "triggerButton": "Add wallet",
@@ -241,7 +241,7 @@
     "dialogDescription": "Read-only mode — no private keys needed.",
     "addressTypeLabel": "Address type",
     "evmLabel": "EVM address",
-    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood",
+    "evmDesc": "Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood, HyperEVM and HyperCore",
     "evmPlaceholder": "0x...",
     "solanaLabel": "Solana address",
     "solanaDesc": "Solana network (separate address)",
@@ -256,13 +256,13 @@
     "addFailedDefault": "Failed to add wallet",
     "toastErrorTitle": "Error",
     "toastAddedTitle": "Wallet added",
-    "toastSyncStartedEvm": "Syncing 9 networks, this may take a few seconds...",
+    "toastSyncStartedEvm": "Syncing EVM networks and HyperCore, this may take a few seconds...",
     "toastSyncStartedSolana": "Sync started...",
     "toastSyncDoneTitle": "Sync complete",
     "toastSyncDoneDescription": "{tokens} tokens found ({spam} spam filtered)",
     "toastSyncFailedTitle": "Sync failed",
     "toastSyncFailedDescription": "Try syncing manually",
-    "robinhoodUnavailable": "Robinhood is temporarily unavailable. Previous balances were preserved; this network was not refreshed."
+    "unavailableChains": "Could not refresh: {chains}. Previous balances were preserved."
   },
   "Alerts": {
     "pageTitle": "Alerts",
