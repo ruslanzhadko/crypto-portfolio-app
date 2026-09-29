@@ -44,6 +44,7 @@ const watchers = new Map<string, () => void>();
 let syncTimer: ReturnType<typeof setInterval> | undefined;
 let syncing = false;
 const MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES = 2 * 1024 * 1024;
+const SOURCE_SYNC_INTERVAL_MS = 30 * 60_000;
 
 function photoSizeBytes(size: Api.TypePhotoSize): number {
   if (size instanceof Api.PhotoSize) return size.size;
@@ -295,11 +296,11 @@ async function main() {
 
   await bootstrapSources();
   await syncSources();
-  syncTimer = setInterval(() => void syncSources(), 30_000);
+  syncTimer = setInterval(() => void syncSources(), SOURCE_SYNC_INTERVAL_MS);
 
   console.log(`[feed] listener started for ${watchers.size} channels`);
   console.log(
-    "[feed] source list refreshes from the database every 30 seconds",
+    "[feed] source list refreshes from the database every 30 minutes",
   );
   await new Promise<void>(() => undefined);
 }

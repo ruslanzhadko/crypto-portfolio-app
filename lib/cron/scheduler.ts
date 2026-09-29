@@ -6,6 +6,21 @@ import cron from 'node-cron';
 import { runPriceUpdater, runTriggerCheck } from './price-updater';
 
 const SCHEDULE = process.env.CRON_SCHEDULE ?? '* * * * *';
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error('[cron] DATABASE_URL не заданий');
+}
+
+const hostname = new URL(databaseUrl).hostname.toLowerCase();
+if (
+  (hostname === 'neon.tech' || hostname.endsWith('.neon.tech')) &&
+  process.env.ALLOW_REMOTE_CRON !== 'true'
+) {
+  throw new Error(
+    '[cron] Локальний cron для Neon вимкнено. Використовуйте локальний Postgres або явно задайте ALLOW_REMOTE_CRON=true.',
+  );
+}
 
 console.log(`[cron] Стартую локальний планувальник з розкладом "${SCHEDULE}"`);
 

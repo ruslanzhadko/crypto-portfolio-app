@@ -87,6 +87,7 @@ const FILTERS: FilterType[] = [
   "ANALYSIS",
 ];
 const MACHINE_TYPES = new Set<PostType>(["PRICE_ANOMALY", "LIQUIDATION"]);
+const FEED_POLL_INTERVAL_MS = 30 * 60_000;
 
 function groupBurstPosts(posts: FeedPost[]): FeedGroup[] {
   const groups: FeedGroup[] = [];
@@ -241,10 +242,21 @@ export function FeedStream() {
     historyRequest.current?.abort();
     setLoadingMore(false);
     setLoading(firstLoad.current);
-    void load();
-    const timer = window.setInterval(() => void load(true), 5_000);
+    if (!document.hidden) void load();
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load(true);
+    }, FEED_POLL_INTERVAL_MS);
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        activeRequest.current?.abort();
+      } else {
+        void load(true);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       activeRequest.current?.abort();
       historyRequest.current?.abort();
     };

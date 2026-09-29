@@ -17,6 +17,9 @@
 
 Worker завантажує 30 останніх текстових дописів кожного каналу, а потім миттєво
 зберігає нові. `TELEGRAM_USER_SESSION` не можна додавати в Git — це секрет доступу до акаунта.
+Список активних каналів worker перечитує з БД кожні 30 хвилин, тому зміни списку
+застосовуються із затримкою до 30 хвилин; нові дописи вже підключених каналів
+надходять одразу.
 
 ## Підтримувані мережі
 
@@ -54,8 +57,12 @@ npm run dev
 Фонове оновлення цін локально — окремий процес на node-cron:
 
 ```bash
-npm run cron:local          # читає розклад із CRON_SCHEDULE (дефолт: щохвилини)
+npm run cron:local          # лише для локального Postgres; розклад із CRON_SCHEDULE
 ```
+
+`cron:local` завантажує `.env` і відмовляється запускатися з Neon-базою, щоб
+щохвилинний розклад випадково не тримав production compute активним. Для
+свідомого запуску з Neon потрібно явно задати `ALLOW_REMOTE_CRON=true`.
 
 ## Деплой на Vercel + Neon
 
@@ -68,7 +75,9 @@ npm run cron:local          # читає розклад із CRON_SCHEDULE (де
    `COINGECKO_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`.
    `NEXTAUTH_URL` і `NEXT_PUBLIC_APP_URL` = `https://<your-app>.vercel.app`.
 3. **Білд.** `npm run build` = `prisma generate && next build`; `postinstall` теж генерує клієнт.
-4. **Перевірка.** `GET /api/health` повертає `{ status: "ok", db: "up" }` (503, якщо БД недоступна).
+4. **Перевірка.** `GET /api/health?db=1` перевіряє доступність БД. Для частого
+   зовнішнього моніторингу використовуйте `GET /api/health` без `db=1`: він
+   перевіряє роботу застосунку без пробудження Neon.
 
 ### Cron (оновлення цін / тригери / снапшоти)
 

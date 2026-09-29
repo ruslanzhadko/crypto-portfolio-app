@@ -20,7 +20,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "cron:local": "tsx lib/cron/scheduler.ts",
+    "cron:local": "tsx --env-file=.env lib/cron/scheduler.ts",
     "telegram:poll": "tsx scripts/telegram-poll.ts",
     "telegram:feed:auth": "tsx --env-file=.env scripts/telegram-feed-auth.ts",
     "telegram:feed": "tsx scripts/telegram-feed-listener.ts",
