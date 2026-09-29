@@ -63,8 +63,7 @@ export default async function WalletDetailPage({
               <NetworkBadge network={wallet.network} />
             </div>
             <div className="row-span-2 self-center text-right">
-              <p className="text-[10px] text-text-muted sm:text-xs">{t('valueLabel')}</p>
-              <p className="text-lg font-semibold tracking-tight tabular-nums sm:text-2xl">
+              <p className="text-xl font-semibold tracking-tight tabular-nums sm:text-3xl">
                 {formatUsd(totalUsd, { minimumFractionDigits: 2 })}
               </p>
             </div>
