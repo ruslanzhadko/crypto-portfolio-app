@@ -136,6 +136,7 @@
   "TopMovers": {
     "gainersTitle": "Top Gainers",
     "losersTitle": "Top Losers",
+    "positionValue": "Position value",
     "gainersTab": "Gainers",
     "losersTab": "Losers",
     "showAll": "Show all",

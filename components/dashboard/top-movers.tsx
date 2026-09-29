@@ -16,6 +16,7 @@ const MIN_USD = 1;
 const DEFAULT_VISIBLE_COUNT = 5;
 
 function MoverRow({ tk }: { tk: AggregatedToken }) {
+  const t = useTranslations('TopMovers');
   const tokenPage = getTokenPageUrl(tk);
   // Convert the 24h price percentage into the dollar change of this position.
   // totalUsd is the current value, so compare it with the implied previous value.
@@ -37,8 +38,18 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
       </div>
       <div className="text-right">
         <PriceChange value={tk.priceChange24h} />
-        <p className={`text-[11px] tabular-nums ${changeUsd > 0 ? 'text-success' : changeUsd < 0 ? 'text-danger' : 'text-text-muted'}`}>
-          {changeUsd > 0 ? '+' : changeUsd < 0 ? '−' : ''}{formatUsd(Math.abs(changeUsd), { compact: true })}
+        <p className="flex items-center justify-end gap-1 text-[11px] tabular-nums">
+          <span className={changeUsd > 0 ? 'text-success' : changeUsd < 0 ? 'text-danger' : 'text-text-muted'}>
+            {changeUsd > 0 ? '+' : changeUsd < 0 ? '−' : ''}{formatUsd(Math.abs(changeUsd), { compact: true })}
+          </span>
+          <span className="text-text-muted" aria-hidden>·</span>
+          <span
+            className="text-text-muted"
+            title={`${t('positionValue')}: ${formatUsd(tk.totalUsd)}`}
+            aria-label={`${t('positionValue')}: ${formatUsd(tk.totalUsd)}`}
+          >
+            {formatUsd(tk.totalUsd, { compact: true })}
+          </span>
         </p>
       </div>
     </div>

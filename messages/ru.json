@@ -136,6 +136,7 @@
   "TopMovers": {
     "gainersTitle": "Лидеры роста",
     "losersTitle": "Лидеры падения",
+    "positionValue": "Стоимость позиции",
     "gainersTab": "Рост",
     "losersTab": "Падение",
     "showAll": "Показать все",

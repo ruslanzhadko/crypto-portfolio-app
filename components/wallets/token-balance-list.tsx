@@ -541,35 +541,43 @@ function ChainBreakdown({
           <div
             key={c.id}
             className={cn(
-              'flex items-center gap-3 px-4 py-1.5 pl-12 text-xs transition-colors hover:bg-surface-2/40',
+              'grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-0.5 px-3 py-1.5 pl-10 text-xs transition-colors hover:bg-surface-2/40 sm:flex sm:gap-3 sm:px-4 sm:py-1.5 sm:pl-12',
               hiddenNow && 'opacity-50',
             )}
           >
-            <div className="flex min-w-0 items-center gap-2">
-              <ChainBadge chainName={c.chainName} />
-              {/* Для дублів — назва варіанту (напр. USDC.e) або скорочена адреса */}
-              {isDuplicate && (
-                <>
-                  {showVariantName ? (
-                    <span className="truncate text-[10px] font-medium text-text">
-                      {c.tokenName}
-                    </span>
-                  ) : null}
-                  {c.tokenAddress && (
-                    <span className="font-mono text-[10px] text-text-muted">
-                      {shortAddress(c.tokenAddress, 4)}
-                    </span>
-                  )}
-                </>
-              )}
+            <div className="flex min-w-0 flex-col items-start gap-0.5 sm:flex-1 sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <ChainBadge chainName={c.chainName} />
+                {/* Для дублів — назва варіанту (напр. USDC.e) або скорочена адреса */}
+                {isDuplicate && (
+                  <>
+                    {showVariantName ? (
+                      <span className="min-w-0 truncate text-[10px] font-medium text-text">
+                        {c.tokenName}
+                      </span>
+                    ) : null}
+                    {c.tokenAddress && (
+                      <span className="truncate font-mono text-[10px] text-text-muted">
+                        {shortAddress(c.tokenAddress, 4)}
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+              <span className="truncate font-mono text-[10px] text-text-muted sm:hidden">
+                {formatTokenBalance(c.balance)}
+              </span>
             </div>
-            <span className="ml-auto font-mono tabular-nums">
+            <span className="hidden font-mono tabular-nums sm:inline">
               {formatTokenBalance(c.balance)}
             </span>
-            <span className="w-24 text-right font-medium tabular-nums">
+            <div className="text-right font-medium tabular-nums sm:w-24">
               {c.usdValue > 0 ? formatUsd(c.usdValue) : '—'}
-            </span>
-            <span className="w-12 text-right text-text-muted tabular-nums">
+              <span className="block text-[10px] font-normal text-text-muted sm:hidden">
+                {chainShare.toFixed(1)}%
+              </span>
+            </div>
+            <span className="hidden w-12 text-right text-text-muted tabular-nums sm:inline">
               {chainShare.toFixed(1)}%
             </span>
             <RowDropdown
@@ -625,7 +633,7 @@ function RowDropdown({
         <Button
           variant="ghost"
           size="icon"
-          className={cn('shrink-0', compact ? 'h-6 w-6' : 'h-7 w-7')}
+          className={cn('shrink-0', compact ? 'h-8 w-8 sm:h-6 sm:w-6' : 'h-7 w-7')}
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
