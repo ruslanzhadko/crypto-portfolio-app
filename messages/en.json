@@ -45,6 +45,8 @@
       "previousPhoto": "Previous photo",
       "nextPhoto": "Next photo",
       "photoPosition": "{current} / {count}",
+      "photoCount": "{count, plural, one {# photo} other {# photos}}",
+      "selectPhoto": "Show photo {current} of {count}",
     "closePhoto": "Close photo",
     "photoFrom": "Photo from {source}",
     "liquidated": "Liquidated {side}",

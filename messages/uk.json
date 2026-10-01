@@ -45,6 +45,8 @@
       "previousPhoto": "Попереднє фото",
       "nextPhoto": "Наступне фото",
       "photoPosition": "{current} / {count}",
+      "photoCount": "{count, plural, one {# фото} other {# фото}}",
+      "selectPhoto": "Показати фото {current} із {count}",
     "closePhoto": "Закрити фото",
     "photoFrom": "Фото від {source}",
     "liquidated": "Ліквідовано {side}",

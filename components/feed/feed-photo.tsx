@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Images, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function FeedPhoto({
@@ -54,29 +54,61 @@ export function FeedPhoto({
 
   return (
     <Dialog.Root>
-      <div className="relative mt-3 w-full max-w-2xl overflow-hidden rounded-xl bg-surface-2">
-        <Dialog.Trigger asChild>
-          <button
-            type="button"
-            aria-label={t("viewPhoto")}
-            className="block w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={currentImage}
-              alt=""
-              loading="lazy"
-              decoding="async"
-              onError={() => markFailed(currentImage)}
-              className="max-h-[32rem] w-full object-contain"
-            />
-          </button>
-        </Dialog.Trigger>
-        {controls(false)}
+      <div className="mt-3 w-full max-w-2xl">
+        <div className="relative overflow-hidden rounded-xl bg-surface-2">
+          <Dialog.Trigger asChild>
+            <button
+              type="button"
+              aria-label={t("viewPhoto")}
+              className="block w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={currentImage}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                onError={() => markFailed(currentImage)}
+                className="max-h-[32rem] w-full object-contain"
+              />
+            </button>
+          </Dialog.Trigger>
+          {count > 1 && (
+            <span className="pointer-events-none absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-full bg-background/95 px-3 py-1.5 text-xs font-semibold text-text shadow-sm sm:left-3 sm:top-3">
+              <Images className="h-4 w-4" aria-hidden="true" />
+              {t("photoCount", { count })}
+            </span>
+          )}
+          {controls(false)}
+          {count > 1 && (
+            <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium tabular-nums text-text">
+              {position}
+            </span>
+          )}
+        </div>
         {count > 1 && (
-          <span className="pointer-events-none absolute bottom-2 right-2 rounded-full bg-background/90 px-2.5 py-1 text-xs font-medium tabular-nums text-text">
-            {position}
-          </span>
+          <div className="mt-2 flex max-w-full gap-2 overflow-x-auto pb-1" aria-label={t("photoCount", { count })}>
+            {visibleImages.map((image, imageIndex) => (
+              <button
+                key={image}
+                type="button"
+                onClick={() => setIndex(imageIndex)}
+                aria-label={t("selectPhoto", { current: imageIndex + 1, count })}
+                aria-current={imageIndex === currentIndex ? "true" : undefined}
+                className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg border-2 bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${imageIndex === currentIndex ? "border-primary" : "border-transparent opacity-70 hover:opacity-100"}`}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  onError={() => markFailed(image)}
+                  className="h-full w-full object-cover"
+                />
+              </button>
+            ))}
+          </div>
         )}
       </div>
       <Dialog.Portal>
