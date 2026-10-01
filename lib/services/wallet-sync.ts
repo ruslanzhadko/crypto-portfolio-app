@@ -209,7 +209,6 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
 
 // Persists CoinGecko prices to TokenPrice cache so the cron and market pages can reuse them.
 async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>): Promise<void> {
-  const now = new Date();
   await Promise.allSettled(
     Array.from(prices.values()).map((p) =>
       prisma.tokenPrice
@@ -232,12 +231,7 @@ async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>):
             volume24h: p.volume24h ?? null,
             ...(p.image ? { logoUrl: p.image } : {}),
           },
-        })
-        .then(() =>
-          prisma.priceHistory.create({
-            data: { tokenId: p.id, price: p.price, timestamp: now },
-          }),
-        ),
+        }),
     ),
   );
 }

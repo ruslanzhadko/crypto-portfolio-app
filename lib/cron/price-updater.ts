@@ -198,7 +198,6 @@ async function collectTokenIds(): Promise<string[]> {
 // ─────────────────────────────────────────
 
 async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<void> {
-  const now = new Date();
   // Sequential to avoid overwhelming the DB with concurrent upserts
   for (const p of prices.values()) {
     await prisma.tokenPrice.upsert({
@@ -220,9 +219,6 @@ async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<void
         volume24h: p.volume24h ?? null,
         ...(p.image ? { logoUrl: p.image } : {}),
       },
-    });
-    await prisma.priceHistory.create({
-      data: { tokenId: p.id, price: p.price, timestamp: now },
     });
   }
 }

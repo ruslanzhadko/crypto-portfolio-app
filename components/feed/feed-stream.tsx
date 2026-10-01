@@ -87,7 +87,8 @@ const FILTERS: FilterType[] = [
   "ANALYSIS",
 ];
 const MACHINE_TYPES = new Set<PostType>(["PRICE_ANOMALY", "LIQUIDATION"]);
-const FEED_POLL_INTERVAL_MS = 30 * 60_000;
+const FEED_POLL_INTERVAL_MS = 30_000;
+const FEED_IDLE_TIMEOUT_MS = 5 * 60_000;
 
 function groupBurstPosts(posts: FeedPost[]): FeedGroup[] {
   const groups: FeedGroup[] = [];
@@ -153,6 +154,8 @@ export function FeedStream() {
   const activeRequest = useRef<AbortController | null>(null);
   const historyRequest = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
+  const lastActivityAt = useRef(Date.now());
+  const lastFetchAt = useRef(0);
   const querySignature = `${type}|${source}|${search}`;
   const querySignatureRef = useRef(querySignature);
   querySignatureRef.current = querySignature;
@@ -193,6 +196,7 @@ export function FeedStream() {
 
   const load = useCallback(
     async (quiet = false) => {
+      lastFetchAt.current = Date.now();
       activeRequest.current?.abort();
       const controller = new AbortController();
       activeRequest.current = controller;
@@ -203,7 +207,6 @@ export function FeedStream() {
         if (source !== "ALL") params.set("source", source);
         if (search) params.set("search", search);
         const response = await fetch(`/api/feed?${params}`, {
-          cache: "no-store",
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(t("loadError"));
@@ -243,20 +246,49 @@ export function FeedStream() {
     setLoadingMore(false);
     setLoading(firstLoad.current);
     if (!document.hidden) void load();
+    const isActive = () =>
+      !document.hidden &&
+      document.hasFocus() &&
+      Date.now() - lastActivityAt.current < FEED_IDLE_TIMEOUT_MS;
     const timer = window.setInterval(() => {
-      if (!document.hidden) void load(true);
+      if (isActive()) void load(true);
     }, FEED_POLL_INTERVAL_MS);
-    const onVisibilityChange = () => {
+    const resume = () => {
       if (document.hidden) {
         activeRequest.current?.abort();
       } else {
+        lastActivityAt.current = Date.now();
+        if (Date.now() - lastFetchAt.current >= FEED_POLL_INTERVAL_MS) {
+          void load(true);
+        }
+      }
+    };
+    const onActivity = () => {
+      const wasIdle =
+        Date.now() - lastActivityAt.current >= FEED_IDLE_TIMEOUT_MS;
+      lastActivityAt.current = Date.now();
+      if (
+        wasIdle &&
+        isActive() &&
+        Date.now() - lastFetchAt.current >= FEED_POLL_INTERVAL_MS
+      ) {
         void load(true);
       }
     };
-    document.addEventListener("visibilitychange", onVisibilityChange);
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("focus", resume);
+    window.addEventListener("pointermove", onActivity, { passive: true });
+    window.addEventListener("keydown", onActivity);
+    window.addEventListener("scroll", onActivity, { passive: true });
+    window.addEventListener("touchstart", onActivity, { passive: true });
     return () => {
       window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("pointermove", onActivity);
+      window.removeEventListener("keydown", onActivity);
+      window.removeEventListener("scroll", onActivity);
+      window.removeEventListener("touchstart", onActivity);
       activeRequest.current?.abort();
       historyRequest.current?.abort();
     };
@@ -278,7 +310,6 @@ export function FeedStream() {
       if (source !== "ALL") params.set("source", source);
       if (search) params.set("search", search);
       const response = await fetch(`/api/feed?${params}`, {
-        cache: "no-store",
         signal: controller.signal,
       });
       if (!response.ok) throw new Error(t("loadError"));

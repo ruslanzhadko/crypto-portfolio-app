@@ -75,19 +75,27 @@ export async function GET(req: NextRequest) {
       orderBy: { title: "asc" },
     });
 
-    return ok({
-      posts: posts.map((post) => ({
-        ...post,
-        links: readFeedTextLinks(post.metadata),
-        metadata: undefined,
-      })),
-      sources,
-      nextCursor:
-        posts.length === limit
-          ? (posts.at(-1)?.publishedAt.toISOString() ?? null)
-          : null,
-      serverTime: new Date().toISOString(),
-    });
+    return ok(
+      {
+        posts: posts.map((post) => ({
+          ...post,
+          links: readFeedTextLinks(post.metadata),
+          metadata: undefined,
+        })),
+        sources,
+        nextCursor:
+          posts.length === limit
+            ? (posts.at(-1)?.publishedAt.toISOString() ?? null)
+            : null,
+        serverTime: new Date().toISOString(),
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "public, max-age=0, s-maxage=20, stale-while-revalidate=10",
+        },
+      },
+    );
   } catch (error) {
     return handleUnknown(error);
   }
