@@ -56,6 +56,8 @@ interface FeedPost {
   priceUsd: number | null;
   limitUsd: number | null;
   mediaUrl: string | null;
+  mediaUrls: string[];
+  albumId: string | null;
   telegramUrl: string;
   links: FeedTextLink[];
   publishedAt: string;
@@ -95,7 +97,7 @@ function groupBurstPosts(posts: FeedPost[]): FeedGroup[] {
   const keyed = new Map<string, FeedGroup>();
 
   for (const post of posts) {
-    if (!MACHINE_TYPES.has(post.type) || !post.symbol) {
+    if (!MACHINE_TYPES.has(post.type) || !post.symbol || post.mediaUrls.length) {
       groups.push({ key: post.id, posts: [post], latest: post });
       continue;
     }
@@ -586,10 +588,10 @@ function FeedRow({ group, locale }: { group: FeedGroup; locale: string }) {
             </div>
           )}
 
-          {post.mediaUrl && (
+          {post.mediaUrls.length > 0 && (
             <FeedPhoto
-              key={post.mediaUrl}
-              src={post.mediaUrl}
+              key={post.id}
+              images={post.mediaUrls}
               source={post.source.title}
             />
           )}

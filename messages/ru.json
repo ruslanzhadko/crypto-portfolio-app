@@ -18,7 +18,7 @@
   "Feed": {
     "pageTitle": "Криптолента",
     "pageDescription": "Новости, арбитражные возможности, ценовые аномалии и крупные ликвидации из выбранных Telegram-каналов.",
-    "autoRefresh": "Автообновление каждые 5 секунд",
+      "autoRefresh": "Обновление каждые 30 секунд при активной вкладке",
     "openDashboard": "Кабинет",
     "filterByType": "Фильтр по типу публикации",
     "searchPlaceholder": "Тикер, тема или канал…",
@@ -42,6 +42,9 @@
     "eventCount": "{count, plural, one {# событие} few {# события} many {# событий} other {# события}}",
     "openTelegram": "Открыть оригинал",
     "viewPhoto": "Посмотреть фото",
+      "previousPhoto": "Предыдущее фото",
+      "nextPhoto": "Следующее фото",
+      "photoPosition": "{current} / {count}",
     "closePhoto": "Закрыть фото",
     "photoFrom": "Фото от {source}",
     "liquidated": "Ликвидирован {side}",

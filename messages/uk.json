@@ -18,7 +18,7 @@
   "Feed": {
     "pageTitle": "Криптострічка",
     "pageDescription": "Новини, арбітражні можливості, цінові аномалії та великі ліквідації з обраних Telegram-каналів.",
-    "autoRefresh": "Автооновлення кожні 5 секунд",
+      "autoRefresh": "Оновлення кожні 30 секунд за активної вкладки",
     "openDashboard": "Кабінет",
     "filterByType": "Фільтр за типом допису",
     "searchPlaceholder": "Тикер, тема або канал…",
@@ -42,6 +42,9 @@
     "eventCount": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}",
     "openTelegram": "Відкрити оригінал",
     "viewPhoto": "Переглянути фото",
+      "previousPhoto": "Попереднє фото",
+      "nextPhoto": "Наступне фото",
+      "photoPosition": "{current} / {count}",
     "closePhoto": "Закрити фото",
     "photoFrom": "Фото від {source}",
     "liquidated": "Ліквідовано {side}",

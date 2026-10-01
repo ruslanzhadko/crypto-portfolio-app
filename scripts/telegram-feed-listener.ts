@@ -145,6 +145,10 @@ async function saveMessage(
       length: link.length,
       url: link.url,
     })),
+    albumChecked: true,
+    ...(message.groupedId
+      ? { telegramAlbumId: message.groupedId.toString() }
+      : {}),
   };
   const classified = classifyFeedPost(text);
   const publishedAt = new Date(message.date * 1000);
@@ -207,6 +211,68 @@ async function saveUpdate(
   await saveMessage(username, sourceId, update.message);
 }
 
+// Previously saved photos did not retain Telegram's album ID. Restore it
+// from Telegram by message ID without downloading or rewriting the images.
+async function backfillStoredAlbumIds(username: string, sourceId: string) {
+  const stored = await prisma.telegramFeedPost.findMany({
+    where: { sourceId, mediaUrl: { not: null } },
+    select: { id: true, telegramMessageId: true, metadata: true },
+  });
+  const unchecked = stored.filter((post) => {
+    const metadata = post.metadata;
+    return !(
+      metadata &&
+      typeof metadata === "object" &&
+      !Array.isArray(metadata) &&
+      metadata.albumChecked === true
+    );
+  });
+  let updated = 0;
+
+  for (let offset = 0; offset < unchecked.length; offset += 100) {
+    const batch = unchecked.slice(offset, offset + 100);
+    const messages = await client.getMessages(username, {
+      ids: batch.map((post) => post.telegramMessageId),
+    });
+    const byId = new Map(
+      messages
+        .filter(
+          (message): message is Api.Message => message instanceof Api.Message,
+        )
+        .map((message) => [message.id, message]),
+    );
+
+    for (const post of batch) {
+      const message = byId.get(post.telegramMessageId);
+      if (!message) continue;
+      const previous =
+        post.metadata &&
+        typeof post.metadata === "object" &&
+        !Array.isArray(post.metadata)
+          ? post.metadata
+          : {};
+      const metadata = {
+        ...previous,
+        albumChecked: true,
+        ...(message.groupedId
+          ? { telegramAlbumId: message.groupedId.toString() }
+          : {}),
+      } as Prisma.InputJsonObject;
+      await prisma.telegramFeedPost.update({
+        where: { id: post.id },
+        data: { metadata },
+      });
+      updated++;
+    }
+  }
+
+  if (updated) {
+    console.log(
+      `[feed] restored album metadata for @${username}: ${updated} photos`,
+    );
+  }
+}
+
 async function bootstrapSources() {
   const sourceCount = await prisma.telegramFeedSource.count();
   if (sourceCount > 0 || bootstrapChannels.length === 0) return;
@@ -241,6 +307,14 @@ async function startWatching(username: string) {
     console.log(
       `[feed] backfilled @${username}: ${recentMessages.length} messages`,
     );
+    try {
+      await backfillStoredAlbumIds(username, source.id);
+    } catch (error) {
+      console.warn(
+        `[feed] album metadata backfill failed for @${username}`,
+        error,
+      );
+    }
   } catch (error) {
     stop();
     watchers.delete(username);
@@ -292,6 +366,20 @@ async function main() {
     throw new Error(
       "Telegram session is not authorized. Run npm run telegram:feed:auth again.",
     );
+  }
+
+  if (process.argv.includes("--backfill-albums")) {
+    const sources = await prisma.telegramFeedSource.findMany({
+      where: { isActive: true },
+      select: { id: true, username: true },
+    });
+    for (const source of sources) {
+      await backfillStoredAlbumIds(source.username, source.id);
+    }
+    await client.disconnect();
+    await prisma.$disconnect();
+    console.log(`[feed] album backfill finished for ${sources.length} sources`);
+    return;
   }
 
   await bootstrapSources();

@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, handleUnknown, ok } from "@/lib/api/response";
-import { readFeedTextLinks } from "@/lib/feed/links";
+import { groupTelegramAlbums, readTelegramAlbumId } from "@/lib/feed/albums";
 
 export const dynamic = "force-dynamic";
 
@@ -75,13 +75,44 @@ export async function GET(req: NextRequest) {
       orderBy: { title: "asc" },
     });
 
+    // A page can begin or end in the middle of a Telegram album. Fetch the
+    // other messages so the card always has its full set of photos.
+    const albumKeys = new Map<string, { sourceId: string; albumId: string }>();
+    for (const post of posts) {
+      const albumId = readTelegramAlbumId(post.metadata);
+      if (albumId) {
+        albumKeys.set(`${post.sourceId}:${albumId}`, {
+          sourceId: post.sourceId,
+          albumId,
+        });
+      }
+    }
+    const siblings = albumKeys.size
+      ? await prisma.telegramFeedPost.findMany({
+          where: {
+            source: { isActive: true },
+            OR: [...albumKeys.values()].map(({ sourceId, albumId }) => ({
+              sourceId,
+              metadata: { path: ["telegramAlbumId"], equals: albumId },
+            })),
+          },
+          include: {
+            source: {
+              select: { username: true, title: true, avatarUrl: true },
+            },
+          },
+        })
+      : [];
+    const allPosts = new Map(
+      [...posts, ...siblings].map((post) => [post.id, post]),
+    );
+    const groupedPosts = groupTelegramAlbums([...allPosts.values()]).filter(
+      (post) => type === "ALL" || post.type === type,
+    );
+
     return ok(
       {
-        posts: posts.map((post) => ({
-          ...post,
-          links: readFeedTextLinks(post.metadata),
-          metadata: undefined,
-        })),
+        posts: groupedPosts.map(({ metadata: _metadata, ...post }) => post),
         sources,
         nextCursor:
           posts.length === limit
