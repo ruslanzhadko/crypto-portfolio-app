@@ -110,7 +110,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
   }
 
   return (
-    <Card>
+    <Card className="[overflow-anchor:none]">
       <CardHeader className="space-y-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>{t('cardTitle')}</CardTitle>
@@ -177,28 +177,28 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm 2xl:table-auto">
+          <table className="w-full table-fixed text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="w-3/5 px-3 py-3 text-left sm:px-4 lg:w-1/2 2xl:w-auto">{t('colToken')}</th>
-                <th className="hidden px-4 py-3 text-left 2xl:table-cell">{t('colNetworks')}</th>
-                <th className="hidden px-4 py-3 text-right 2xl:table-cell">
+                <th className="w-3/5 px-3 py-3 text-left sm:px-4 lg:w-1/2 2xl:w-[22%]">{t('colToken')}</th>
+                <th className="hidden px-4 py-3 text-left 2xl:table-cell 2xl:w-[30%]">{t('colNetworks')}</th>
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[11%]">
                   <SortButton active={sortKey === 'balance'} desc={desc} onClick={() => toggleSort('balance')}>
                     {t('colBalance')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right 2xl:table-cell">{t('colPrice')}</th>
-                <th className="px-3 py-3 text-right sm:px-4">
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[10%]">{t('colPrice')}</th>
+                <th className="px-3 py-3 text-right sm:px-4 2xl:w-[11%]">
                   <SortButton active={sortKey === 'value'} desc={desc} onClick={() => toggleSort('value')}>
                     {t('colUsd')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right lg:table-cell">
+                <th className="hidden px-4 py-3 text-right lg:table-cell 2xl:w-[10%]">
                   <SortButton active={sortKey === 'change'} desc={desc} onClick={() => toggleSort('change')}>
                     {t('col24h')}
                   </SortButton>
                 </th>
-                <th className="hidden px-4 py-3 text-right 2xl:table-cell">{t('colShare')}</th>
+                <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[6%]">{t('colShare')}</th>
               </tr>
             </thead>
             <tbody>
