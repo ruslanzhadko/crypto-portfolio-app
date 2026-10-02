@@ -1,4 +1,8 @@
 {
+  "LowValueFilter": {
+    "label": "Скрывать суммы меньше $1",
+    "emptyWallets": "Нет кошельков с балансом от $1."
+  },
   "Nav": {
     "dashboard": "Обзор",
     "wallets": "Кошельки",

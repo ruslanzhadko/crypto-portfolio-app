@@ -1,4 +1,8 @@
 {
+  "LowValueFilter": {
+    "label": "Hide balances below $1",
+    "emptyWallets": "No wallets with a balance of $1 or more."
+  },
   "Nav": {
     "dashboard": "Dashboard",
     "wallets": "Wallets",

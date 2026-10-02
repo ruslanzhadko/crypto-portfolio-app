@@ -21,6 +21,7 @@ import {
   shortAddress,
 } from '@/lib/utils/format';
 import { ChainBadge } from '@/components/common/network-badge';
+import { LowValueFilter, useLowValueFilter } from '@/components/common/low-value-filter';
 import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
 import { filterDashboardTokens } from '@/lib/utils/dashboard-token-filter';
@@ -44,6 +45,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
   const [search, setSearch] = useState('');
   const [selectedChains, setSelectedChains] = useState<Set<string>>(() => new Set());
   const [showSpam, setShowSpam] = useState(false);
+  const [hideLowValue, setHideLowValue] = useLowValueFilter('tokens');
   // Окремі множини для розгорнутих токенів і розгорнутих гаманців (ключі: tokenKey та tokenKey::walletId)
   const [openTokens, setOpenTokens] = useState<Set<string>>(new Set());
   const [openWallets, setOpenWallets] = useState<Set<string>>(new Set());
@@ -53,7 +55,8 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
   )).sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [tokens, spamTokens]);
 
   const sorted = useMemo(() => {
-    const arr = filterDashboardTokens(showSpam ? spamTokens : tokens, selectedChains, search);
+    const arr = filterDashboardTokens(showSpam ? spamTokens : tokens, selectedChains, search)
+      .filter((token) => !hideLowValue || token.totalUsd >= 1);
     arr.sort((a, b) => {
       let av: number;
       let bv: number;
@@ -74,7 +77,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
       return desc ? bv - av : av - bv;
     });
     return arr;
-  }, [tokens, spamTokens, showSpam, selectedChains, search, sortKey, desc]);
+  }, [tokens, spamTokens, showSpam, selectedChains, search, sortKey, desc, hideLowValue]);
 
   function toggleChain(chain: string) {
     setSelectedChains((current) => {
@@ -167,6 +170,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+        <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
         {showSpam && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
@@ -313,7 +317,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
-                    {search.trim() || selectedChains.size > 0
+                    {search.trim() || selectedChains.size > 0 || hideLowValue
                       ? t('noFilterResults')
                       : showSpam ? t('emptySpam') : t('emptyText')}
                   </td>

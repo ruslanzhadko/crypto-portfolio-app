@@ -1,4 +1,8 @@
 {
+  "LowValueFilter": {
+    "label": "Приховувати суми менше $1",
+    "emptyWallets": "Немає гаманців із балансом від $1."
+  },
   "Nav": {
     "dashboard": "Огляд",
     "wallets": "Гаманці",

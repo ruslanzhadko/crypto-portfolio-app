@@ -7,6 +7,7 @@ import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NetworkBadge } from '@/components/common/network-badge';
 import { Button } from '@/components/ui/button';
+import { LowValueFilter, useLowValueFilter } from '@/components/common/low-value-filter';
 import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
 import type { Network } from '@prisma/client';
 
@@ -25,7 +26,10 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
   const dashboard = useTranslations('Dashboard');
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
+  const [hideLowValue, setHideLowValue] = useLowValueFilter('wallets');
+  const lowValue = useTranslations('LowValueFilter');
   const topWallets = [...wallets]
+    .filter((wallet) => !hideLowValue || wallet.totalUsd >= 1)
     .sort((left, right) => right.totalUsd - left.totalUsd)
     .slice(0, 5);
 
@@ -33,24 +37,29 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
 
   return (
     <Card className="h-full">
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 p-4">
-        <CardTitle>{t('cardTitle')}</CardTitle>
-        <div className="flex flex-wrap items-center gap-1">
-          <Button asChild variant="outline" size="sm">
-            <Link href="/dashboard/compare">{dashboard('compareWallets')}</Link>
-          </Button>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/wallets">
-              {t('viewAll')} <ArrowRight className="h-3 w-3" />
-            </Link>
-          </Button>
+      <CardHeader className="gap-2 space-y-0 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle>{t('cardTitle')}</CardTitle>
+          <div className="flex flex-wrap items-center gap-1">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/dashboard/compare">{dashboard('compareWallets')}</Link>
+            </Button>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/wallets">
+                {t('viewAll')} <ArrowRight className="h-3 w-3" />
+              </Link>
+            </Button>
+          </div>
         </div>
+        <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
       </CardHeader>
       <CardContent className="p-0">
         {wallets.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-text-muted">
             {t('noWallets')}
           </p>
+        ) : topWallets.length === 0 ? (
+          <p className="px-4 pb-4 text-sm text-text-muted" role="status">{lowValue('emptyWallets')}</p>
         ) : (
           <div className="divide-y divide-border">
             {topWallets.map((w) => (
