@@ -48,6 +48,11 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>{t('cardTitle')}</CardTitle>
           <div className="flex flex-wrap items-center gap-1">
+            <Button variant="ghost" size="sm" className="min-h-11 gap-2 text-text-muted"
+              onClick={toggleCollapsed} aria-expanded={!collapsed} aria-controls={contentId}>
+              {collapsed ? t('expandList') : t('collapseList')}
+              {collapsed ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronUp className="h-4 w-4" aria-hidden />}
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/compare">{dashboard('compareWallets')}</Link>
             </Button>
@@ -58,11 +63,6 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
             </Button>
           </div>
         </div>
-        <Button variant="ghost" size="sm" className="min-h-11 justify-between gap-2 text-text-muted"
-          onClick={toggleCollapsed} aria-expanded={!collapsed} aria-controls={contentId}>
-          {collapsed ? t('expandList') : t('collapseList')}
-          {collapsed ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronUp className="h-4 w-4" aria-hidden />}
-        </Button>
       </CardHeader>
       <CardContent id={contentId} className="p-0" hidden={collapsed}>
         {wallets.length === 0 ? (

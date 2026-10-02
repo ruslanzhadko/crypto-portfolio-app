@@ -114,6 +114,8 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
       <CardHeader className="space-y-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>{t('cardTitle')}</CardTitle>
+          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:w-auto sm:justify-end">
+          <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
           <Button
             variant={showSpam ? 'default' : 'outline'}
             size="sm"
@@ -125,6 +127,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
             {showSpam ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
             {showSpam ? t('hideSpam') : t('showSpam', { count: spamTokens.length })}
           </Button>
+          </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <div className="relative min-w-0 flex-1">
@@ -170,7 +173,6 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
         {showSpam && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
