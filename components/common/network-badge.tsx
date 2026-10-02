@@ -47,7 +47,7 @@ export function ChainBadge({ chainName, className }: ChainBadgeProps) {
         size={14}
         className="shrink-0 object-contain text-[8px]"
       />
-      {getChainDisplayName(chainName)}
+      <span className="min-w-0 truncate" title={getChainDisplayName(chainName)}>{getChainDisplayName(chainName)}</span>
     </span>
   );
 }

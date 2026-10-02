@@ -309,16 +309,16 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
           <p className={cn('mt-0.5 break-words text-xs font-medium tabular-nums', meta.color)}>{valueLabel}</p></div>
         <span className="shrink-0 pt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>{formatRelativeCompact(transaction.timestamp, locale)}</span>
       </div>
-      <div className="mt-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-xs text-text-muted" title={`${walletName} · ${transaction.walletAddress}`}>{walletName}</p>
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span className={cn('inline-flex h-6 items-center gap-1 rounded-md px-2 text-[11px] font-medium', meta.bg, meta.color)}>
-            <Icon className="h-3 w-3" strokeWidth={2} aria-hidden />
+      <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 flex-1 truncate text-xs text-text-muted" title={`${walletName} · ${transaction.walletAddress}`}>{walletName}</p>
+        <div className="flex min-w-0 max-w-[75%] shrink-0 items-center justify-end gap-1.5">
+          <span className={cn('inline-flex h-6 min-w-0 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-medium', meta.bg, meta.color)}>
+            <Icon className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
             {typeLabel}
           </span>
           {transaction.isSpam && <span className="rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger">{spamLabel}</span>}
           {transaction.status !== 'success' && <span className="text-[10px] font-medium text-danger">{failedLabel}</span>}
-          <ChainBadge chainName={transaction.chainName} />
+          <ChainBadge chainName={transaction.chainName} className="min-w-0 shrink overflow-hidden" />
         </div>
       </div>
     </div>
