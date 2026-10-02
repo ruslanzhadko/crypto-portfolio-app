@@ -1,7 +1,6 @@
 {
   "LowValueFilter": {
-    "label": "Приховувати суми менше $1",
-    "emptyWallets": "Немає гаманців із балансом від $1."
+    "label": "Приховувати суми менше $1"
   },
   "Nav": {
     "dashboard": "Огляд",
@@ -181,6 +180,8 @@
     "countNetworks": "Кількість мереж"
   },
   "WalletList": {
+    "collapseList": "Згорнути список гаманців",
+    "expandList": "Розгорнути список гаманців",
     "cardTitle": "Гаманці",
     "viewAll": "Усі",
     "noWallets": "Гаманців ще не додано.",

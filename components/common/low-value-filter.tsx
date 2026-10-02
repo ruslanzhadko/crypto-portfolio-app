@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Switch } from '@/components/ui/switch';
 
-export function useLowValueFilter(scope: 'wallets' | 'tokens') {
+export function useLowValueFilter(scope: 'tokens') {
   const [hidden, setHidden] = useState(false);
   const key = `portfolio:hide-low-value:${scope}`;
 

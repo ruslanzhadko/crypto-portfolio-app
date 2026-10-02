@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { ArrowRight, Wallet as WalletIcon } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, Wallet as WalletIcon } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { NetworkBadge } from '@/components/common/network-badge';
 import { Button } from '@/components/ui/button';
-import { LowValueFilter, useLowValueFilter } from '@/components/common/low-value-filter';
 import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
 import type { Network } from '@prisma/client';
 
@@ -26,17 +25,25 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
   const dashboard = useTranslations('Dashboard');
   const locale = useLocale();
   const [mounted, setMounted] = useState(false);
-  const [hideLowValue, setHideLowValue] = useLowValueFilter('wallets');
-  const lowValue = useTranslations('LowValueFilter');
+  const [collapsed, setCollapsed] = useState(false);
+  const contentId = useId();
   const topWallets = [...wallets]
-    .filter((wallet) => !hideLowValue || wallet.totalUsd >= 1)
     .sort((left, right) => right.totalUsd - left.totalUsd)
     .slice(0, 5);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    try { setCollapsed(localStorage.getItem('portfolio:wallets-collapsed') === 'true'); } catch { /* Storage may be unavailable. */ }
+  }, []);
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { localStorage.setItem('portfolio:wallets-collapsed', String(next)); } catch { /* Keep the control usable without storage. */ }
+  }
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="gap-2 space-y-0 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>{t('cardTitle')}</CardTitle>
@@ -51,15 +58,17 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
             </Button>
           </div>
         </div>
-        <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
+        <Button variant="ghost" size="sm" className="min-h-11 justify-between gap-2 text-text-muted"
+          onClick={toggleCollapsed} aria-expanded={!collapsed} aria-controls={contentId}>
+          {collapsed ? t('expandList') : t('collapseList')}
+          {collapsed ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronUp className="h-4 w-4" aria-hidden />}
+        </Button>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent id={contentId} className="p-0" hidden={collapsed}>
         {wallets.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-text-muted">
             {t('noWallets')}
           </p>
-        ) : topWallets.length === 0 ? (
-          <p className="px-4 pb-4 text-sm text-text-muted" role="status">{lowValue('emptyWallets')}</p>
         ) : (
           <div className="divide-y divide-border">
             {topWallets.map((w) => (

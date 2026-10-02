@@ -1,7 +1,6 @@
 {
   "LowValueFilter": {
-    "label": "Hide balances below $1",
-    "emptyWallets": "No wallets with a balance of $1 or more."
+    "label": "Hide balances below $1"
   },
   "Nav": {
     "dashboard": "Dashboard",
@@ -181,6 +180,8 @@
     "countNetworks": "Network count"
   },
   "WalletList": {
+    "collapseList": "Collapse wallet list",
+    "expandList": "Expand wallet list",
     "cardTitle": "Wallets",
     "viewAll": "All",
     "noWallets": "No wallets added yet.",
