@@ -1,4 +1,5 @@
 import { Network } from '@prisma/client';
+import axios from 'axios';
 import { prisma } from '@/lib/db/prisma';
 import { MIN_TOKEN_USD, type NormalizedToken } from '@/lib/services/token-types';
 import { fetchSolanaBalances } from '@/lib/services/helius';
@@ -30,6 +31,19 @@ function shouldMarkSpam(token: NormalizedToken): boolean {
   return token.isSpam || (!token.isNative && token.usdValue < MIN_TOKEN_USD);
 }
 
+function upstreamFailure(error: unknown): string {
+  if (axios.isAxiosError(error)) {
+    return `HTTP ${error.response?.status ?? 'no response'} (${error.code ?? 'unknown'})`;
+  }
+  if (error instanceof Error && error.message === 'ETHERSCAN_API_KEY is not configured') {
+    return 'ETHERSCAN_API_KEY is not configured';
+  }
+  if (error instanceof Error && error.message.startsWith('Etherscan ')) {
+    return 'Etherscan API rejected the request';
+  }
+  return error instanceof Error ? error.name : 'unknown error';
+}
+
 export async function syncWallet(walletId: string): Promise<SyncResult> {
   const wallet = await prisma.wallet.findUnique({
     where: { id: walletId },
@@ -51,7 +65,9 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     for (const result of results) if (result.status === 'fulfilled') tokens.push(...result.value);
     const robinhoodSynced = results[0]?.status === 'fulfilled';
     if (!robinhoodSynced) console.warn('[wallet-sync] Robinhood unavailable; keeping its previous balances');
-    if (results[1]?.status === 'rejected') console.warn('[wallet-sync] HyperEVM unavailable; keeping its previous balances');
+    if (results[1]?.status === 'rejected') {
+      console.warn(`[wallet-sync] HyperEVM unavailable (${upstreamFailure(results[1].reason)}); keeping its previous balances`);
+    }
     if (results[2]?.status === 'rejected') console.warn('[wallet-sync] HyperCore unavailable; keeping its previous balances');
     const unavailableChains = [
       ...(!robinhoodSynced ? ['robinhood'] : []),

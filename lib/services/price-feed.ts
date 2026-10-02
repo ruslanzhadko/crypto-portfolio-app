@@ -43,6 +43,23 @@ export interface PriceQuery {
 const BINANCE_BASE = 'https://api.binance.com';
 const DEXSCREENER_BASE = 'https://api.dexscreener.com';
 const REQUEST_TIMEOUT_MS = 8_000;
+// Wallets in one cron run often share tokens. Reuse recent requests (including
+// in-flight ones) without keeping user-facing prices stale for long.
+const PRICE_CACHE_MS = 15_000;
+const priceCache = new Map<string, { expiresAt: number; promise: Promise<PriceInfo | null> }>();
+
+function cachedPrice(key: string, load: () => Promise<PriceInfo | null>): Promise<PriceInfo | null> {
+  const now = Date.now();
+  const cached = priceCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.promise;
+  if (priceCache.size >= 1000) {
+    for (const [name, entry] of priceCache) if (entry.expiresAt <= now) priceCache.delete(name);
+    if (priceCache.size >= 1000) priceCache.delete(priceCache.keys().next().value!);
+  }
+  const promise = load();
+  priceCache.set(key, { expiresAt: now + PRICE_CACHE_MS, promise });
+  return promise;
+}
 /**
  * Скільки запитів до DexScreener дозволяємо паралельно. Їх ліміт 300 req/min,
  * але при паралельності >10 починаються spurious 429. 8 — комфортний компроміс.
@@ -152,7 +169,8 @@ async function fetchBinancePrices(symbols: string[]): Promise<Map<string, PriceI
   const result = new Map<string, PriceInfo>();
   if (symbols.length === 0) return result;
   const unique = Array.from(new Set(symbols));
-  const responses = await Promise.allSettled(unique.map(fetchBinancePrice));
+  const responses = await Promise.allSettled(unique.map((symbol) =>
+    cachedPrice(`binance:${symbol}`, () => fetchBinancePrice(symbol))));
   for (let i = 0; i < unique.length; i++) {
     const r = responses[i];
     if (r?.status === 'fulfilled' && r.value) {
@@ -348,8 +366,8 @@ export async function fetchPrices(
 
     const responses = await runWithConcurrency(
       uniquePairs,
-      async ([, { dexChainId, address }]) =>
-        fetchDexScreenerToken(dexChainId, address),
+      async ([pairKey, { dexChainId, address }]) =>
+        cachedPrice(`dex:${pairKey}`, () => fetchDexScreenerToken(dexChainId, address)),
       DEXSCREENER_CONCURRENCY,
     );
 

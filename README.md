@@ -47,6 +47,21 @@ Vercel як `ROBINHOOD_BLOCKSCOUT_API_KEY` та виконайте redeploy. Б�
 ціни ERC-20 надходять із Blockscout при синхронізації балансів. Токени без ціни
 можуть приховуватися наявним фільтром спаму. Логотип: `public/robinhood-logo.png`.
 
+### Hyperliquid / HyperEVM
+
+HyperCore (біржові spot і perpetuals баланси) читається через Hyperliquid Info API.
+HyperEVM — окрема EVM-мережа з chain ID `999`: нативний HYPE читається через
+[офіційний RPC](https://hyperliquid.gitbook.io/hyperliquid-docs/for-developers/hyperevm),
+ERC-20 контракти знаходяться через історію трансферів
+[Etherscan API V2](https://hyperevmscan.io/api) і перевіряються через `eth_call`.
+Для цього потрібен `ETHERSCAN_API_KEY` у Vercel Production Environment Variables
+і нове розгортання. Ключ створюється в [Etherscan](https://etherscan.io/myapikey);
+у репозиторій його не додавати. Той самий API дає історію нативних і ERC-20 транзакцій.
+Якщо API недоступний або ключ не заданий, попередні баланси HyperEVM зберігаються.
+Для адрес із 5000 і більше ERC-20 трансферів за всю історію синхронізація зупиняється
+без видалення попередніх балансів: для них потрібен окремий індексатор або тариф
+з endpoint для всіх поточних holdings.
+
 ## Локальний запуск
 
 ```bash
@@ -74,7 +89,7 @@ npm run cron:local          # лише для локального Postgres; р�
    - `DIRECT_URL` — **direct** рядок (без `-pooler`), потрібен Prisma для міграцій.
 2. **Змінні середовища** (Project → Settings → Environment Variables) — повний перелік у `.env.example`:
    `DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`/`AUTH_SECRET`, `NEXTAUTH_URL`,
-   `CRON_SECRET`, `ANKR_API_KEY`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`,
+   `CRON_SECRET`, `ANKR_API_KEY`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`, `ETHERSCAN_API_KEY`,
    `COINGECKO_API_KEY`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `NEXT_PUBLIC_APP_URL`.
    `NEXTAUTH_URL` і `NEXT_PUBLIC_APP_URL` = `https://<your-app>.vercel.app`.
 3. **Білд.** `npm run build` = `prisma generate && next build`; `postinstall` теж генерує клієнт.

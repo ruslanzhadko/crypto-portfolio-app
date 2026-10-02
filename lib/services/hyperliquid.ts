@@ -3,7 +3,8 @@ import { z } from 'zod';
 import type { NormalizedToken, NormalizedTransaction } from './token-types';
 
 const INFO = 'https://api.hyperliquid.xyz/info';
-const SCOUT = 'https://www.hyperscan.com/api/v2';
+const HYPEREVM_RPC = 'https://rpc.hyperliquid.xyz/evm';
+const ETHERSCAN = 'https://api.etherscan.io/v2/api';
 const addressPattern = /^0x[\da-f]{40}$/i;
 
 async function info(body: Record<string, unknown>): Promise<unknown> {
@@ -76,101 +77,134 @@ export async function fetchHyperCoreBalances(address: string): Promise<Normalize
   return balances;
 }
 
-const scoutToken = z.object({ address_hash: z.string(), symbol: z.string().nullable(), name: z.string().nullable(),
-  decimals: z.string().nullable(), exchange_rate: z.string().nullable(), icon_url: z.string().nullable(), type: z.string() });
-const cursor = z.record(z.union([z.string().max(256), z.number(), z.boolean()]));
-async function scout(path: string, params?: Record<string, unknown>): Promise<unknown> {
-  const { data } = await axios.get(`${SCOUT}${path}`, { params, timeout: 12_000 });
-  return data;
+const scanTransfer = z.object({ hash: z.string(), timeStamp: z.string(), from: z.string(), to: z.string(),
+  contractAddress: z.string(), value: z.string(), tokenName: z.string(), tokenSymbol: z.string(),
+  tokenDecimal: z.string(), blockNumber: z.string(), transactionIndex: z.string().optional(),
+  logIndex: z.string().optional() });
+const scanTransaction = z.object({ hash: z.string(), timeStamp: z.string(), from: z.string(), to: z.string(),
+  value: z.string(), blockNumber: z.string(), isError: z.string() });
+const SCAN_PAGE_SIZE = 1000;
+const MAX_SCAN_PAGES = 5;
+
+async function scan(action: string, address: string, page: number, offset = SCAN_PAGE_SIZE): Promise<unknown[]> {
+  const key = process.env.ETHERSCAN_API_KEY?.trim();
+  if (!key) throw new Error('ETHERSCAN_API_KEY is not configured');
+  const { data } = await axios.get(ETHERSCAN, { timeout: 10_000, params: {
+    chainid: 999, module: 'account', action, address, startblock: 0, endblock: 999999999,
+    page, offset, sort: 'desc', apikey: key,
+  } });
+  const response = z.object({ status: z.string(), message: z.string(), result: z.unknown() }).parse(data);
+  if (response.status === '0' && /no transactions found/i.test(response.message) &&
+      Array.isArray(response.result) && response.result.length === 0) return [];
+  if (response.status !== '1') throw new Error(`Etherscan ${action} failed (${response.message})`);
+  return z.array(z.unknown()).parse(response.result);
+}
+
+async function evmRpc(method: string, params: unknown[]): Promise<string> {
+  const { data } = await axios.post(HYPEREVM_RPC, { jsonrpc: '2.0', id: 1, method, params }, { timeout: 10_000 });
+  const response = z.object({ result: z.string().optional(), error: z.object({ code: z.number() }).optional() }).parse(data);
+  if (!response.result || response.error) throw new Error(`HyperEVM RPC ${method} failed`);
+  return response.result;
+}
+
+async function tokenTransfers(address: string): Promise<z.infer<typeof scanTransfer>[]> {
+  const transfers: z.infer<typeof scanTransfer>[] = [];
+  for (let page = 1; page <= MAX_SCAN_PAGES; page++) {
+    const rows = z.array(scanTransfer).parse(await scan('tokentx', address, page));
+    transfers.push(...rows);
+    if (rows.length < SCAN_PAGE_SIZE) return transfers;
+  }
+  // Never silently discard a token from a very active wallet.
+  throw new Error('HyperEVM transfer history exceeds scan page limit');
 }
 function units(raw: string, decimals: number): number {
   if (!/^\d+$/.test(raw) || !Number.isInteger(decimals) || decimals < 0 || decimals > 36) throw new Error('Invalid HyperEVM amount');
   const scale = 10n ** BigInt(decimals);
   return Number(BigInt(raw) / scale) + Number(BigInt(raw) % scale) / 10 ** decimals;
 }
+function hexUnits(raw: string, decimals: number): number {
+  if (!/^0x[\da-f]*$/i.test(raw)) throw new Error('Invalid HyperEVM RPC amount');
+  return units(BigInt(raw === '0x' ? '0x0' : raw).toString(), decimals);
+}
 
 export async function fetchHyperEvmBalances(address: string): Promise<NormalizedToken[]> {
   if (!addressPattern.test(address)) throw new Error('Invalid Hyperliquid address');
-  const path = `/addresses/${address}`;
-  const account = z.object({ coin_balance: z.string().nullable(), exchange_rate: z.string().nullable() }).parse(await scout(path));
-  if (account.coin_balance === null) throw new Error('HyperEVM address is not indexed');
-  const native = units(account.coin_balance, 18);
-  const priceUsd = finite(account.exchange_rate);
+  if (!process.env.ETHERSCAN_API_KEY?.trim()) throw new Error('ETHERSCAN_API_KEY is not configured');
+  // Native HYPE comes from the chain itself; Etherscan transfers discover ERC-20
+  // contracts, then the chain supplies their *current* balances.
+  const [nativeHex, transfers] = await Promise.all([
+    evmRpc('eth_getBalance', [address, 'latest']), tokenTransfers(address),
+  ]);
+  const native = hexUnits(nativeHex, 18);
   const balances: NormalizedToken[] = native > 0 ? [{
     symbol: 'HYPE', name: 'Hyperliquid', address: '', decimals: 18,
-    balance: native, priceUsd, usdValue: native * priceUsd, priceChange24h: 0,
+    balance: native, priceUsd: 0, usdValue: 0, priceChange24h: 0,
     logoUrl: null, isNative: true, chainName: 'hyperevm', isSpam: false,
   }] : [];
-  let page: z.infer<typeof cursor> | null = null;
-  const seen = new Set<string>();
-  for (let n = 0; n < 20; n++) {
-    const result = z.object({ items: z.array(z.object({ value: z.string(), token: scoutToken })), next_page_params: cursor.nullable() })
-      .parse(await scout(`${path}/tokens`, { ...page, type: 'ERC-20' }));
-    for (const item of result.items) {
-      const token = item.token;
-      if (token.type !== 'ERC-20' || !addressPattern.test(token.address_hash) || token.decimals === null) continue;
-      const contract = token.address_hash.toLowerCase();
-      if (seen.has(contract)) continue;
-      seen.add(contract);
-      const decimals = Number(token.decimals);
-      const balance = units(item.value, decimals);
-      if (balance <= 0) continue;
-      const priceUsd = finite(token.exchange_rate);
-      balances.push({ symbol: token.symbol || contract.slice(0, 8), name: token.name || token.symbol || contract,
-        address: contract, decimals, balance, priceUsd, usdValue: balance * priceUsd,
-        priceChange24h: 0, logoUrl: token.icon_url, isNative: false, chainName: 'hyperevm', isSpam: false });
+  const tokens = new Map<string, z.infer<typeof scanTransfer>>();
+  for (const transfer of transfers) {
+    const decimals = Number(transfer.tokenDecimal);
+    if (addressPattern.test(transfer.contractAddress) && Number.isInteger(decimals) && decimals >= 0 && decimals <= 36) {
+      tokens.set(transfer.contractAddress.toLowerCase(), transfer);
     }
-    page = result.next_page_params;
-    if (!page) return balances;
   }
-  throw new Error('HyperEVM token pagination limit reached');
+  const entries = Array.from(tokens.entries());
+  for (let i = 0; i < entries.length; i += 4) {
+    const chunk = entries.slice(i, i + 4);
+    const amounts = await Promise.all(chunk.map(([contract]) =>
+      evmRpc('eth_call', [{ to: contract, data: `0x70a08231${address.slice(2).padStart(64, '0')}` }, 'latest'])));
+    for (let j = 0; j < chunk.length; j++) {
+      const [contract, token] = chunk[j]!;
+      const decimals = Number(token.tokenDecimal);
+      const balance = hexUnits(amounts[j]!, decimals);
+      if (balance <= 0) continue;
+      balances.push({ symbol: token.tokenSymbol || contract.slice(0, 8), name: token.tokenName || token.tokenSymbol || contract,
+        address: contract, decimals, balance, priceUsd: 0, usdValue: 0,
+        priceChange24h: 0, logoUrl: null, isNative: false, chainName: 'hyperevm', isSpam: false });
+    }
+  }
+  return balances;
 }
 
-const explorerAddress = z.object({ hash: z.string() });
-const explorerTx = z.object({ hash: z.string(), from: explorerAddress, to: explorerAddress.nullable(),
-  timestamp: z.string().nullable(), value: z.string(), status: z.string().nullable(), block_number: z.number().nullable() });
-const explorerTransfer = z.object({ transaction_hash: z.string(), log_index: z.number(),
-  from: explorerAddress, to: explorerAddress.nullable(), timestamp: z.string().nullable(),
-  token: scoutToken, total: z.object({ value: z.string(), decimals: z.string() }), block_number: z.number().nullable() });
-const evmCursor = z.object({ native: cursor.nullable(), transfers: cursor.nullable() });
+const evmCursor = z.object({ native: z.number().int().min(1).max(1000).nullable(),
+  transfers: z.number().int().min(1).max(1000).nullable() });
 export function parseHyperEvmCursor(value: string) {
-  if (value.length > 4096) throw new Error('Invalid HyperEVM cursor');
+  if (value.length > 128) throw new Error('Invalid HyperEVM cursor');
   return evmCursor.parse(JSON.parse(Buffer.from(value, 'base64url').toString('utf8')));
 }
 export async function fetchHyperEvmTransactions(address: string, pageToken?: string) {
   if (!addressPattern.test(address)) throw new Error('Invalid Hyperliquid address');
   const page = pageToken ? parseHyperEvmCursor(pageToken) : undefined;
-  const path = `/addresses/${address}`;
+  const pageSize = 100;
   const [native, transfers] = await Promise.all([
-    page?.native === null ? { items: [], next_page_params: null } :
-      scout(`${path}/transactions`, page?.native ?? {}).then((raw) => z.object({ items: z.array(explorerTx), next_page_params: cursor.nullable() }).parse(raw)),
-    page?.transfers === null ? { items: [], next_page_params: null } :
-      scout(`${path}/token-transfers`, { ...page?.transfers, type: 'ERC-20' })
-        .then((raw) => z.object({ items: z.array(explorerTransfer), next_page_params: cursor.nullable() }).parse(raw)),
+    page?.native === null ? [] : scan('txlist', address, page?.native ?? 1, pageSize).then((rows) => z.array(scanTransaction).parse(rows)),
+    page?.transfers === null ? [] : scan('tokentx', address, page?.transfers ?? 1, pageSize).then((rows) => z.array(scanTransfer).parse(rows)),
   ]);
   const wallet = address.toLowerCase();
   const transactions: (NormalizedTransaction & { id: string })[] = [];
-  for (const tx of native.items) {
-    if (!tx.timestamp) continue;
+  for (const tx of native) {
     const value = units(tx.value, 18);
     if (value <= 0) continue;
     transactions.push({ id: `${tx.hash}:native`, hash: tx.hash, chainName: 'hyperevm',
-      type: tx.from.hash.toLowerCase() === wallet ? 'send' : 'receive',
-      tokenSymbol: 'HYPE', tokenName: 'Hyperliquid', fromAddress: tx.from.hash,
-      toAddress: tx.to?.hash ?? null, value, usdValue: null, gasUsed: null,
-      status: tx.status === 'ok' ? 'success' : 'failed',
-      blockNumber: tx.block_number === null ? null : BigInt(tx.block_number), timestamp: new Date(tx.timestamp) });
+      type: tx.from.toLowerCase() === wallet ? 'send' : 'receive',
+      tokenSymbol: 'HYPE', tokenName: 'Hyperliquid', fromAddress: tx.from,
+      toAddress: tx.to || null, value, usdValue: null, gasUsed: null,
+      status: tx.isError === '0' ? 'success' : 'failed',
+      blockNumber: BigInt(tx.blockNumber), timestamp: new Date(Number(tx.timeStamp) * 1000) });
   }
-  for (const tx of transfers.items) {
-    if (!tx.timestamp || tx.token.type !== 'ERC-20' || !addressPattern.test(tx.token.address_hash)) continue;
-    transactions.push({ id: `${tx.transaction_hash}:${tx.log_index}`, hash: tx.transaction_hash,
-      chainName: 'hyperevm', type: tx.from.hash.toLowerCase() === wallet ? 'send' : 'receive',
-      tokenSymbol: tx.token.symbol, tokenName: tx.token.name, tokenAddresses: [tx.token.address_hash.toLowerCase()],
-      fromAddress: tx.from.hash, toAddress: tx.to?.hash ?? null,
-      value: units(tx.total.value, Number(tx.total.decimals)), usdValue: null, gasUsed: null,
-      status: 'success', blockNumber: tx.block_number === null ? null : BigInt(tx.block_number), timestamp: new Date(tx.timestamp) });
+  for (const [index, tx] of transfers.entries()) {
+    if (!addressPattern.test(tx.contractAddress)) continue;
+    transactions.push({ id: `${tx.hash}:${tx.logIndex ?? `${tx.contractAddress}:${index}`}`, hash: tx.hash,
+      chainName: 'hyperevm', type: tx.from.toLowerCase() === wallet ? 'send' : 'receive',
+      tokenSymbol: tx.tokenSymbol, tokenName: tx.tokenName, tokenAddresses: [tx.contractAddress.toLowerCase()],
+      fromAddress: tx.from, toAddress: tx.to || null,
+      value: units(tx.value, Number(tx.tokenDecimal)), usdValue: null, gasUsed: null,
+      status: 'success', blockNumber: BigInt(tx.blockNumber), timestamp: new Date(Number(tx.timeStamp) * 1000) });
   }
-  const next = { native: native.next_page_params, transfers: transfers.next_page_params };
+  const next = {
+    native: native.length === pageSize ? (page?.native ?? 1) + 1 : null,
+    transfers: transfers.length === pageSize ? (page?.transfers ?? 1) + 1 : null,
+  };
   return { transactions: transactions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()),
     nextPageToken: next.native || next.transfers ? Buffer.from(JSON.stringify(next)).toString('base64url') : undefined };
 }

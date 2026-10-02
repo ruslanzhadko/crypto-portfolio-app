@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import axios from 'axios';
-import { fetchHyperCoreBalances, fetchHyperCoreTransactions, fetchHyperEvmBalances } from './hyperliquid';
+import { fetchHyperCoreBalances, fetchHyperCoreTransactions, fetchHyperEvmBalances, fetchHyperEvmTransactions } from './hyperliquid';
 
 vi.mock('axios', () => ({ default: { post: vi.fn(), get: vi.fn() } }));
 const post = vi.mocked(axios.post);
@@ -13,7 +13,13 @@ const meta = [{ tokens: [
 ], universe: [{ index: 107, tokens: [150, 0] }] },
 [{ markPx: '25', midPx: '25', prevDayPx: '20' }]];
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); process.env.ETHERSCAN_API_KEY = 'test-key'; });
+
+function mockEvm(native: string, transfers: unknown[]) {
+  post.mockResolvedValue({ data: { result: native } } as never);
+  get.mockResolvedValue({ data: { status: transfers.length ? '1' : '0',
+    message: transfers.length ? 'OK' : 'No transactions found', result: transfers } } as never);
+}
 
 function mockCore(mode: string) {
   post.mockImplementation(async (_url, body) => {
@@ -44,14 +50,37 @@ describe('Hyperliquid balances', () => {
     expect((await fetchHyperCoreBalances(user))[1]?.address).toBe('0x00000000000000000000000000000096');
   });
   it('reads native HYPE and ERC-20 balances from HyperEVM separately', async () => {
-    get.mockImplementation(async (url) => ({ data: String(url).endsWith('/tokens')
-      ? { items: [{ value: '2500000', token: { address_hash: user, symbol: 'USDC', name: 'USD Coin',
-        decimals: '6', exchange_rate: '1', icon_url: null, type: 'ERC-20' } }], next_page_params: null }
-      : { coin_balance: '1000000000000000000', exchange_rate: '25' } }) as never);
+    const transfer = { hash: '0xabc', timeStamp: '1', from: user, to: user,
+      contractAddress: user, value: '2500000', tokenName: 'USD Coin', tokenSymbol: 'USDC',
+      tokenDecimal: '6', blockNumber: '1' };
+    mockEvm('0xde0b6b3a7640000', [transfer]);
+    post.mockImplementation(async (_url, body) => ({ data: {
+      result: (body as { method: string }).method === 'eth_getBalance'
+        ? '0xde0b6b3a7640000' : '0x2625a0',
+    } }) as never);
     const balances = await fetchHyperEvmBalances(user);
     expect(balances.map((b) => [b.chainName, b.symbol, b.balance])).toEqual([
       ['hyperevm', 'HYPE', 1], ['hyperevm', 'USDC', 2.5],
     ]);
+  });
+  it('treats an address with no native balance or transfers as an empty wallet', async () => {
+    mockEvm('0x0', []);
+    expect(await fetchHyperEvmBalances(user)).toEqual([]);
+  });
+  it('requires an API key before replacing stored HyperEVM tokens', async () => {
+    delete process.env.ETHERSCAN_API_KEY;
+    post.mockResolvedValue({ data: { result: '0x0' } } as never);
+    await expect(fetchHyperEvmBalances(user)).rejects.toThrow('ETHERSCAN_API_KEY');
+  });
+  it('reads HyperEVM transactions from Etherscan', async () => {
+    get.mockImplementation(async (_url, config) => ({ data: { status: '1', message: 'OK', result:
+      (config as { params: { action: string } }).params.action === 'txlist'
+        ? [{ hash: '0xabc', timeStamp: '123', from: user, to: user, value: '1000000000000000000', blockNumber: '8', isError: '0' }]
+        : [{ hash: '0xdef', timeStamp: '124', from: user, to: user, value: '2500000',
+          contractAddress: user, tokenName: 'USD Coin', tokenSymbol: 'USDC', tokenDecimal: '6', blockNumber: '9' }],
+    } }) as never);
+    const result = await fetchHyperEvmTransactions(user);
+    expect(result.transactions.map((tx) => [tx.tokenSymbol, tx.value])).toEqual([['USDC', 2.5], ['HYPE', 1]]);
   });
 });
 

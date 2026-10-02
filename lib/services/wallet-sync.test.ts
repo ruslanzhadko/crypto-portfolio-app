@@ -121,4 +121,12 @@ describe('Robinhood wallet synchronization', () => {
       walletId: 'wallet', chainName: { notIn: ['hypercore', 'hypercore-perps'] },
     } });
   });
+  it('preserves HyperEVM balances when its indexed API is unavailable', async () => {
+    mocks.hyperevm.mockRejectedValue(new Error('ETHERSCAN_API_KEY is not configured'));
+    const result = await syncWallet('wallet');
+    expect(result.unavailableChains).toEqual(['hyperevm']);
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: {
+      walletId: 'wallet', chainName: { notIn: ['hyperevm'] },
+    } });
+  });
 });

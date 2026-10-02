@@ -14,8 +14,10 @@ import { syncWallet } from '@/lib/services/wallet-sync';
 const WALLET_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;
 /** Скільки гаманців максимум за один запуск (захист квот Helius/Ankr). */
 const MAX_WALLETS_PER_RUN = 10;
-/** Часовий бюджет на sync, щоб лишити час решті кроків у межах maxDuration=60с. */
-const WALLET_SYNC_TIME_BUDGET_MS = 35_000;
+/** Два гаманці одночасно зменшують wall time без великого сплеску API/DB. */
+const WALLET_SYNC_CONCURRENCY = 2;
+/** Лишаємо час для цін та снапшотів до 30-секундного ліміту cron-job.org. */
+const WALLET_SYNC_TIME_BUDGET_MS = 16_000;
 
 // ─────────────────────────────────────────
 // Public types
@@ -527,15 +529,20 @@ async function syncDueWallets(startedAt: number): Promise<number> {
   });
 
   let synced = 0;
-  for (const w of wallets) {
-    if (Date.now() - startedAt > WALLET_SYNC_TIME_BUDGET_MS) break;
-    try {
-      await syncWallet(w.id);
-      synced++;
-    } catch (err) {
-      console.error(`[price-updater] wallet sync failed walletId=${w.id}`, err);
+  let cursor = 0;
+  async function worker(): Promise<void> {
+    while (cursor < wallets.length && Date.now() - startedAt < WALLET_SYNC_TIME_BUDGET_MS) {
+      const wallet = wallets[cursor++];
+      if (!wallet) return;
+      try {
+        await syncWallet(wallet.id);
+        synced++;
+      } catch (err) {
+        console.error(`[price-updater] wallet sync failed walletId=${wallet.id}`, err);
+      }
     }
   }
+  await Promise.all(Array.from({ length: Math.min(WALLET_SYNC_CONCURRENCY, wallets.length) }, worker));
   return synced;
 }
 
@@ -545,6 +552,7 @@ async function syncDueWallets(startedAt: number): Promise<number> {
 
 export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   const startedAt = Date.now();
+  const stepsMs = { walletSync: 0, prices: 0, recalculate: 0, snapshots: 0 };
   const result: PriceUpdaterResult = {
     walletsSynced: 0,
     pricesUpdated: 0,
@@ -556,13 +564,17 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
 
   let prices = new Map<string, SimplePriceItem>();
 
+  let stepStartedAt = Date.now();
   try {
     result.walletsSynced = await syncDueWallets(startedAt);
   } catch (err) {
     result.errors++;
     console.error('[price-updater] step 0 (wallet sync):', err);
+  } finally {
+    stepsMs.walletSync = Date.now() - stepStartedAt;
   }
 
+  stepStartedAt = Date.now();
   try {
     const tokenIds = await collectTokenIds();
     if (tokenIds.length > 0) {
@@ -572,20 +584,28 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   } catch (err) {
     result.errors++;
     console.error('[price-updater] step 1-2 (fetch prices):', err);
+  } finally {
+    stepsMs.prices = Date.now() - stepStartedAt;
   }
 
+  stepStartedAt = Date.now();
   try {
     result.balancesRecalculated = await recalculateBalances();
   } catch (err) {
     result.errors++;
     console.error('[price-updater] step 3 (recalculate balances):', err);
+  } finally {
+    stepsMs.recalculate = Date.now() - stepStartedAt;
   }
 
+  stepStartedAt = Date.now();
   try {
     result.snapshotsCreated = await createSnapshots();
   } catch (err) {
     result.errors++;
     console.error('[price-updater] step 4 (snapshots):', err);
+  } finally {
+    stepsMs.snapshots = Date.now() - stepStartedAt;
   }
 
   // Перевірку цінових тригерів робить окремий легкий ендпоінт
@@ -593,6 +613,7 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   // сповіщень і зайвої роботи у важкому апдейті.
 
   result.durationMs = Date.now() - startedAt;
+  console.info('[price-updater] completed', JSON.stringify({ ...result, stepsMs }));
   return result;
 }
 
