@@ -1,33 +1,64 @@
-import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
-import { telegramProvider } from "./telegram-provider";
-import { resolveSocialUser, socialAvailability } from "./social";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/db/prisma";
-import { loginSchema } from "@/lib/utils/validators";
-import { authConfig } from "./config";
+import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
+import Google from 'next-auth/providers/google';
+import { telegramProvider } from './telegram-provider';
+import { telegramLinkTarget } from './telegram-link';
+import {
+  resolveTelegramIdentity,
+  TelegramIdentityConflict,
+} from './telegram-identity';
+import { publicEmail } from './public-email';
+import { resolveSocialUser, socialAvailability } from './social';
+import bcrypt from 'bcryptjs';
+import { prisma } from '@/lib/db/prisma';
+import { loginSchema } from '@/lib/utils/validators';
+import { authConfig } from './config';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user, account, profile }) {
-      if (account?.provider === "credentials") return true;
-      if (!account || !["google", "telegram"].includes(account.provider))
+      if (account?.provider === 'credentials') return true;
+      if (!account || !['google', 'telegram'].includes(account.provider))
         return false;
-      if (account.provider === "google" && profile?.email_verified !== true)
+      if (account.provider === 'google' && profile?.email_verified !== true)
         return false;
-      const stored = await resolveSocialUser(
-        account.provider,
-        account.providerAccountId,
-        user.email?.toLowerCase() ?? null,
-        user.name ?? null,
-      );
+      let stored;
+      if (account.provider === 'telegram') {
+        let target: string | undefined;
+        try {
+          target = await telegramLinkTarget();
+          const telegramId =
+            typeof profile?.id === 'number' && Number.isSafeInteger(profile.id)
+              ? String(profile.id)
+              : typeof profile?.id === 'string' && /^\d+$/.test(profile.id)
+                ? profile.id
+                : undefined;
+          stored = await resolveTelegramIdentity(
+            account.providerAccountId,
+            user.name ?? null,
+            telegramId,
+            target,
+          );
+        } catch (error) {
+          if (error instanceof TelegramIdentityConflict)
+            return target
+              ? `/settings?telegramError=${error.code}`
+              : `/auth/error?error=${error.code}`;
+          throw error;
+        }
+      } else
+        stored = await resolveSocialUser(
+          account.provider,
+          account.providerAccountId,
+          user.email?.toLowerCase() ?? null,
+          user.name ?? null,
+        );
       if (!stored) return false;
       Object.assign(user, {
         id: stored.id,
-        email: stored.email,
+        email: publicEmail(stored.email),
         name: stored.name,
         role: stored.role,
         isBlocked: stored.isBlocked,
@@ -47,7 +78,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
       session.user.id = current?.id ?? token.id;
-      session.user.email = current?.email ?? "";
+      session.user.email = publicEmail(current?.email) ?? '';
       session.user.name = current?.name ?? null;
       session.user.role = current?.role ?? token.role;
       session.user.isBlocked = current?.isBlocked ?? true;
@@ -65,10 +96,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       : []),
     ...(socialAvailability().telegram ? [telegramProvider()] : []),
     Credentials({
-      name: "Credentials",
+      name: 'Credentials',
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
         const parsed = loginSchema.safeParse(credentials);

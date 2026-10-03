@@ -13,7 +13,8 @@ export function compactTelegramState(state: string) {
 
 function shortenAuthorizationUrl(value: string) {
   const url = new URL(value);
-  if (url.origin !== 'https://oauth.telegram.org' || url.pathname !== '/auth') return value;
+  if (url.origin !== 'https://oauth.telegram.org' || url.pathname !== '/auth')
+    return value;
   const state = url.searchParams.get('state');
   if (state) url.searchParams.set('state', compactTelegramState(state));
   return url.toString();
@@ -22,15 +23,18 @@ function shortenAuthorizationUrl(value: string) {
 async function restoreState(request: NextRequest) {
   const received = request.nextUrl.searchParams.get('state');
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  if (!received || !/^[A-Za-z0-9_-]{43}$/.test(received) || !secret) return request;
+  if (!received || !/^[A-Za-z0-9_-]{43}$/.test(received) || !secret)
+    return request;
   for (const name of ['__Secure-authjs.state', 'authjs.state']) {
     const token = request.cookies.get(name)?.value;
     if (!token) continue;
     try {
       const payload = await decode({ token, secret, salt: name });
-      if (payload?.provider !== 'telegram' || typeof payload.value !== 'string') continue;
+      if (payload?.provider !== 'telegram' || typeof payload.value !== 'string')
+        continue;
       const expected = compactTelegramState(payload.value);
-      if (!timingSafeEqual(Buffer.from(received), Buffer.from(expected))) continue;
+      if (!timingSafeEqual(Buffer.from(received), Buffer.from(expected)))
+        continue;
       const url = new URL(request.url);
       url.searchParams.set('state', payload.value);
       return new NextRequest(url, request);
@@ -47,7 +51,13 @@ export function withTelegramState(handler: AuthHandler): AuthHandler {
     if (request.method === 'GET' && path === '/api/auth/callback/telegram') {
       // Auth.js still verifies state and PKCE, validates the ID token and clears
       // its original cookies. No checks are disabled or replaced.
-      return handler(await restoreState(request));
+      const response = await handler(await restoreState(request));
+      const headers = new Headers(response.headers);
+      headers.append(
+        'set-cookie',
+        `telegram-link-intent=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${request.nextUrl.protocol === 'https:' ? '; Secure' : ''}`,
+      );
+      return new Response(response.body, { status: response.status, headers });
     }
     const response = await handler(request);
     if (path !== '/api/auth/signin/telegram') return response;
@@ -62,12 +72,17 @@ export function withTelegramState(handler: AuthHandler): AuthHandler {
       const body = await response.clone().json();
       if (typeof body?.url === 'string') {
         headers.delete('content-length');
-        return new Response(JSON.stringify({ ...body, url: shortenAuthorizationUrl(body.url) }), {
-          status: response.status, headers,
-        });
+        return new Response(
+          JSON.stringify({ ...body, url: shortenAuthorizationUrl(body.url) }),
+          {
+            status: response.status,
+            headers,
+          },
+        );
       }
     }
-    if (location) return new Response(response.body, { status: response.status, headers });
+    if (location)
+      return new Response(response.body, { status: response.status, headers });
     return response;
   };
 }

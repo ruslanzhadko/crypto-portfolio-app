@@ -5,12 +5,18 @@ import { resolve } from 'path';
 // Покриття збирається ТІЛЬКИ по чистих модулях бізнес/утиліт-шару, БЕЗ домішування
 // I/O-файлів (ankr.ts, price-updater.ts, coingecko.ts тощо) — вони занижують %.
 export default defineConfig({
+  // Next.js preserves JSX for its compiler; SSR component tests need it transformed.
+  oxc: { jsx: { runtime: 'automatic' } },
   resolve: {
     alias: { '@': resolve(__dirname, '.') },
   },
   test: {
     environment: 'node',
-    include: ['lib/**/*.test.ts', 'app/**/*.test.ts', 'tests/unit/**/*.test.ts'],
+    include: [
+      'lib/**/*.test.ts',
+      'app/**/*.test.ts',
+      'tests/unit/**/*.test.ts',
+    ],
     coverage: {
       provider: 'v8',
       include: [

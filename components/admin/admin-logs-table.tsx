@@ -1,4 +1,5 @@
 'use client';
+import { publicEmail } from '@/lib/auth/public-email';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
@@ -34,7 +35,10 @@ export function AdminLogsTable() {
 
   const load = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ page: String(page), pageSize: '25' });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: '25',
+      });
       if (status !== 'all') params.set('status', status);
       const res = await fetch(`/api/admin/logs?${params.toString()}`);
       if (!res.ok) throw new Error();
@@ -79,7 +83,9 @@ export function AdminLogsTable() {
           </Button>
         ))}
         {total > 0 && (
-          <span className="ml-auto text-xs text-text-muted">{t('totalRecords', { count: total })}</span>
+          <span className="ml-auto text-xs text-text-muted">
+            {t('totalRecords', { count: total })}
+          </span>
         )}
       </div>
 
@@ -102,11 +108,17 @@ export function AdminLogsTable() {
                 <thead className="border-b border-border text-xs uppercase text-text-muted">
                   <tr>
                     <th className="px-4 py-3 text-left">{t('colToken')}</th>
-                    <th className="hidden px-4 py-3 text-left md:table-cell">{t('colUser')}</th>
+                    <th className="hidden px-4 py-3 text-left md:table-cell">
+                      {t('colUser')}
+                    </th>
                     <th className="px-4 py-3 text-right">Δ%</th>
-                    <th className="hidden px-4 py-3 text-right md:table-cell">USD</th>
+                    <th className="hidden px-4 py-3 text-right md:table-cell">
+                      USD
+                    </th>
                     <th className="px-4 py-3 text-left">{t('colStatus')}</th>
-                    <th className="hidden px-4 py-3 text-left lg:table-cell">{t('colMessage')}</th>
+                    <th className="hidden px-4 py-3 text-left lg:table-cell">
+                      {t('colMessage')}
+                    </th>
                     <th className="px-4 py-3 text-right">{t('colTime')}</th>
                   </tr>
                 </thead>
@@ -116,11 +128,17 @@ export function AdminLogsTable() {
                       key={log.id}
                       className="border-b border-border/60 transition-colors hover:bg-surface-2/50"
                     >
-                      <td className="px-4 py-3 font-medium">{log.tokenSymbol}</td>
+                      <td className="px-4 py-3 font-medium">
+                        {log.tokenSymbol}
+                      </td>
                       <td className="hidden px-4 py-3 md:table-cell">
-                        <p className="font-mono text-xs">{log.user.email}</p>
+                        <p className="font-mono text-xs">
+                          {publicEmail(log.user.email) ?? 'Telegram'}
+                        </p>
                         {log.user.name && (
-                          <p className="text-xs text-text-muted">{log.user.name}</p>
+                          <p className="text-xs text-text-muted">
+                            {log.user.name}
+                          </p>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -130,12 +148,18 @@ export function AdminLogsTable() {
                         {formatUsd(log.price)}
                       </td>
                       <td className="px-4 py-3">
-                        <Badge variant={log.status === 'sent' ? 'success' : 'danger'}>
-                          {log.status === 'sent' ? t('statusSent') : t('statusFailed')}
+                        <Badge
+                          variant={log.status === 'sent' ? 'success' : 'danger'}
+                        >
+                          {log.status === 'sent'
+                            ? t('statusSent')
+                            : t('statusFailed')}
                         </Badge>
                       </td>
                       <td className="hidden max-w-[200px] px-4 py-3 lg:table-cell">
-                        <p className="truncate text-xs text-text-muted">{log.message}</p>
+                        <p className="truncate text-xs text-text-muted">
+                          {log.message}
+                        </p>
                       </td>
                       <td className="px-4 py-3 text-right text-xs text-text-muted">
                         {formatRelative(log.sentAt, locale)}

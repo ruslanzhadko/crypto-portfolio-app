@@ -400,6 +400,15 @@
     "range1y": "1Y"
   },
   "Settings": {
+    "telegramProfileDescription": "Telegram sign-in · Role: {role}",
+    "loginMethodsDescription": "Sign-in methods for this profile.",
+    "telegramLoginDescription": "Connect Telegram to this account to access the same portfolio without a password. The bot for notifications is configured separately.",
+    "telegramLoginConnected": "Telegram sign-in connected",
+    "telegramLoginConnect": "Connect Telegram sign-in",
+    "telegramLoginUnavailable": "Telegram sign-in is currently unavailable.",
+    "telegramLoginFailed": "Could not start linking. Refresh the page and try again.",
+    "telegramLoginConflict": "This Telegram belongs to another account, or this profile already has a different Telegram linked. No accounts were merged.",
+    "socialNoPassword": "This account has no password. Use your connected provider to sign in.",
     "pageTitle": "Settings",
     "pageDescription": "Profile, Telegram integration and security.",
     "profileCardTitle": "Profile",
@@ -529,6 +538,8 @@
     "notSynced": "Not synced yet"
   },
   "Auth": {
+    "errorTelegramLinkRequired": "This Telegram is already used for notifications on an existing profile. Sign in to your main account with email, open Settings and select “Connect Telegram sign-in”.",
+    "errorTelegramAlreadyLinked": "This Telegram is already linked to another account. Use your original sign-in method. Accounts are not moved or merged automatically.",
     "continueGoogle": "Continue with Google",
     "continueTelegram": "Continue with Telegram",
     "orEmail": "or use email",

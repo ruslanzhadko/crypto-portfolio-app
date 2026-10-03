@@ -1,4 +1,5 @@
-import { prisma } from "@/lib/db/prisma";
+import { prisma } from '@/lib/db/prisma';
+import { resolveTelegramIdentity } from './telegram-identity';
 
 /** Resolve by provider identity only; never merge accounts by an unproven email. */
 export async function resolveSocialUser(
@@ -7,14 +8,14 @@ export async function resolveSocialUser(
   email: string | null,
   name: string | null,
 ) {
+  if (provider === 'telegram') return resolveTelegramIdentity(subject, name);
   const identity = { provider, providerAccountId: subject };
   const existing = await prisma.account.findUnique({
     where: { provider_providerAccountId: identity },
     include: { user: true },
   });
   if (existing) return existing.user.isBlocked ? null : existing.user;
-  const address =
-    provider === "telegram" ? `telegram-${subject}@telegram.invalid` : email;
+  const address = email;
   if (!address || (await prisma.user.findUnique({ where: { email: address } })))
     return null;
   // Nested creation is atomic: an identity cannot be left without its user.
@@ -22,8 +23,8 @@ export async function resolveSocialUser(
     data: {
       email: address,
       name,
-      emailVerified: provider === "google" ? new Date() : null,
-      accounts: { create: { ...identity, type: "oidc" } },
+      emailVerified: provider === 'google' ? new Date() : null,
+      accounts: { create: { ...identity, type: 'oidc' } },
     },
   });
 }

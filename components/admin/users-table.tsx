@@ -1,8 +1,16 @@
 'use client';
+import { publicEmail } from '@/lib/auth/public-email';
 
 import { useState, useEffect, useCallback, useTransition } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { Loader2, Search, ShieldOff, ShieldCheck, Trash2, UserCog } from 'lucide-react';
+import {
+  Loader2,
+  Search,
+  ShieldOff,
+  ShieldCheck,
+  Trash2,
+  UserCog,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -34,7 +42,10 @@ export function UsersTable() {
 
   const load = useCallback(async () => {
     try {
-      const params = new URLSearchParams({ page: String(page), pageSize: '20' });
+      const params = new URLSearchParams({
+        page: String(page),
+        pageSize: '20',
+      });
       if (search.trim()) params.set('q', search.trim());
       const res = await fetch(`/api/admin/users?${params.toString()}`);
       if (!res.ok) throw new Error();
@@ -57,7 +68,11 @@ export function UsersTable() {
     return () => clearTimeout(t);
   }, [load]);
 
-  async function patch(userId: string, body: Record<string, unknown>, successMsg: string) {
+  async function patch(
+    userId: string,
+    body: Record<string, unknown>,
+    successMsg: string,
+  ) {
     try {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: 'PATCH',
@@ -65,7 +80,9 @@ export function UsersTable() {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const data = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+        const data = (await res.json().catch(() => null)) as {
+          error?: { message?: string };
+        } | null;
         toast({
           variant: 'destructive',
           title: t('toastErrorTitle'),
@@ -76,7 +93,11 @@ export function UsersTable() {
       toast({ title: successMsg });
       return true;
     } catch {
-      toast({ variant: 'destructive', title: t('toastNetworkError'), description: t('toastNetworkErrorDesc') });
+      toast({
+        variant: 'destructive',
+        title: t('toastNetworkError'),
+        description: t('toastNetworkErrorDesc'),
+      });
       return false;
     }
   }
@@ -97,8 +118,12 @@ export function UsersTable() {
     if (
       !confirm(
         newRole === 'ADMIN'
-          ? t('confirmPromote', { email: user.email })
-          : t('confirmDemote', { email: user.email }),
+          ? t('confirmPromote', {
+              email: publicEmail(user.email) ?? user.name ?? 'Telegram',
+            })
+          : t('confirmDemote', {
+              email: publicEmail(user.email) ?? user.name ?? 'Telegram',
+            }),
       )
     )
       return;
@@ -113,10 +138,18 @@ export function UsersTable() {
   }
 
   function onDelete(user: UserDTO) {
-    if (!confirm(t('confirmDelete', { email: user.email })))
+    if (
+      !confirm(
+        t('confirmDelete', {
+          email: publicEmail(user.email) ?? user.name ?? 'Telegram',
+        }),
+      )
+    )
       return;
     startTransition(async () => {
-      const res = await fetch(`/api/admin/users/${user.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+      });
       if (!res.ok) {
         toast({ variant: 'destructive', title: t('toastDeleteFailed') });
         return;
@@ -157,11 +190,19 @@ export function UsersTable() {
                 <thead className="border-b border-border text-xs uppercase text-text-muted">
                   <tr>
                     <th className="px-4 py-3 text-left">Email</th>
-                    <th className="hidden px-4 py-3 text-left md:table-cell">{t('colName')}</th>
+                    <th className="hidden px-4 py-3 text-left md:table-cell">
+                      {t('colName')}
+                    </th>
                     <th className="px-4 py-3 text-left">{t('colRole')}</th>
-                    <th className="hidden px-4 py-3 text-center md:table-cell">{t('colWallets')}</th>
-                    <th className="hidden px-4 py-3 text-center md:table-cell">{t('colTriggers')}</th>
-                    <th className="hidden px-4 py-3 text-left lg:table-cell">{t('colRegistered')}</th>
+                    <th className="hidden px-4 py-3 text-center md:table-cell">
+                      {t('colWallets')}
+                    </th>
+                    <th className="hidden px-4 py-3 text-center md:table-cell">
+                      {t('colTriggers')}
+                    </th>
+                    <th className="hidden px-4 py-3 text-left lg:table-cell">
+                      {t('colRegistered')}
+                    </th>
                     <th className="px-4 py-3 text-right">{t('colActions')}</th>
                   </tr>
                 </thead>
@@ -171,13 +212,19 @@ export function UsersTable() {
                       key={u.id}
                       className={`border-b border-border/60 transition-colors hover:bg-surface-2/50 ${u.isBlocked ? 'opacity-60' : ''}`}
                     >
-                      <td className="px-4 py-3 font-mono text-xs">{u.email}</td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {publicEmail(u.email) ?? 'Telegram'}
+                      </td>
                       <td className="hidden px-4 py-3 md:table-cell">
                         {u.name ?? <span className="text-text-muted">—</span>}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap items-center gap-1">
-                          <Badge variant={u.role === 'ADMIN' ? 'default' : 'secondary'}>
+                          <Badge
+                            variant={
+                              u.role === 'ADMIN' ? 'default' : 'secondary'
+                            }
+                          >
                             {u.role}
                           </Badge>
                           {u.isBlocked && (
@@ -202,8 +249,16 @@ export function UsersTable() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            title={u.role === 'ADMIN' ? t('btnDemote') : t('btnPromote')}
-                            aria-label={u.role === 'ADMIN' ? t('btnDemote') : t('btnPromote')}
+                            title={
+                              u.role === 'ADMIN'
+                                ? t('btnDemote')
+                                : t('btnPromote')
+                            }
+                            aria-label={
+                              u.role === 'ADMIN'
+                                ? t('btnDemote')
+                                : t('btnPromote')
+                            }
                             onClick={() => onToggleRole(u)}
                             disabled={isPending}
                           >
@@ -214,7 +269,9 @@ export function UsersTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                aria-label={u.isBlocked ? t('btnUnblock') : t('btnBlock')}
+                                aria-label={
+                                  u.isBlocked ? t('btnUnblock') : t('btnBlock')
+                                }
                                 onClick={() => onToggleBlock(u)}
                                 disabled={isPending}
                               >
@@ -224,7 +281,9 @@ export function UsersTable() {
                                   <ShieldOff className="h-4 w-4 text-warning" />
                                 )}
                                 <span className="hidden md:inline">
-                                  {u.isBlocked ? t('btnUnblock') : t('btnBlock')}
+                                  {u.isBlocked
+                                    ? t('btnUnblock')
+                                    : t('btnBlock')}
                                 </span>
                               </Button>
                               <Button
@@ -262,7 +321,9 @@ export function UsersTable() {
           </Button>
           <span className="text-xs text-text-muted">
             {t('pageOf', { page, total: totalPages })}
-            {isPending && <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />}
+            {isPending && (
+              <Loader2 className="ml-2 inline h-3 w-3 animate-spin" />
+            )}
           </span>
           <Button
             variant="outline"

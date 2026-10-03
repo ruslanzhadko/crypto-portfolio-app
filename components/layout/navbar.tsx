@@ -57,8 +57,12 @@ export function Navbar({ email, name, role }: NavbarProps) {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col">
-                <span className="text-sm font-medium">{name ?? t('defaultUser')}</span>
-                <span className="text-xs text-text-muted">{email}</span>
+                <span className="text-sm font-medium">
+                  {name ?? t('defaultUser')}
+                </span>
+                {email && (
+                  <span className="text-xs text-text-muted">{email}</span>
+                )}
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

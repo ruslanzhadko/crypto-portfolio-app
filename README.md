@@ -149,3 +149,25 @@ permissions; blocked users cannot sign in. Provider access/refresh tokens are no
 
 References: https://authjs.dev/getting-started/providers/google and
 https://core.telegram.org/bots/telegram-login.
+
+#### Link Telegram to an existing account
+
+Notification `telegramChatId` and OAuth `Account.providerAccountId` are distinct:
+Telegram's OIDC `sub` must never be treated as the bot chat ID. A manually entered
+Chat ID is not proof of account ownership.
+
+Sign in with your existing email, open Settings, and choose Connect Telegram sign-in.
+The same-origin POST creates a ten-minute encrypted HttpOnly intent. The OAuth
+callback requires the same valid signed-in session, checks that the target user is
+active, and creates the provider link in a serializable transaction. An identity
+already owned by another account is never transferred. Each profile can link only
+one Telegram identity through this flow. Existing portfolios and permissions stay
+with their original user. No automatic account merging is performed.
+
+Ordinary Telegram registration detects an existing notification Chat ID using the
+verified `id` claim and asks the user to sign in to the existing profile and link it.
+Internal Telegram email placeholders remain only for database compatibility and
+are hidden from the profile, session, account menu and admin displays. Accounts
+without a password do not show the password-change form. A notification Chat ID
+cannot be newly assigned to multiple profiles; legacy manually entered IDs are
+still notification destinations, not verified login identities.

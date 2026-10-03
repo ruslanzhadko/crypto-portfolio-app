@@ -15,7 +15,11 @@ export async function PUT(req: NextRequest) {
     const body = (await req.json().catch(() => null)) as unknown;
     const parsed = passwordChangeSchema.safeParse(body);
     if (!parsed.success) {
-      return apiError('BAD_REQUEST', 'Помилка валідації', parsed.error.flatten());
+      return apiError(
+        'BAD_REQUEST',
+        'Помилка валідації',
+        parsed.error.flatten(),
+      );
     }
 
     const user = await prisma.user.findUnique({
@@ -23,10 +27,16 @@ export async function PUT(req: NextRequest) {
       select: { passwordHash: true },
     });
     if (!user?.passwordHash) {
-      return apiError('NOT_FOUND', 'Користувача не знайдено');
+      return apiError(
+        'BAD_REQUEST',
+        'У цього акаунта немає пароля. Використовуйте підключений спосіб входу.',
+      );
     }
 
-    const ok_ = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
+    const ok_ = await bcrypt.compare(
+      parsed.data.currentPassword,
+      user.passwordHash,
+    );
     if (!ok_) {
       return apiError('BAD_REQUEST', 'Поточний пароль невірний');
     }

@@ -1,6 +1,12 @@
 import { getTranslations } from 'next-intl/server';
 import { Link } from '@/i18n/navigation';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 export default async function AuthErrorPage({
@@ -11,12 +17,15 @@ export default async function AuthErrorPage({
   const { error: code = 'Default' } = await searchParams;
   const t = await getTranslations('Auth');
 
-  const messageKey = {
-    Configuration: 'errorConfiguration',
-    AccessDenied: 'errorAccessDenied',
-    Verification: 'errorVerification',
-    CredentialsSignin: 'errorCredentialsSignin',
-  }[code] ?? 'errorDefault';
+  const messageKey =
+    {
+      Configuration: 'errorConfiguration',
+      AccessDenied: 'errorAccessDenied',
+      Verification: 'errorVerification',
+      CredentialsSignin: 'errorCredentialsSignin',
+      TelegramLinkRequired: 'errorTelegramLinkRequired',
+      TelegramAlreadyLinked: 'errorTelegramAlreadyLinked',
+    }[code] ?? 'errorDefault';
 
   return (
     <Card>

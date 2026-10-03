@@ -400,6 +400,15 @@
     "range1y": "1Г"
   },
   "Settings": {
+    "telegramProfileDescription": "Вход через Telegram · Роль: {role}",
+    "loginMethodsDescription": "Способы входа в этот профиль.",
+    "telegramLoginDescription": "Подключите Telegram к текущему аккаунту, чтобы входить в тот же портфель без пароля. Подключение бота для уведомлений настраивается отдельно.",
+    "telegramLoginConnected": "Вход через Telegram подключён",
+    "telegramLoginConnect": "Подключить вход через Telegram",
+    "telegramLoginUnavailable": "Вход через Telegram пока недоступен.",
+    "telegramLoginFailed": "Не удалось начать подключение. Обновите страницу и попробуйте снова.",
+    "telegramLoginConflict": "Этот Telegram уже связан с другим аккаунтом, либо к вашему профилю подключён другой Telegram. Аккаунты не объединены.",
+    "socialNoPassword": "У этого аккаунта нет пароля. Для входа используйте подключённый сервис.",
     "pageTitle": "Настройки",
     "pageDescription": "Профиль, интеграция Telegram и безопасность.",
     "profileCardTitle": "Профиль",
@@ -529,6 +538,8 @@
     "notSynced": "Ещё не синхронизировано"
   },
   "Auth": {
+    "errorTelegramLinkRequired": "Этот Telegram уже указан для уведомлений в существующем профиле. Войдите в основной аккаунт по email, откройте Настройки и нажмите «Подключить вход через Telegram».",
+    "errorTelegramAlreadyLinked": "Этот Telegram уже связан с другим аккаунтом. Войдите в него прежним способом. Перенос и объединение аккаунтов автоматически не выполняются.",
     "continueGoogle": "Продолжить с Google",
     "continueTelegram": "Продолжить с Telegram",
     "orEmail": "или через email",
