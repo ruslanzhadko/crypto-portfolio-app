@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { PasswordInput } from '@/components/auth/password-input';
+import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useLocale, useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -11,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 
 export function RegisterForm() {
   const locale = useLocale();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const t = useTranslations('Auth');
@@ -24,55 +25,82 @@ export function RegisterForm() {
     const name = String(fd.get('name') ?? '').trim() || undefined;
 
     setError(null);
-    startTransition(async () => {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, name }),
-      });
-
-      if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as
-          | { error?: { message?: string } }
-          | null;
-        const msg = body?.error?.message ?? t('registerErrorDefault');
-        setError(msg);
-        toast({ variant: 'destructive', title: t('registerToastFailTitle'), description: msg });
-        return;
-      }
-
+    setPending(true);
+    void (async () => {
       try {
-        const signed = await signIn('credentials', {
-          email,
-          password,
-          redirect: false,
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, name }),
         });
-        if (signed?.error) {
-          toast({ title: t('accountCreatedTitle'), description: t('accountCreatedLoginDescription') });
+
+        if (!res.ok) {
+          const body = (await res.json().catch(() => null)) as {
+            error?: { message?: string };
+          } | null;
+          const msg = body?.error?.message ?? t('registerErrorDefault');
+          setError(msg);
+          toast({
+            variant: 'destructive',
+            title: t('registerToastFailTitle'),
+            description: msg,
+          });
+          return;
+        }
+
+        try {
+          const signed = await signIn('credentials', {
+            email,
+            password,
+            redirect: false,
+          });
+          if (!signed?.ok || signed.error) {
+            toast({
+              title: t('accountCreatedTitle'),
+              description: t('accountCreatedLoginDescription'),
+            });
+            window.location.href = `/${locale}/auth/login`;
+            return;
+          }
+        } catch {
+          toast({
+            title: t('accountCreatedTitle'),
+            description: t('accountCreatedLoginDescription'),
+          });
           window.location.href = `/${locale}/auth/login`;
           return;
         }
-      } catch {
-        toast({ title: t('accountCreatedTitle'), description: t('accountCreatedLoginDescription') });
-        window.location.href = `/${locale}/auth/login`;
-        return;
-      }
 
-      toast({ title: t('accountCreatedTitle'), description: t('accountCreatedWelcomeDescription') });
-      localStorage.setItem('pending_prize', 'REGISTER');
-      window.location.href = `/${locale}/dashboard`;
-    });
+        toast({
+          title: t('accountCreatedTitle'),
+          description: t('accountCreatedWelcomeDescription'),
+        });
+        localStorage.setItem('pending_prize', 'REGISTER');
+        window.location.href = `/${locale}/dashboard`;
+      } catch {
+        setError(t('loginServiceErrorMessage'));
+      } finally {
+        setPending(false);
+      }
+    })();
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-5" aria-busy={isPending}>
       <div className="space-y-2">
         <Label htmlFor="name">{t('nameLabel')}</Label>
-        <Input id="name" name="name" autoComplete="name" placeholder={t('namePlaceholder')} />
+        <Input
+          className="h-12"
+          id="name"
+          name="name"
+          autoComplete="name"
+          placeholder={t('namePlaceholder')}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="email">{t('emailLabel')}</Label>
         <Input
+          className="h-12"
           id="email"
           name="email"
           type="email"
@@ -83,7 +111,7 @@ export function RegisterForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">{t('passwordLabel')}</Label>
-        <Input
+        <PasswordInput
           id="password"
           name="password"
           type="password"
@@ -93,8 +121,12 @@ export function RegisterForm() {
         />
         <p className="text-xs text-text-muted">{t('passwordHint')}</p>
       </div>
-      {error && <p className="text-sm text-danger">{error}</p>}
-      <Button type="submit" className="w-full" disabled={isPending}>
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      <Button type="submit" className="h-12 w-full" disabled={isPending}>
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
         {t('registerButton')}
       </Button>

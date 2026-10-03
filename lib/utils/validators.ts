@@ -6,7 +6,8 @@ import { Network, TriggerDirection } from '@prisma/client';
 // ─────────────────────────────────────────
 
 export const registerSchema = z.object({
-  email: z.string().email('Невірний формат email').toLowerCase(),
+  email: z.string().email('Невірний формат email').toLowerCase()
+    .refine((email) => !email.endsWith('.invalid'), 'Невірний формат email'),
   password: z
     .string()
     .min(8, 'Пароль має містити щонайменше 8 символів')

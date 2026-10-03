@@ -123,3 +123,29 @@ npm run cron:local          # лише для локального Postgres; р�
 
 > ℹ️ `node-cron`/`lib/cron/scheduler.ts` — лише для локалки; на Vercel (serverless) постійний
 > процес не запускається, і це нормально.
+
+### Google and Telegram sign-in
+
+Both providers use the existing NextAuth JWT session and persist identities in `Account`.
+Set the following server-only variables and restart the application:
+
+- Google: `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET` from a Google OAuth web client.
+  Register `https://YOUR_DOMAIN/api/auth/callback/google` as an authorized redirect URI.
+- Telegram: `AUTH_TELEGRAM_ID`, `AUTH_TELEGRAM_SECRET` from BotFather → your bot → Login Widget.
+  Add `https://YOUR_DOMAIN/api/auth/callback/telegram` to Allowed URLs. These are OIDC
+  credentials, not the bot token or Telegram feed API credentials. Keep the default RS256 signing algorithm.
+- Configure `AUTH_SECRET` (or the existing `NEXTAUTH_SECRET`) and the deployment's
+  `AUTH_URL` / `NEXTAUTH_URL`. For local Google testing, register
+  `http://localhost:3000/api/auth/callback/google` separately. Telegram redirects
+  must also exactly match its registered URLs; use an HTTPS development domain if required.
+
+Unconfigured providers remain disabled with an explanation; email sign-in still works.
+Provider IDs are the account identity. Existing email accounts are **not** automatically
+linked: users must continue with their original login method when an email already exists.
+Google requires a verified email. Telegram does not return email, so its users receive
+an internal `telegram-<subject>@telegram.invalid` identifier (not a contact address).
+This reserved domain cannot be registered with a password. New social users have USER
+permissions; blocked users cannot sign in. Provider access/refresh tokens are not stored.
+
+References: https://authjs.dev/getting-started/providers/google and
+https://core.telegram.org/bots/telegram-login.
