@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
+import { telegramProvider } from "./telegram-provider";
 import { resolveSocialUser, socialAvailability } from "./social";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/db/prisma";
@@ -62,30 +63,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }),
         ]
       : []),
-    ...(socialAvailability().telegram
-      ? [
-          {
-            id: "telegram",
-            name: "Telegram",
-            type: "oidc" as const,
-            issuer: "https://oauth.telegram.org",
-            clientId: process.env.AUTH_TELEGRAM_ID,
-            clientSecret: process.env.AUTH_TELEGRAM_SECRET,
-            authorization: { params: { scope: "openid profile" } },
-            checks: ["pkce", "state"] as ("pkce" | "state")[],
-            client: { token_endpoint_auth_method: "client_secret_basic" },
-            profile(profile: { sub: string; name?: string }) {
-              return {
-                id: profile.sub,
-                name: profile.name ?? "Telegram",
-                email: null,
-                role: "USER" as const,
-                isBlocked: false,
-              };
-            },
-          },
-        ]
-      : []),
+    ...(socialAvailability().telegram ? [telegramProvider()] : []),
     Credentials({
       name: "Credentials",
       credentials: {
