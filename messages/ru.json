@@ -180,6 +180,8 @@
     "countNetworks": "Количество сетей"
   },
   "WalletList": {
+    "collapseShort": "Свернуть",
+    "expandShort": "Развернуть",
     "collapseList": "Свернуть список кошельков",
     "expandList": "Развернуть список кошельков",
     "cardTitle": "Кошельки",

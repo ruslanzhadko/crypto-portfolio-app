@@ -180,6 +180,8 @@
     "countNetworks": "Network count"
   },
   "WalletList": {
+    "collapseShort": "Collapse",
+    "expandShort": "Expand",
     "collapseList": "Collapse wallet list",
     "expandList": "Expand wallet list",
     "cardTitle": "Wallets",

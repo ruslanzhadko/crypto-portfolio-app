@@ -180,6 +180,8 @@
     "countNetworks": "Кількість мереж"
   },
   "WalletList": {
+    "collapseShort": "Згорнути",
+    "expandShort": "Розгорнути",
     "collapseList": "Згорнути список гаманців",
     "expandList": "Розгорнути список гаманців",
     "cardTitle": "Гаманці",

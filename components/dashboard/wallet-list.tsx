@@ -44,27 +44,24 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
 
   return (
     <Card>
-      <CardHeader className="gap-2 space-y-0 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>{t('cardTitle')}</CardTitle>
-          <div className="flex flex-wrap items-center gap-1">
-            <Button variant="ghost" size="sm" className="min-h-11 gap-2 text-text-muted"
-              onClick={toggleCollapsed} aria-expanded={!collapsed} aria-controls={contentId}>
-              {collapsed ? t('expandList') : t('collapseList')}
-              {collapsed ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronUp className="h-4 w-4" aria-hidden />}
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href="/dashboard/compare">{dashboard('compareWallets')}</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/wallets">
-                {t('viewAll')} <ArrowRight className="h-3 w-3" />
-              </Link>
-            </Button>
-          </div>
+      <CardHeader className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 space-y-0 p-4 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:p-6">
+        <CardTitle>{t('cardTitle')}</CardTitle>
+        <Button asChild variant="ghost" size="sm" className="col-start-2 row-start-1 h-11 justify-self-end px-0 sm:col-start-3">
+          <Link href="/wallets">{t('viewAll')} <ArrowRight className="h-3 w-3" aria-hidden /></Link>
+        </Button>
+        <div className="col-span-2 row-start-2 grid min-w-0 grid-cols-2 gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+          <Button variant="outline" size="sm" className="h-11 min-w-0 gap-2 px-2 text-text-muted sm:px-3"
+            onClick={toggleCollapsed} aria-label={collapsed ? t('expandList') : t('collapseList')}
+            aria-expanded={!collapsed} aria-controls={contentId}>
+            {collapsed ? t('expandShort') : t('collapseShort')}
+            {collapsed ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden /> : <ChevronUp className="h-4 w-4 shrink-0" aria-hidden />}
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-11 min-w-0 px-2 sm:px-3">
+            <Link href="/dashboard/compare">{dashboard('compareWallets')}</Link>
+          </Button>
         </div>
       </CardHeader>
-      <CardContent id={contentId} className="p-0" hidden={collapsed}>
+      <CardContent id={contentId} className="p-0 sm:p-0" hidden={collapsed}>
         {wallets.length === 0 ? (
           <p className="px-6 pb-6 text-sm text-text-muted">
             {t('noWallets')}
@@ -75,7 +72,7 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
               <Link
                 key={w.id}
                 href={`/wallets/${w.id}`}
-                className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                className="flex items-center gap-3 px-4 py-2 sm:px-6 transition-colors hover:bg-surface-2/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <WalletIcon className="h-4 w-4" />

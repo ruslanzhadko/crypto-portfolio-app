@@ -2,7 +2,7 @@
 
 import { useMemo, useState, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpDown, ChevronDown, ChevronRight, Eye, EyeOff, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronRight, Eye, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,18 +114,18 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
       <CardHeader className="space-y-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle>{t('cardTitle')}</CardTitle>
-          <div className="flex w-full flex-wrap items-center justify-between gap-x-4 gap-y-2 sm:w-auto sm:justify-end">
+          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:w-auto sm:justify-end">
           <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
           <Button
             variant={showSpam ? 'default' : 'outline'}
             size="sm"
-            className="gap-1.5"
+            className="h-11 shrink-0 gap-1.5 border px-3 tabular-nums"
             disabled={spamTokens.length === 0}
             aria-pressed={showSpam}
             onClick={() => setShowSpam((value) => !value)}
           >
-            {showSpam ? <EyeOff className="h-4 w-4" aria-hidden /> : <Eye className="h-4 w-4" aria-hidden />}
-            {showSpam ? t('hideSpam') : t('showSpam', { count: spamTokens.length })}
+            <Eye className="h-4 w-4" aria-hidden />
+            {t('showSpam', { count: spamTokens.length })}
           </Button>
           </div>
         </div>
@@ -173,7 +173,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        {showSpam && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
+        {spamTokens.length > 0 && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
