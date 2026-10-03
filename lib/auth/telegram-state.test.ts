@@ -18,21 +18,28 @@ async function callback(cookieName = '__Secure-authjs.state', provider = 'telegr
 }
 
 describe('Telegram compact state bridge', () => {
-  it.each(['json', 'redirect'])('shortens %s sign-in responses and preserves cookies and PKCE', async (kind) => {
+  it.each(['json', 'redirect', 'json-with-location'])('shortens %s sign-in responses and preserves cookies and PKCE', async (kind) => {
     const headers = new Headers();
     headers.append('set-cookie', 'authjs.state=encrypted; HttpOnly; Secure');
     headers.append('set-cookie', 'authjs.pkce.code_verifier=verifier; HttpOnly; Secure');
     const handler = vi.fn(async () => {
+      if (kind === 'json-with-location') {
+        headers.set('location', authorize);
+        return Response.json({ url: authorize }, { headers });
+      }
       if (kind === 'json') return Response.json({ url: authorize }, { headers });
       headers.set('location', authorize);
       return new Response(null, { status: 302, headers });
     });
     const response = await withTelegramState(handler)(new NextRequest(`${origin}/api/auth/signin/telegram`, { method: 'POST' }));
-    const url = new URL(kind === 'json' ? (await response.json()).url : response.headers.get('location')!);
+    const url = new URL(kind !== 'redirect' ? (await response.json()).url : response.headers.get('location')!);
     expect(url.searchParams.get('state')).toBe(compactTelegramState(original));
     expect(url.searchParams.get('state')).toHaveLength(43);
     expect(url.searchParams.get('code_challenge')).toBe('pkce-value');
     expect(response.headers.getSetCookie()).toHaveLength(2);
+    if (response.headers.has('location')) {
+      expect(new URL(response.headers.get('location')!).searchParams.get('state')).toBe(compactTelegramState(original));
+    }
   });
 
   it.each(['__Secure-authjs.state', 'authjs.state'])('restores state from %s for the normal Auth.js checks', async (name) => {

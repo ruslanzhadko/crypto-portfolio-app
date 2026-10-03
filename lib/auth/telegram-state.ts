@@ -51,23 +51,23 @@ export function withTelegramState(handler: AuthHandler): AuthHandler {
     }
     const response = await handler(request);
     if (path !== '/api/auth/signin/telegram') return response;
+    const headers = new Headers(response.headers);
     const location = response.headers.get('location');
     if (location) {
-      const headers = new Headers(response.headers);
       headers.set('location', shortenAuthorizationUrl(location));
-      return new Response(response.body, { status: response.status, headers });
     }
-    // next-auth/react uses the JSON redirect response rather than Location.
+    // Auth.js keeps Location even in its JSON response. Rewrite BOTH: the React
+    // client reads body.url and ignores Location on a successful JSON response.
     if (response.headers.get('content-type')?.includes('application/json')) {
       const body = await response.clone().json();
       if (typeof body?.url === 'string') {
-        const headers = new Headers(response.headers);
         headers.delete('content-length');
         return new Response(JSON.stringify({ ...body, url: shortenAuthorizationUrl(body.url) }), {
           status: response.status, headers,
         });
       }
     }
+    if (location) return new Response(response.body, { status: response.status, headers });
     return response;
   };
 }
