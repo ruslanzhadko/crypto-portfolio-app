@@ -22,6 +22,9 @@ function stripLocalePrefix(pathname: string): {
 
 export default function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  // Installation metadata is shared by every locale and must never redirect
+  // to login or a localized HTML page, even for signed-out visitors.
+  if (pathname === '/manifest.webmanifest') return NextResponse.next();
   const { path, locale } = stripLocalePrefix(pathname);
 
   const sessionCookie =

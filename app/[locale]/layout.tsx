@@ -25,6 +25,14 @@ const mono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'CryptoPortfolio',
+  applicationName: 'CryptoPortfolio',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'CryptoPortfolio',
+    statusBarStyle: 'default',
+  },
+  icons: { apple: '/logo2.png' },
   description:
     'Track your crypto portfolio across 10 networks with real-time price analytics.',
 };
