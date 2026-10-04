@@ -45,8 +45,11 @@ export function ProfileForm({ initialName }: ProfileFormProps) {
   }
 
   return (
-    <form onSubmit={onSave} className="space-y-4">
-      <div className="space-y-2">
+    <form
+      onSubmit={onSave}
+      className="grid max-w-xl grid-cols-[minmax(0,1fr)_auto] items-end gap-3"
+    >
+      <div className="min-w-0 space-y-2">
         <Label htmlFor="name">{t('nameLabel')}</Label>
         <Input
           id="name"
@@ -58,7 +61,7 @@ export function ProfileForm({ initialName }: ProfileFormProps) {
         />
       </div>
 
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" disabled={isPending} className="shrink-0">
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
         {t('saveButton')}
       </Button>

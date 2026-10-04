@@ -57,7 +57,7 @@ export function PasswordForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="max-w-md space-y-4">
       <div className="space-y-2">
         <Label htmlFor="current">{t('currentPasswordLabel')}</Label>
         <Input

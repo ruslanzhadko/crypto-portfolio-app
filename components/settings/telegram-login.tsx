@@ -99,33 +99,38 @@ export function TelegramLogin({
     }
   }
   return (
-    <div className="space-y-5">
+    <div className="max-w-3xl space-y-5">
       <div className="space-y-3">
         <p className="text-sm leading-relaxed text-text-muted">
           {t('telegramLoginDescription')}
         </p>
-        {connected && (
-          <p className="flex items-center gap-2 text-sm text-success">
-            <Check aria-hidden className="h-4 w-4 shrink-0" />
-            {t('telegramLoginConnected')}
-          </p>
-        )}
-        {(!connected || !botAccess || !telegramUserId) && (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={connect}
-            disabled={pending || !available}
-            className="h-auto min-h-11 whitespace-normal text-left"
-          >
-            {pending ? (
-              <Loader2 aria-hidden className="h-4 w-4 shrink-0 animate-spin" />
-            ) : (
-              <Send aria-hidden className="h-4 w-4 shrink-0" />
-            )}
-            {t(connected ? 'telegramGrantMessages' : 'telegramLoginConnect')}
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+          {connected && (
+            <p className="flex items-center gap-2 text-sm text-success">
+              <Check aria-hidden className="h-4 w-4 shrink-0" />
+              {t('telegramLoginConnected')}
+            </p>
+          )}
+          {(!connected || !botAccess || !telegramUserId) && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={connect}
+              disabled={pending || !available}
+              className="h-auto min-h-11 whitespace-normal text-left"
+            >
+              {pending ? (
+                <Loader2
+                  aria-hidden
+                  className="h-4 w-4 shrink-0 animate-spin"
+                />
+              ) : (
+                <Send aria-hidden className="h-4 w-4 shrink-0" />
+              )}
+              {t(connected ? 'telegramGrantMessages' : 'telegramLoginConnect')}
+            </Button>
+          )}
+        </div>
         {!available && (
           <p className="text-sm text-text-muted">
             {t('telegramLoginUnavailable')}
