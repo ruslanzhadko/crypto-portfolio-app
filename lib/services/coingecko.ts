@@ -193,7 +193,9 @@ export async function fetchTopMarkets(opts: {
       },
     }),
   );
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data)
+    ? data.filter((coin) => coin.symbol.toLowerCase() !== 'figr_heloc')
+    : [];
 }
 
 export interface FetchPricesOptions {
