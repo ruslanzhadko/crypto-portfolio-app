@@ -49,7 +49,7 @@ export function WalletList({ wallets }: { wallets: WalletDTO[] }) {
         <Button asChild variant="ghost" size="sm" className="col-start-2 row-start-1 h-11 justify-self-end px-0 sm:col-start-3">
           <Link href="/wallets">{t('viewAll')} <ArrowRight className="h-3 w-3" aria-hidden /></Link>
         </Button>
-        <div className="col-span-2 row-start-2 grid min-w-0 grid-cols-2 gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+        <div className="col-span-2 row-start-2 grid min-w-0 grid-cols-2 gap-2 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:grid-cols-[auto_auto]">
           <Button variant="outline" size="sm" className="h-11 min-w-0 gap-2 px-2 text-text-muted sm:px-3"
             onClick={toggleCollapsed} aria-label={collapsed ? t('expandList') : t('collapseList')}
             aria-expanded={!collapsed} aria-controls={contentId}>
