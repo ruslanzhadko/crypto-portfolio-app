@@ -25,6 +25,8 @@ export default async function AuthErrorPage({
       CredentialsSignin: 'errorCredentialsSignin',
       TelegramLinkRequired: 'errorTelegramLinkRequired',
       TelegramAlreadyLinked: 'errorTelegramAlreadyLinked',
+      TelegramLinkExpired: 'errorTelegramLinkExpired',
+      TelegramInvalidIdentity: 'errorTelegramInvalidIdentity',
     }[code] ?? 'errorDefault';
 
   return (

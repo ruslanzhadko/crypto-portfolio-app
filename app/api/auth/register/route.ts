@@ -1,9 +1,10 @@
 import { NextRequest } from 'next/server';
 import bcrypt from 'bcryptjs';
-import { Role } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { registerSchema } from '@/lib/utils/validators';
 import { apiError, created, handleUnknown } from '@/lib/api/response';
+import { allowAuthAttempt, clientAddress } from '@/lib/auth/rate-limit';
 
 export async function POST(req: NextRequest) {
   try {
@@ -11,10 +12,18 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {
-      return apiError('BAD_REQUEST', 'Помилка валідації', parsed.error.flatten());
+      return apiError(
+        'BAD_REQUEST',
+        'Помилка валідації',
+        parsed.error.flatten(),
+      );
     }
 
     const { email, password, name } = parsed.data;
+    if (
+      !(await allowAuthAttempt('register', clientAddress(req.headers), email))
+    )
+      return apiError('RATE_LIMIT', 'Забагато спроб. Спробуйте пізніше.');
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -23,16 +32,12 @@ export async function POST(req: NextRequest) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-    const role: Role =
-      adminEmail && adminEmail === email ? Role.ADMIN : Role.USER;
-
     const user = await prisma.user.create({
       data: {
         email,
         passwordHash,
         name: name ?? null,
-        role,
+        role: 'USER',
       },
       select: {
         id: true,
@@ -44,6 +49,11 @@ export async function POST(req: NextRequest) {
 
     return created({ user });
   } catch (err) {
+    if (
+      err instanceof Prisma.PrismaClientKnownRequestError &&
+      err.code === 'P2002'
+    )
+      return apiError('CONFLICT', 'Користувач з таким email вже існує');
     return handleUnknown(err);
   }
 }

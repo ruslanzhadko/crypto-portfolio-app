@@ -348,3 +348,9 @@ describe('resolveBalancePrice', () => {
     expect(resolveBalancePrice(b, new Map(), new Map())).toBeNull();
   });
 });
+
+it('disabled Telegram notifications do not fire percent or target alerts', () => {
+  const user = { telegramChatId: '123', isBlocked: false, telegramNotificationsEnabled: false };
+  expect(evaluateTrigger(makePercentTrigger({ user }), 150, NOW).shouldNotify).toBe(false);
+  expect(evaluatePriceTargetTrigger(makeTargetTrigger({ user }), 150)).toBe(false);
+});

@@ -4,11 +4,14 @@ import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { passwordChangeSchema } from '@/lib/utils/validators';
+import { allowAuthAttempt, clientAddress } from '@/lib/auth/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function PUT(req: NextRequest) {
   try {
+    if (req.headers.get('origin') !== req.nextUrl.origin)
+      return apiError('FORBIDDEN', 'Invalid origin');
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
@@ -22,6 +25,14 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    if (
+      !(await allowAuthAttempt(
+        'password',
+        clientAddress(req.headers),
+        guard.user.id,
+      ))
+    )
+      return apiError('RATE_LIMIT', 'Забагато спроб. Спробуйте пізніше.');
     const user = await prisma.user.findUnique({
       where: { id: guard.user.id },
       select: { passwordHash: true },
@@ -42,10 +53,16 @@ export async function PUT(req: NextRequest) {
     }
 
     const newHash = await bcrypt.hash(parsed.data.newPassword, 12);
-    await prisma.user.update({
-      where: { id: guard.user.id },
-      data: { passwordHash: newHash },
+    const changed = await prisma.user.updateMany({
+      where: {
+        id: guard.user.id,
+        passwordHash: user.passwordHash,
+        isBlocked: false,
+      },
+      data: { passwordHash: newHash, sessionVersion: { increment: 1 } },
     });
+    if (!changed.count)
+      return apiError('CONFLICT', 'Пароль уже изменён. Войдите снова.');
 
     return ok({ success: true });
   } catch (err) {

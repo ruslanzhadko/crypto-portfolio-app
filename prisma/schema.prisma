@@ -29,6 +29,10 @@ model User {
   role           Role      @default(USER)
   isBlocked      Boolean   @default(false)
   telegramChatId String?
+  telegramUserId String?   @unique
+  telegramBotAccess Boolean @default(false)
+  telegramNotificationsEnabled Boolean @default(true)
+  sessionVersion Int @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -45,6 +49,14 @@ model User {
 enum Role {
   USER
   ADMIN
+}
+
+// Shared across serverless instances; keys are hashes, never emails or IPs.
+model AuthRateLimit {
+  key String @id
+  attempts Int @default(1)
+  expiresAt DateTime
+  @@index([expiresAt])
 }
 
 model Account {

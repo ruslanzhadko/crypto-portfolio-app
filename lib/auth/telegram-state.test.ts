@@ -69,3 +69,16 @@ describe('Telegram compact state bridge', () => {
     expect(await withTelegramState(handler)(new NextRequest(`${origin}/api/auth/signin/google`, { method: 'POST' }))).toBe(response);
   });
 });
+
+it.each([true, false])('keeps intent only for explicit linking: %s', async (explicit) => {
+  const handler = vi.fn(async () => Response.json({ url: authorize }));
+  const req = new NextRequest(`${origin}/api/auth/signin/telegram`, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', cookie: 'telegram-link-intent=protected; other=kept' },
+    body: new URLSearchParams({ csrfToken: 'csrf', ...(explicit ? { linkAccount: 'true' } : {}) }).toString(),
+  });
+  const response = await withTelegramState(handler)(req);
+  const forwarded = (handler.mock.calls[0] as unknown as [NextRequest])[0];
+  expect(forwarded.cookies.has('telegram-link-intent')).toBe(explicit);
+  expect(forwarded.cookies.get('other')?.value).toBe('kept');
+  expect(response.headers.getSetCookie().some((c) => c.includes('telegram-link-intent=;'))).toBe(!explicit);
+});

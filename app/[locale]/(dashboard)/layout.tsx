@@ -11,7 +11,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.sessionExpired) {
     const locale = await getLocale();
     redirect({ href: '/auth/login', locale });
   }

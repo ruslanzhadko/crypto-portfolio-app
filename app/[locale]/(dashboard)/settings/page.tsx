@@ -12,7 +12,7 @@ import { ProfileForm } from '@/components/settings/profile-form';
 import { PasswordForm } from '@/components/settings/password-form';
 import { TelegramLogin } from '@/components/settings/telegram-login';
 import { publicEmail } from '@/lib/auth/public-email';
-import { socialAvailability } from '@/lib/auth/social';
+import { socialAvailability, telegramBotReady } from '@/lib/auth/social';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +30,9 @@ export default async function SettingsPage({
       email: true,
       name: true,
       telegramChatId: true,
+      telegramUserId: true,
+      telegramBotAccess: true,
+      telegramNotificationsEnabled: true,
       createdAt: true,
       role: true,
       passwordHash: true,
@@ -39,6 +42,7 @@ export default async function SettingsPage({
   if (!user) return null;
 
   const t = await getTranslations('Settings');
+  const authMessages = await getTranslations('Auth');
 
   return (
     <div className="space-y-6">
@@ -62,35 +66,47 @@ export default async function SettingsPage({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProfileForm
-            initialName={user.name}
-            initialTelegramChatId={user.telegramChatId}
-          />
+          <ProfileForm initialName={user.name} />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('securityCardTitle')}</CardTitle>
-          <CardDescription>{t('loginMethodsDescription')}</CardDescription>
+          <CardTitle>Telegram</CardTitle>
+          <CardDescription>{t('telegramUnifiedDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {searchParams.telegramError && (
             <p role="alert" className="text-sm text-danger">
-              {t('telegramLoginConflict')}
+              {searchParams.telegramError === 'TelegramLinkExpired'
+                ? authMessages('errorTelegramLinkExpired')
+                : searchParams.telegramError === 'TelegramInvalidIdentity'
+                  ? authMessages('errorTelegramInvalidIdentity')
+                  : t('telegramLoginConflict')}
             </p>
           )}
           <TelegramLogin
             connected={user.accounts.some((a) => a.provider === 'telegram')}
             available={socialAvailability().telegram}
+            chatId={user.telegramChatId}
+            telegramUserId={user.telegramUserId}
+            botAccess={user.telegramBotAccess}
+            notificationsEnabled={user.telegramNotificationsEnabled}
+            botReady={telegramBotReady()}
           />
-          <div className="border-t border-border pt-6">
-            {user.passwordHash ? (
-              <PasswordForm />
-            ) : (
-              <p className="text-sm text-text-muted">{t('socialNoPassword')}</p>
-            )}
-          </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('securityCardTitle')}</CardTitle>
+          <CardDescription>{t('loginMethodsDescription')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {user.passwordHash ? (
+            <PasswordForm />
+          ) : (
+            <p className="text-sm text-text-muted">{t('socialNoPassword')}</p>
+          )}
         </CardContent>
       </Card>
     </div>

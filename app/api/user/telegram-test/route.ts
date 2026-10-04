@@ -12,10 +12,10 @@ export async function POST() {
 
     const user = await prisma.user.findUnique({
       where: { id: guard.user.id },
-      select: { telegramChatId: true },
+      select: { telegramChatId: true, telegramNotificationsEnabled: true },
     });
-    if (!user?.telegramChatId) {
-      return apiError('BAD_REQUEST', 'Telegram Chat ID не встановлено');
+    if (!user?.telegramChatId || !user.telegramNotificationsEnabled) {
+      return apiError('BAD_REQUEST', 'Увімкніть сповіщення Telegram у налаштуваннях');
     }
 
     try {

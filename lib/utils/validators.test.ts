@@ -111,15 +111,12 @@ describe('triggerCreateSchema (discriminatedUnion)', () => {
   });
 });
 
-describe('profileUpdateSchema (regex telegramChatId)', () => {
-  it('числовий chatId → success', () => {
-    expect(profileUpdateSchema.safeParse({ telegramChatId: '123456' }).success).toBe(true);
+describe('profileUpdateSchema prevents manual Telegram identity assignment', () => {
+  it.each(['123456', '', null, 'abc'])('rejects legacy chat ID input %s', (telegramChatId) => {
+    expect(profileUpdateSchema.safeParse({ telegramChatId }).success).toBe(false);
   });
-  it('порожній рядок дозволено → success', () => {
-    expect(profileUpdateSchema.safeParse({ telegramChatId: '' }).success).toBe(true);
-  });
-  it('нечисловий chatId → fail', () => {
-    expect(profileUpdateSchema.safeParse({ telegramChatId: 'abc' }).success).toBe(false);
+  it('accepts name updates', () => {
+    expect(profileUpdateSchema.safeParse({ name: 'Name' }).success).toBe(true);
   });
 });
 

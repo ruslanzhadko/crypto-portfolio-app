@@ -6,27 +6,42 @@ import { Network, TriggerDirection } from '@prisma/client';
 // ─────────────────────────────────────────
 
 export const registerSchema = z.object({
-  email: z.string().email('Невірний формат email').toLowerCase()
+  email: z
+    .string()
+    .trim()
+    .email('Невірний формат email')
+    .toLowerCase()
     .refine((email) => !email.endsWith('.invalid'), 'Невірний формат email'),
   password: z
     .string()
     .min(8, 'Пароль має містити щонайменше 8 символів')
-    .max(100, 'Пароль занадто довгий'),
+    .max(100, 'Пароль занадто довгий')
+    .refine(
+      (value) => new TextEncoder().encode(value).length <= 72,
+      'Пароль має містити не більше 72 байтів',
+    ),
   name: z.string().min(1).max(100).optional(),
 });
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 
 export const loginSchema = z.object({
-  email: z.string().email().toLowerCase(),
-  password: z.string().min(1, 'Пароль обовʼязковий'),
+  email: z.string().trim().email().toLowerCase(),
+  password: z.string().min(1, 'Пароль обовʼязковий').max(100),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 
 export const passwordChangeSchema = z.object({
-  currentPassword: z.string().min(1),
-  newPassword: z.string().min(8).max(100),
+  currentPassword: z.string().min(1).max(100),
+  newPassword: z
+    .string()
+    .min(8)
+    .max(100)
+    .refine(
+      (value) => new TextEncoder().encode(value).length <= 72,
+      'Пароль має містити не більше 72 байтів',
+    ),
 });
 
 // ─────────────────────────────────────────
@@ -44,7 +59,10 @@ export function isValidSolanaAddress(address: string): boolean {
   return SOLANA_ADDRESS.test(address);
 }
 
-export function isValidAddressForNetwork(address: string, network: Network): boolean {
+export function isValidAddressForNetwork(
+  address: string,
+  network: Network,
+): boolean {
   if (network === Network.SOLANA) return isValidSolanaAddress(address);
   return isValidEvmAddress(address); // EVM — одна адреса для всіх 9 мереж
 }
@@ -108,15 +126,11 @@ export type TriggerUpdateInput = z.infer<typeof triggerUpdateSchema>;
 // Профіль
 // ─────────────────────────────────────────
 
-export const profileUpdateSchema = z.object({
-  name: z.string().min(1).max(100).optional().nullable(),
-  telegramChatId: z
-    .string()
-    .regex(/^-?\d+$/, 'Telegram Chat ID має бути числом')
-    .optional()
-    .nullable()
-    .or(z.literal('')),
-});
+export const profileUpdateSchema = z
+  .object({
+    name: z.string().min(1).max(100).optional().nullable(),
+  })
+  .strict();
 
 export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>;
 

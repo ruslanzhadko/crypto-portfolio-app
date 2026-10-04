@@ -21,18 +21,19 @@ it('does not expose a synthetic email through the profile API', async () => {
   });
   expect((await (await GET()).json()).user.email).toBeNull();
 });
-it('does not assign another profile’s notification chat', async () => {
+it('rejects manual notification recipient assignment', async () => {
   db.user.findFirst.mockResolvedValue({ id: 'other' });
   const res = await PUT(
     new NextRequest('https://app.example/api/user/profile', {
       method: 'PUT',
+      headers: { origin: 'https://app.example' },
       body: JSON.stringify({ telegramChatId: '1234' }),
     }),
   );
-  expect(res.status).toBe(409);
+  expect(res.status).toBe(400);
   expect(db.user.update).not.toHaveBeenCalled();
 });
-it('allows clearing notifications without removing the login identity', async () => {
+it('allows name changes without touching the notification or login identity', async () => {
   db.user.update.mockResolvedValue({
     id: 'main',
     email: 'main@example.com',
@@ -41,7 +42,8 @@ it('allows clearing notifications without removing the login identity', async ()
   const res = await PUT(
     new NextRequest('https://app.example/api/user/profile', {
       method: 'PUT',
-      body: JSON.stringify({ telegramChatId: null }),
+      headers: { origin: 'https://app.example' },
+      body: JSON.stringify({ name: 'Updated' }),
     }),
   );
   expect(res.status).toBe(200);

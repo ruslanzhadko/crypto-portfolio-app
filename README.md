@@ -171,3 +171,48 @@ are hidden from the profile, session, account menu and admin displays. Accounts
 without a password do not show the password-change form. A notification Chat ID
 cannot be newly assigned to multiple profiles; legacy manually entered IDs are
 still notification destinations, not verified login identities.
+
+
+#### Unified Telegram settings and auth hardening
+
+Settings no longer accept a manually entered Chat ID. Telegram login requests
+`openid profile telegram:bot_access`; the signed `id` claim is stored as
+`telegramUserId` (never confuse it with OIDC `sub`). ID tokens are checked against
+Telegram JWKS, issuer, audience and expiry. Keep BotFather signing at RS256
+(ES256 is also supported). `TELEGRAM_BOT_TOKEN` must belong to the same bot as
+`AUTH_TELEGRAM_ID` for notification setup.
+
+Existing notification recipients and enabled state are preserved. A different
+legacy recipient is only replaced by the explicit settings action. Turning
+notifications off keeps both the recipient and login identity; subsequent logins
+never turn notifications back on. Previously connected users should choose
+Allow bot messages once. If delivery fails, open the bot, press Start and unblock
+it if needed. Denied bot permissions must not prevent sign-in.
+
+Before deploying to an existing database managed with db push, run:
+
+```powershell
+npx tsx --env-file=.env scripts/upgrade-telegram-auth.ts
+npx prisma generate
+```
+
+The upgrade is additive and idempotent. It preserves users, portfolios, passwords,
+roles, notification recipients and old sessions. New installations can use the
+current Prisma schema. No OAuth tokens are persisted.
+
+Public email registration always creates USER accounts, including ADMIN_EMAIL;
+administrator provisioning is a trusted seed/admin operation. Emails are trimmed
+and lowercased; internal placeholder addresses cannot be registered. Concurrent
+email registration returns conflict without merging identities. New bcrypt
+passwords are limited to 72 UTF-8 bytes; old login passwords remain compatible.
+Password changes require the current password, atomically compare the original
+hash and increment sessionVersion to revoke existing sessions.
+
+PostgreSQL AuthRateLimit counters enforce 15-minute windows across serverless
+instances (login: 60 attempts per IP / 10 per email+IP; registration and password
+changes: 10 per IP / 5 per identity+IP). Keys are HMAC hashes and expired windows
+are cleaned up. The address headers rely on Vercel's trusted proxy; another
+hosting environment must supply trusted proxy headers. Limits fail closed if
+the shared database is unavailable. Abandoned link intents are cleared before
+ordinary Telegram sign-in; linking requires explicit intent, the same unexpired
+session, an active user and transactional identity ownership checks.

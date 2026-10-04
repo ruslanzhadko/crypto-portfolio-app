@@ -12,6 +12,7 @@ vi.mock('@/lib/auth', () => ({
 vi.mock('@/lib/db/prisma', () => ({ prisma: { user: db } }));
 vi.mock('@/lib/auth/social', () => ({
   socialAvailability: () => ({ telegram: true }),
+  telegramBotReady: () => true,
 }));
 vi.mock('next-intl/server', () => ({
   getTranslations:
@@ -70,4 +71,21 @@ it('offers linking while retaining email and password settings for the main acco
   expect(html).toContain('id="current"');
   expect(html).toContain('Connect Telegram sign-in');
   preview('email-settings', html);
+});
+
+it('keeps legacy notifications in the unified Telegram block without an editable chat ID', async () => {
+  db.findUnique.mockResolvedValue({ name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: 'hash', accounts: [{ provider: 'telegram' }], telegramChatId: '999', telegramUserId: '1234', telegramBotAccess: true, telegramNotificationsEnabled: true });
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: {} }));
+  expect(html).not.toContain('id="chatId"');
+  expect(html).not.toContain('Telegram Chat ID');
+  expect(html).toContain('different Telegram account or chat');
+  expect(html).toContain('Send to the Telegram account used for sign-in');
+  preview('legacy-settings', html);
+});
+it('shows permission renewal for a previously connected login', async () => {
+  db.findUnique.mockResolvedValue({ name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: null, accounts: [{ provider: 'telegram' }], telegramChatId: null, telegramUserId: null, telegramBotAccess: false, telegramNotificationsEnabled: true });
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: {} }));
+  expect(html).toContain('Allow bot messages');
+  expect(html).toContain('Telegram notifications');
+  preview('permission-settings', html);
 });

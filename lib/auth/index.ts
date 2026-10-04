@@ -13,6 +13,8 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db/prisma';
 import { loginSchema } from '@/lib/utils/validators';
 import { authConfig } from './config';
+import { allowAuthAttempt, clientAddress } from './rate-limit';
+import { sessionIsExpired } from './session-policy';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -40,10 +42,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             user.name ?? null,
             telegramId,
             target,
+            // OAuth omitting scope means the granted scope equals the requested
+            // scope. An explicit reduced scope must not enable bot messages.
+            account.scope === undefined ||
+              account.scope.split(/\s+/).includes('telegram:bot_access'),
           );
         } catch (error) {
           if (error instanceof TelegramIdentityConflict)
-            return target
+            return target || error.code === 'TelegramLinkExpired'
               ? `/settings?telegramError=${error.code}`
               : `/auth/error?error=${error.code}`;
           throw error;
@@ -62,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         name: stored.name,
         role: stored.role,
         isBlocked: stored.isBlocked,
+        sessionVersion: stored.sessionVersion,
       });
       return true;
     },
@@ -75,6 +82,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: true,
           role: true,
           isBlocked: true,
+          sessionVersion: true,
         },
       });
       session.user.id = current?.id ?? token.id;
@@ -82,6 +90,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.name = current?.name ?? null;
       session.user.role = current?.role ?? token.role;
       session.user.isBlocked = current?.isBlocked ?? true;
+      session.user.sessionExpired = sessionIsExpired(
+        current,
+        token.sessionVersion,
+      );
+      if (session.user.sessionExpired) session.user.id = '';
       return session;
     },
   },
@@ -101,11 +114,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         const parsed = loginSchema.safeParse(credentials);
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
+        if (
+          !(await allowAuthAttempt(
+            'login',
+            clientAddress(request.headers),
+            email,
+          ))
+        )
+          return null;
 
         const user = await prisma.user.findUnique({
           where: { email },
@@ -116,6 +137,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             passwordHash: true,
             role: true,
             isBlocked: true,
+            sessionVersion: true,
           },
         });
 
@@ -131,6 +153,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: user.name,
           role: user.role,
           isBlocked: user.isBlocked,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),

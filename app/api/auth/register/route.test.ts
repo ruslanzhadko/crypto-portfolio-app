@@ -14,6 +14,7 @@ vi.mock('bcryptjs', () => ({
   default: { hash: vi.fn().mockResolvedValue('hashed:pw') },
 }));
 
+vi.mock('@/lib/auth/rate-limit', () => ({ allowAuthAttempt: vi.fn(async () => true), clientAddress: () => 'test' }));
 import { POST } from './route';
 import { prisma } from '@/lib/db/prisma';
 import bcrypt from 'bcryptjs';
@@ -107,13 +108,13 @@ describe('POST /api/auth/register', () => {
   });
 
   describe('admin role assignment', () => {
-    it('ADMIN_EMAIL matches (case-insensitive) → role=ADMIN stored', async () => {
+    it('unverified ADMIN_EMAIL cannot grant administrator privileges', async () => {
       vi.stubEnv('ADMIN_EMAIL', 'Admin@Site.com');
 
       await POST(makeRequest({ ...VALID_PAYLOAD, email: 'admin@site.com' }) as never);
 
       const createArgs = mockCreate.mock.calls[0]![0] as { data: { role: string } };
-      expect(createArgs.data.role).toBe('ADMIN');
+      expect(createArgs.data.role).toBe('USER');
     });
 
     it('email differs from ADMIN_EMAIL → role=USER', async () => {
@@ -211,4 +212,18 @@ describe('POST /api/auth/register', () => {
       expect((await res.json()).error.code).toBe('INTERNAL_ERROR');
     });
   });
+});
+
+it('handles a concurrent duplicate email as conflict, not server failure', async () => {
+  const { Prisma } = await import('@prisma/client');
+  mockCreate.mockRejectedValueOnce(new Prisma.PrismaClientKnownRequestError('duplicate', { code: 'P2002', clientVersion: 'test' }));
+  expect((await POST(makeRequest(VALID_PAYLOAD) as never)).status).toBe(409);
+});
+it('normalizes surrounding email whitespace', async () => {
+  expect((await POST(makeRequest({ ...VALID_PAYLOAD, email: '  USER@EXAMPLE.COM  ' }) as never)).status).toBe(201);
+  expect(mockFindUnique).toHaveBeenCalledWith({ where: { email: 'user@example.com' } });
+});
+it('rejects UTF-8 passwords over the bcrypt byte limit', async () => {
+  expect((await POST(makeRequest({ ...VALID_PAYLOAD, password: '😀'.repeat(19) }) as never)).status).toBe(400);
+  expect(mockHash).not.toHaveBeenCalled();
 });

@@ -48,6 +48,34 @@ async function restoreState(request: NextRequest) {
 export function withTelegramState(handler: AuthHandler): AuthHandler {
   return async (request) => {
     const path = request.nextUrl.pathname;
+    let clearLinkIntent = false;
+    if (request.method === 'POST' && path === '/api/auth/signin/telegram') {
+      const body = await request
+        .clone()
+        .formData()
+        .catch(() => null);
+      if (body?.get('linkAccount') !== 'true') {
+        // An abandoned settings flow must not turn a later ordinary login
+        // into account linking. Auth.js still checks its own CSRF token.
+        clearLinkIntent = request.cookies.has('telegram-link-intent');
+        if (clearLinkIntent) {
+          const headers = new Headers(request.headers);
+          headers.set(
+            'cookie',
+            request.cookies
+              .getAll()
+              .filter((c) => c.name !== 'telegram-link-intent')
+              .map((c) => `${c.name}=${c.value}`)
+              .join('; '),
+          );
+          request = new NextRequest(request.url, {
+            method: request.method,
+            headers,
+            body: await request.clone().text(),
+          });
+        }
+      }
+    }
     if (request.method === 'GET' && path === '/api/auth/callback/telegram') {
       // Auth.js still verifies state and PKCE, validates the ID token and clears
       // its original cookies. No checks are disabled or replaced.
@@ -62,6 +90,11 @@ export function withTelegramState(handler: AuthHandler): AuthHandler {
     const response = await handler(request);
     if (path !== '/api/auth/signin/telegram') return response;
     const headers = new Headers(response.headers);
+    if (clearLinkIntent)
+      headers.append(
+        'set-cookie',
+        `telegram-link-intent=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${request.nextUrl.protocol === 'https:' ? '; Secure' : ''}`,
+      );
     const location = response.headers.get('location');
     if (location) {
       headers.set('location', shortenAuthorizationUrl(location));

@@ -66,7 +66,7 @@ interface TriggerWithUser {
   interval: number;
   lastPrice: number | null;
   lastCheckedAt: Date | null;
-  user: { telegramChatId: string | null; isBlocked: boolean };
+  user: { telegramChatId: string | null; isBlocked: boolean; telegramNotificationsEnabled?: boolean };
 }
 
 export interface TriggerEvaluation {
@@ -125,6 +125,7 @@ export function evaluateTrigger(
     Math.abs(delta) >= trigger.threshold &&
     directionMatches(trigger.direction, delta) &&
     !!trigger.user.telegramChatId &&
+    trigger.user.telegramNotificationsEnabled !== false &&
     !trigger.user.isBlocked;
 
   return { shouldNotify, shouldUpdate: true, delta };
@@ -336,7 +337,7 @@ export function evaluatePriceTargetTrigger(
 ): boolean {
   const { lastPrice, targetPrice, direction, user } = trigger;
   if (lastPrice === null || targetPrice === null) return false;
-  if (!user.telegramChatId || user.isBlocked) return false;
+  if (!user.telegramChatId || user.isBlocked || user.telegramNotificationsEnabled === false) return false;
 
   if (direction === TriggerDirection.UP || direction === TriggerDirection.BOTH) {
     if (lastPrice < targetPrice && currentPrice >= targetPrice) return true;
@@ -489,7 +490,7 @@ async function checkTriggers(
       id: true, userId: true, tokenId: true, tokenSymbol: true, tokenName: true,
       triggerType: true, threshold: true, targetPrice: true, direction: true,
       interval: true, lastPrice: true, lastCheckedAt: true,
-      user: { select: { telegramChatId: true, isBlocked: true } },
+      user: { select: { telegramChatId: true, isBlocked: true, telegramNotificationsEnabled: true } },
     },
   });
 

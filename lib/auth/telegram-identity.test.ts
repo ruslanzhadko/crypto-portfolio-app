@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const tx = vi.hoisted(() => ({
   account: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
-  user: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn() },
+  user: { findUnique: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
 }));
 vi.mock('@/lib/db/prisma', () => ({
   prisma: { $transaction: (fn: (value: typeof tx) => unknown) => fn(tx) },
@@ -90,6 +90,9 @@ describe('Telegram identity ownership', () => {
       data: {
         email: 'telegram-sub@telegram.invalid',
         name: 'Name',
+        telegramUserId: '1234',
+        telegramBotAccess: false,
+        telegramChatId: null,
         accounts: {
           create: {
             provider: 'telegram',
@@ -103,5 +106,37 @@ describe('Telegram identity ownership', () => {
   it('hides internal addresses but preserves real email', () => {
     expect(publicEmail('telegram-sub@telegram.invalid')).toBeNull();
     expect(publicEmail('person@example.com')).toBe('person@example.com');
+  });
+});
+
+describe('Telegram notification reconciliation', () => {
+  it.each([undefined, '0', '-123', 'NaN', '12345678901234567'])('rejects invalid identity %s', async (id) => {
+    await expect(resolveTelegramIdentity('sub', null, id)).rejects.toMatchObject({ code: 'TelegramInvalidIdentity' });
+    expect(tx.account.create).not.toHaveBeenCalled();
+  });
+  it('preserves disabled notifications on repeat login', async () => {
+    tx.account.findUnique.mockResolvedValue({ userId: 'main', user: { id: 'main', telegramNotificationsEnabled: false, telegramChatId: null } });
+    await resolveTelegramIdentity('sub', null, '1234', undefined, true);
+    expect(tx.user.update.mock.calls[0]![0].data).not.toHaveProperty('telegramChatId');
+    expect(tx.user.update.mock.calls[0]![0].data).not.toHaveProperty('telegramNotificationsEnabled');
+  });
+  it('preserves a different legacy recipient', async () => {
+    tx.account.findUnique.mockResolvedValue({ userId: 'main', user: { id: 'main', telegramNotificationsEnabled: true, telegramChatId: '999' } });
+    await resolveTelegramIdentity('sub', null, '1234', 'main', true);
+    expect(tx.user.update.mock.calls[0]![0].data).not.toHaveProperty('telegramChatId');
+  });
+  it('automatically uses the verified ID after consent when no recipient exists', async () => {
+    tx.user.findUnique.mockResolvedValue({ id: 'main', telegramNotificationsEnabled: true, telegramChatId: null });
+    await resolveTelegramIdentity('sub', null, '1234', 'main', true);
+    expect(tx.user.update.mock.calls[0]![0].data).toMatchObject({ telegramUserId: '1234', telegramBotAccess: true, telegramChatId: '1234' });
+  });
+  it('does not enable notifications if permission was not granted', async () => {
+    await resolveTelegramIdentity('sub', null, '1234', undefined, false);
+    expect(tx.user.create.mock.calls[0]![0].data).toMatchObject({ telegramBotAccess: false, telegramChatId: null });
+  });
+  it('rejects changed numeric identity for the same provider subject', async () => {
+    tx.account.findUnique.mockResolvedValue({ userId: 'main', user: { id: 'main', telegramUserId: '999' } });
+    await expect(resolveTelegramIdentity('sub', null, '1234')).rejects.toMatchObject({ code: 'TelegramInvalidIdentity' });
+    expect(tx.user.update).not.toHaveBeenCalled();
   });
 });

@@ -1,26 +1,30 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Auth } from '@auth/core';
 import { encode } from 'next-auth/jwt';
-import { generateKeyPair, SignJWT } from 'jose';
+import { generateKeyPair, exportJWK, SignJWT } from 'jose';
 import { NextRequest } from 'next/server';
 import { telegramProvider } from './telegram-provider';
 import { compactTelegramState, withTelegramState } from './telegram-state';
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-async function runCallback(mode: 'valid' | 'discovery' | 'wrong-audience' | 'expired' | 'missing-pkce' | 'wrong-state') {
+async function runCallback(mode: 'valid' | 'discovery' | 'wrong-audience' | 'expired' | 'missing-pkce' | 'wrong-state' | 'invalid-signature') {
   const secret = 'telegram-test-only-auth-secret';
   vi.stubEnv('AUTH_SECRET', secret);
   vi.stubEnv('AUTH_TELEGRAM_ID', '123456');
   vi.stubEnv('AUTH_TELEGRAM_SECRET', 'test-client-secret');
-  const { privateKey } = await generateKeyPair('RS256');
-  const idToken = await new SignJWT({ name: 'Telegram Test' })
-    .setProtectedHeader({ alg: 'RS256' }).setIssuer('https://oauth.telegram.org')
+  const { privateKey, publicKey } = await generateKeyPair('RS256');
+  const idToken = await new SignJWT({ name: 'Telegram Test', id: 1234 })
+    .setProtectedHeader({ alg: 'RS256', kid: 'test-key' }).setIssuer('https://oauth.telegram.org')
     .setSubject('98765').setAudience(mode === 'wrong-audience' ? 'another-app' : '123456')
     .setIssuedAt().setExpirationTime(mode === 'expired' ? Math.floor(Date.now() / 1000) - 3600 : '5m')
     .sign(privateKey);
   const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input);
+    if (url.endsWith('/.well-known/jwks.json')) {
+      const key = await exportJWK(mode === 'invalid-signature' ? (await generateKeyPair('RS256')).publicKey : publicKey);
+      return Response.json({ keys: [{ ...key, kid: 'test-key', alg: 'RS256', use: 'sig' }] });
+    }
     if (url.endsWith('/.well-known/openid-configuration')) return Response.json({
       issuer: 'https://oauth.telegram.org', authorization_endpoint: 'https://oauth.telegram.org/auth',
       token_endpoint: 'https://oauth.telegram.org/token', jwks_uri: 'https://oauth.telegram.org/.well-known/jwks.json',
@@ -77,12 +81,12 @@ describe('Telegram callback with the installed Auth.js implementation', () => {
     }));
     expect(response.headers.get('location')).toBe('https://app.example/en/dashboard');
     expect(response.headers.getSetCookie().some(c => c.startsWith('__Secure-authjs.session-token='))).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
-  it.each(['wrong-audience', 'expired', 'missing-pkce', 'wrong-state'] as const)('rejects %s before creating a session', async mode => {
+  it.each(['wrong-audience', 'expired', 'missing-pkce', 'wrong-state', 'invalid-signature'] as const)('rejects %s before creating a session', async mode => {
     const { response, signIn } = await runCallback(mode);
     expect(signIn).not.toHaveBeenCalled();
-    expect(response.headers.get('location')).toContain('error=');
+    expect(response.headers.get('location')).toContain(mode === 'invalid-signature' ? '/signin' : 'error=');
     expect(response.headers.getSetCookie().some(c => c.startsWith('__Secure-authjs.session-token='))).toBe(false);
   });
 });

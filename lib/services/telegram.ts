@@ -24,12 +24,33 @@ async function sendMessage(opts: TelegramSendOptions): Promise<void> {
   if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
 
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
-  const { data } = await axios.post<TelegramResponse>(url, {
-    chat_id: opts.chatId,
-    text: opts.text,
-    parse_mode: opts.parseMode ?? 'HTML',
-    disable_web_page_preview: true,
-  }, { timeout: 10000 });
+  let data: TelegramResponse;
+  try {
+    ({ data } = await axios.post<TelegramResponse>(
+      url,
+      {
+        chat_id: opts.chatId,
+        text: opts.text,
+        parse_mode: opts.parseMode ?? 'HTML',
+        disable_web_page_preview: true,
+      },
+      { timeout: 10000 },
+    ));
+  } catch (error) {
+    // Axios rejects Bot API 4xx/5xx before returning the body. Do not propagate
+    // request configuration (which contains the bot token) to API responses.
+    if (axios.isAxiosError(error)) {
+      const code = error.response?.status;
+      throw new TelegramError(
+        code === 403 || code === 400
+          ? 'Откройте бота, нажмите Старт и убедитесь, что он не заблокирован.'
+          : 'Telegram временно недоступен. Повторите попытку позже.',
+      );
+    }
+    throw new TelegramError(
+      'Telegram временно недоступен. Повторите попытку позже.',
+    );
+  }
 
   if (!data.ok) {
     throw new TelegramError(data.description ?? 'Telegram API вернул ошибку');
@@ -143,16 +164,24 @@ export interface WebhookInfo {
   last_error_message?: string;
 }
 
-export async function setWebhook(webhookUrl: string, secretToken: string): Promise<void> {
+export async function setWebhook(
+  webhookUrl: string,
+  secretToken: string,
+): Promise<void> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
 
   const { data } = await axios.post<TelegramResponse>(
     `https://api.telegram.org/bot${token}/setWebhook`,
-    { url: webhookUrl, secret_token: secretToken, allowed_updates: ['message'] },
+    {
+      url: webhookUrl,
+      secret_token: secretToken,
+      allowed_updates: ['message'],
+    },
     { timeout: 10000 },
   );
-  if (!data.ok) throw new TelegramError(data.description ?? 'setWebhook failed');
+  if (!data.ok)
+    throw new TelegramError(data.description ?? 'setWebhook failed');
 }
 
 export async function getWebhookInfo(): Promise<WebhookInfo> {
@@ -171,6 +200,9 @@ export async function getWebhookInfo(): Promise<WebhookInfo> {
 // Bot reply (used by webhook handler)
 // ─────────────────────────────────────────
 
-export async function replyToUpdate(chatId: number, text: string): Promise<void> {
+export async function replyToUpdate(
+  chatId: number,
+  text: string,
+): Promise<void> {
   await sendMessage({ chatId: String(chatId), text, parseMode: 'HTML' });
 }

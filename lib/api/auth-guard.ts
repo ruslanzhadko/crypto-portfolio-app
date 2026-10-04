@@ -16,7 +16,7 @@ export type GuardResult =
 
 export async function requireUser(): Promise<GuardResult> {
   const session = await auth();
-  if (!session?.user?.id) {
+  if (!session?.user?.id || session.user.sessionExpired) {
     return { ok: false, response: apiError('UNAUTHORIZED', 'Потрібна авторизація') };
   }
   // auth() refreshes role/block status from the database on each server request.

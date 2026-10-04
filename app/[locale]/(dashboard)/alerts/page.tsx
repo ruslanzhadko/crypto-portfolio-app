@@ -25,7 +25,7 @@ export default async function AlertsPage() {
     }),
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { telegramChatId: true },
+      select: { telegramChatId: true, telegramNotificationsEnabled: true },
     }),
   ]);
 
@@ -56,7 +56,7 @@ export default async function AlertsPage() {
         </Button>
       </div>
 
-      {!user?.telegramChatId && (
+      {(!user?.telegramChatId || !user.telegramNotificationsEnabled) && (
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="flex items-start gap-3 p-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />

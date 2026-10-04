@@ -4,7 +4,6 @@ import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { profileUpdateSchema } from '@/lib/utils/validators';
 import { publicEmail } from '@/lib/auth/public-email';
-import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +33,8 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    if (req.headers.get('origin') !== req.nextUrl.origin)
+      return apiError('FORBIDDEN', 'Invalid origin');
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
@@ -47,39 +48,13 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    const data: { name?: string | null; telegramChatId?: string | null } = {};
+    const data: { name?: string | null } = {};
     if (parsed.data.name !== undefined) data.name = parsed.data.name || null;
-    if (parsed.data.telegramChatId !== undefined) {
-      data.telegramChatId = parsed.data.telegramChatId
-        ? BigInt(parsed.data.telegramChatId).toString()
-        : null;
-    }
-
-    const user = await prisma.$transaction(
-      async (tx) => {
-        if (
-          data.telegramChatId &&
-          (await tx.user.findFirst({
-            where: {
-              telegramChatId: data.telegramChatId,
-              id: { not: guard.user.id },
-            },
-          }))
-        )
-          return null;
-        return tx.user.update({
-          where: { id: guard.user.id },
-          data,
-          select: { id: true, email: true, name: true, telegramChatId: true },
-        });
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-    );
-    if (!user)
-      return apiError(
-        'CONFLICT',
-        'Этот Telegram уже подключён к другому профилю для уведомлений. Используйте основной аккаунт.',
-      );
+    const user = await prisma.user.update({
+      where: { id: guard.user.id },
+      data,
+      select: { id: true, email: true, name: true, telegramChatId: true },
+    });
 
     return ok({ user: { ...user, email: publicEmail(user.email) } });
   } catch (err) {

@@ -7,9 +7,11 @@ declare module 'next-auth' {
       id: string;
       role: Role;
       isBlocked: boolean;
+      sessionExpired?: boolean;
     } & DefaultSession['user'];
   }
   interface User {
+    sessionVersion?: number;
     role: Role;
     isBlocked: boolean;
   }
@@ -17,6 +19,7 @@ declare module 'next-auth' {
 
 declare module '@auth/core/jwt' {
   interface JWT {
+    sessionVersion?: number;
     id: string;
     role: Role;
     isBlocked: boolean;
@@ -40,6 +43,7 @@ export const authConfig = {
         token.id = user.id as string;
         token.role = user.role;
         token.isBlocked = user.isBlocked;
+        token.sessionVersion = user.sessionVersion ?? 0;
       }
       return token;
     },
