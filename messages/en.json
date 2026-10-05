@@ -831,6 +831,7 @@
     "footerAuthor": "Author: <link>@ludoslan</link>",
     "footerRights": "All rights reserved.",
     "marketRefresh": "CoinGecko · refreshes every minute",
-    "marketUnavailable": "Price updates are temporarily unavailable. Displayed data may be outdated."
+    "marketUnavailable": "Price updates are temporarily unavailable. Displayed data may be outdated.",
+    "moreNetworksSoon": "More networks to come"
   }
 }

@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bell,
   Newspaper,
+  Plus,
   Radio,
   Search,
   ShieldCheck,
@@ -309,8 +310,8 @@ export default async function LandingPage({
               {t("networksSubtitle")}
             </p>
           </div>
-          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px overflow-hidden rounded-2xl bg-border ring-1 ring-border sm:grid-cols-5 lg:grid-cols-10">
-            {ALL_CHAINS.map((chain) => (
+          <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px overflow-hidden rounded-2xl bg-border ring-1 ring-border sm:grid-cols-4 lg:grid-cols-6">
+            {ALL_CHAINS.filter((chain) => !chain.chainName.startsWith("hypercore")).map((chain) => (
               <div
                 key={chain.chainName}
                 className="flex min-h-28 flex-col items-center justify-center gap-3 bg-surface p-4 text-center transition-colors duration-200 hover:bg-surface-2"
@@ -327,6 +328,12 @@ export default async function LandingPage({
                 </span>
               </div>
             ))}
+            <div className="flex min-h-28 flex-col items-center justify-center gap-3 bg-surface p-4 text-center">
+              <Plus aria-hidden="true" className="h-8 w-8 text-primary" />
+              <span className="text-xs font-semibold leading-tight text-text-muted">
+                {t("moreNetworksSoon")}
+              </span>
+            </div>
           </div>
         </ScrollReveal>
       </section>

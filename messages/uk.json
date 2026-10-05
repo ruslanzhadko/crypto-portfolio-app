@@ -831,6 +831,7 @@
     "footerAuthor": "Автор: <link>@ludoslan</link>",
     "footerRights": "Усі права захищені.",
     "marketRefresh": "CoinGecko · оновлення щохвилини",
-    "marketUnavailable": "Оновлення цін тимчасово недоступне. Показані дані можуть бути застарілими."
+    "marketUnavailable": "Оновлення цін тимчасово недоступне. Показані дані можуть бути застарілими.",
+    "moreNetworksSoon": "Більше мереж — попереду"
   }
 }
