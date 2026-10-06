@@ -1,40 +1,40 @@
-import NextAuth from 'next-auth';
-import Credentials from 'next-auth/providers/credentials';
-import Google from 'next-auth/providers/google';
-import { telegramProvider } from './telegram-provider';
-import { telegramLinkTarget } from './telegram-link';
+import NextAuth from "next-auth";
+import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import { telegramProvider } from "./telegram-provider";
+import { telegramLinkTarget } from "./telegram-link";
 import {
   resolveTelegramIdentity,
   TelegramIdentityConflict,
-} from './telegram-identity';
-import { publicEmail } from './public-email';
-import { resolveSocialUser, socialAvailability } from './social';
-import bcrypt from 'bcryptjs';
-import { prisma } from '@/lib/db/prisma';
-import { loginSchema } from '@/lib/utils/validators';
-import { authConfig } from './config';
-import { allowAuthAttempt, clientAddress } from './rate-limit';
-import { sessionIsExpired } from './session-policy';
+} from "./telegram-identity";
+import { publicEmail } from "./public-email";
+import { resolveSocialUser, socialAvailability } from "./social";
+import bcrypt from "bcryptjs";
+import { prisma } from "@/lib/db/prisma";
+import { loginSchema } from "@/lib/utils/validators";
+import { authConfig } from "./config";
+import { allowAuthAttempt, clientAddress } from "./rate-limit";
+import { sessionIsExpired } from "./session-policy";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
     async signIn({ user, account, profile }) {
-      if (account?.provider === 'credentials') return true;
-      if (!account || !['google', 'telegram'].includes(account.provider))
+      if (account?.provider === "credentials") return true;
+      if (!account || !["google", "telegram"].includes(account.provider))
         return false;
-      if (account.provider === 'google' && profile?.email_verified !== true)
+      if (account.provider === "google" && profile?.email_verified !== true)
         return false;
       let stored;
-      if (account.provider === 'telegram') {
+      if (account.provider === "telegram") {
         let target: string | undefined;
         try {
           target = await telegramLinkTarget();
           const telegramId =
-            typeof profile?.id === 'number' && Number.isSafeInteger(profile.id)
+            typeof profile?.id === "number" && Number.isSafeInteger(profile.id)
               ? String(profile.id)
-              : typeof profile?.id === 'string' && /^\d+$/.test(profile.id)
+              : typeof profile?.id === "string" && /^\d+$/.test(profile.id)
                 ? profile.id
                 : undefined;
           stored = await resolveTelegramIdentity(
@@ -45,11 +45,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             // OAuth omitting scope means the granted scope equals the requested
             // scope. An explicit reduced scope must not enable bot messages.
             account.scope === undefined ||
-              account.scope.split(/\s+/).includes('telegram:bot_access'),
+              account.scope.split(/\s+/).includes("telegram:bot_access"),
           );
         } catch (error) {
           if (error instanceof TelegramIdentityConflict)
-            return target || error.code === 'TelegramLinkExpired'
+            return target || error.code === "TelegramLinkExpired"
               ? `/settings?telegramError=${error.code}`
               : `/auth/error?error=${error.code}`;
           throw error;
@@ -86,7 +86,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       });
       session.user.id = current?.id ?? token.id;
-      session.user.email = publicEmail(current?.email) ?? '';
+      session.user.authenticatedAt = token.authenticatedAt;
+      session.user.email = publicEmail(current?.email) ?? "";
       session.user.name = current?.name ?? null;
       session.user.role = current?.role ?? token.role;
       session.user.isBlocked = current?.isBlocked ?? true;
@@ -94,7 +95,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         current,
         token.sessionVersion,
       );
-      if (session.user.sessionExpired) session.user.id = '';
+      if (session.user.sessionExpired) session.user.id = "";
       return session;
     },
   },
@@ -109,10 +110,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       : []),
     ...(socialAvailability().telegram ? [telegramProvider()] : []),
     Credentials({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials, request) {
         const parsed = loginSchema.safeParse(credentials);
@@ -121,7 +122,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { email, password } = parsed.data;
         if (
           !(await allowAuthAttempt(
-            'login',
+            "login",
             clientAddress(request.headers),
             email,
           ))

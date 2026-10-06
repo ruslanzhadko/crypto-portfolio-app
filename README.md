@@ -2,6 +2,13 @@
 
 Моніторинг крипто-портфеля: Next.js 14 (App Router), TypeScript, Prisma, NextAuth.js (Auth.js v5), Tailwind.
 
+## Біржові баланси та позиції
+
+Binance, Bybit і Hyperliquid: read-only підключення, спотові активи, equity та
+відкриті позиції, окремий worker і загальна історія капіталу. Функція вимкнена до
+налаштування міграції, секретів і пілотної перевірки. Інструкції, матриця підтримки,
+обмеження та перевірки перед production: [EXCHANGES.md](EXCHANGES.md).
+
 ## Криптострічка з Telegram
 
 Розділ `/feed` читає публічні канали через окремий Telegram-акаунт.
@@ -171,7 +178,6 @@ are hidden from the profile, session, account menu and admin displays. Accounts
 without a password do not show the password-change form. A notification Chat ID
 cannot be newly assigned to multiple profiles; legacy manually entered IDs are
 still notification destinations, not verified login identities.
-
 
 #### Unified Telegram settings and auth hardening
 

@@ -1,9 +1,23 @@
-import { Network } from '@prisma/client';
-import { prisma } from '@/lib/db/prisma';
-import { getChainDisplayName, getChainColor } from '@/lib/utils/networks';
-import { fetchMarketChart } from '@/lib/services/coingecko';
-import { computePortfolioValue, computeShare, computePnL, computePortfolio24hChange } from '@/lib/services/portfolio-math';
-import { getGroupedTokenName, getTokenGroupingKey } from '@/lib/utils/token-grouping';
+import { Network } from "@prisma/client";
+import { prisma } from "@/lib/db/prisma";
+import { getChainDisplayName, getChainColor } from "@/lib/utils/networks";
+import { fetchMarketChart } from "@/lib/services/coingecko";
+import {
+  computePortfolioValue,
+  computeShare,
+  computePnL,
+  computePortfolio24hChange,
+} from "@/lib/services/portfolio-math";
+import {
+  getGroupedTokenName,
+  getTokenGroupingKey,
+} from "@/lib/utils/token-grouping";
+import {
+  migratedWalletIds,
+  isMigratedHypercore,
+  saveCapitalSnapshot,
+} from "@/lib/exchanges/portfolio";
+import { exchangesEnabled } from "@/lib/exchanges/config";
 
 export interface WalletTokenBreakdown {
   walletId: string;
@@ -54,7 +68,10 @@ export interface PortfolioOverview {
   topMovers: AggregatedToken[];
 }
 
-export async function getPortfolioOverview(userId: string): Promise<PortfolioOverview> {
+export async function getPortfolioOverview(
+  userId: string,
+): Promise<PortfolioOverview> {
+  const migrated = await migratedWalletIds(userId);
   const wallets = await prisma.wallet.findMany({
     where: { userId },
     include: {
@@ -68,7 +85,10 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
   const priceCache = new Map<string, { price: number; change24h: number }>();
   const cachedPrices = await prisma.tokenPrice.findMany();
   for (const p of cachedPrices) {
-    priceCache.set(p.tokenId, { price: p.currentPrice, change24h: p.priceChange24h });
+    priceCache.set(p.tokenId, {
+      price: p.currentPrice,
+      change24h: p.priceChange24h,
+    });
   }
 
   const tokenMap = new Map<string, AggregatedToken>();
@@ -81,6 +101,7 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
 
   for (const w of wallets) {
     for (const b of w.balances) {
+      if (isMigratedHypercore(w.id, b.chainName, migrated)) continue;
       const key = getTokenGroupingKey(b);
       const cached = b.coingeckoId ? priceCache.get(b.coingeckoId) : undefined;
 
@@ -94,7 +115,7 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
             ? cached.price
             : fallbackPriceFromUsd;
       const rawChange =
-        b.priceChange24h !== 0 ? b.priceChange24h : cached?.change24h ?? 0;
+        b.priceChange24h !== 0 ? b.priceChange24h : (cached?.change24h ?? 0);
       const effectiveChange = Number.isFinite(rawChange) ? rawChange : 0;
 
       const existing = tokenMap.get(key);
@@ -150,7 +171,9 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
 
       // USD-зважена 24г-зміна; ціна не може впасти більш ніж на 100% — клампуємо брудні дані
       const clampedChange =
-        effectiveChange !== 0 ? Math.max(-99.9, Math.min(effectiveChange, 10_000)) : 0;
+        effectiveChange !== 0
+          ? Math.max(-99.9, Math.min(effectiveChange, 10_000))
+          : 0;
       if (clampedChange !== 0 && b.usdValue > 0) {
         const acc = changeAcc.get(key) ?? { weighted: 0, weight: 0 };
         changeAcc.set(key, {
@@ -170,7 +193,9 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     }
   }
 
-  const totalUsd = computePortfolioValue(Array.from(tokenMap.values()).map((t) => t.totalUsd));
+  const totalUsd = computePortfolioValue(
+    Array.from(tokenMap.values()).map((t) => t.totalUsd),
+  );
 
   for (const t of tokenMap.values()) {
     t.share = computeShare(t.totalUsd, totalUsd);
@@ -189,7 +214,9 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     }
   }
 
-  const tokens = Array.from(tokenMap.values()).sort((a, b) => b.totalUsd - a.totalUsd);
+  const tokens = Array.from(tokenMap.values()).sort(
+    (a, b) => b.totalUsd - a.totalUsd,
+  );
 
   const chains: ChainAllocation[] = Array.from(chainUsd.entries())
     .map(([chainName, { total, tokenCount }]) => ({
@@ -203,9 +230,12 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
     .sort((a, b) => b.totalUsd - a.totalUsd);
 
   const { absolute: priceChange24hUsd, percent: priceChange24h } =
-    computePortfolio24hChange(tokens.map((t) => ({
-      usdValue: t.totalUsd, priceChange24h: t.priceChange24h,
-    })));
+    computePortfolio24hChange(
+      tokens.map((t) => ({
+        usdValue: t.totalUsd,
+        priceChange24h: t.priceChange24h,
+      })),
+    );
 
   const topMovers = [...tokens]
     .filter((t) => Number.isFinite(t.priceChange24h) && t.priceChange24h !== 0)
@@ -225,7 +255,9 @@ export async function getPortfolioOverview(userId: string): Promise<PortfolioOve
 }
 
 /** Spam balances for the dashboard inspector; never included in portfolio totals. */
-export async function getDashboardSpamTokens(userId: string): Promise<AggregatedToken[]> {
+export async function getDashboardSpamTokens(
+  userId: string,
+): Promise<AggregatedToken[]> {
   const wallets = await prisma.wallet.findMany({
     where: { userId },
     include: { balances: { where: { isSpam: true, isHidden: false } } },
@@ -250,8 +282,10 @@ export async function getDashboardSpamTokens(userId: string): Promise<Aggregated
         existing.totalBalance += balance.balance;
         existing.totalUsd += balance.usdValue;
         existing.wallets.push(breakdown);
-        if (!existing.chains.includes(balance.chainName)) existing.chains.push(balance.chainName);
-        if (!existing.walletIds.includes(wallet.id)) existing.walletIds.push(wallet.id);
+        if (!existing.chains.includes(balance.chainName))
+          existing.chains.push(balance.chainName);
+        if (!existing.walletIds.includes(wallet.id))
+          existing.walletIds.push(wallet.id);
       } else {
         grouped.set(key, {
           key,
@@ -274,11 +308,14 @@ export async function getDashboardSpamTokens(userId: string): Promise<Aggregated
     }
   }
 
-  return Array.from(grouped.values()).map((token) => {
-    token.wallets.sort((a, b) => b.usdValue - a.usdValue);
-    for (const wallet of token.wallets) wallet.share = computeShare(wallet.usdValue, token.totalUsd);
-    return token;
-  }).sort((a, b) => b.totalUsd - a.totalUsd);
+  return Array.from(grouped.values())
+    .map((token) => {
+      token.wallets.sort((a, b) => b.usdValue - a.usdValue);
+      for (const wallet of token.wallets)
+        wallet.share = computeShare(wallet.usdValue, token.totalUsd);
+      return token;
+    })
+    .sort((a, b) => b.totalUsd - a.totalUsd);
 }
 
 // ─────────────────────────────────────────
@@ -293,17 +330,20 @@ export interface PnLResult {
   periodDays: number;
 }
 
-export async function getPortfolioPnL(userId: string, periodDays = 30): Promise<PnLResult> {
+export async function getPortfolioPnL(
+  userId: string,
+  periodDays = 30,
+): Promise<PnLResult> {
   const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
 
   const [latest, earliest] = await Promise.all([
     prisma.portfolioSnapshot.findFirst({
       where: { userId },
-      orderBy: { timestamp: 'desc' },
+      orderBy: { timestamp: "desc" },
     }),
     prisma.portfolioSnapshot.findFirst({
       where: { userId, timestamp: { gte: since } },
-      orderBy: { timestamp: 'asc' },
+      orderBy: { timestamp: "asc" },
     }),
   ]);
 
@@ -325,7 +365,7 @@ export interface SnapshotPoint {
 
 export interface SnapshotsResponse {
   points: SnapshotPoint[];
-  source: 'snapshots' | 'reconstructed' | 'mixed' | 'empty';
+  source: "snapshots" | "reconstructed" | "mixed" | "empty";
 }
 
 /**
@@ -340,34 +380,38 @@ export async function getPortfolioSnapshots(
   const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
   const snapshots = await prisma.portfolioSnapshot.findMany({
     where: { userId, timestamp: { gte: since } },
-    orderBy: { timestamp: 'asc' },
+    orderBy: { timestamp: "asc" },
   });
 
   // Якщо snapshot'ів вистачає (>= 3 точок або період < 1 дня) — повертаємо їх
-  if (snapshots.length >= 3 || (periodDays < 1 && snapshots.length > 0)) {
+  if (
+    exchangesEnabled(userId) ||
+    snapshots.length >= 3 ||
+    (periodDays < 1 && snapshots.length > 0)
+  ) {
     return {
       points: snapshots.map((s) => ({
         timestamp: s.timestamp.getTime(),
         totalUsd: s.totalUsd,
       })),
-      source: 'snapshots',
+      source: "snapshots",
     };
   }
 
   // Інакше — реконструюємо з CoinGecko
   const reconstructed = await reconstructPortfolioHistory(userId, periodDays);
   if (reconstructed.length === 0 && snapshots.length === 0) {
-    return { points: [], source: 'empty' };
+    return { points: [], source: "empty" };
   }
   if (snapshots.length === 0) {
-    return { points: reconstructed, source: 'reconstructed' };
+    return { points: reconstructed, source: "reconstructed" };
   }
   // Mixed: snapshot'и важливіші, доповнюємо реконструкцією
   const snapPoints = snapshots.map((s) => ({
     timestamp: s.timestamp.getTime(),
     totalUsd: s.totalUsd,
   }));
-  return { points: mergePoints(reconstructed, snapPoints), source: 'mixed' };
+  return { points: mergePoints(reconstructed, snapPoints), source: "mixed" };
 }
 
 // ─────────────────────────────────────────
@@ -440,7 +484,11 @@ async function reconstructPortfolioHistory(
     const bucketSize = periodDays <= 1 ? 60 * 60_000 : 24 * 60 * 60_000;
     const startMs = Date.now() - periodDays * 24 * 60 * 60 * 1000;
     const points: SnapshotPoint[] = [];
-    for (let t = Math.ceil(startMs / bucketSize) * bucketSize; t <= Date.now(); t += bucketSize) {
+    for (
+      let t = Math.ceil(startMs / bucketSize) * bucketSize;
+      t <= Date.now();
+      t += bucketSize
+    ) {
       points.push({ timestamp: t, totalUsd: unknownTotal });
     }
     RECONSTRUCTION_CACHE.set(cacheKey, { fetchedAt: Date.now(), points });
@@ -463,7 +511,7 @@ async function reconstructPortfolioHistory(
   for (let i = 0; i < topTokens.length; i++) {
     const entry = topTokens[i];
     const r = charts[i];
-    if (!entry || !r || r.status !== 'fulfilled') continue;
+    if (!entry || !r || r.status !== "fulfilled") continue;
     const [, { balance }] = entry;
 
     // Forward-fill всередині chart'а: запам'ятовуємо останню ціну, бо CoinGecko
@@ -482,7 +530,10 @@ async function reconstructPortfolioHistory(
   if (bucketSum.size === 0) {
     // Всі market_chart запити провалились (rate limit / no data) — будуємо плоский ряд
     // з поточною вартістю всього портфеля (coingecko + unknown токени)
-    const knownTotal = Array.from(aggregated.values()).reduce((s, t) => s + t.usdValue, 0);
+    const knownTotal = Array.from(aggregated.values()).reduce(
+      (s, t) => s + t.usdValue,
+      0,
+    );
     const flatTotal = knownTotal + unknownTotal;
     if (flatTotal > 0) {
       const bs = periodDays <= 1 ? 60 * 60_000 : 24 * 60 * 60_000;
@@ -516,13 +567,25 @@ function mergePoints(a: SnapshotPoint[], b: SnapshotPoint[]): SnapshotPoint[] {
 }
 
 export async function savePortfolioSnapshot(userId: string): Promise<void> {
+  const migrated = await migratedWalletIds(userId);
+  if (migrated.length) {
+    // Legacy history keeps its original composition; never append post-migration totals to it.
+    await saveCapitalSnapshot(userId);
+    return;
+  }
   const wallets = await prisma.wallet.findMany({
     where: { userId },
-    include: { balances: { where: { isSpam: false, isHidden: false }, select: { usdValue: true } } },
+    include: {
+      balances: {
+        where: { isSpam: false, isHidden: false },
+        select: { usdValue: true },
+      },
+    },
   });
   const totalUsd = wallets.reduce(
     (sum, w) => sum + w.balances.reduce((s, b) => s + b.usdValue, 0),
     0,
   );
   await prisma.portfolioSnapshot.create({ data: { userId, totalUsd } });
+  await saveCapitalSnapshot(userId);
 }

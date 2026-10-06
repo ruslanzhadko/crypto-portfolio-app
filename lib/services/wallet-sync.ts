@@ -1,14 +1,26 @@
-import { Network } from '@prisma/client';
-import axios from 'axios';
-import { prisma } from '@/lib/db/prisma';
-import { MIN_TOKEN_USD, type NormalizedToken } from '@/lib/services/token-types';
-import { fetchSolanaBalances } from '@/lib/services/helius';
-import { fetchEVMBalancesFromAnkr } from '@/lib/services/ankr';
-import { fetchRobinhoodBalances } from '@/lib/services/robinhood';
-import { fetchHyperCoreBalances, fetchHyperEvmBalances } from '@/lib/services/hyperliquid';
-import { fetchCoinGeckoContractIds, fetchPricesByIds, searchCoins, type SimplePriceItem } from '@/lib/services/coingecko';
-import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
-import { getChainInfo } from '@/lib/utils/networks';
+import { Network } from "@prisma/client";
+import axios from "axios";
+import { prisma } from "@/lib/db/prisma";
+import {
+  MIN_TOKEN_USD,
+  type NormalizedToken,
+} from "@/lib/services/token-types";
+import { fetchSolanaBalances } from "@/lib/services/helius";
+import { fetchEVMBalancesFromAnkr } from "@/lib/services/ankr";
+import { fetchRobinhoodBalances } from "@/lib/services/robinhood";
+import {
+  fetchHyperCoreBalances,
+  fetchHyperEvmBalances,
+} from "@/lib/services/hyperliquid";
+import {
+  fetchCoinGeckoContractIds,
+  fetchPricesByIds,
+  searchCoins,
+  type SimplePriceItem,
+} from "@/lib/services/coingecko";
+import { fetchPrices, type PriceQuery } from "@/lib/services/price-feed";
+import { getChainInfo } from "@/lib/utils/networks";
+import { exchangesEnabled, HYPERCORE_CHAINS } from "@/lib/exchanges/config";
 
 export interface SyncResult {
   unavailableChains?: string[];
@@ -21,7 +33,11 @@ export interface SyncResult {
 }
 
 // Ключ для ідентифікації токена незалежно від id запису в БД
-function tokenKey(chainName: string, tokenAddress: string, tokenSymbol: string): string {
+function tokenKey(
+  chainName: string,
+  tokenAddress: string,
+  tokenSymbol: string,
+): string {
   return `${chainName}::${tokenAddress}::${tokenSymbol.toLowerCase()}`;
 }
 
@@ -33,23 +49,26 @@ function shouldMarkSpam(token: NormalizedToken): boolean {
 
 function upstreamFailure(error: unknown): string {
   if (axios.isAxiosError(error)) {
-    return `HTTP ${error.response?.status ?? 'no response'} (${error.code ?? 'unknown'})`;
+    return `HTTP ${error.response?.status ?? "no response"} (${error.code ?? "unknown"})`;
   }
-  if (error instanceof Error && error.message === 'ETHERSCAN_API_KEY is not configured') {
-    return 'ETHERSCAN_API_KEY is not configured';
+  if (
+    error instanceof Error &&
+    error.message === "ETHERSCAN_API_KEY is not configured"
+  ) {
+    return "ETHERSCAN_API_KEY is not configured";
   }
-  if (error instanceof Error && error.message.startsWith('Etherscan ')) {
-    return 'Etherscan API rejected the request';
+  if (error instanceof Error && error.message.startsWith("Etherscan ")) {
+    return "Etherscan API rejected the request";
   }
-  return error instanceof Error ? error.name : 'unknown error';
+  return error instanceof Error ? error.name : "unknown error";
 }
 
 export async function syncWallet(walletId: string): Promise<SyncResult> {
   const wallet = await prisma.wallet.findUnique({
     where: { id: walletId },
-    select: { id: true, address: true, network: true },
+    select: { id: true, address: true, network: true, userId: true },
   });
-  if (!wallet) throw new Error('Гаманець не знайдено');
+  if (!wallet) throw new Error("Гаманець не знайдено");
 
   // Транзакції більше не синхронізуються в БД — підтягуються live з Ankr при перегляді.
   const isEvm = wallet.network === Network.EVM;
@@ -57,30 +76,53 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     ? await fetchEVMBalancesFromAnkr(wallet.address)
     : await fetchSolanaBalances(wallet.address);
   if (isEvm) {
+    const exchangeManaged =
+      exchangesEnabled(wallet.userId) &&
+      !!(await prisma.exchangeConnection.findFirst({
+        where: { walletId, hyperCoreMigratedAt: { not: null } },
+        select: { id: true },
+      }));
     const results = await Promise.allSettled([
       fetchRobinhoodBalances(wallet.address),
       fetchHyperEvmBalances(wallet.address),
-      fetchHyperCoreBalances(wallet.address),
+      exchangeManaged
+        ? Promise.resolve([])
+        : fetchHyperCoreBalances(wallet.address),
     ]);
-    for (const result of results) if (result.status === 'fulfilled') tokens.push(...result.value);
-    const robinhoodSynced = results[0]?.status === 'fulfilled';
-    if (!robinhoodSynced) console.warn('[wallet-sync] Robinhood unavailable; keeping its previous balances');
-    if (results[1]?.status === 'rejected') {
-      console.warn(`[wallet-sync] HyperEVM unavailable (${upstreamFailure(results[1].reason)}); keeping its previous balances`);
+    for (const result of results)
+      if (result.status === "fulfilled") tokens.push(...result.value);
+    const robinhoodSynced = results[0]?.status === "fulfilled";
+    if (!robinhoodSynced)
+      console.warn(
+        "[wallet-sync] Robinhood unavailable; keeping its previous balances",
+      );
+    if (results[1]?.status === "rejected") {
+      console.warn(
+        `[wallet-sync] HyperEVM unavailable (${upstreamFailure(results[1].reason)}); keeping its previous balances`,
+      );
     }
-    if (results[2]?.status === 'rejected') console.warn('[wallet-sync] HyperCore unavailable; keeping its previous balances');
+    if (results[2]?.status === "rejected")
+      console.warn(
+        "[wallet-sync] HyperCore unavailable; keeping its previous balances",
+      );
     const unavailableChains = [
-      ...(!robinhoodSynced ? ['robinhood'] : []),
-      ...(results[1]?.status === 'rejected' ? ['hyperevm'] : []),
-      ...(results[2]?.status === 'rejected' ? ['hypercore', 'hypercore-perps'] : []),
+      ...(exchangeManaged ? HYPERCORE_CHAINS : []),
+      ...(!robinhoodSynced ? ["robinhood"] : []),
+      ...(results[1]?.status === "rejected" ? ["hyperevm"] : []),
+      ...(results[2]?.status === "rejected"
+        ? ["hypercore", "hypercore-perps"]
+        : []),
     ];
     return saveBalances(walletId, tokens, unavailableChains);
   }
   return saveBalances(walletId, tokens, []);
 }
 
-async function saveBalances(walletId: string, tokens: NormalizedToken[], unavailableChains: string[]): Promise<SyncResult> {
-
+async function saveBalances(
+  walletId: string,
+  tokens: NormalizedToken[],
+  unavailableChains: string[],
+): Promise<SyncResult> {
   const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
 
@@ -91,18 +133,47 @@ async function saveBalances(walletId: string, tokens: NormalizedToken[], unavail
   // Зберігаємо isHidden/isSpam перед видаленням — щоб відновити після sync
   const prevTokens = await prisma.tokenBalance.findMany({
     where: { walletId },
-    select: { chainName: true, tokenAddress: true, tokenSymbol: true, isHidden: true },
+    select: {
+      chainName: true,
+      tokenAddress: true,
+      tokenSymbol: true,
+      isHidden: true,
+    },
   });
   const prevHidden = new Map<string, boolean>();
   for (const t of prevTokens) {
     if (t.isHidden) {
-      prevHidden.set(tokenKey(t.chainName, t.tokenAddress, t.tokenSymbol), true);
+      prevHidden.set(
+        tokenKey(t.chainName, t.tokenAddress, t.tokenSymbol),
+        true,
+      );
     }
   }
 
   await prisma.$transaction(async (tx) => {
+    // Fence a wallet sync started before the worker's HyperCore cutover.
+    if (process.env.EXCHANGES_ENABLED === "true") {
+      await tx.$queryRaw`SELECT id FROM "ExchangeConnection" WHERE "walletId" = ${walletId} FOR UPDATE`;
+      const migrated = await tx.exchangeConnection.findFirst({
+        where: { walletId, hyperCoreMigratedAt: { not: null } },
+        select: { id: true },
+      });
+      if (migrated) {
+        unavailableChains = [
+          ...new Set([...unavailableChains, ...HYPERCORE_CHAINS]),
+        ];
+        for (let i = toSave.length - 1; i >= 0; i--)
+          if (HYPERCORE_CHAINS.includes(toSave[i]!.chainName))
+            toSave.splice(i, 1);
+      }
+    }
     await tx.tokenBalance.deleteMany({
-      where: { walletId, ...(unavailableChains.length ? { chainName: { notIn: unavailableChains } } : {}) },
+      where: {
+        walletId,
+        ...(unavailableChains.length
+          ? { chainName: { notIn: unavailableChains } }
+          : {}),
+      },
     });
 
     if (toSave.length > 0) {
@@ -170,17 +241,23 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
   // Ankr повертає priceUsd/usdValue, але не priceChange24h.
   // Включаємо всі токени з priceChange24h === 0 щоб DexScreener/Binance їх збагатив.
   const needPricing = tokens.filter(
-    (t) => t.priceUsd === 0 || t.usdValue === 0 || t.priceChange24h === 0 || !t.logoUrl,
+    (t) =>
+      t.priceUsd === 0 ||
+      t.usdValue === 0 ||
+      t.priceChange24h === 0 ||
+      !t.logoUrl,
   );
   if (needPricing.length === 0) return;
 
   // ── 1. price-feed (Binance + DexScreener) ──
-  const queries: PriceQuery[] = needPricing.filter((t) => !t.chainName.startsWith('hypercore')).map((t) => ({
-    key: priceFeedKey(t),
-    isNative: t.isNative,
-    chainName: t.chainName,
-    contractAddress: t.isNative ? undefined : t.address || undefined,
-  }));
+  const queries: PriceQuery[] = needPricing
+    .filter((t) => !t.chainName.startsWith("hypercore"))
+    .map((t) => ({
+      key: priceFeedKey(t),
+      isNative: t.isNative,
+      chainName: t.chainName,
+      contractAddress: t.isNative ? undefined : t.address || undefined,
+    }));
   const feedPrices = await fetchPrices(queries).catch(() => new Map());
 
   for (const t of needPricing) {
@@ -224,30 +301,31 @@ async function enrichMissingPrices(tokens: EnrichedToken[]): Promise<void> {
 }
 
 // Persists CoinGecko prices to TokenPrice cache so the cron and market pages can reuse them.
-async function saveCoinGeckoPricesToCache(prices: Map<string, SimplePriceItem>): Promise<void> {
+async function saveCoinGeckoPricesToCache(
+  prices: Map<string, SimplePriceItem>,
+): Promise<void> {
   await Promise.allSettled(
     Array.from(prices.values()).map((p) =>
-      prisma.tokenPrice
-        .upsert({
-          where: { tokenId: p.id },
-          create: {
-            tokenId: p.id,
-            symbol: p.symbol ?? p.id,
-            name: p.name ?? p.id,
-            currentPrice: p.price,
-            priceChange24h: p.change24h,
-            marketCap: p.marketCap ?? null,
-            volume24h: p.volume24h ?? null,
-            logoUrl: p.image ?? null,
-          },
-          update: {
-            currentPrice: p.price,
-            priceChange24h: p.change24h,
-            marketCap: p.marketCap ?? null,
-            volume24h: p.volume24h ?? null,
-            ...(p.image ? { logoUrl: p.image } : {}),
-          },
-        }),
+      prisma.tokenPrice.upsert({
+        where: { tokenId: p.id },
+        create: {
+          tokenId: p.id,
+          symbol: p.symbol ?? p.id,
+          name: p.name ?? p.id,
+          currentPrice: p.price,
+          priceChange24h: p.change24h,
+          marketCap: p.marketCap ?? null,
+          volume24h: p.volume24h ?? null,
+          logoUrl: p.image ?? null,
+        },
+        update: {
+          currentPrice: p.price,
+          priceChange24h: p.change24h,
+          marketCap: p.marketCap ?? null,
+          volume24h: p.volume24h ?? null,
+          ...(p.image ? { logoUrl: p.image } : {}),
+        },
+      }),
     ),
   );
 }
@@ -258,18 +336,27 @@ async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
   // Solana metadata comes from Helius by mint. A CoinGecko symbol search is unsafe:
   // unrelated tokens frequently share the same ticker (for example CATE).
   const needLogo = tokens.filter(
-    (t) => !t.logoUrl && !t.coingeckoId && !t.isNative &&
-      t.chainName !== 'robinhood' && t.chainName !== 'solana' && !t.address,
+    (t) =>
+      !t.logoUrl &&
+      !t.coingeckoId &&
+      !t.isNative &&
+      t.chainName !== "robinhood" &&
+      t.chainName !== "solana" &&
+      !t.address,
   );
   if (needLogo.length === 0) return;
 
   // Дедуплікація за символом — один символ може бути на кількох ланцюгах
   const bySymbol = new Map<string, EnrichedToken>();
   for (const t of needLogo) {
-    if (!bySymbol.has(t.symbol.toLowerCase())) bySymbol.set(t.symbol.toLowerCase(), t);
+    if (!bySymbol.has(t.symbol.toLowerCase()))
+      bySymbol.set(t.symbol.toLowerCase(), t);
   }
 
-  const found = new Map<string, { id: string; symbol: string; name: string; thumb: string }>();
+  const found = new Map<
+    string,
+    { id: string; symbol: string; name: string; thumb: string }
+  >();
 
   // Батчами по 3, щоб не перевантажити CoinGecko (30 req/хв на demo ключі)
   const entries = Array.from(bySymbol.entries());
@@ -331,7 +418,7 @@ async function enrichMissingLogos(tokens: EnrichedToken[]): Promise<void> {
 }
 
 function priceFeedKey(t: EnrichedToken): string {
-  return `${t.chainName}::${t.isNative ? 'native' : t.address}::${t.symbol.toLowerCase()}`;
+  return `${t.chainName}::${t.isNative ? "native" : t.address}::${t.symbol.toLowerCase()}`;
 }
 
 function applyPriceToToken(
@@ -342,7 +429,7 @@ function applyPriceToToken(
 ): void {
   // For Solana, DexScreener's CDN is generally more browser-friendly than
   // arbitrary metadata origins (many block hotlinking or expire).
-  if (logoUrl && (!t.logoUrl || t.chainName === 'solana')) t.logoUrl = logoUrl;
+  if (logoUrl && (!t.logoUrl || t.chainName === "solana")) t.logoUrl = logoUrl;
   if (!Number.isFinite(price) || price <= 0) return;
   if (t.priceUsd === 0) t.priceUsd = price;
   if (t.priceChange24h === 0 && Number.isFinite(change24h)) {
@@ -364,17 +451,31 @@ async function applyCachedPrices(
 ): Promise<EnrichedToken[]> {
   if (tokens.length === 0) return [];
 
-  const contractIds = tokens.some((t) => !t.isNative && t.address && t.chainName !== 'solana' && !t.chainName.startsWith('hypercore'))
+  const contractIds = tokens.some(
+    (t) =>
+      !t.isNative &&
+      t.address &&
+      t.chainName !== "solana" &&
+      !t.chainName.startsWith("hypercore"),
+  )
     ? await fetchCoinGeckoContractIds().catch(() => new Map<string, string>())
     : new Map<string, string>();
 
-  const symbols = Array.from(new Set(tokens.map((t) => t.symbol.toLowerCase())));
+  const symbols = Array.from(
+    new Set(tokens.map((t) => t.symbol.toLowerCase())),
+  );
   const cached = await prisma.tokenPrice.findMany({
-    where: { symbol: { in: symbols, mode: 'insensitive' } },
+    where: { symbol: { in: symbols, mode: "insensitive" } },
   });
 
-  const priceBySymbol = new Map<string, { price: number; change24h: number; id: string; logoUrl: string | null }>();
-  const priceById = new Map<string, { price: number; change24h: number; id: string; logoUrl: string | null }>();
+  const priceBySymbol = new Map<
+    string,
+    { price: number; change24h: number; id: string; logoUrl: string | null }
+  >();
+  const priceById = new Map<
+    string,
+    { price: number; change24h: number; id: string; logoUrl: string | null }
+  >();
   for (const p of cached) {
     const value = {
       price: p.currentPrice,
@@ -390,11 +491,17 @@ async function applyCachedPrices(
   }
 
   return tokens.map((t): EnrichedToken => {
-    const verifiedId = t.coingeckoId ??
-      (t.address ? contractIds.get(`${t.chainName}:${t.address.toLowerCase()}`) : undefined) ?? null;
+    const verifiedId =
+      t.coingeckoId ??
+      (t.address
+        ? contractIds.get(`${t.chainName}:${t.address.toLowerCase()}`)
+        : undefined) ??
+      null;
     const fromCache = verifiedId
       ? priceById.get(verifiedId)
-      : t.isNative ? priceBySymbol.get(t.symbol.toLowerCase()) : undefined;
+      : t.isNative
+        ? priceBySymbol.get(t.symbol.toLowerCase())
+        : undefined;
     let coingeckoId: string | null = verifiedId;
     let usdValue = t.usdValue;
     let priceUsd = t.priceUsd;
@@ -405,13 +512,14 @@ async function applyCachedPrices(
       const chainInfo = getChainInfo(t.chainName);
       coingeckoId = chainInfo?.coingeckoNativeId ?? null;
       // Нативний токен — логотип з ChainInfo (Trust Wallet CDN) якщо не прийшов від API
-      if (!logoUrl && chainInfo?.nativeLogoUrl) logoUrl = chainInfo.nativeLogoUrl;
+      if (!logoUrl && chainInfo?.nativeLogoUrl)
+        logoUrl = chainInfo.nativeLogoUrl;
       if (fromCache) {
         if (priceUsd === 0) priceUsd = fromCache.price;
         if (priceChange24h === 0) priceChange24h = fromCache.change24h;
         if (usdValue === 0) usdValue = t.balance * fromCache.price;
       }
-    } else if (fromCache && t.chainName !== 'robinhood') {
+    } else if (fromCache && t.chainName !== "robinhood") {
       // Contract assets only use a provider-verified ID, never a ticker match.
       if (priceUsd === 0) priceUsd = fromCache.price;
       if (priceChange24h === 0) priceChange24h = fromCache.change24h;

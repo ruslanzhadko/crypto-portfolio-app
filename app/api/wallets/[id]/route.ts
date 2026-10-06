@@ -1,8 +1,9 @@
-import { prisma } from '@/lib/db/prisma';
-import { requireUser } from '@/lib/api/auth-guard';
-import { apiError, handleUnknown, noContent, ok } from '@/lib/api/response';
+import { prisma } from "@/lib/db/prisma";
+import { exchangesEnabled } from "@/lib/exchanges/config";
+import { requireUser } from "@/lib/api/auth-guard";
+import { apiError, handleUnknown, noContent, ok } from "@/lib/api/response";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
@@ -17,11 +18,11 @@ export async function GET(
       include: {
         // Повертаємо ВСІ балансу (UI сам вирішить що показати), але totalUsd
         // рахуємо лише з видимих — щоб число у заголовку було чесним
-        balances: { orderBy: { usdValue: 'desc' } },
+        balances: { orderBy: { usdValue: "desc" } },
         _count: { select: { transactions: true } },
       },
     });
-    if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
+    if (!wallet) return apiError("NOT_FOUND", "Гаманець не знайдено");
 
     const totalUsd = wallet.balances
       .filter((b) => !b.isSpam && !b.isHidden)
@@ -44,9 +45,39 @@ export async function DELETE(
       where: { id: params.id, userId: guard.user.id },
       select: { id: true },
     });
-    if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
+    if (!wallet) return apiError("NOT_FOUND", "Гаманець не знайдено");
 
-    await prisma.wallet.delete({ where: { id: wallet.id } });
+    await prisma.$transaction(async (tx) => {
+      if (exchangesEnabled(guard.user.id)) {
+        const connections = await tx.exchangeConnection.findMany({
+          where: { walletId: wallet.id, userId: guard.user.id },
+        });
+        for (const connection of connections) {
+          await tx.$queryRaw`SELECT id FROM "ExchangeConnection" WHERE id = ${connection.id} FOR UPDATE`;
+          await tx.exchangeConnection.update({
+            where: { id: connection.id },
+            data: {
+              status: "DISCONNECTED",
+              credentials: null,
+              credentialVersion: { increment: 1 },
+            },
+          });
+          await tx.exchangeSyncJob.deleteMany({
+            where: { connectionId: connection.id },
+          });
+          if (connection.status !== "DISCONNECTED")
+            await tx.capitalEvent.create({
+              data: {
+                userId: guard.user.id,
+                sourceId: connection.id,
+                label: connection.label,
+                kind: "DISCONNECTED",
+              },
+            });
+        }
+      }
+      await tx.wallet.delete({ where: { id: wallet.id } });
+    });
     return noContent();
   } catch (err) {
     return handleUnknown(err);

@@ -1,14 +1,15 @@
-import type { NextAuthConfig, DefaultSession } from 'next-auth';
-import type { Role } from '@prisma/client';
+import type { NextAuthConfig, DefaultSession } from "next-auth";
+import type { Role } from "@prisma/client";
 
-declare module 'next-auth' {
+declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       role: Role;
       isBlocked: boolean;
       sessionExpired?: boolean;
-    } & DefaultSession['user'];
+      authenticatedAt?: number;
+    } & DefaultSession["user"];
   }
   interface User {
     sessionVersion?: number;
@@ -17,8 +18,9 @@ declare module 'next-auth' {
   }
 }
 
-declare module '@auth/core/jwt' {
+declare module "@auth/core/jwt" {
   interface JWT {
+    authenticatedAt?: number;
     sessionVersion?: number;
     id: string;
     role: Role;
@@ -31,15 +33,16 @@ declare module '@auth/core/jwt' {
  * Used by middleware. Full config (with providers) lives in `lib/auth/index.ts`.
  */
 export const authConfig = {
-  session: { strategy: 'jwt' },
+  session: { strategy: "jwt" },
   pages: {
-    signIn: '/auth/login',
-    error: '/auth/error',
+    signIn: "/auth/login",
+    error: "/auth/error",
   },
   providers: [],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.authenticatedAt = Date.now();
         token.id = user.id as string;
         token.role = user.role;
         token.isBlocked = user.isBlocked;
@@ -52,22 +55,23 @@ export const authConfig = {
         session.user.id = token.id;
         session.user.role = token.role;
         session.user.isBlocked = token.isBlocked;
+        session.user.authenticatedAt = token.authenticatedAt;
       }
       return session;
     },
     authorized({ auth, request }) {
       const { pathname } = request.nextUrl;
       // Strip locale prefix so /uk/auth/login and /ru/auth/login are treated correctly
-      const path = pathname.replace(/^\/(en|uk|ru)(\/|$)/, '/') || '/';
-      const isAuthPath = path.startsWith('/auth');
+      const path = pathname.replace(/^\/(en|uk|ru)(\/|$)/, "/") || "/";
+      const isAuthPath = path.startsWith("/auth");
       const isPublic =
-        path === '/' ||
-        pathname.startsWith('/api/auth') ||
-        pathname.startsWith('/api/health') ||
-        pathname.startsWith('/api/cron') ||
-        pathname === '/api/telegram/webhook' ||
-        pathname.startsWith('/_next') ||
-        pathname.startsWith('/icons') ||
+        path === "/" ||
+        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/api/health") ||
+        pathname.startsWith("/api/cron") ||
+        pathname === "/api/telegram/webhook" ||
+        pathname.startsWith("/_next") ||
+        pathname.startsWith("/icons") ||
         isAuthPath;
 
       if (isPublic) return true;

@@ -42,6 +42,9 @@ model User {
   accounts      Account[]
   sessions      Session[]
   snapshots     PortfolioSnapshot[]
+  exchangeConnections ExchangeConnection[]
+  capitalSnapshots PortfolioCapitalSnapshot[]
+  capitalEvents CapitalEvent[]
 
   @@index([email])
 }
@@ -111,6 +114,7 @@ model Wallet {
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   balances     TokenBalance[]
   transactions WalletTransaction[]
+  exchangeConnection ExchangeConnection?
 
   @@unique([userId, address, network])
   @@index([userId])
@@ -362,4 +366,151 @@ enum FeedPostType {
   AIRDROP
   ANALYSIS
   OTHER
+}
+
+// Exchange monitoring: independent of OAuth Account and on-chain Wallet balances.
+model ExchangeConnection {
+  id String @id @default(cuid())
+  userId String
+  exchange String
+  label String
+  credentials String? @db.Text
+  keyMask String?
+  keyFingerprint String?
+  credentialVersion Int @default(1)
+  status String @default("PENDING")
+  errorCode String?
+  externalAccountId String?
+  walletId String? @unique
+  hyperCoreMigratedAt DateTime?
+  balancesAt DateTime?
+  positionsAt DateTime?
+  lastAttemptAt DateTime?
+  lastSuccessAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallet Wallet? @relation(fields: [walletId], references: [id], onDelete: SetNull)
+  accounts ExchangeAccount[]
+  job ExchangeSyncJob?
+  runs ExchangeSyncRun[]
+  @@unique([userId, exchange, keyFingerprint])
+  @@unique([userId, exchange, externalAccountId])
+  @@index([userId, status])
+}
+
+model ExchangeAccount {
+  id String @id @default(cuid())
+  connectionId String
+  accountKey String
+  kind String
+  mode String
+  equityUsd Decimal? @db.Decimal(38, 18)
+  availableUsd Decimal? @db.Decimal(38, 18)
+  unrealizedPnlUsd Decimal? @db.Decimal(38, 18)
+  complete Boolean @default(false)
+  errorCode String?
+  balancesAt DateTime?
+  positionsAt DateTime?
+  connection ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  balances ExchangeBalance[]
+  positions ExchangePosition[]
+  @@unique([connectionId, accountKey])
+}
+
+model ExchangeBalance {
+  id String @id @default(cuid())
+  accountId String
+  assetId String
+  symbol String
+  total Decimal @db.Decimal(38, 18)
+  free Decimal? @db.Decimal(38, 18)
+  locked Decimal? @db.Decimal(38, 18)
+  debt Decimal? @db.Decimal(38, 18)
+  usdValue Decimal? @db.Decimal(38, 18)
+  priceUsd Decimal? @db.Decimal(38, 18)
+  account ExchangeAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  @@unique([accountId, assetId])
+}
+
+model ExchangePosition {
+  id String @id @default(cuid())
+  accountId String
+  positionKey String
+  symbol String
+  base String
+  settle String
+  side String
+  contracts Decimal @db.Decimal(38, 18)
+  contractSize Decimal @db.Decimal(38, 18)
+  baseSize Decimal @db.Decimal(38, 18)
+  notionalUsd Decimal? @db.Decimal(38, 18)
+  entryPrice Decimal? @db.Decimal(38, 18)
+  markPrice Decimal? @db.Decimal(38, 18)
+  liquidationPrice Decimal? @db.Decimal(38, 18)
+  leverage Decimal? @db.Decimal(38, 18)
+  marginMode String?
+  margin Decimal? @db.Decimal(38, 18)
+  unrealizedPnl Decimal? @db.Decimal(38, 18)
+  unrealizedPnlUsd Decimal? @db.Decimal(38, 18)
+  updatedAt DateTime
+  account ExchangeAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  @@unique([accountId, positionKey])
+  @@index([base, side])
+}
+
+// One durable slot per connection: manual requests coalesce with scheduled work.
+model ExchangeSyncJob {
+  connectionId String @id
+  dueAt DateTime @default(now())
+  leaseUntil DateTime?
+  leaseToken String?
+  attempts Int @default(0)
+  forceBalances Boolean @default(true)
+  connection ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  @@index([dueAt, leaseUntil])
+}
+
+model ExchangeSyncRun {
+  id String @id @default(cuid())
+  connectionId String
+  status String
+  errorCode String?
+  durationMs Int
+  createdAt DateTime @default(now())
+  connection ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  @@index([connectionId, createdAt])
+}
+
+// Shared request budget and worker leadership, without Redis.
+model ExchangeWorkerLease {
+  name String @id
+  owner String
+  expiresAt DateTime
+  heartbeatAt DateTime @default(now())
+}
+
+model PortfolioCapitalSnapshot {
+  id String @id @default(cuid())
+  userId String
+  bucket DateTime
+  totalUsd Decimal @db.Decimal(38, 18)
+  walletsUsd Decimal @db.Decimal(38, 18)
+  exchangesUsd Decimal @db.Decimal(38, 18)
+  sourceSet String
+  complete Boolean
+  sources Json
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, bucket])
+}
+
+model CapitalEvent {
+  id String @id @default(cuid())
+  userId String
+  sourceId String
+  kind String
+  label String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
 }

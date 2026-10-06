@@ -1,0 +1,114 @@
+import { NextRequest } from "next/server";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { prisma } from "@/lib/db/prisma";
+import {
+  exchangeGuard,
+  exchangeJson,
+  failure,
+  safeApiFailure,
+} from "@/lib/exchanges/api";
+export const dynamic = "force-dynamic";
+export async function GET(req: NextRequest) {
+  try {
+    const guard = await exchangeGuard();
+    if (!guard.ok) return guard.response;
+    const parsed = z
+      .object({
+        exchange: z.enum(["binance", "bybit", "hyperliquid"]).optional(),
+        connectionId: z.string().max(100).optional(),
+        coin: z.string().max(40).optional(),
+        side: z.enum(["long", "short"]).optional(),
+        sort: z.enum(["size", "pnl", "symbol"]).default("size"),
+        page: z.coerce.number().int().min(1).max(10000).default(1),
+        limit: z.coerce.number().int().min(1).max(100).default(25),
+      })
+      .safeParse(Object.fromEntries(req.nextUrl.searchParams));
+    if (!parsed.success) return failure("BAD_REQUEST");
+    const q = parsed.data;
+    const where: Prisma.ExchangePositionWhereInput = {
+      ...(q.side ? { side: q.side } : {}),
+      ...(q.coin ? { base: { contains: q.coin, mode: "insensitive" } } : {}),
+      account: {
+        connection: {
+          userId: guard.user.id,
+          status: { not: "DISCONNECTED" },
+          ...(q.exchange ? { exchange: q.exchange } : {}),
+          ...(q.connectionId ? { id: q.connectionId } : {}),
+        },
+      },
+    };
+    const orderBy: Prisma.ExchangePositionOrderByWithRelationInput =
+      q.sort === "pnl"
+        ? { unrealizedPnlUsd: { sort: "desc", nulls: "last" } }
+        : q.sort === "size"
+          ? { notionalUsd: { sort: "desc", nulls: "last" } }
+          : { symbol: "asc" };
+    const [positions, total, connections, heartbeat] =
+      await prisma.$transaction([
+        prisma.exchangePosition.findMany({
+          where,
+          orderBy: [orderBy, { id: "asc" }],
+          skip: (q.page - 1) * q.limit,
+          take: q.limit,
+          include: {
+            account: {
+              select: {
+                kind: true,
+                errorCode: true,
+                connection: {
+                  select: {
+                    id: true,
+                    exchange: true,
+                    label: true,
+                    status: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+        prisma.exchangePosition.count({ where }),
+        prisma.exchangeConnection.findMany({
+          where: {
+            userId: guard.user.id,
+            status: { not: "DISCONNECTED" },
+            ...(q.exchange ? { exchange: q.exchange } : {}),
+            ...(q.connectionId ? { id: q.connectionId } : {}),
+          },
+          select: { id: true, status: true, positionsAt: true },
+        }),
+        prisma.exchangeWorkerLease.findFirst({
+          where: {
+            name: { startsWith: "worker:" },
+            expiresAt: { gt: new Date() },
+          },
+          select: { name: true },
+        }),
+      ]);
+    return exchangeJson({
+      positions: positions.map(({ account, ...p }) => ({
+        ...p,
+        account: account.kind,
+        connection: account.connection,
+        errorCode: account.errorCode,
+        stale:
+          account.connection.status !== "ACTIVE" ||
+          Date.now() - p.updatedAt.getTime() > 90_000,
+      })),
+      total,
+      page: q.page,
+      limit: q.limit,
+      workerOnline: !!heartbeat,
+      connectionCount: connections.length,
+      incomplete: connections.some(
+        (c) =>
+          c.status !== "ACTIVE" ||
+          !c.positionsAt ||
+          Date.now() - c.positionsAt.getTime() > 90_000,
+      ),
+    });
+  } catch (e) {
+    return safeApiFailure(e);
+  }
+}

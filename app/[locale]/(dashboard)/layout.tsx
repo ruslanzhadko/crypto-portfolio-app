@@ -1,9 +1,10 @@
-import { getLocale } from 'next-intl/server';
-import { auth } from '@/lib/auth';
-import { redirect } from '@/i18n/navigation';
-import { Sidebar } from '@/components/layout/sidebar';
-import { Navbar } from '@/components/layout/navbar';
-import { MobileNav } from '@/components/layout/mobile-nav';
+import { getLocale } from "next-intl/server";
+import { auth } from "@/lib/auth";
+import { redirect } from "@/i18n/navigation";
+import { Sidebar } from "@/components/layout/sidebar";
+import { Navbar } from "@/components/layout/navbar";
+import { MobileNav } from "@/components/layout/mobile-nav";
+import { exchangesEnabled } from "@/lib/exchanges/config";
 
 export default async function DashboardLayout({
   children,
@@ -13,19 +14,22 @@ export default async function DashboardLayout({
   const session = await auth();
   if (!session?.user?.id || session.user.sessionExpired) {
     const locale = await getLocale();
-    redirect({ href: '/auth/login', locale });
+    redirect({ href: "/auth/login", locale });
   }
   if (session!.user.isBlocked) {
     const locale = await getLocale();
-    redirect({ href: '/auth/error?error=AccessDenied', locale });
+    redirect({ href: "/auth/error?error=AccessDenied", locale });
   }
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar userRole={session!.user.role} />
+      <Sidebar
+        userRole={session!.user.role}
+        exchangesEnabled={exchangesEnabled(session!.user.id)}
+      />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <Navbar
-          email={session!.user.email ?? ''}
+          email={session!.user.email ?? ""}
           name={session!.user.name}
           role={session!.user.role}
         />
@@ -33,7 +37,10 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
-      <MobileNav userRole={session!.user.role} />
+      <MobileNav
+        userRole={session!.user.role}
+        exchangesEnabled={exchangesEnabled(session!.user.id)}
+      />
     </div>
   );
 }
