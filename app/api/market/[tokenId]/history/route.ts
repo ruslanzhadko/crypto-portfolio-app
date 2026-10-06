@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { tokenId: string } },
+  { params }: { params: Promise<{ tokenId: string }> },
 ) {
   try {
     const guard = await requireUser();
@@ -21,7 +21,7 @@ export async function GET(
       return apiError('BAD_REQUEST', 'Невірний параметр days', parsed.error.flatten());
     }
 
-    const points = await fetchMarketChart(params.tokenId, parsed.data);
+    const points = await fetchMarketChart((await params).tokenId, parsed.data);
     return ok({ points });
   } catch (err) {
     if (err instanceof CoinGeckoError) {

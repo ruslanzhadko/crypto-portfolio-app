@@ -3,13 +3,8 @@ generator client {
   binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
-// generator erd {
-//   provider = "prisma-erd-generator"
-//   output   = "./erd.svg"
-// }
-// ↑ Вимкнено для деплою: prisma-erd-generator тягне mermaid-cli/Chromium і падає
-//   на білді Vercel. ERD уже згенеровано локально (prisma/erd.svg).
-//   Для перегенерації локально — тимчасово розкоментуй і запусти `prisma generate`.
+// ERD artifact: prisma/erd.svg. Diagram generators are intentionally excluded
+// from application dependencies; regenerate with separately installed tooling.
 
 datasource db {
   provider  = "postgresql"

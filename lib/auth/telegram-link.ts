@@ -7,7 +7,7 @@ export const TELEGRAM_LINK_COOKIE = 'telegram-link-intent';
 
 /** A link requires explicit intent AND the same still-authenticated account. */
 export async function telegramLinkTarget(): Promise<string | undefined> {
-  const intent = cookies().get(TELEGRAM_LINK_COOKIE)?.value;
+  const intent = (await cookies()).get(TELEGRAM_LINK_COOKIE)?.value;
   if (!intent) return undefined;
   const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
   if (!secret) throw new Error('Missing auth secret');
@@ -22,12 +22,12 @@ export async function telegramLinkTarget(): Promise<string | undefined> {
     throw new TelegramIdentityConflict('TelegramLinkExpired');
   }
   const cookieName =
-    cookies().has('__Secure-authjs.session-token') ||
-    cookies().has('__Secure-authjs.session-token.0')
+    (await cookies()).has('__Secure-authjs.session-token') ||
+    (await cookies()).has('__Secure-authjs.session-token.0')
       ? '__Secure-authjs.session-token'
       : 'authjs.session-token';
   const session = await getToken({
-    req: { headers: headers() },
+    req: { headers: await headers() },
     secret,
     cookieName,
   });

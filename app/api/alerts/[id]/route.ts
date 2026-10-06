@@ -8,14 +8,14 @@ export const dynamic = 'force-dynamic';
 
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
     const trigger = await prisma.priceTrigger.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       select: { id: true },
     });
     if (!trigger) return apiError('NOT_FOUND', 'Тригер не знайдено');
@@ -64,14 +64,14 @@ export async function PUT(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
     const trigger = await prisma.priceTrigger.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       select: { id: true },
     });
     if (!trigger) return apiError('NOT_FOUND', 'Тригер не знайдено');

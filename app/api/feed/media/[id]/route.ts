@@ -6,19 +6,19 @@ export const runtime = "nodejs";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  if (!/^[a-z0-9_-]{1,64}$/i.test(params.id)) {
+  if (!/^[a-z0-9_-]{1,64}$/i.test((await params).id)) {
     return new Response(null, { status: 404 });
   }
 
   const media = await prisma.telegramFeedMedia.findUnique({
-    where: { postId: params.id },
+    where: { postId: (await params).id },
     select: { data: true, mimeType: true, byteSize: true, updatedAt: true },
   });
   if (!media) return new Response(null, { status: 404 });
 
-  const etag = `"${params.id}-${media.byteSize}-${media.updatedAt.getTime()}"`;
+  const etag = `"${(await params).id}-${media.byteSize}-${media.updatedAt.getTime()}"`;
   const cacheHeaders = {
     "Cache-Control": "public, max-age=31536000, immutable",
     ETag: etag,

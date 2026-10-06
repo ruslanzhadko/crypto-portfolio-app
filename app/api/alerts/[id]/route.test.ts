@@ -31,7 +31,7 @@ const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 
 const AUTHED: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: false } };
 const BLOCKED: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'u@test.com', role: 'USER', isBlocked: true } };
-const PARAMS = { params: { id: 't1' } };
+const PARAMS = { params: Promise.resolve({ id: 't1' }) };
 
 function putReq(body: unknown): Request {
   return new Request('http://localhost/api/alerts/t1', {

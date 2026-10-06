@@ -7,14 +7,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
     const wallet = await prisma.wallet.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       include: {
         // Повертаємо ВСІ балансу (UI сам вирішить що показати), але totalUsd
         // рахуємо лише з видимих — щоб число у заголовку було чесним
@@ -35,14 +35,14 @@ export async function GET(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
     const wallet = await prisma.wallet.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       select: { id: true },
     });
     if (!wallet) return apiError("NOT_FOUND", "Гаманець не знайдено");

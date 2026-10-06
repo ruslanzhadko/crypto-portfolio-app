@@ -51,7 +51,7 @@ it('shows Telegram identity without synthetic email or password controls', async
     passwordHash: null,
     accounts: [{ provider: 'telegram' }],
   });
-  const html = renderToStaticMarkup(await SettingsPage({ searchParams: {} }));
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('Telegram sign-in connected');
   expect(html).not.toContain('@telegram.invalid');
   expect(html).not.toContain('id="current"');
@@ -66,7 +66,7 @@ it('offers linking while retaining email and password settings for the main acco
     passwordHash: 'not-a-real-hash',
     accounts: [],
   });
-  const html = renderToStaticMarkup(await SettingsPage({ searchParams: {} }));
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('main@example.com');
   expect(html).toContain('id="current"');
   expect(html).toContain('Connect Telegram sign-in');
@@ -75,7 +75,7 @@ it('offers linking while retaining email and password settings for the main acco
 
 it('keeps legacy notifications in the unified Telegram block without an editable chat ID', async () => {
   db.findUnique.mockResolvedValue({ name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: 'hash', accounts: [{ provider: 'telegram' }], telegramChatId: '999', telegramUserId: '1234', telegramBotAccess: true, telegramNotificationsEnabled: true });
-  const html = renderToStaticMarkup(await SettingsPage({ searchParams: {} }));
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).not.toContain('id="chatId"');
   expect(html).not.toContain('Telegram Chat ID');
   expect(html).toContain('different Telegram account or chat');
@@ -84,7 +84,7 @@ it('keeps legacy notifications in the unified Telegram block without an editable
 });
 it('shows permission renewal for a previously connected login', async () => {
   db.findUnique.mockResolvedValue({ name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: null, accounts: [{ provider: 'telegram' }], telegramChatId: null, telegramUserId: null, telegramBotAccess: false, telegramNotificationsEnabled: true });
-  const html = renderToStaticMarkup(await SettingsPage({ searchParams: {} }));
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('Allow bot messages');
   expect(html).toContain('Telegram notifications');
   preview('permission-settings', html);

@@ -558,7 +558,7 @@ async function getWalletTransactionsPayload(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireUser();
@@ -583,7 +583,7 @@ export async function GET(
     const pageSize = Number.isFinite(requestedSize) ? Math.min(Math.max(requestedSize, 1), 50) : 20;
 
     const wallet = await prisma.wallet.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       select: { id: true, address: true, network: true },
     });
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');

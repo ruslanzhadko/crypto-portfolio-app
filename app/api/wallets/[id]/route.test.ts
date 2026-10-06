@@ -25,7 +25,7 @@ const mockAuth = vi.mocked(auth as () => Promise<Session | null>);
 const AUTHED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: false } };
 const BLOCKED_SESSION: Session = { expires: '2099-01-01T00:00:00.000Z', user: { id: 'u1', email: 'user@test.com', role: 'USER', isBlocked: true } };
 
-const PARAMS = { params: { id: 'w1' } };
+const PARAMS = { params: Promise.resolve({ id: 'w1' }) };
 
 // 4 balances: 2 visible, 1 spam, 1 hidden — visible sum = 150.75
 const WALLET_WITH_BALANCES = {

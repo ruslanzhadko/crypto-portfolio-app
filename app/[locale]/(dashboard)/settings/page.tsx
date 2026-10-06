@@ -19,8 +19,9 @@ export const dynamic = 'force-dynamic';
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: { telegramError?: string };
+  searchParams: Promise<{ telegramError?: string }>;
 }) {
+  const { telegramError } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) return null;
 
@@ -76,11 +77,11 @@ export default async function SettingsPage({
           <CardDescription>{t('telegramUnifiedDescription')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {searchParams.telegramError && (
+          {telegramError && (
             <p role="alert" className="text-sm text-danger">
-              {searchParams.telegramError === 'TelegramLinkExpired'
+              {telegramError === 'TelegramLinkExpired'
                 ? authMessages('errorTelegramLinkExpired')
-                : searchParams.telegramError === 'TelegramInvalidIdentity'
+                : telegramError === 'TelegramInvalidIdentity'
                   ? authMessages('errorTelegramInvalidIdentity')
                   : t('telegramLoginConflict')}
             </p>

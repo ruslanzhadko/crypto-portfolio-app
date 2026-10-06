@@ -6,14 +6,14 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
     const wallet = await prisma.wallet.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       select: { id: true },
     });
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');

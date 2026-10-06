@@ -11,7 +11,7 @@ import { prisma } from "@/lib/db/prisma";
 import { GET } from "./route";
 
 const mockFindUnique = vi.mocked(prisma.telegramFeedMedia.findUnique);
-const params = { params: { id: "cm123" } };
+const params = { params: Promise.resolve({ id: "cm123" }) };
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -19,7 +19,7 @@ describe("GET /api/feed/media/[id]", () => {
   it("rejects an invalid post id without querying the database", async () => {
     const response = await GET(
       new NextRequest("http://localhost/api/feed/media/%21"),
-      { params: { id: "!" } },
+      { params: Promise.resolve({ id: "!" }) },
     );
     expect(response.status).toBe(404);
     expect(mockFindUnique).not.toHaveBeenCalled();

@@ -85,7 +85,7 @@ export async function GET(req: Request) {
         if (pageToken) url.searchParams.set('pageToken', pageToken);
         const response = await getWalletTransactions(
           new NextRequest(url, { headers: req.headers }),
-          { params: { id: wallet.id } },
+          { params: Promise.resolve({ id: wallet.id }) },
         );
         if (!response.ok) throw new Error(`Transaction source failed: ${response.status}`);
         const page = await response.json() as {

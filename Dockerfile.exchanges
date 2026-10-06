@@ -4,6 +4,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
 RUN npm ci
+RUN npm prune --omit=dev --ignore-scripts
 COPY tsconfig.json ./
 COPY lib ./lib
 COPY scripts/exchange-worker.ts ./scripts/exchange-worker.ts

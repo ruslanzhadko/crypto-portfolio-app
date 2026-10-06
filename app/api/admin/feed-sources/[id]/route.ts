@@ -10,7 +10,7 @@ const patchSchema = z.object({ isActive: z.boolean() });
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireAdmin();
@@ -23,7 +23,7 @@ export async function PATCH(
     }
 
     const existing = await prisma.telegramFeedSource.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true },
     });
     if (!existing) return apiError("NOT_FOUND", "Telegram source not found");
@@ -42,14 +42,14 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
 
     const source = await prisma.telegramFeedSource.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, _count: { select: { posts: true } } },
     });
     if (!source) return apiError("NOT_FOUND", "Telegram source not found");

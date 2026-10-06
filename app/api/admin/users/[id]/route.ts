@@ -13,13 +13,13 @@ const patchSchema = z.object({
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
 
-    if (params.id === guard.user.id) {
+    if ((await params).id === guard.user.id) {
       return apiError('BAD_REQUEST', 'Не можна змінювати власний акаунт');
     }
 
@@ -30,7 +30,7 @@ export async function PATCH(
     }
 
     const target = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, role: true },
     });
     if (!target) return apiError('NOT_FOUND', 'Користувача не знайдено');
@@ -53,18 +53,18 @@ export async function PATCH(
 
 export async function DELETE(
   _req: Request,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
 
-    if (params.id === guard.user.id) {
+    if ((await params).id === guard.user.id) {
       return apiError('BAD_REQUEST', 'Не можна видалити власний акаунт');
     }
 
     const target = await prisma.user.findUnique({
-      where: { id: params.id },
+      where: { id: (await params).id },
       select: { id: true, role: true },
     });
     if (!target) return apiError('NOT_FOUND', 'Користувача не знайдено');

@@ -12,20 +12,20 @@ const SNAPSHOT_INVALIDATION_THRESHOLD_USD = 50;
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string; tokenId: string } },
+  { params }: { params: Promise<{ id: string; tokenId: string }> },
 ) {
   try {
     const guard = await requireUser();
     if (!guard.ok) return guard.response;
 
     const wallet = await prisma.wallet.findFirst({
-      where: { id: params.id, userId: guard.user.id },
+      where: { id: (await params).id, userId: guard.user.id },
       select: { id: true },
     });
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
 
     const token = await prisma.tokenBalance.findFirst({
-      where: { id: params.tokenId, walletId: wallet.id },
+      where: { id: (await params).tokenId, walletId: wallet.id },
       select: { id: true, isHidden: true, usdValue: true },
     });
     if (!token) return apiError('NOT_FOUND', 'Токен не знайдено');

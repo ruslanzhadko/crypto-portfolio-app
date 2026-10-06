@@ -24,7 +24,7 @@ describe('recent transaction wallet selection', () => {
     mocks.findMany.mockResolvedValue(wallets);
     mocks.getWalletTransactions.mockImplementation(async (request, { params }) => {
       const chain = new URL(request.url).searchParams.get('chain');
-      const transactions = params.id === 'busy'
+      const transactions = (await params).id === 'busy'
         ? Array.from({ length: 20 }, (_, id) => ({ id: String(id), chainName: 'solana', timestamp: '2026-09-28T12:00:00Z' }))
         : [{ id: chain ?? 'bsc', chainName: chain ?? 'bsc', timestamp: '2026-09-27T12:00:00Z' }];
       return Response.json({ transactions, hasMore: false });
@@ -41,14 +41,15 @@ describe('recent transaction wallet selection', () => {
     expect(selected.transactions.every((tx: { walletId: string }) => tx.walletId === 'quiet')).toBe(true);
     expect(selected.transactions.map((tx: { chainName: string }) => tx.chainName).sort()).toEqual(['bsc', 'hypercore', 'hyperevm', 'robinhood']);
     expect(selected.wallets).toHaveLength(2);
-    expect(mocks.getWalletTransactions.mock.calls.every(([, context]) => context.params.id === 'quiet')).toBe(true);
+    const requestedIds = await Promise.all(mocks.getWalletTransactions.mock.calls.map(async ([, context]) => (await context.params).id));
+    expect(requestedIds.every(id => id === 'quiet')).toBe(true);
   });
 
   it('keeps load-more requests scoped to the selected wallet', async () => {
     await GET(new Request('https://example.com/api/transactions/recent?walletId=busy&limit=40'));
     expect(mocks.getWalletTransactions).toHaveBeenCalledTimes(1);
     const [request, context] = mocks.getWalletTransactions.mock.calls[0]!;
-    expect(context.params.id).toBe('busy');
+    expect((await context.params).id).toBe('busy');
     expect(new URL(request.url).searchParams.get('pageSize')).toBe('40');
   });
 

@@ -1,6 +1,6 @@
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/prisma";
-import { claimJob, enqueue } from "./queue";
+import { claimJob, enqueue as enqueueJob } from "./queue";
 import { commitResult } from "./worker";
 import {
   getCapitalOverview,
@@ -16,6 +16,13 @@ const enabled =
   new URL(url).pathname === "/exchange_test" &&
   process.env.DATABASE_URL === url;
 const userId = "exchange-integration-user";
+async function enqueue(connectionId: string) {
+  await enqueueJob(connectionId);
+  // Lease tests need a due job independently of host/Docker clock skew.
+  await prisma.exchangeSyncJob.update({
+    where: { connectionId }, data: { dueAt: new Date(0) },
+  });
+}
 const snapshot: SyncResult = {
   accounts: [
     {

@@ -2,13 +2,20 @@ import { test, expect } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/db/prisma";
 import { commitResult } from "../../lib/exchanges/worker";
-import { claimJob } from "../../lib/exchanges/queue";
+import { claimJob as claimDueJob } from "../../lib/exchanges/queue";
 import { saveCapitalSnapshot } from "../../lib/exchanges/portfolio";
 import type { SyncResult } from "../../lib/exchanges/types";
 
 const userId = "exchange-e2e",
   email = "e2e@test.local",
   password = "E2ePassword123!";
+async function claimJob() {
+  // Fixtures bypass scheduling, including host/Docker clock skew.
+  await prisma.exchangeSyncJob.updateMany({
+    where: { connection: { userId } }, data: { dueAt: new Date(0) },
+  });
+  return claimDueJob();
+}
 const fixture: SyncResult = {
   accounts: [
     {
