@@ -205,7 +205,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
         walletsUsd: "0",
         exchangesUsd: String(12200 + i * 100),
         totalUsd: String(12200 + i * 100),
-        sourceSet: "fixture",
+        sourceSet: i === 3 ? "fixture-new-account" : "fixture",
         complete: true,
         sources: [],
       },
@@ -219,6 +219,12 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
     path: testInfo.outputPath("dashboard-desktop.png"),
     fullPage: true,
   });
+  // The single observation after a composition change must still have a marker.
+  await expect(page.locator(".recharts-area-dots").last().locator("circle")).toHaveCount(4);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: testInfo.outputPath("dashboard-mobile.png"), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   await page.getByLabel("Direction", { exact: true }).selectOption("short");

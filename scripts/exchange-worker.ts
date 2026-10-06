@@ -1,4 +1,5 @@
 import { prisma } from "../lib/db/prisma";
+import { writeFile, unlink } from "node:fs/promises";
 import {
   discoverHyperliquid,
   evictClients,
@@ -25,6 +26,7 @@ async function main() {
   }, 20_000);
   try {
     await workerHeartbeat(owner);
+    await writeFile("/tmp/cryptoportfolio-worker-id", owner, { mode: 0o600 });
     while (!stopping) {
       try {
         if (Date.now() - lastDiscovery > 60_000) {
@@ -51,6 +53,7 @@ async function main() {
     }
   } finally {
     clearInterval(heartbeat);
+    await unlink("/tmp/cryptoportfolio-worker-id").catch(() => {});
     await prisma.exchangeWorkerLease.deleteMany({
       where: { name: `worker:${owner}` },
     });

@@ -21,6 +21,7 @@ import { useExchangeData, exchangeAction } from "./use-exchange-data";
 import { Money, Updated, ExchangeErrorNotice } from "./shared";
 import { BalanceTable } from "./balance-table";
 import { PositionsPage } from "./positions-page";
+import { capitalChartData } from "./capital-chart-data";
 
 export function CapitalDashboard({
   walletAssets,
@@ -61,17 +62,10 @@ export function CapitalDashboard({
     data.refresh();
     setBusy(false);
   }
-  const chart = history?.points.map((p, i, points) => ({
-    ...p,
-    wallets:
-      i > 0 && p.sourceSet !== points[i - 1]?.sourceSet
-        ? null
-        : Number(p.walletsUsd),
-    exchanges:
-      i > 0 && p.sourceSet !== points[i - 1]?.sourceSet
-        ? null
-        : Number(p.exchangesUsd),
-  }));
+  const chart = capitalChartData(history?.points ?? []);
+  const shortHistory =
+    chart.length > 0 &&
+    chart[chart.length - 1]!.timestamp - chart[0]!.timestamp < 86400_000;
   const value =
     scope === "wallets"
       ? overview?.walletsUsd
@@ -183,7 +177,7 @@ export function CapitalDashboard({
                 ))}
               </div>
             </div>
-            {(chart?.length ?? 0) > 1 ? (
+            {chart.length > 0 ? (
               <div className="mt-4 h-60 min-w-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chart}>
@@ -192,10 +186,15 @@ export function CapitalDashboard({
                       type="number"
                       domain={["dataMin", "dataMax"]}
                       tickFormatter={(v) =>
-                        new Date(v).toLocaleDateString(locale, {
-                          day: "numeric",
-                          month: "short",
-                        })
+                        shortHistory
+                          ? new Date(v).toLocaleTimeString(locale, {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : new Date(v).toLocaleDateString(locale, {
+                              day: "numeric",
+                              month: "short",
+                            })
                       }
                       tick={{ fontSize: 11, fill: "#94a3b8" }}
                       minTickGap={45}
@@ -237,6 +236,7 @@ export function CapitalDashboard({
                         fillOpacity={0.15}
                         isAnimationActive={false}
                         connectNulls={false}
+                        dot={{ r: 2 }}
                       />
                     )}
                     {scope !== "wallets" && (
@@ -250,6 +250,7 @@ export function CapitalDashboard({
                         fillOpacity={0.15}
                         isAnimationActive={false}
                         connectNulls={false}
+                        dot={{ r: 2 }}
                       />
                     )}
                     {history?.events.map((e, i) => (
