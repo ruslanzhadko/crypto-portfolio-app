@@ -190,12 +190,12 @@ export function PositionsPage({
           >
             <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-3 p-4 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary md:grid-cols-[minmax(8rem,1fr)_minmax(7rem,1fr)_1fr_1fr_1fr]">
               <div>
-                <p className="flex items-center gap-2 font-semibold">
+                <p className="flex items-center gap-3 font-semibold">
                   <ExchangeTokenLogo symbol={p.base} />
                   {p.symbol}
                 </p>
                 <span
-                  className={`text-xs ${p.side === "long" ? "text-success" : "text-danger"}`}
+                  className={`text-sm font-medium ${p.side === "long" ? "text-success" : "text-danger"}`}
                 >
                   {p.side === "long" ? "Long" : "Short"}
                 </span>
@@ -240,7 +240,7 @@ export function PositionsPage({
               </div>
             </summary>
             <div className="border-t border-border bg-background/40 p-4">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-base lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dt]:text-sm">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-sm">
                 <div>
                   <dt className="text-text-muted">{t("entryMark")}</dt>
                   <dd>
@@ -275,7 +275,7 @@ export function PositionsPage({
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("unrealizedPnl")}</dt>
-                  <dd className="text-sm">
+                  <dd>
                     <Quantity
                       value={p.unrealizedPnl}
                       maximumFractionDigits={4}
@@ -285,7 +285,7 @@ export function PositionsPage({
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("returnOnMargin")}</dt>
-                  <dd className="text-lg">
+                  <dd>
                     {p.margin &&
                     Number(p.margin) > 0 &&
                     p.unrealizedPnl !== null
@@ -297,12 +297,6 @@ export function PositionsPage({
                   </p>
                 </div>
                 <div>
-                  <dt className="text-text-muted">{t("updated")}</dt>
-                  <dd>
-                    <Updated value={p.updatedAt} />
-                  </dd>
-                </div>
-                <div>
                   <dt className="text-text-muted">{t("account")}</dt>
                   <dd>
                     <Link
@@ -311,6 +305,12 @@ export function PositionsPage({
                     >
                       {p.connection.label}
                     </Link>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-text-muted">{t("updated")}</dt>
+                  <dd>
+                    <Updated value={p.updatedAt} />
                   </dd>
                 </div>
               </dl>
