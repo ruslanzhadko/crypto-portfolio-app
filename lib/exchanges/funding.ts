@@ -4,6 +4,8 @@ import type { OpenPosition } from "./types";
 
 export type FundingSummary = {
   amount: string | null;
+  /** Trading PnL from reductions in this position cycle, excluding fees/funding. */
+  realizedPnl?: string | null;
   since: number | null;
   updatedAt: number;
   status: "complete" | "unavailable" | "pending";
@@ -72,34 +74,39 @@ export class FundingReader {
         p.funding = cached;
         continue;
       }
-      // Hyperliquid supplies cumulative funding since opening directly, with
-      // the same signed cash convention: received positive, paid negative.
-      if (native?.has(p.positionKey)) {
-        const amount = native.get(p.positionKey);
-        p.funding = {
-          amount: amount == null ? null : decimal(amount),
-          since: null,
-          updatedAt: Date.now(),
-          status: amount == null ? "unavailable" : "complete",
-        };
-        this.cache.set(key, p.funding);
-        continue;
-      }
+      // Hyperliquid cumFunding is a cost: positive paid, negative received.
+      // Normalize to the cash-flow sign used by Binance/Bybit and our UI.
+      const nativeAmount = native?.get(p.positionKey);
+      const nativeSummary: FundingSummary | undefined = native?.has(
+        p.positionKey,
+      )
+        ? {
+            amount:
+              nativeAmount == null
+                ? null
+                : decimal(new D(nativeAmount).negated().toFixed()),
+            realizedPnl: null,
+            since: null,
+            updatedAt: Date.now(),
+            status: nativeAmount == null ? "unavailable" : "complete",
+          }
+        : undefined;
       // Backfill only one position per sync so history cannot starve live positions.
       if (refreshed) {
-        p.funding = cached ?? {
-          amount: null,
-          since: null,
-          updatedAt: Date.now(),
-          status: "pending",
-        };
+        p.funding = cached ??
+          nativeSummary ?? {
+            amount: null,
+            since: null,
+            updatedAt: Date.now(),
+            status: "pending",
+          };
         continue;
       }
       refreshed = true;
       try {
-        p.funding = await this.read(p);
+        p.funding = await this.read(p, nativeSummary);
       } catch {
-        p.funding = {
+        p.funding = nativeSummary ?? {
           amount: null,
           since: null,
           updatedAt: Date.now(),
@@ -112,7 +119,10 @@ export class FundingReader {
   private key(p: OpenPosition) {
     return `${p.positionKey}:${p.side}:${p.baseSize}:${p.entryPrice}`;
   }
-  private async read(p: OpenPosition): Promise<FundingSummary> {
+  private async read(
+    p: OpenPosition,
+    native?: FundingSummary,
+  ): Promise<FundingSummary> {
     // Symbol-level funding cannot be safely split between concurrent hedge legs.
     if (
       (this.venue === "binance" && !p.positionKey.endsWith(":BOTH")) ||
@@ -255,15 +265,21 @@ export class FundingReader {
           .filter((r) => r.coin === p.base)
           .sort((a, b) => timestamp(b.time) - timestamp(a.time))) {
           if (!verifiedLatestTrade) {
-            const after = new D(rd(r.startPosition)).plus(
-              new D(rd(r.sz)).mul(r.side === "A" ? -1 : 1),
+            const matchesFinal = batch.some(
+              (fill) =>
+                fill.coin === p.base &&
+                timestamp(fill.time) === timestamp(r.time) &&
+                new D(rd(fill.startPosition))
+                  .plus(new D(rd(fill.sz)).mul(fill.side === "A" ? -1 : 1))
+                  .eq(signedSize),
             );
-            if (!after.eq(signedSize))
+            if (!matchesFinal)
               throw new Error("Position changed during history read");
             verifiedLatestTrade = true;
           }
           if (!["B", "A"].includes(String(r.side)))
             throw new Error("Invalid fill side");
+          ledger.push(r);
           trades.push({
             time: timestamp(r.time),
             quantity: new D(rd(r.sz)).mul(r.side === "A" ? -1 : 1).toFixed(),
@@ -274,11 +290,14 @@ export class FundingReader {
       endTime = startTime - 1;
     }
     if (since === null) throw new Error("Opening outside available history");
-    const values: string[] = [];
+    const values: string[] = [],
+      realized: string[] = [];
     if (this.venue === "bybit") {
-      for (const r of ledger)
-        if (timestamp(r.transactionTime) > since && r.type === "SETTLEMENT")
-          values.push(rd(r.funding));
+      for (const r of ledger) {
+        if (timestamp(r.transactionTime) <= since) continue;
+        if (r.type === "SETTLEMENT") values.push(rd(r.funding));
+        if (r.type === "TRADE") realized.push(rd(r.cashFlow));
+      }
     } else if (this.venue === "binance") {
       const seen = new Set<string>();
       for (let page = 1; ; page++) {
@@ -288,7 +307,6 @@ export class FundingReader {
             "fapiPrivate",
             {
               symbol: p.symbol,
-              incomeType: "FUNDING_FEE",
               startTime: since + 1,
               endTime: now,
               limit: 1000,
@@ -298,22 +316,28 @@ export class FundingReader {
           ),
         );
         for (const r of batch) {
+          if (!["FUNDING_FEE", "REALIZED_PNL"].includes(String(r.incomeType)))
+            continue;
           if (
             r.symbol !== p.symbol ||
             r.asset !== p.settle ||
-            r.incomeType !== "FUNDING_FEE" ||
             timestamp(r.time) <= since ||
             timestamp(r.time) > now
           )
             throw new Error("Invalid funding record");
-          const id = String(r.tranId);
+          const id = `${r.incomeType}:${r.tranId}`;
           if (seen.has(id)) throw new Error("Repeated funding record");
           seen.add(id);
-          values.push(rd(r.income));
+          if (r.incomeType === "FUNDING_FEE") values.push(rd(r.income));
+          if (r.incomeType === "REALIZED_PNL") realized.push(rd(r.income));
         }
         if (batch.length < 1000) break;
       }
     } else {
+      for (const r of ledger)
+        if (timestamp(r.time) > since) realized.push(rd(r.closedPnl));
+      if (native)
+        return { ...native, since, realizedPnl: decimal(sum(realized)) };
       let startTime = since + 1;
       for (;;) {
         const batch = rows(
@@ -352,6 +376,7 @@ export class FundingReader {
     }
     return {
       amount: decimal(sum(values)),
+      realizedPnl: decimal(sum(realized)),
       since,
       updatedAt: now,
       status: "complete",

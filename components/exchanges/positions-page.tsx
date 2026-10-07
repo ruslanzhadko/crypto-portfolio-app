@@ -203,12 +203,6 @@ export function PositionsPage({
                   {t("details")}
                 </span>
               </div>
-              <div className="text-right md:text-left">
-                <p className="truncate text-sm">{p.connection.label}</p>
-                <p className="text-xs capitalize text-text-muted">
-                  {p.connection.exchange}
-                </p>
-              </div>
               <div>
                 <p className="text-xs text-text-muted">{t("size")}</p>
                 <p className="text-sm">
@@ -219,13 +213,41 @@ export function PositionsPage({
                   <Money value={p.notionalUsd} />
                 </p>
               </div>
-              <div className="hidden md:block">
+              <div>
                 <p className="text-xs text-text-muted">{t("entryMark")}</p>
                 <p className="text-sm">
                   <Quantity value={p.entryPrice} maximumFractionDigits={4} /> /{" "}
                   <Quantity value={p.markPrice} maximumFractionDigits={4} />
                 </p>
                 <p className="text-xs text-text-muted">{p.settle}</p>
+              </div>
+              <div className="text-right md:text-left">
+                <p className="text-xs text-text-muted">{t("funding")}</p>
+                <p
+                  className={`text-sm font-medium ${p.funding?.amount == null ? "text-text-muted" : Number(p.funding.amount) >= 0 ? "text-success" : "text-danger"}`}
+                  title={
+                    p.funding?.status === "complete"
+                      ? undefined
+                      : t(
+                          !p.funding || p.funding.status === "pending"
+                            ? "fundingPending"
+                            : "fundingUnavailable",
+                        )
+                  }
+                >
+                  {p.funding?.status === "complete" ? (
+                    <>
+                      {Number(p.funding.amount) > 0 ? "+" : ""}
+                      <Quantity
+                        value={p.funding.amount}
+                        maximumFractionDigits={4}
+                      />{" "}
+                      {p.settle}
+                    </>
+                  ) : (
+                    "—"
+                  )}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-text-muted">{t("unrealizedPnl")}</p>
@@ -274,10 +296,15 @@ export function PositionsPage({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-text-muted">{t("unrealizedPnl")}</dt>
+                  <dt
+                    className="text-text-muted"
+                    title={t("realizedPnlDescription")}
+                  >
+                    {t("realizedPnl")}
+                  </dt>
                   <dd>
                     <Quantity
-                      value={p.unrealizedPnl}
+                      value={p.funding?.realizedPnl ?? null}
                       maximumFractionDigits={4}
                     />{" "}
                     {p.settle}
@@ -294,42 +321,6 @@ export function PositionsPage({
                   </dd>
                   <p className="text-xs text-text-muted">
                     {t("returnFormula")}
-                  </p>
-                </div>
-                <div>
-                  <dt className="text-text-muted">{t("funding")}</dt>
-                  <dd
-                    className={
-                      p.funding?.amount != null
-                        ? Number(p.funding.amount) > 0
-                          ? "text-success"
-                          : Number(p.funding.amount) < 0
-                            ? "text-danger"
-                            : ""
-                        : "text-text-muted"
-                    }
-                  >
-                    {p.funding?.status === "complete" ? (
-                      <>
-                        {Number(p.funding.amount) > 0 ? "+" : ""}
-                        <Quantity
-                          value={p.funding.amount}
-                          maximumFractionDigits={4}
-                        />{" "}
-                        {p.settle}
-                      </>
-                    ) : (
-                      "—"
-                    )}
-                  </dd>
-                  <p className="mt-1 text-xs text-text-muted">
-                    {p.funding?.status === "complete"
-                      ? t("fundingSigns")
-                      : t(
-                          !p.funding || p.funding.status === "pending"
-                            ? "fundingPending"
-                            : "fundingUnavailable",
-                        )}
                   </p>
                 </div>
                 <div>

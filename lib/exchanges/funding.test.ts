@@ -21,13 +21,116 @@ const position = (): OpenPosition => ({
   unrealizedPnlUsd: "2",
 });
 describe("funding attribution", () => {
+  it("normalizes Hyperliquid paid and received funding independently of direction", async () => {
+    for (const [raw, expected] of [
+      ["-10.6607", "10.6607"],
+      ["2.1", "-2.1"],
+      ["0", "0"],
+    ] as const) {
+      const p = position();
+      await new FundingReader("hyperliquid", undefined, async () => {
+        throw Error("history unavailable");
+      }).enrich([p], new Map([[p.positionKey, raw]]));
+      expect(p.funding).toMatchObject({
+        status: "complete",
+        amount: expected,
+        realizedPnl: null,
+      });
+    }
+  });
+  it("separates Bybit realized trading cash flow from funding and excludes the old position", async () => {
+    const now = Date.now(),
+      p = position();
+    p.positionKey = "BTCUSDT:0";
+    const reader = new FundingReader("bybit", async () => ({
+      retCode: 0,
+      result: {
+        list: [
+          {
+            symbol: p.symbol,
+            currency: p.settle,
+            type: "TRADE",
+            transactionTime: now - 1000,
+            side: "Sell",
+            qty: "1",
+            size: "2",
+            cashFlow: "12",
+            fee: "3",
+          },
+          {
+            symbol: p.symbol,
+            currency: p.settle,
+            type: "SETTLEMENT",
+            transactionTime: now - 2000,
+            funding: "-0.25",
+            cashFlow: "999",
+          },
+          {
+            symbol: p.symbol,
+            currency: p.settle,
+            type: "TRADE",
+            transactionTime: now - 3000,
+            side: "Buy",
+            qty: "3",
+            size: "3",
+            cashFlow: "0",
+          },
+          {
+            symbol: p.symbol,
+            currency: p.settle,
+            type: "TRADE",
+            transactionTime: now - 4000,
+            side: "Sell",
+            qty: "4",
+            size: "0",
+            cashFlow: "500",
+          },
+        ],
+        nextPageCursor: "",
+      },
+    }));
+    await reader.enrich([p]);
+    expect(p.funding).toMatchObject({ amount: "-0.25", realizedPnl: "12" });
+  });
+  it("uses native Hyperliquid funding and realized PnL from partial closes without funding history", async () => {
+    const now = Date.now(),
+      p = position();
+    const info = vi.fn(async (body: Record<string, unknown>) => {
+      expect(body.type).toBe("userFillsByTime");
+      return [
+        {
+          coin: p.base,
+          time: now - 1000,
+          side: "A",
+          sz: "1",
+          startPosition: "3",
+          closedPnl: "7.5",
+        },
+        {
+          coin: p.base,
+          time: now - 2000,
+          side: "B",
+          sz: "3",
+          startPosition: "0",
+          closedPnl: "0",
+        },
+      ];
+    });
+    await new FundingReader("hyperliquid", undefined, info).enrich(
+      [p],
+      new Map([[p.positionKey, "-10.6607"]]),
+    );
+    expect(p.funding).toMatchObject({ amount: "10.6607", realizedPnl: "7.5" });
+    expect(info).toHaveBeenCalledTimes(1);
+  });
+
   it("refreshes at HH:01 rather than ten minutes after startup", () => {
     const hour = Date.UTC(2026, 9, 7, 14);
     expect(fundingPeriod(hour + 59_999)).toBe(fundingPeriod(hour - 1));
     expect(fundingPeriod(hour + 60_000)).toBe(fundingPeriod(hour - 1) + 1);
     expect(fundingPeriod(hour + 3_599_999)).toBe(fundingPeriod(hour + 60_000));
   });
-  it("uses native cumulative funding without reconstructing old fills", async () => {
+  it("preserves native funding when realized-PnL history is unavailable", async () => {
     const request = vi.fn(async () => {
       throw Error("must not query history");
     });
@@ -36,8 +139,8 @@ describe("funding attribution", () => {
       [p],
       new Map([[p.positionKey, "1.25"]]),
     );
-    expect(p.funding).toMatchObject({ status: "complete", amount: "1.25" });
-    expect(request).not.toHaveBeenCalled();
+    expect(p.funding).toMatchObject({ status: "complete", amount: "-1.25" });
+    expect(request).toHaveBeenCalledTimes(1);
   });
   it("handles Bybit fills sharing a timestamp regardless of provider order", async () => {
     const now = Date.now(),
@@ -109,6 +212,22 @@ describe("funding attribution", () => {
           {
             symbol: "BTCUSDT",
             asset: "USDT",
+            incomeType: "REALIZED_PNL",
+            income: "4.5",
+            tranId: 1,
+            time: now - 500,
+          },
+          {
+            symbol: "BTCUSDT",
+            asset: "BNB",
+            incomeType: "COMMISSION",
+            income: "-1",
+            tranId: 3,
+            time: now - 500,
+          },
+          {
+            symbol: "BTCUSDT",
+            asset: "USDT",
             incomeType: "FUNDING_FEE",
             income: "-0.12",
             tranId: 1,
@@ -139,6 +258,7 @@ describe("funding attribution", () => {
     await reader.enrich([p]);
     expect(p.funding?.status).toBe("complete");
     expect(p.funding?.amount).toBe("-0.1");
+    expect(p.funding?.realizedPnl).toBe("4.5");
     await reader.enrich([position()]);
     expect(request).toHaveBeenCalledTimes(3);
   });
@@ -202,6 +322,7 @@ describe("funding attribution", () => {
               side: "B",
               sz: "2",
               startPosition: "0",
+              closedPnl: "0",
             },
           ]
         : [{ time: now - 1000, delta: { coin: "PURR", usdc: "-0.33" } }],

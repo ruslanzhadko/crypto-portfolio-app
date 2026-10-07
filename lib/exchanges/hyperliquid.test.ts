@@ -48,7 +48,7 @@ describe("HyperCore accounting", () => {
     expect(result.accounts[0]!.positions).toHaveLength(1);
     expect(result.accounts[0]!.positions?.[0]?.funding).toMatchObject({
       status: "complete",
-      amount: "1.25",
+      amount: "-1.25",
     });
   });
   it("keeps classic perp equity in a separate pool without adding position notional", async () => {
