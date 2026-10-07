@@ -33,6 +33,13 @@ const icons = new Set([
   "PEPE",
   "BTTC",
 ]);
+const catalogIds: Record<string, string> = {
+  TURTLE: "turtle",
+  OPN: "opinion",
+  MET: "meteora",
+  TREE: "treehouse",
+  MORPHO: "morpho",
+};
 const resolved = new Map<string, string | null>();
 const pending = new Map<string, Promise<string | null>>();
 let lookupQueue: Promise<unknown> = Promise.resolve();
@@ -43,17 +50,22 @@ function findLogo(ticker: string) {
   const lookup = lookupQueue
     .then(async () => {
       const response = await fetch(
-        `/api/market/search?q=${encodeURIComponent(ticker)}`,
+        `/api/market/search?q=${encodeURIComponent(catalogIds[ticker] ?? ticker)}`,
       );
       if (!response.ok) throw new Error("Logo metadata unavailable");
       const data = (await response.json()) as {
-        results?: { symbol: string; thumb: string | null }[];
+        results?: { id: string; symbol: string; thumb: string | null }[];
       };
       const matches =
         data.results?.filter((coin) => coin.symbol.toUpperCase() === ticker) ??
         [];
       // Ambiguous symbols retain the fallback rather than displaying another token's logo.
-      const logo = matches.length === 1 ? matches[0]!.thumb : null;
+      const selected = catalogIds[ticker]
+        ? matches.find((coin) => coin.id === catalogIds[ticker])
+        : matches.length === 1
+          ? matches[0]
+          : undefined;
+      const logo = selected?.thumb ?? null;
       resolved.set(ticker, logo);
       return logo;
     })

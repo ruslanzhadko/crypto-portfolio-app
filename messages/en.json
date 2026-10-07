@@ -883,7 +883,7 @@
     "leverage": "Leverage / mode",
     "margin": "Initial margin",
     "returnOnMargin": "Return on margin",
-    "returnFormula": "Unrealized PnL ÷ initial margin. Not total investment return.",
+    "returnFormula": "Unrealized PnL ÷ initial margin.",
     "updated": "Updated",
     "previous": "Previous",
     "next": "Next",

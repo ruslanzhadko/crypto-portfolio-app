@@ -335,6 +335,18 @@ export class BinanceAdapter implements ExchangeAdapter {
       const rows = records(
         await this.request("positionRisk", "fapiPrivateV3", {}, 5),
       );
+      // V3 positionRisk omits configured leverage. Metadata failure must not discard balances.
+      const configs = new Map<string, Record<string, unknown>>();
+      if (rows.some((row) => !new D(rd(row.positionAmt)).isZero())) {
+        try {
+          for (const config of records(
+            await this.request("symbolConfig", "fapiPrivate", {}, 5),
+          ))
+            configs.set(str(config.symbol), config);
+        } catch {
+          /* Keep known positions even when configuration is unavailable. */
+        }
+      }
       const positions: OpenPosition[] = [];
       for (const row of rows) {
         const quantity = new D(rd(row.positionAmt));
@@ -359,8 +371,10 @@ export class BinanceAdapter implements ExchangeAdapter {
           entryPrice: decimal(row.entryPrice),
           markPrice: decimal(row.markPrice),
           liquidationPrice: positive(row.liquidationPrice),
-          leverage: positive(row.leverage),
+          leverage: positive(configs.get(symbol)?.leverage ?? row.leverage),
           marginMode:
+            (configs.get(symbol)?.marginType ?? row.marginType) ===
+              "ISOLATED" ||
             row.marginType === "isolated" ||
             new D(decimal(row.isolatedWallet) ?? "0").gt(0)
               ? "isolated"

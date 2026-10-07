@@ -75,14 +75,17 @@ export function ExchangesPage() {
           </p>
         </div>
       )}
-      <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+      <div className="grid gap-4 lg:grid-cols-2">
         {connections.data?.connections.map((connection) => {
           const accounts =
             capital.data?.overview.accounts.filter(
               (a) => a.connectionId === connection.id,
             ) ?? [];
           return (
-            <div key={connection.id} className="p-4 sm:p-5">
+            <div
+              key={connection.id}
+              className="rounded-xl border border-border bg-surface p-4 sm:p-5"
+            >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <Link
@@ -103,13 +106,13 @@ export function ExchangesPage() {
                 </div>
                 <ConnectionStatus status={connection.status} />
               </div>
-              <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3">
+              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {accounts.map((a) => (
                   <div key={a.id}>
                     <p className="text-xs text-text-muted">
                       {t(`kinds.${a.kind}`)}
                     </p>
-                    <p className="mt-1 text-lg font-medium">
+                    <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
                       <Money value={a.equityUsd} />
                     </p>
                     <Updated value={a.balancesAt} />

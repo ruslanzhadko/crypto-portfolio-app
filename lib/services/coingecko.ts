@@ -255,6 +255,7 @@ interface CoinGeckoSearchResponse {
     symbol: string;
     name: string;
     thumb: string | null;
+    large?: string | null;
     market_cap_rank: number | null;
   }>;
 }
@@ -270,7 +271,7 @@ export async function searchCoins(query: string): Promise<SearchResult[]> {
     id: c.id,
     symbol: c.symbol,
     name: c.name,
-    thumb: c.thumb,
+    thumb: c.large ?? c.thumb,
     marketCapRank: c.market_cap_rank,
   }));
 }

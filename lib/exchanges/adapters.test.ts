@@ -202,6 +202,8 @@ describe("Binance independent accounts", () => {
             },
           ],
         };
+      if (path === "symbolConfig")
+        return [{ symbol: "BTCUSDT", leverage: 25, marginType: "CROSSED" }];
       if (path === "positionRisk")
         return [
           {
@@ -224,5 +226,6 @@ describe("Binance independent accounts", () => {
     expect(a.equityUsd).toBe("891");
     expect(a.positions![0]!.notionalUsd).toBe("4950");
     expect(a.positions![0]!.side).toBe("short");
+    expect(a.positions![0]!.leverage).toBe("25");
   });
 });

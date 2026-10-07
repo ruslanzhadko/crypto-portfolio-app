@@ -209,7 +209,7 @@ export function PositionsPage({
               </div>
             </summary>
             <div className="border-t border-border bg-background/40 p-4">
-              <dl className="grid grid-cols-2 gap-4 text-sm lg:grid-cols-4">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dt]:text-xs">
                 <div>
                   <dt className="text-text-muted">{t("entryMark")}</dt>
                   <dd>
@@ -238,13 +238,13 @@ export function PositionsPage({
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("unrealizedPnl")}</dt>
-                  <dd>
+                  <dd className="text-lg">
                     <Quantity value={p.unrealizedPnl} /> {p.settle}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("returnOnMargin")}</dt>
-                  <dd>
+                  <dd className="text-lg">
                     {p.margin &&
                     Number(p.margin) > 0 &&
                     p.unrealizedPnl !== null

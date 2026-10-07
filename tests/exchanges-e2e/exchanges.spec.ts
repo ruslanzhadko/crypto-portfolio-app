@@ -225,7 +225,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
       },
     });
   await page.goto("/en/dashboard");
-  await expect(page.getByText("Total capital", { exact: true })).toBeVisible();
+  await expect(page.getByRole("paragraph").filter({ hasText: /^Total capital$/ })).toBeVisible();
   await expect(
     page.getByText("$12,540.50", { exact: true }).first(),
   ).toBeVisible();

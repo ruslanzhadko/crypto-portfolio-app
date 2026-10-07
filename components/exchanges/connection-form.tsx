@@ -1,4 +1,5 @@
 "use client";
+import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
@@ -62,7 +63,7 @@ export function ConnectionForm({
       <h2 className="text-lg font-semibold">
         {t(connectionId ? "replaceKey" : "connectExchange")}
       </h2>
-      <p className="max-w-3xl text-sm text-text-muted">
+      <p className="text-sm leading-relaxed text-text-muted">
         {t("keyInstructions")}
       </p>
       <p className="text-sm">
@@ -76,15 +77,21 @@ export function ConnectionForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="exchange">{t("exchange")}</Label>
-            <select
-              id="exchange"
-              name="exchange"
-              className="h-10 w-full rounded-md border border-border bg-background px-3"
-              defaultValue="bybit"
-            >
-              <option value="bybit">Bybit</option>
-              <option value="binance">Binance</option>
-            </select>
+            <div className="relative">
+              <select
+                id="exchange"
+                name="exchange"
+                className="h-10 w-full appearance-none rounded-lg border border-border bg-surface-2 pl-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                defaultValue="bybit"
+              >
+                <option value="bybit">Bybit</option>
+                <option value="binance">Binance</option>
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-text-muted"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="exchange-label">{t("accountLabel")}</Label>
