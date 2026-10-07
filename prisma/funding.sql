@@ -1,0 +1,1 @@
+ALTER TABLE "ExchangePosition" ADD COLUMN IF NOT EXISTS "funding" JSONB;

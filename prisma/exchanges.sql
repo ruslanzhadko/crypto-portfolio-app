@@ -59,6 +59,7 @@ CREATE TABLE "ExchangeBalance" (
 
 -- CreateTable
 CREATE TABLE "ExchangePosition" (
+    "funding" JSONB,
     "id" TEXT NOT NULL,
     "accountId" TEXT NOT NULL,
     "positionKey" TEXT NOT NULL,

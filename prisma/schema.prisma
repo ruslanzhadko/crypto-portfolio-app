@@ -429,6 +429,7 @@ model ExchangeBalance {
 }
 
 model ExchangePosition {
+  funding Json?
   id String @id @default(cuid())
   accountId String
   positionKey String

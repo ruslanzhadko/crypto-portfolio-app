@@ -313,6 +313,42 @@ export function PositionsPage({
                     <Updated value={p.updatedAt} />
                   </dd>
                 </div>
+                <div>
+                  <dt className="text-text-muted">{t("funding")}</dt>
+                  <dd
+                    className={
+                      p.funding?.amount != null
+                        ? Number(p.funding.amount) > 0
+                          ? "text-success"
+                          : Number(p.funding.amount) < 0
+                            ? "text-danger"
+                            : ""
+                        : "text-text-muted"
+                    }
+                  >
+                    {p.funding?.status === "complete" ? (
+                      <>
+                        {Number(p.funding.amount) > 0 ? "+" : ""}
+                        <Quantity
+                          value={p.funding.amount}
+                          maximumFractionDigits={4}
+                        />{" "}
+                        {p.settle}
+                      </>
+                    ) : (
+                      "—"
+                    )}
+                  </dd>
+                  <p className="mt-1 text-xs text-text-muted">
+                    {p.funding?.status === "complete"
+                      ? t("fundingSigns")
+                      : t(
+                          p.funding?.status === "pending"
+                            ? "fundingPending"
+                            : "fundingUnavailable",
+                        )}
+                  </p>
+                </div>
               </dl>
               <div className="mt-3">
                 <ExchangeErrorNotice code={p.errorCode} />

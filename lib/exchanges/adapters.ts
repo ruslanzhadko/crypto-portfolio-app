@@ -1,3 +1,4 @@
+import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import {
   ExchangeError,
@@ -36,6 +37,9 @@ function bybitResult(value: unknown) {
 }
 
 export class BybitAdapter implements ExchangeAdapter {
+  private funding = new FundingReader("bybit", (...args) =>
+    this.request(...args),
+  );
   private mode = "";
   private instruments = new Map<string, { base: string; settle: string }>();
   private loadedAt = 0;
@@ -189,6 +193,7 @@ export class BybitAdapter implements ExchangeAdapter {
         });
       }
     }
+    await this.funding.enrich(positions);
     const coinRows = records(wallet.coin);
     const equity =
       decimal(wallet.totalEquity) ??
@@ -222,6 +227,9 @@ export class BybitAdapter implements ExchangeAdapter {
 }
 
 export class BinanceAdapter implements ExchangeAdapter {
+  private funding = new FundingReader("binance", (...args) =>
+    this.request(...args),
+  );
   private markets = new Map<string, { base: string; settle: string }>();
   private spotMarkets: { id: string; base: string; quote: string }[] = [];
   private loadedAt = 0;
@@ -384,6 +392,7 @@ export class BinanceAdapter implements ExchangeAdapter {
           unrealizedPnlUsd: multiply(pnl, rate),
         });
       }
+      await this.funding.enrich(positions);
       const assets = records(wallet.assets);
       const balances: AssetBalance[] = assets
         .map((row) => {

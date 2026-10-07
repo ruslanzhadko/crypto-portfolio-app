@@ -1,3 +1,4 @@
+import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import { record, records } from "./adapters";
 import { reserveRequest } from "./transport";
@@ -10,6 +11,11 @@ import {
 } from "./types";
 
 export class HyperliquidAdapter implements ExchangeAdapter {
+  private funding = new FundingReader(
+    "hyperliquid",
+    undefined,
+    (body) => this.info({ ...body, user: this.address }),
+  );
   constructor(
     private address: string,
     private prices: () => Promise<Map<string, string>>,
@@ -125,6 +131,7 @@ export class HyperliquidAdapter implements ExchangeAdapter {
         ];
       },
     );
+    await this.funding.enrich(positions);
     const isUnified = mode === "unifiedAccount" || mode === "portfolioMargin";
     if (mode === "portfolioMargin")
       throw new ExchangeError("UNSUPPORTED_ACCOUNT");

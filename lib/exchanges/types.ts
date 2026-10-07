@@ -35,6 +35,7 @@ export interface AssetBalance {
   priceUsd: string | null;
 }
 export interface OpenPosition {
+  funding?: import("./funding").FundingSummary;
   positionKey: string;
   symbol: string;
   base: string;
