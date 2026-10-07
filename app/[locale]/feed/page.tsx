@@ -9,6 +9,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { Navbar } from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
+import { exchangesEnabled } from "@/lib/exchanges/config";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function FeedPage({
   if (session?.user?.id) {
     return (
       <div className="flex min-h-screen">
-        <Sidebar userRole={session.user.role} />
+        <Sidebar userRole={session.user.role} exchangesEnabled={exchangesEnabled(session.user.id)} />
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <Navbar
             email={session.user.email ?? ""}
@@ -62,7 +63,7 @@ export default async function FeedPage({
             {feedContent}
           </main>
         </div>
-        <MobileNav userRole={session.user.role} />
+        <MobileNav userRole={session.user.role} exchangesEnabled={exchangesEnabled(session.user.id)} />
       </div>
     );
   }

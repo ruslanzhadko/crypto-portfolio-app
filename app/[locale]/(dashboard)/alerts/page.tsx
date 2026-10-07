@@ -58,7 +58,7 @@ export default async function AlertsPage() {
 
       {(!user?.telegramChatId || !user.telegramNotificationsEnabled) && (
         <Card className="border-warning/40 bg-warning/5">
-          <CardContent className="flex items-start gap-3 p-4">
+          <CardContent className="flex flex-wrap items-start gap-3 p-4 pt-4 sm:p-4 sm:pt-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
             <div className="flex-1 text-sm">
               <p className="font-medium">{t('telegramWarningTitle')}</p>
