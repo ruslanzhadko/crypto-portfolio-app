@@ -919,7 +919,7 @@
     "capitalHistory": "Capital history",
     "daysShort": "d",
     "historyEmpty": "History starts with the first snapshot. The worker records one every five minutes.",
-    "historyNote": "Change in value includes deposits and withdrawals. It is not investment profit. Gaps mark changes in source composition.",
+    "historyNote": "Change in value includes deposits, withdrawals and connected accounts. It is not investment profit.",
     "valueChange": "Change in value",
     "sourceChanges": "Source changes",
     "legacyHistory": "Previous wallet history",

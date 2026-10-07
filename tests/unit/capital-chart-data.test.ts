@@ -22,11 +22,12 @@ describe("capital history source transitions", () => {
       wallets: 1277,
       exchanges: 3883,
     });
-    expect(points[1]).toEqual({
-      timestamp: 150000,
-      wallets: null,
-      exchanges: null,
-    });
+    expect(points).toHaveLength(2);
+    expect(
+      points.every(
+        (point) => point.wallets !== null && point.exchanges !== null,
+      ),
+    ).toBe(true);
   });
   it("keeps stable observations connected and supports a single initial point", () => {
     const point = {
@@ -42,4 +43,3 @@ describe("capital history source transitions", () => {
     expect(capitalChartData([])).toEqual([]);
   });
 });
-

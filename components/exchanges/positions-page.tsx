@@ -212,7 +212,8 @@ export function PositionsPage({
               <div>
                 <p className="text-xs text-text-muted">{t("size")}</p>
                 <p className="text-sm">
-                  <Quantity value={p.baseSize} /> {p.base}
+                  <Quantity value={p.baseSize} maximumFractionDigits={4} />{" "}
+                  {p.base}
                 </p>
                 <p className="text-xs text-text-muted">
                   <Money value={p.notionalUsd} />
@@ -221,15 +222,15 @@ export function PositionsPage({
               <div className="hidden md:block">
                 <p className="text-xs text-text-muted">{t("entryMark")}</p>
                 <p className="text-sm">
-                  <Quantity value={p.entryPrice} /> /{" "}
-                  <Quantity value={p.markPrice} />
+                  <Quantity value={p.entryPrice} maximumFractionDigits={4} /> /{" "}
+                  <Quantity value={p.markPrice} maximumFractionDigits={4} />
                 </p>
                 <p className="text-xs text-text-muted">{p.settle}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-text-muted">{t("unrealizedPnl")}</p>
                 <p
-                  className={`font-medium ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
+                  className={`text-xl font-semibold ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
                 >
                   <Money value={p.unrealizedPnlUsd} />
                 </p>
@@ -239,37 +240,47 @@ export function PositionsPage({
               </div>
             </summary>
             <div className="border-t border-border bg-background/40 p-4">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-sm lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dt]:text-xs">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-base lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dt]:text-sm">
                 <div>
                   <dt className="text-text-muted">{t("entryMark")}</dt>
                   <dd>
-                    <Quantity value={p.entryPrice} /> /{" "}
-                    <Quantity value={p.markPrice} /> {p.settle}
+                    <Quantity value={p.entryPrice} maximumFractionDigits={4} />{" "}
+                    / <Quantity value={p.markPrice} maximumFractionDigits={4} />{" "}
+                    {p.settle}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("liquidation")}</dt>
                   <dd>
-                    <Quantity value={p.liquidationPrice} /> {p.settle}
+                    <Quantity
+                      value={p.liquidationPrice}
+                      maximumFractionDigits={4}
+                    />{" "}
+                    {p.settle}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("leverage")}</dt>
                   <dd>
-                    <Quantity value={p.leverage} />
+                    <Quantity value={p.leverage} maximumFractionDigits={4} />
                     {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("margin")}</dt>
                   <dd>
-                    <Quantity value={p.margin} /> {p.settle}
+                    <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
+                    {p.settle}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("unrealizedPnl")}</dt>
-                  <dd className="text-lg">
-                    <Quantity value={p.unrealizedPnl} /> {p.settle}
+                  <dd className="text-sm">
+                    <Quantity
+                      value={p.unrealizedPnl}
+                      maximumFractionDigits={4}
+                    />{" "}
+                    {p.settle}
                   </dd>
                 </div>
                 <div>

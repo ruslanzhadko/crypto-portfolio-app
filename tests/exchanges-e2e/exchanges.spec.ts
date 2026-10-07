@@ -257,6 +257,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(
     page.getByText("$12,540.50", { exact: true }).first(),
   ).toBeVisible();
+  await expect(page.locator(".recharts-area-curve")).toHaveCount(3);
   // Exact source-transition behavior is covered by capital-chart-data.test.ts.
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
   if (process.env.EXCHANGE_VISUAL_QA) await page.locator('.recharts-surface').first().screenshot({ path: "test-results/capital-chart-desktop.png" });

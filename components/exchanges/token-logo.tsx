@@ -34,6 +34,8 @@ const icons = new Set([
   "BTTC",
 ]);
 const catalogIds: Record<string, string> = {
+  PURR: "purr-2",
+  HYPE: "hyperliquid",
   TURTLE: "turtle",
   OPN: "opinion",
   MET: "meteora",
@@ -50,7 +52,7 @@ function findLogo(ticker: string) {
   const lookup = lookupQueue
     .then(async () => {
       const response = await fetch(
-        `/api/market/search?q=${encodeURIComponent(catalogIds[ticker] ?? ticker)}`,
+        `/api/market/search?q=${encodeURIComponent(ticker === "PURR" ? "purr" : (catalogIds[ticker] ?? ticker))}`,
       );
       if (!response.ok) throw new Error("Logo metadata unavailable");
       const data = (await response.json()) as {

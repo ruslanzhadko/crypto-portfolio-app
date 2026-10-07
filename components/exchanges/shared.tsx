@@ -17,14 +17,22 @@ export function Money({ value }: { value: string | null | undefined }) {
     </span>
   );
 }
-export function Quantity({ value }: { value: string | null | undefined }) {
+export function Quantity({
+  value,
+  maximumFractionDigits,
+}: {
+  value: string | null | undefined;
+  maximumFractionDigits?: number;
+}) {
   const locale = useLocale();
   return (
     <span className="tabular-nums">
       {value == null
         ? "—"
         : new Intl.NumberFormat(locale, {
-            maximumSignificantDigits: 10,
+            ...(maximumFractionDigits === undefined
+              ? { maximumSignificantDigits: 10 }
+              : { maximumFractionDigits }),
           }).format(Number(value))}
     </span>
   );

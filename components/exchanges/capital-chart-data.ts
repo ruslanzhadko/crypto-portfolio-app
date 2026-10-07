@@ -11,16 +11,7 @@ export function capitalChartData(points: Observation[]) {
     wallets: number | null;
     exchanges: number | null;
   }[] = [];
-  points.forEach((point, index) => {
-    const previous = points[index - 1];
-    // Break the line BETWEEN observations, never discard the new source's value.
-    if (previous && previous.sourceSet !== point.sourceSet) {
-      chart.push({
-        timestamp: (previous.timestamp + point.timestamp) / 2,
-        wallets: null,
-        exchanges: null,
-      });
-    }
+  points.forEach((point) => {
     chart.push({
       timestamp: point.timestamp,
       wallets: Number(point.walletsUsd),

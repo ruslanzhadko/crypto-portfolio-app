@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   AreaChart,
   Area,
+  Legend,
   XAxis,
   YAxis,
   Tooltip,
@@ -249,7 +250,7 @@ export function CapitalDashboard({
                       />
                       <Area
                         name={t(scope === "all" ? "totalCapital" : scope)}
-                        type="linear"
+                        type="monotone"
                         dataKey={scope === "all" ? "total" : scope}
                         stroke="#a78bfa"
                         fill="#a78bfa"
@@ -280,6 +281,31 @@ export function CapitalDashboard({
                         }}
                         activeDot={{ r: 4 }}
                       />
+                      {scope === "all" && (
+                        <Area
+                          name={t("wallets")}
+                          type="monotone"
+                          dataKey="wallets"
+                          stroke="#60a5fa"
+                          fill="transparent"
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      )}
+                      {scope === "all" && (
+                        <Area
+                          name={t("exchanges")}
+                          type="monotone"
+                          dataKey="exchanges"
+                          stroke="#34d399"
+                          fill="transparent"
+                          strokeWidth={2}
+                          dot={false}
+                          isAnimationActive={false}
+                        />
+                      )}
+                      {scope === "all" && <Legend />}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
