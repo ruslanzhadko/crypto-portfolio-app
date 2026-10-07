@@ -11,10 +11,8 @@ import {
 } from "./types";
 
 export class HyperliquidAdapter implements ExchangeAdapter {
-  private funding = new FundingReader(
-    "hyperliquid",
-    undefined,
-    (body) => this.info({ ...body, user: this.address }),
+  private funding = new FundingReader("hyperliquid", undefined, (body) =>
+    this.info({ ...body, user: this.address }),
   );
   constructor(
     private address: string,
@@ -96,6 +94,7 @@ export class HyperliquidAdapter implements ExchangeAdapter {
         };
       })
       .filter((b) => !new D(b.total).isZero());
+    const nativeFunding = new Map<string, string | null>();
     const positions: OpenPosition[] = records(perp.assetPositions).flatMap(
       (item) => {
         const p = record(item.position),
@@ -103,6 +102,18 @@ export class HyperliquidAdapter implements ExchangeAdapter {
         if (amount.isZero()) return [];
         if (typeof p.coin !== "string")
           throw new ExchangeError("INVALID_RESPONSE");
+        const cumulative =
+          p.cumFunding && typeof p.cumFunding === "object"
+            ? record(p.cumFunding)
+            : {};
+        // Optional funding metadata must not fail an otherwise valid balance sync.
+        let cumulativeAmount: string | null = null;
+        try {
+          cumulativeAmount = decimal(cumulative.sinceOpen);
+        } catch {
+          /* unavailable */
+        }
+        nativeFunding.set(p.coin, cumulativeAmount);
         const size = amount.abs().toFixed(),
           leverage = record(p.leverage),
           value = decimal(p.positionValue);
@@ -131,7 +142,7 @@ export class HyperliquidAdapter implements ExchangeAdapter {
         ];
       },
     );
-    await this.funding.enrich(positions);
+    await this.funding.enrich(positions, nativeFunding);
     const isUnified = mode === "unifiedAccount" || mode === "portfolioMargin";
     if (mode === "portfolioMargin")
       throw new ExchangeError("UNSUPPORTED_ACCOUNT");

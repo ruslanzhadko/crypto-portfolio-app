@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { FundingReader, positionOpening } from "./funding";
+import { FundingReader, positionOpening, fundingPeriod } from "./funding";
 import type { OpenPosition } from "./types";
 const position = (): OpenPosition => ({
   positionKey: "BTCUSDT:BOTH",
@@ -21,6 +21,64 @@ const position = (): OpenPosition => ({
   unrealizedPnlUsd: "2",
 });
 describe("funding attribution", () => {
+  it("refreshes at HH:01 rather than ten minutes after startup", () => {
+    const hour = Date.UTC(2026, 9, 7, 14);
+    expect(fundingPeriod(hour + 59_999)).toBe(fundingPeriod(hour - 1));
+    expect(fundingPeriod(hour + 60_000)).toBe(fundingPeriod(hour - 1) + 1);
+    expect(fundingPeriod(hour + 3_599_999)).toBe(fundingPeriod(hour + 60_000));
+  });
+  it("uses native cumulative funding without reconstructing old fills", async () => {
+    const request = vi.fn(async () => {
+      throw Error("must not query history");
+    });
+    const p = position();
+    await new FundingReader("hyperliquid", undefined, request).enrich(
+      [p],
+      new Map([[p.positionKey, "1.25"]]),
+    );
+    expect(p.funding).toMatchObject({ status: "complete", amount: "1.25" });
+    expect(request).not.toHaveBeenCalled();
+  });
+  it("handles Bybit fills sharing a timestamp regardless of provider order", async () => {
+    const now = Date.now(),
+      p = position();
+    p.positionKey = "BTCUSDT:0";
+    const request = vi.fn(async () => ({
+      retCode: 0,
+      result: {
+        list: [
+          {
+            symbol: p.symbol,
+            currency: "USDT",
+            type: "TRADE",
+            transactionTime: now - 10000,
+            side: "Buy",
+            qty: "1",
+            size: "1",
+          },
+          {
+            symbol: p.symbol,
+            currency: "USDT",
+            type: "TRADE",
+            transactionTime: now - 10000,
+            side: "Buy",
+            qty: "1",
+            size: "2",
+          },
+          {
+            symbol: p.symbol,
+            currency: "USDT",
+            type: "SETTLEMENT",
+            transactionTime: now - 1000,
+            funding: "-0.1",
+          },
+        ],
+        nextPageCursor: "",
+      },
+    }));
+    await new FundingReader("bybit", request).enrich([p]);
+    expect(p.funding).toMatchObject({ status: "complete", amount: "-0.1" });
+  });
   it("finds a reopened position after partial reductions and excludes the previous position", () => {
     expect(
       positionOpening("2", [

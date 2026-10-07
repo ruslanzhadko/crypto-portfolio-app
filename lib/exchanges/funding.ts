@@ -9,6 +9,11 @@ export type FundingSummary = {
   status: "complete" | "unavailable" | "pending";
 };
 type Row = Record<string, unknown>;
+const HOUR = 3600_000;
+/** The settlement refresh boundary is HH:01 UTC (independent of worker startup). */
+export function fundingPeriod(time: number) {
+  return Math.floor((time - 60_000) / HOUR);
+}
 const WEEK = 7 * 86400_000;
 const LOOKBACK = 90 * 86400_000;
 function rows(value: unknown): Row[] {
@@ -52,7 +57,7 @@ export class FundingReader {
     private info?: (body: Record<string, unknown>) => Promise<unknown>,
     private user?: string,
   ) {}
-  async enrich(positions: OpenPosition[]) {
+  async enrich(positions: OpenPosition[], native?: Map<string, string | null>) {
     const keys = new Set(positions.map((p) => this.key(p)));
     for (const key of this.cache.keys())
       if (!keys.has(key)) this.cache.delete(key);
@@ -60,8 +65,24 @@ export class FundingReader {
     for (const p of positions) {
       const key = this.key(p),
         cached = this.cache.get(key);
-      if (cached && Date.now() - cached.updatedAt < 600_000) {
+      if (
+        cached &&
+        fundingPeriod(Date.now()) === fundingPeriod(cached.updatedAt)
+      ) {
         p.funding = cached;
+        continue;
+      }
+      // Hyperliquid supplies cumulative funding since opening directly, with
+      // the same signed cash convention: received positive, paid negative.
+      if (native?.has(p.positionKey)) {
+        const amount = native.get(p.positionKey);
+        p.funding = {
+          amount: amount == null ? null : decimal(amount),
+          since: null,
+          updatedAt: Date.now(),
+          status: amount == null ? "unavailable" : "complete",
+        };
+        this.cache.set(key, p.funding);
         continue;
       }
       // Backfill only one position per sync so history cannot starve live positions.
@@ -194,7 +215,19 @@ export class FundingReader {
           ledger.push(r);
           if (r.type === "TRADE") {
             if (!verifiedLatestTrade) {
-              if (!new D(rd(r.size)).eq(signedSize))
+              // Provider ordering among fills sharing a millisecond is undefined.
+              // One of their post-trade sizes must match the observed final size.
+              if (
+                !batch.some(
+                  (fill) =>
+                    fill.type === "TRADE" &&
+                    fill.symbol === p.symbol &&
+                    fill.currency === p.settle &&
+                    timestamp(fill.transactionTime) ===
+                      timestamp(r.transactionTime) &&
+                    new D(rd(fill.size)).eq(signedSize),
+                )
+              )
                 throw new Error("Position changed during history read");
               verifiedLatestTrade = true;
             }

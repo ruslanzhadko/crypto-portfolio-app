@@ -885,7 +885,7 @@
     "returnOnMargin": "Доходность на маржу",
     "funding": "Funding с открытия",
     "fundingSigns": "+ получено · − уплачено. Уже учтено в капитале счёта.",
-    "fundingPending": "Загружается история выплат…",
+    "fundingPending": "Ожидается синхронизация funding…",
     "fundingUnavailable": "Историю выплат не удалось отнести к этой позиции.",
     "returnFormula": "Нереализованный PnL ÷ начальная маржа.",
     "updated": "Обновлено",

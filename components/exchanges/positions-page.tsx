@@ -297,23 +297,6 @@ export function PositionsPage({
                   </p>
                 </div>
                 <div>
-                  <dt className="text-text-muted">{t("account")}</dt>
-                  <dd>
-                    <Link
-                      className="text-primary"
-                      href={`/exchanges/${p.connection.id}`}
-                    >
-                      {p.connection.label}
-                    </Link>
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-text-muted">{t("updated")}</dt>
-                  <dd>
-                    <Updated value={p.updatedAt} />
-                  </dd>
-                </div>
-                <div>
                   <dt className="text-text-muted">{t("funding")}</dt>
                   <dd
                     className={
@@ -343,11 +326,17 @@ export function PositionsPage({
                     {p.funding?.status === "complete"
                       ? t("fundingSigns")
                       : t(
-                          p.funding?.status === "pending"
+                          !p.funding || p.funding.status === "pending"
                             ? "fundingPending"
                             : "fundingUnavailable",
                         )}
                   </p>
+                </div>
+                <div>
+                  <dt className="text-text-muted">{t("updated")}</dt>
+                  <dd>
+                    <Updated value={p.updatedAt} />
+                  </dd>
                 </div>
               </dl>
               <div className="mt-3">

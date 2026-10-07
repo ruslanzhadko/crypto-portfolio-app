@@ -21,6 +21,7 @@ function info(mode: string) {
         {
           position: {
             coin: "BTC",
+            cumFunding: { allTime: "100", sinceOpen: "1.25", sinceChange: "0" },
             szi: "0.1",
             positionValue: "5000",
             entryPx: "49000",
@@ -45,6 +46,10 @@ describe("HyperCore accounting", () => {
     expect(result.accounts).toHaveLength(1);
     expect(result.accounts[0]!.equityUsd).toBe("99");
     expect(result.accounts[0]!.positions).toHaveLength(1);
+    expect(result.accounts[0]!.positions?.[0]?.funding).toMatchObject({
+      status: "complete",
+      amount: "1.25",
+    });
   });
   it("keeps classic perp equity in a separate pool without adding position notional", async () => {
     const a = new HyperliquidAdapter(

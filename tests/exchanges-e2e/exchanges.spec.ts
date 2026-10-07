@@ -41,6 +41,7 @@ const fixture: SyncResult = {
       ],
       positions: [
         {
+          funding: { amount: "-1.25", since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
           positionKey: "BTCUSDT:1",
           symbol: "BTCUSDT",
           base: "BTC",
@@ -296,6 +297,12 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
+  const positionDetails = page.locator("details").filter({has: page.getByText("BTCUSDT", {exact:true})});
+  await positionDetails.locator("summary").click();
+  await expect(positionDetails.getByText("Funding since opening", {exact:true})).toBeVisible();
+  await expect(positionDetails.getByText("-1.25 USDT", {exact:true})).toBeVisible();
+  await expect(positionDetails.getByText("Account", {exact:true})).toHaveCount(0);
+  if (process.env.EXCHANGE_VISUAL_QA) await page.screenshot({path:"test-results/positions-funding-desktop.png"});
   await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("short");
   await expect(page.getByText(/No open positions match/)).toBeVisible();
   await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
