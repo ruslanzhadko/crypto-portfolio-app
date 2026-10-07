@@ -161,6 +161,9 @@ describe.skipIf(!enabled)("exchange database integration", () => {
     expect(overview.totalUsd).toBe("900");
     expect(overview.positionCount).toBe(1);
     expect(overview.unrealizedPnlUsd).toBe("-100");
+    // A connection-level warning from another account must not leak onto a healthy account.
+    await prisma.exchangeConnection.update({ where: { id: c.id }, data: { status: "PARTIAL", errorCode: "UNPRICED_ASSETS" } });
+    expect((await getCapitalOverview(userId)).accounts.find((a) => a.connectionId === c.id)?.errorCode).toBeNull();
     await enqueue(c.id);
     job = (await claimJob())!;
     expect(

@@ -1,4 +1,5 @@
 "use client";
+import { ExchangeTokenLogo } from "./token-logo";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
@@ -153,7 +154,10 @@ export function PositionsPage({
           <details key={p.id} className="group">
             <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-3 p-4 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary md:grid-cols-[minmax(8rem,1fr)_minmax(7rem,1fr)_1fr_1fr_1fr]">
               <div>
-                <p className="font-semibold">{p.symbol}</p>
+                <p className="flex items-center gap-2 font-semibold">
+                  <ExchangeTokenLogo symbol={p.base} />
+                  {p.symbol}
+                </p>
                 <span
                   className={`text-xs ${p.side === "long" ? "text-success" : "text-danger"}`}
                 >

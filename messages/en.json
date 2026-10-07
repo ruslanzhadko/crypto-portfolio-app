@@ -971,6 +971,10 @@
     "walletDetails": "Wallet details and market",
     "noWalletAssets": "No visible wallet assets.",
     "migrationPending": "Migration pending; not added to total",
-    "positionsIncomplete": "Some accounts have not synced completely. The list may be incomplete or stale."
+    "positionsIncomplete": "Some accounts have not synced completely. The list may be incomplete or stale.",
+    "minimumBalance": "Balances from",
+    "showAllBalances": "All balances",
+    "hideValuationWarnings": "Hide valuation warnings",
+    "hiddenDust": "Small balances hidden: {count}. Totals are unchanged; unpriced assets remain visible."
   }
 }

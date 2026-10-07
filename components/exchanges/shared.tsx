@@ -1,6 +1,7 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
+import { useDisplayPreference, warningPreference } from "./display-preferences";
 
 export function Money({ value }: { value: string | null | undefined }) {
   const locale = useLocale();
@@ -43,7 +44,8 @@ export function ExchangeErrorNotice({
   code: string | null | undefined;
 }) {
   const t = useTranslations("Exchanges");
-  if (!code) return null;
+  const [hidden, setHidden] = useDisplayPreference(warningPreference, "false");
+  if (!code || (code === "UNPRICED_ASSETS" && hidden === "true")) return null;
   return (
     <p
       role="alert"
@@ -51,6 +53,15 @@ export function ExchangeErrorNotice({
     >
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
       {t.has(`errors.${code}`) ? t(`errors.${code}`) : t("errors.UNAVAILABLE")}
+      {code === "UNPRICED_ASSETS" && (
+        <button
+          type="button"
+          className="ml-auto shrink-0 underline underline-offset-4"
+          onClick={() => setHidden("true")}
+        >
+          {t("hideValuationWarnings")}
+        </button>
+      )}
     </p>
   );
 }

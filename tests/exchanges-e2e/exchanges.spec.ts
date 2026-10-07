@@ -198,6 +198,13 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   const job = (await claimJob())!;
   await commitResult(c.id, 1, job.token, fixture, new Date());
   const base = Date.now();
+  const account = await prisma.exchangeAccount.findFirstOrThrow({ where: { connectionId: c.id } });
+  await prisma.exchangeBalance.createMany({ data: [
+    { accountId: account.id, assetId: "bybit:DUST", symbol: "DUST", total: "1", priceUsd: "0.09", usdValue: "0.09" },
+    { accountId: account.id, assetId: "bybit:UNKNOWN", symbol: "UNKNOWN", total: "1000" },
+  ] });
+  await prisma.exchangeAccount.update({ where: { id: account.id }, data: { complete: false, errorCode: "UNPRICED_ASSETS" } });
+  await prisma.exchangeConnection.update({ where: { id: c.id }, data: { status: "PARTIAL", errorCode: "UNPRICED_ASSETS" } });
   for (let i = 0; i < 4; i++)
     await prisma.portfolioCapitalSnapshot.create({
       data: {
@@ -218,7 +225,25 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   ).toBeVisible();
   // Exact source-transition behavior is covered by capital-chart-data.test.ts.
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
+  await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
+  await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toBeVisible();
+  await page.getByLabel("Balances from").selectOption("0");
+  await expect(page.getByText("DUST", { exact: true })).toBeVisible();
+  await page.getByLabel("Hide valuation warnings").check();
+  await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByLabel("Hide valuation warnings")).toBeChecked();
+  await expect(page.getByLabel("Balances from")).toHaveValue("0");
+  if (process.env.EXCHANGE_VISUAL_QA) {
+    await page.getByLabel("Balances from").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: "test-results/exchange-balances-desktop.png" });
+  }
   await page.setViewportSize({ width: 390, height: 844 });
+  if (process.env.EXCHANGE_VISUAL_QA) {
+    await page.getByLabel("Balances from").scrollIntoViewIfNeeded();
+    await page.screenshot({ path: "test-results/exchange-balances-mobile.png" });
+  }
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");

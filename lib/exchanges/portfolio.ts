@@ -109,7 +109,8 @@ export async function getCapitalOverview(userId: string) {
         stale,
         included,
         status: c.status,
-        errorCode: a.errorCode ?? c.errorCode,
+        // A partial sibling account must not make this account look broken.
+        errorCode: a.errorCode,
         balancesAt: a.balancesAt?.toISOString() ?? null,
         positionsAt: a.positionsAt?.toISOString() ?? null,
         balances: a.balances.map((b) => ({

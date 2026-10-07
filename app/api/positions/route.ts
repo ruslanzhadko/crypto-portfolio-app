@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
             ...(q.exchange ? { exchange: q.exchange } : {}),
             ...(q.connectionId ? { id: q.connectionId } : {}),
           },
-          select: { id: true, status: true, positionsAt: true },
+          select: { id: true, status: true, errorCode: true, positionsAt: true },
         }),
         prisma.exchangeWorkerLease.findFirst({
           where: {
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
         connection: account.connection,
         errorCode: account.errorCode,
         stale:
-          account.connection.status !== "ACTIVE" ||
+          !["ACTIVE", "PARTIAL"].includes(account.connection.status) ||
           Date.now() - p.updatedAt.getTime() > 90_000,
       })),
       total,
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
       connectionCount: connections.length,
       incomplete: connections.some(
         (c) =>
-          c.status !== "ACTIVE" ||
+          (c.status !== "ACTIVE" && !(c.status === "PARTIAL" && c.errorCode === "UNPRICED_ASSETS")) ||
           !c.positionsAt ||
           Date.now() - c.positionsAt.getTime() > 90_000,
       ),

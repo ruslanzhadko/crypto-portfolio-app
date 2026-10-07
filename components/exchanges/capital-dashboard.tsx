@@ -22,6 +22,7 @@ import { Money, Updated, ExchangeErrorNotice } from "./shared";
 import { BalanceTable } from "./balance-table";
 import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
+import { useDisplayPreference, warningPreference } from "./display-preferences";
 
 export function CapitalDashboard({
   walletAssets,
@@ -34,6 +35,7 @@ export function CapitalDashboard({
     [days, setDays] = useState(30),
     [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hideWarnings] = useDisplayPreference(warningPreference, "false");
   const data = useExchangeData<{ overview: CapitalOverview }>(
     "/api/portfolio/capital?view=overview",
   );
@@ -110,7 +112,7 @@ export function CapitalDashboard({
             <p className="mt-1 text-3xl font-semibold tracking-tight">
               <Money value={value} />
             </p>
-            {!overview.complete && (
+            {!overview.complete && hideWarnings !== "true" && (
               <p className="mt-2 text-sm text-warning">{t("partialCapital")}</p>
             )}
             {overview.stale && (
