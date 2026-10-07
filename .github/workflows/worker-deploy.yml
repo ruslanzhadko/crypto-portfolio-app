@@ -11,17 +11,55 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: postgresql://exchange_test:ci-test-only@127.0.0.1:5432/exchange_test
+      DIRECT_URL: postgresql://exchange_test:ci-test-only@127.0.0.1:5432/exchange_test
+      EXCHANGE_TEST_DATABASE_URL: postgresql://exchange_test:ci-test-only@127.0.0.1:5432/exchange_test
+      AUTH_SECRET: ci-test-only-auth-secret-at-least-32-characters
+      NEXTAUTH_SECRET: ci-test-only-auth-secret-at-least-32-characters
+      NEXT_TELEMETRY_DISABLED: '1'
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: exchange_test
+          POSTGRES_PASSWORD: ci-test-only
+          POSTGRES_DB: exchange_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U exchange_test -d exchange_test"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: npm
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
+      - name: Prepare disposable test schema
+        run: npx prisma db push --skip-generate
+      - name: Fast behavior and security regressions
+        run: npm test -- --exclude lib/exchanges/integration.test.ts
+      - name: Real database integration
+        run: npx vitest run lib/exchanges/integration.test.ts
       - name: Test deployment rollback without real credentials
         run: |
           sudo ln -s "$GITHUB_WORKSPACE" /source
           sudo bash tests/worker-update.test.sh
+      # Next build already runs lint and TypeScript checks; do not run them twice.
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: Critical browser flows (one browser, no retries)
+        run: npm run test:e2e
+      - name: Keep diagnostics only on failure
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: browser-failure-${{ github.run_id }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 3
   deploy:
     needs: check
     runs-on: ubuntu-24.04

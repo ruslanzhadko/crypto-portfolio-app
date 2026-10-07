@@ -15,6 +15,8 @@ const enabled =
   new URL(url).hostname === "127.0.0.1" &&
   new URL(url).pathname === "/exchange_test" &&
   process.env.DATABASE_URL === url;
+if (process.env.CI && !enabled)
+  throw new Error('CI requires an explicit isolated localhost /exchange_test database');
 const userId = "exchange-integration-user";
 async function enqueue(connectionId: string) {
   await enqueueJob(connectionId);

@@ -6,6 +6,12 @@ only after its database migration, credentials and dedicated worker are ready.
 The VM builds the Docker image; GitHub holds only a restricted SSH key, never
 the Neon password or exchange encryption keys. Vercel deploys independently.
 
+Checks use an automatically created, disposable PostgreSQL service in GitHub,
+not Neon. They run the behavior/security regressions, database integration,
+deployment rollback, production build (including lint and TypeScript), and
+three critical Chromium browser flows. No additional database secrets or
+manual test infrastructure setup are required. See `CI_REVIEW.md` for scope.
+
 ## One-time setup for the existing test VM
 
 Run on the VM as `rzhadko`:

@@ -148,6 +148,7 @@ test("connect → queued sync → balances and positions → replace key → dis
   ).toBe(true);
   await saveCapitalSnapshot(userId);
   await page.getByRole("link", { name: "Main Bybit" }).click();
+  await expect(page).toHaveURL(new RegExp(`/exchanges/${c.id}$`));
   await expect(page.getByText("$12,540.50", { exact: true })).toBeVisible();
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   await page.locator("summary").filter({ hasText: "BTCUSDT" }).click();
@@ -185,7 +186,7 @@ test("connect → queued sync → balances and positions → replace key → dis
 
 test("dashboard and positions render on desktop/mobile, old navigation remains reachable", async ({
   page,
-}, testInfo) => {
+}) => {
   const c = await prisma.exchangeConnection.create({
     data: {
       userId,
@@ -215,27 +216,18 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(
     page.getByText("$12,540.50", { exact: true }).first(),
   ).toBeVisible();
-  await page.screenshot({
-    path: testInfo.outputPath("dashboard-desktop.png"),
-    fullPage: true,
-  });
-  // The single observation after a composition change must still have a marker.
-  await expect(page.locator(".recharts-area-dots").last().locator("circle")).toHaveCount(4);
+  // Exact source-transition behavior is covered by capital-chart-data.test.ts.
+  await expect(page.locator('.recharts-surface').first()).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.screenshot({ path: testInfo.outputPath("dashboard-mobile.png"), fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
-  await page.getByLabel("Direction", { exact: true }).selectOption("short");
+  await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("short");
   await expect(page.getByText(/No open positions match/)).toBeVisible();
-  await page.getByLabel("Direction", { exact: true }).selectOption("");
+  await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
-  await page.screenshot({
-    path: testInfo.outputPath("positions-mobile.png"),
-    fullPage: true,
-  });
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth > innerWidth,

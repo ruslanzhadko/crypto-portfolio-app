@@ -15,6 +15,7 @@ process.env.DIRECT_URL = url;
 export default defineConfig({
   testDir: "./tests/exchanges-e2e",
   fullyParallel: false,
+  forbidOnly: !!process.env.CI,
   workers: 1,
   retries: 0,
   timeout: 60_000,
@@ -23,6 +24,7 @@ export default defineConfig({
     baseURL: "http://localhost:3100",
     ...devices["Desktop Chrome"],
     trace: "retain-on-failure",
+    screenshot: "only-on-failure",
   },
   webServer: {
     command: "node node_modules/next/dist/bin/next start -p 3100",

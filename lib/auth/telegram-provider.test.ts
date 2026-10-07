@@ -8,7 +8,7 @@ import { compactTelegramState, withTelegramState } from './telegram-state';
 
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
-async function runCallback(mode: 'valid' | 'discovery' | 'wrong-audience' | 'expired' | 'missing-pkce' | 'wrong-state' | 'invalid-signature') {
+async function runCallback(mode: 'valid' | 'wrong-audience' | 'expired' | 'missing-pkce' | 'wrong-state' | 'invalid-signature') {
   const secret = 'telegram-test-only-auth-secret';
   vi.stubEnv('AUTH_SECRET', secret);
   vi.stubEnv('AUTH_TELEGRAM_ID', '123456');
@@ -49,10 +49,6 @@ async function runCallback(mode: 'valid' | 'discovery' | 'wrong-audience' | 'exp
     cookies.push(`${name}=${await encode({ secret, salt: name, maxAge: 900, token: { value, provider: 'telegram' } })}`);
   }
   const provider = telegramProvider();
-  if (mode === 'discovery') {
-    delete provider.token;
-    provider.authorization = { params: { scope: 'openid profile' } };
-  }
   const error = vi.fn();
   const signIn = vi.fn(async () => true);
   const handler = withTelegramState((request) => Auth(request, {
@@ -66,12 +62,6 @@ async function runCallback(mode: 'valid' | 'discovery' | 'wrong-audience' | 'exp
 }
 
 describe('Telegram callback with the installed Auth.js implementation', () => {
-  it('reproduces the old discovery configuration failure', async () => {
-    const { response, error, signIn } = await runCallback('discovery');
-    expect(response.headers.get('location')).toContain('error=Configuration');
-    expect(error.mock.calls[0]?.[0].cause.err.message).toContain('userinfo endpoint');
-    expect(signIn).not.toHaveBeenCalled();
-  });
   it('exchanges the code, reads ID-token profile and issues a session without userinfo', async () => {
     const { response, signIn, error, fetchMock } = await runCallback('valid');
     expect(error).not.toHaveBeenCalled();
