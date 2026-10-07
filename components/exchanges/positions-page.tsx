@@ -188,7 +188,7 @@ export function PositionsPage({
               );
             }}
           >
-            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-3 p-4 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary md:grid-cols-[minmax(8rem,1fr)_minmax(7rem,1fr)_1fr_1fr_1fr]">
+            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-5">
               <div>
                 <p className="flex items-center gap-3 font-semibold">
                   <ExchangeTokenLogo symbol={p.base} />
@@ -205,7 +205,7 @@ export function PositionsPage({
               </div>
               <div>
                 <p className="text-xs text-text-muted">{t("size")}</p>
-                <p className="text-sm">
+                <p className="text-[15px] font-medium tabular-nums">
                   <Quantity value={p.baseSize} maximumFractionDigits={4} />{" "}
                   {p.base}
                 </p>
@@ -215,16 +215,16 @@ export function PositionsPage({
               </div>
               <div>
                 <p className="text-xs text-text-muted">{t("entryMark")}</p>
-                <p className="text-sm">
+                <p className="text-[15px] font-medium tabular-nums">
                   <Quantity value={p.entryPrice} maximumFractionDigits={4} /> /{" "}
                   <Quantity value={p.markPrice} maximumFractionDigits={4} />
                 </p>
                 <p className="text-xs text-text-muted">{p.settle}</p>
               </div>
-              <div className="text-right md:text-left">
+              <div className="text-right lg:text-left">
                 <p className="text-xs text-text-muted">{t("funding")}</p>
                 <p
-                  className={`text-sm font-medium ${p.funding?.amount == null ? "text-text-muted" : Number(p.funding.amount) >= 0 ? "text-success" : "text-danger"}`}
+                  className={`text-[15px] font-medium tabular-nums ${p.funding?.amount == null ? "text-text-muted" : Number(p.funding.amount) >= 0 ? "text-success" : "text-danger"}`}
                   title={
                     p.funding?.status === "complete"
                       ? undefined
@@ -261,26 +261,8 @@ export function PositionsPage({
                 )}
               </div>
             </summary>
-            <div className="border-t border-border bg-background/40 p-4">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-4 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-sm">
-                <div>
-                  <dt className="text-text-muted">{t("entryMark")}</dt>
-                  <dd>
-                    <Quantity value={p.entryPrice} maximumFractionDigits={4} />{" "}
-                    / <Quantity value={p.markPrice} maximumFractionDigits={4} />{" "}
-                    {p.settle}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-text-muted">{t("liquidation")}</dt>
-                  <dd>
-                    <Quantity
-                      value={p.liquidationPrice}
-                      maximumFractionDigits={4}
-                    />{" "}
-                    {p.settle}
-                  </dd>
-                </div>
+            <div className="border-t border-border bg-background/40 px-4 py-5 sm:px-6 lg:pr-8">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-5 [&>div]:min-w-0 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
                 <div>
                   <dt className="text-text-muted">{t("leverage")}</dt>
                   <dd>
@@ -292,6 +274,16 @@ export function PositionsPage({
                   <dt className="text-text-muted">{t("margin")}</dt>
                   <dd>
                     <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
+                    {p.settle}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-text-muted">{t("liquidation")}</dt>
+                  <dd>
+                    <Quantity
+                      value={p.liquidationPrice}
+                      maximumFractionDigits={4}
+                    />{" "}
                     {p.settle}
                   </dd>
                 </div>
@@ -308,10 +300,65 @@ export function PositionsPage({
                       maximumFractionDigits={4}
                     />{" "}
                     {p.settle}
+                    <div className="group/pnl relative mt-1 text-xs font-normal">
+                      <button
+                        type="button"
+                        className="w-fit cursor-help text-text-muted underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-primary"
+                      >
+                        {t("pnlBreakdown")}
+                      </button>
+                      <div
+                        role="tooltip"
+                        className="hidden mt-2 space-y-1 rounded-lg border border-border bg-surface p-3 text-sm shadow-sm group-hover/pnl:block group-focus-within/pnl:block"
+                      >
+                        <p>
+                          {t("realizedPnl")}:{" "}
+                          <Quantity
+                            value={p.funding?.realizedPnl ?? null}
+                            maximumFractionDigits={4}
+                          />{" "}
+                          {p.settle}
+                        </p>
+                        <p>
+                          Funding:{" "}
+                          <Quantity
+                            value={
+                              p.funding?.status === "complete"
+                                ? p.funding.amount
+                                : null
+                            }
+                            maximumFractionDigits={4}
+                          />{" "}
+                          {p.settle}
+                        </p>
+                        <p className="border-t border-border pt-1 font-medium">
+                          {t("pnlWithFunding")}:{" "}
+                          <Quantity
+                            value={
+                              p.funding?.realizedPnl != null &&
+                              p.funding?.status === "complete" &&
+                              p.funding.amount != null
+                                ? String(
+                                    Number(p.funding.realizedPnl) +
+                                      Number(p.funding.amount),
+                                  )
+                                : null
+                            }
+                            maximumFractionDigits={4}
+                          />{" "}
+                          {p.settle}
+                        </p>
+                        <p className="text-xs text-text-muted">
+                          {t("pnlExcludesFees")}
+                        </p>
+                      </div>
+                    </div>
                   </dd>
                 </div>
-                <div>
-                  <dt className="text-text-muted">{t("returnOnMargin")}</dt>
+                <div className="lg:text-right">
+                  <dt className="text-text-muted" title={t("returnFormula")}>
+                    {t("returnOnMargin")}
+                  </dt>
                   <dd>
                     {p.margin &&
                     Number(p.margin) > 0 &&
@@ -319,17 +366,11 @@ export function PositionsPage({
                       ? `${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
                       : "—"}
                   </dd>
-                  <p className="text-xs text-text-muted">
-                    {t("returnFormula")}
-                  </p>
-                </div>
-                <div>
-                  <dt className="text-text-muted">{t("updated")}</dt>
-                  <dd>
-                    <Updated value={p.updatedAt} />
-                  </dd>
                 </div>
               </dl>
+              <p className="mt-5 flex flex-wrap items-center justify-end gap-2 text-xs text-text-muted">
+                {t("updated")} <Updated value={p.updatedAt} />
+              </p>
               <div className="mt-3">
                 <ExchangeErrorNotice code={p.errorCode} />
               </div>
