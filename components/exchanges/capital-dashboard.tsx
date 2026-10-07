@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AreaChart,
@@ -8,7 +9,6 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,10 @@ export function CapitalDashboard({
     [days, setDays] = useState(30),
     [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyOpen, setHistoryOpen] = useDisplayPreference(
+    "exchange-capital-history-open",
+    "true",
+  );
   const [hideWarnings] = useDisplayPreference(warningPreference, "false");
   const data = useExchangeData<{ overview: CapitalOverview }>(
     "/api/portfolio/capital?view=overview",
@@ -64,7 +68,13 @@ export function CapitalDashboard({
     data.refresh();
     setBusy(false);
   }
-  const chart = capitalChartData(history?.points ?? []);
+  const chart = capitalChartData(history?.points ?? []).map((point) => ({
+    ...point,
+    total:
+      point.wallets === null || point.exchanges === null
+        ? null
+        : point.wallets + point.exchanges,
+  }));
   const shortHistory =
     chart.length > 0 &&
     chart[chart.length - 1]!.timestamp - chart[0]!.timestamp < 86400_000;
@@ -162,140 +172,148 @@ export function CapitalDashboard({
                 accounts: overview.connectionCount,
               })}
             </p>
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-medium">{t("capitalHistory")}</h2>
-              <div className="flex gap-1">
-                {[1, 7, 30].map((d) => (
-                  <Button
-                    key={d}
-                    size="sm"
-                    variant={d === days ? "secondary" : "ghost"}
-                    onClick={() => setDays(d)}
-                    aria-pressed={days === d}
-                  >
-                    {d}
-                    {t("daysShort")}
-                  </Button>
-                ))}
+            <details
+              className="mt-5"
+              open={historyOpen === "true"}
+              onToggle={(e) => setHistoryOpen(String(e.currentTarget.open))}
+            >
+              <summary className="inline-flex cursor-pointer items-center gap-2 font-medium">
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${historyOpen === "true" ? "" : "-rotate-90"}`}
+                />
+                {t("capitalHistory")}
+              </summary>
+              <div className="mt-2 flex justify-end">
+                <div className="flex gap-1">
+                  {[1, 7, 30].map((d) => (
+                    <Button
+                      key={d}
+                      size="sm"
+                      variant={d === days ? "secondary" : "ghost"}
+                      onClick={() => setDays(d)}
+                      aria-pressed={days === d}
+                    >
+                      {d}
+                      {t("daysShort")}
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
-            {chart.length > 0 ? (
-              <div className="mt-4 h-60 min-w-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chart}>
-                    <XAxis
-                      dataKey="timestamp"
-                      type="number"
-                      domain={["dataMin", "dataMax"]}
-                      tickFormatter={(v) =>
-                        shortHistory
-                          ? new Date(v).toLocaleTimeString(locale, {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : new Date(v).toLocaleDateString(locale, {
-                              day: "numeric",
-                              month: "short",
-                            })
-                      }
-                      tick={{ fontSize: 11, fill: "#94a3b8" }}
-                      minTickGap={45}
-                    />
-                    <YAxis
-                      width={60}
-                      tick={{ fontSize: 11, fill: "#94a3b8" }}
-                      tickFormatter={(v) =>
-                        new Intl.NumberFormat(locale, {
-                          notation: "compact",
-                        }).format(v)
-                      }
-                    />
-                    <Tooltip
-                      labelFormatter={(v) =>
-                        new Date(Number(v)).toLocaleString(locale)
-                      }
-                      formatter={(v: number, name: string) => [
-                        new Intl.NumberFormat(locale, {
-                          style: "currency",
-                          currency: "USD",
-                        }).format(v),
-                        name,
-                      ]}
-                      contentStyle={{
-                        background: "var(--surface, #151c2c)",
-                        border: "1px solid #334155",
-                        borderRadius: 8,
-                      }}
-                    />
-                    {scope !== "exchanges" && (
-                      <Area
-                        name={t("wallets")}
-                        type="linear"
-                        dataKey="wallets"
-                        stackId="capital"
-                        stroke="#3b82f6"
-                        fill="#3b82f6"
-                        fillOpacity={0.15}
-                        isAnimationActive={false}
-                        connectNulls={false}
-                        dot={{ r: 2 }}
+              {chart.length > 0 ? (
+                <div className="mt-4 h-60 min-w-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chart}>
+                      <XAxis
+                        dataKey="timestamp"
+                        type="number"
+                        domain={["dataMin", "dataMax"]}
+                        tickFormatter={(v) =>
+                          shortHistory
+                            ? new Date(v).toLocaleTimeString(locale, {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })
+                            : new Date(v).toLocaleDateString(locale, {
+                                day: "numeric",
+                                month: "short",
+                              })
+                        }
+                        tick={{ fontSize: 11, fill: "#94a3b8" }}
+                        minTickGap={45}
                       />
-                    )}
-                    {scope !== "wallets" && (
+                      <YAxis
+                        width={60}
+                        tick={{ fontSize: 11, fill: "#94a3b8" }}
+                        tickFormatter={(v) =>
+                          new Intl.NumberFormat(locale, {
+                            notation: "compact",
+                          }).format(v)
+                        }
+                      />
+                      <Tooltip
+                        labelFormatter={(v) =>
+                          new Date(Number(v)).toLocaleString(locale)
+                        }
+                        formatter={(v: number, name: string) => [
+                          new Intl.NumberFormat(locale, {
+                            style: "currency",
+                            currency: "USD",
+                          }).format(v),
+                          name,
+                        ]}
+                        contentStyle={{
+                          background: "var(--surface, #151c2c)",
+                          border: "1px solid #334155",
+                          borderRadius: 8,
+                        }}
+                      />
                       <Area
-                        name={t("exchanges")}
+                        name={t(scope === "all" ? "totalCapital" : scope)}
                         type="linear"
-                        dataKey="exchanges"
-                        stackId="capital"
+                        dataKey={scope === "all" ? "total" : scope}
                         stroke="#a78bfa"
                         fill="#a78bfa"
-                        fillOpacity={0.15}
+                        fillOpacity={0.12}
+                        strokeWidth={2}
                         isAnimationActive={false}
                         connectNulls={false}
-                        dot={{ r: 2 }}
+                        dot={(props: {
+                          cx?: number;
+                          cy?: number;
+                          index?: number;
+                        }) => {
+                          const index = props.index ?? -1;
+                          const isolated =
+                            chart[index]?.total != null &&
+                            chart[index - 1]?.total == null &&
+                            chart[index + 1]?.total == null;
+                          // Only an isolated observation needs a marker; do not hide a new account's first value.
+                          return (
+                            <circle
+                              key={index}
+                              cx={props.cx}
+                              cy={props.cy}
+                              r={isolated ? 3 : 0}
+                              fill="#a78bfa"
+                            />
+                          );
+                        }}
+                        activeDot={{ r: 4 }}
                       />
-                    )}
-                    {history?.events.map((e, i) => (
-                      <ReferenceLine
-                        key={i}
-                        x={new Date(e.createdAt).getTime()}
-                        stroke="#64748b"
-                        strokeDasharray="3 3"
-                      />
-                    ))}
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <p className="py-8 text-sm text-text-muted">
-                {t("historyEmpty")}
-              </p>
-            )}
-            <p className="text-xs text-text-muted">{t("historyNote")}</p>
-            {scope === "all" &&
-              history?.changeUsd !== null &&
-              history?.changeUsd !== undefined && (
-                <p className="mt-2 text-sm">
-                  {t("valueChange")}: <Money value={history.changeUsd} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <p className="py-8 text-sm text-text-muted">
+                  {t("historyEmpty")}
                 </p>
               )}
-            {history && history.events.length > 0 && (
-              <details className="mt-3 text-sm">
-                <summary className="cursor-pointer text-text-muted">
-                  {t("sourceChanges")}
-                </summary>
-                <ul className="mt-2 space-y-1">
-                  {history.events.map((e, i) => (
-                    <li key={i}>
-                      <Updated value={e.createdAt} /> · {e.label} ·{" "}
-                      {t.has(`events.${e.kind}`)
-                        ? t(`events.${e.kind}`)
-                        : e.kind}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
+              <p className="text-xs text-text-muted">{t("historyNote")}</p>
+              {scope === "all" &&
+                history?.changeUsd !== null &&
+                history?.changeUsd !== undefined && (
+                  <p className="mt-2 text-sm">
+                    {t("valueChange")}: <Money value={history.changeUsd} />
+                  </p>
+                )}
+              {history && history.events.length > 0 && (
+                <details className="mt-3 text-sm">
+                  <summary className="cursor-pointer text-text-muted">
+                    {t("sourceChanges")}
+                  </summary>
+                  <ul className="mt-2 space-y-1">
+                    {history.events.map((e, i) => (
+                      <li key={i}>
+                        <Updated value={e.createdAt} /> · {e.label} ·{" "}
+                        {t.has(`events.${e.kind}`)
+                          ? t(`events.${e.kind}`)
+                          : e.kind}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </details>
             <Link
               className="mt-3 inline-block text-xs text-primary"
               href="/dashboard/history"

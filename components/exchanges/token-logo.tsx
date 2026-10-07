@@ -1,5 +1,6 @@
 "use client";
 import { TokenLogo } from "@/components/common/token-logo";
+import { useEffect, useState } from "react";
 
 // Branding only: this mapping is never used to identify or price an asset.
 const icons = new Set([
@@ -32,8 +33,54 @@ const icons = new Set([
   "PEPE",
   "BTTC",
 ]);
+const resolved = new Map<string, string | null>();
+const pending = new Map<string, Promise<string | null>>();
+let lookupQueue: Promise<unknown> = Promise.resolve();
+function findLogo(ticker: string) {
+  const existing = pending.get(ticker);
+  if (existing) return existing;
+  // Serialize metadata requests; mounting a balance table must not burst the provider.
+  const lookup = lookupQueue
+    .then(async () => {
+      const response = await fetch(
+        `/api/market/search?q=${encodeURIComponent(ticker)}`,
+      );
+      if (!response.ok) throw new Error("Logo metadata unavailable");
+      const data = (await response.json()) as {
+        results?: { symbol: string; thumb: string | null }[];
+      };
+      const matches =
+        data.results?.filter((coin) => coin.symbol.toUpperCase() === ticker) ??
+        [];
+      // Ambiguous symbols retain the fallback rather than displaying another token's logo.
+      const logo = matches.length === 1 ? matches[0]!.thumb : null;
+      resolved.set(ticker, logo);
+      return logo;
+    })
+    .finally(() => pending.delete(ticker));
+  lookupQueue = lookup.catch(() => {});
+  pending.set(ticker, lookup);
+  return lookup;
+}
 export function ExchangeTokenLogo({ symbol }: { symbol: string }) {
   const ticker = symbol.toUpperCase();
+  const [metadataLogo, setMetadataLogo] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setMetadataLogo(null);
+    if (!icons.has(ticker) && /^[A-Z0-9]{2,20}$/.test(ticker)) {
+      if (resolved.has(ticker)) setMetadataLogo(resolved.get(ticker) ?? null);
+      else
+        void findLogo(ticker)
+          .then((logo) => {
+            if (!cancelled) setMetadataLogo(logo);
+          })
+          .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [ticker]);
   return (
     <TokenLogo
       symbol={symbol}
@@ -41,7 +88,7 @@ export function ExchangeTokenLogo({ symbol }: { symbol: string }) {
       src={
         icons.has(ticker)
           ? `https://assets.coincap.io/assets/icons/${ticker.toLowerCase()}@2x.png`
-          : null
+          : metadataLogo
       }
     />
   );

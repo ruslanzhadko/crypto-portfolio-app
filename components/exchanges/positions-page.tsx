@@ -79,32 +79,38 @@ export function PositionsPage({
         )}
       </div>
       {!compact && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-          <select
-            aria-label={t("exchange")}
-            value={exchange}
-            onChange={(e) => filter(setExchange, e.target.value)}
-            className={selectClass}
-          >
-            <option value="">{t("allExchanges")}</option>
-            <option value="binance">Binance</option>
-            <option value="bybit">Bybit</option>
-            <option value="hyperliquid">Hyperliquid</option>
-          </select>
-          <select
-            aria-label={t("account")}
-            value={account}
-            disabled={!!connectionId}
-            onChange={(e) => filter(setAccount, e.target.value)}
-            className={selectClass}
-          >
-            <option value="">{t("allAccounts")}</option>
-            {options.data?.connections.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
+        <div
+          className={`grid gap-2 sm:grid-cols-2 ${connectionId ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}
+        >
+          {!connectionId && (
+            <>
+              <select
+                aria-label={t("exchange")}
+                value={exchange}
+                onChange={(e) => filter(setExchange, e.target.value)}
+                className={selectClass}
+              >
+                <option value="">{t("allExchanges")}</option>
+                <option value="binance">Binance</option>
+                <option value="bybit">Bybit</option>
+                <option value="hyperliquid">Hyperliquid</option>
+              </select>
+              <select
+                aria-label={t("account")}
+                value={account}
+                disabled={!!connectionId}
+                onChange={(e) => filter(setAccount, e.target.value)}
+                className={selectClass}
+              >
+                <option value="">{t("allAccounts")}</option>
+                {options.data?.connections.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          )}
           <Input
             aria-label={t("coin")}
             value={coin}

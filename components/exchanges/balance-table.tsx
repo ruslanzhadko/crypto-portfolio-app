@@ -67,37 +67,59 @@ export function BalanceTable({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border">
-          <table className="w-full text-left text-sm">
+          <table className="w-full table-fixed text-left text-sm">
+            <colgroup>
+              <col className="w-[34%] sm:w-[22%]" />
+              <col className="hidden w-[28%] sm:table-column" />
+              <col className="w-[36%] sm:w-[30%]" />
+              <col className="w-[30%] sm:w-[20%]" />
+            </colgroup>
             <thead className="bg-surface-2 text-xs text-text-muted">
               <tr>
-                <th className="p-3">{t("coin")}</th>
-                <th className="p-3">{t("location")}</th>
-                <th className="p-3 text-right">{t("quantity")}</th>
-                <th className="p-3 text-right">{t("value")}</th>
+                <th className="px-3 py-2">{t("coin")}</th>
+                <th className="hidden px-3 py-2 sm:table-cell">
+                  {t("location")}
+                </th>
+                <th className="px-2 py-2 text-right sm:px-3">
+                  {t("quantity")}
+                </th>
+                <th className="px-2 py-2 text-right sm:px-3">{t("value")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {balances.map((b) => (
                 <tr key={b.id}>
-                  <td className="p-3 font-medium">
+                  <td className="px-2 py-2 font-medium sm:px-3">
                     <span className="flex items-center gap-2">
                       <ExchangeTokenLogo symbol={b.symbol} />
-                      <span>{b.symbol}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate" title={b.symbol}>
+                          {b.symbol}
+                        </span>
+                        <span
+                          className="mt-1 block truncate text-xs font-normal text-text-muted sm:hidden"
+                          title={`${b.account.label} · ${t(`kinds.${b.account.kind}`)}`}
+                        >
+                          {b.account.label} · {t(`kinds.${b.account.kind}`)}
+                        </span>
+                      </span>
                     </span>
                   </td>
-                  <td className="p-3">
-                    <p>{b.account.label}</p>
+                  <td className="hidden px-3 py-2 sm:table-cell">
+                    <p className="truncate" title={b.account.label}>
+                      {b.account.label}
+                    </p>
                     <span className="text-xs text-text-muted">
-                      {b.account.exchange} · {t(`kinds.${b.account.kind}`)}
+                      {t(`kinds.${b.account.kind}`)}
                     </span>
                     {b.account.stale && (
                       <p className="text-xs text-warning">{t("stale")}</p>
                     )}
                   </td>
-                  <td className="p-3 text-right">
+                  <td className="px-2 py-2 text-right sm:px-3">
                     <Quantity value={b.total} />
-                    <details className="mt-1 text-xs text-text-muted">
-                      <summary className="cursor-pointer">
+                    <details className="mt-1 text-xs text-text-muted break-words">
+                      <summary className="inline-block cursor-pointer">
                         {t("details")}
                       </summary>
                       <p>
@@ -111,7 +133,7 @@ export function BalanceTable({
                       </p>
                     </details>
                   </td>
-                  <td className="p-3 text-right">
+                  <td className="px-2 py-2 text-right sm:px-3">
                     {b.usdValue === null ? (
                       <span className="text-xs text-warning">
                         {t("unpriced")}

@@ -90,6 +90,10 @@ test.beforeAll(async () => {
   });
 });
 test.beforeEach(async ({ page }) => {
+  await page.route("**/api/market/search?**", async (route) => {
+    const symbol = new URL(route.request().url()).searchParams.get("q");
+    await route.fulfill({ json: { results: symbol === "DUST" ? [{ symbol: "DUST", thumb: "/logo.png" }] : [] } });
+  });
   await prisma.exchangeConnection.deleteMany({ where: { userId } });
   await prisma.portfolioCapitalSnapshot.deleteMany({ where: { userId } });
   await prisma.capitalEvent.deleteMany({ where: { userId } });
@@ -151,6 +155,8 @@ test("connect → queued sync → balances and positions → replace key → dis
   await expect(page).toHaveURL(new RegExp(`/exchanges/${c.id}$`));
   await expect(page.getByText("$12,540.50", { exact: true })).toBeVisible();
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
+  await expect(page.getByRole("combobox", { name: "Exchange", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("combobox", { name: "Account", exact: true })).toHaveCount(0);
   await page.locator("summary").filter({ hasText: "BTCUSDT" }).click();
   await expect(
     page.getByText("Liquidation price", { exact: true }),
@@ -225,11 +231,22 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   ).toBeVisible();
   // Exact source-transition behavior is covered by capital-chart-data.test.ts.
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
+  if (process.env.EXCHANGE_VISUAL_QA) await page.locator('.recharts-surface').first().screenshot({ path: "test-results/capital-chart-desktop.png" });
+  await page.getByText("Capital history", { exact: true }).click();
+  await expect(page.locator('.recharts-surface').first()).not.toBeVisible();
+  await page.reload();
+  await expect(page.locator('.recharts-surface').first()).not.toBeVisible();
+  await page.getByText("Capital history", { exact: true }).click();
+  await expect(page.locator('.recharts-surface').first()).toBeVisible();
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
   await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
   await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toBeVisible();
   await page.getByLabel("Balances from").selectOption("0");
   await expect(page.getByText("DUST", { exact: true })).toBeVisible();
+  await expect(page.getByRole("img", { name: "DUST", exact: true })).toHaveAttribute("src", /\/logo\.png$/);
+  const widths = await page.locator("table th").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
+  await page.locator("table summary").first().click();
+  expect(await page.locator("table th").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width))).toEqual(widths);
   await page.getByLabel("Hide valuation warnings").check();
   await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toHaveCount(0);
   await page.reload();
@@ -240,10 +257,12 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
     await page.screenshot({ path: "test-results/exchange-balances-desktop.png" });
   }
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator("table").scrollIntoViewIfNeeded();
   if (process.env.EXCHANGE_VISUAL_QA) {
     await page.getByLabel("Balances from").scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/exchange-balances-mobile.png" });
   }
+  await expect(page.getByRole("cell", { name: "$12,661.00", exact: true })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");

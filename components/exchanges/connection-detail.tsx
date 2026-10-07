@@ -179,7 +179,7 @@ export function ConnectionDetail({ id }: { id: string }) {
             <summary className="cursor-pointer font-medium">
               {t("syncHistory")}
             </summary>
-            <ul className="mt-3 divide-y divide-border">
+            <ul className="mt-3 max-h-64 overflow-y-auto divide-y divide-border">
               {c.runs.map((run) => (
                 <li
                   key={run.id}
