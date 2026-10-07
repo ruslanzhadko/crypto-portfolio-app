@@ -50,4 +50,12 @@ echo third > /tmp/mock/sha
 touch /tmp/mock/build-fail
 if bash /source/deploy/worker-update.sh; then echo 'Expected build failure'; exit 1; fi
 test "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = retained
-echo 'PASS: deployment, unchanged commit, failed health rollback, failed build preservation'
+echo 1111111111111111111111111111111111111111 > /tmp/mock/sha
+before=$(wc -l < /tmp/mock/calls)
+SSH_ORIGINAL_COMMAND='deploy 2222222222222222222222222222222222222222' bash /source/deploy/worker-update.sh
+test "$(wc -l < /tmp/mock/calls)" = "$before"
+if SSH_ORIGINAL_COMMAND='arbitrary command' bash /source/deploy/worker-update.sh; then
+  echo 'Expected invalid SSH command rejection'; exit 1
+fi
+test "$(wc -l < /tmp/mock/calls)" = "$before"
+echo 'PASS: deployment, unchanged commit, rollback, failed build, stale push, invalid command'

@@ -6,13 +6,26 @@ state=/var/lib/cryptoportfolio-worker-deploy
 env_file=/home/rzhadko/.config/cryptoportfolio/exchange-dev.env
 name=cryptoportfolio-worker-dev
 repo=https://github.com/ruslanzhadko/crypto-portfolio-app.git
+branch=develop
+# Optional root-owned configuration for a separately installed production worker.
+if [[ -f /etc/cryptoportfolio-worker-deploy.conf ]]; then
+  source /etc/cryptoportfolio-worker-deploy.conf
+fi
+[[ "$branch" == develop || "$branch" == main ]] || exit 1
 mkdir -p "$state"
 exec 9>"$state/lock"
-flock -n 9 || exit 0
+flock -w 1200 9 || exit 1
 test -s "$env_file"
 if [[ ! -d "$state/repo.git" ]]; then git init --bare "$state/repo.git"; fi
-git --git-dir="$state/repo.git" fetch --depth=1 "$repo" refs/heads/develop
+git --git-dir="$state/repo.git" fetch --depth=1 "$repo" "refs/heads/$branch"
 sha=$(git --git-dir="$state/repo.git" rev-parse FETCH_HEAD)
+# A delayed Actions job must never replace newer code with its old commit.
+if [[ -n ${SSH_ORIGINAL_COMMAND:-} ]]; then
+  [[ "$SSH_ORIGINAL_COMMAND" =~ ^deploy\ ([a-f0-9]{40})$ ]] || exit 1
+  if [[ ${BASH_REMATCH[1]} != "$sha" ]]; then
+    echo 'Superseded push; deployment skipped.'; exit 0
+  fi
+fi
 if [[ -f "$state/deployed" ]] && [[ $(cat "$state/deployed") == "$sha" ]]; then exit 0; fi
 # Do not endlessly rebuild an unhealthy commit; a new push retries automatically.
 if [[ -f "$state/failed" ]] && [[ $(cat "$state/failed") == "$sha" ]]; then

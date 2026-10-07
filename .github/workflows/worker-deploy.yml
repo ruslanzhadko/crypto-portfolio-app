@@ -1,0 +1,49 @@
+name: Check and deploy exchange worker
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: exchange-worker-${{ github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - name: Test deployment rollback without real credentials
+        run: |
+          sudo ln -s "$GITHUB_WORKSPACE" /source
+          sudo bash tests/worker-update.test.sh
+  deploy:
+    needs: check
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: ${{ github.ref_name == 'main' && 'worker-production' || 'worker-preview' }}
+    steps:
+      - name: Deploy the checked commit using a restricted SSH key
+        env:
+          SSH_KEY: ${{ secrets.WORKER_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.WORKER_KNOWN_HOSTS }}
+          HOST: ${{ vars.WORKER_HOST }}
+          USER: ${{ vars.WORKER_USER }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY" && test -n "$KNOWN_HOSTS" && test -n "$HOST" && test -n "$USER"
+          umask 077
+          mkdir -p "$HOME/.ssh"
+          printf '%s\n' "$SSH_KEY" > "$HOME/.ssh/worker_key"
+          printf '%s\n' "$KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          trap 'rm -f "$HOME/.ssh/worker_key"' EXIT
+          ssh -i "$HOME/.ssh/worker_key" -o BatchMode=yes -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes -o ConnectTimeout=20 \
+            -o ServerAliveInterval=30 -o ServerAliveCountMax=10 \
+            "$USER@$HOST" "deploy $COMMIT"
