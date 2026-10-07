@@ -161,6 +161,34 @@ test("connect → queued sync → balances and positions → replace key → dis
   await expect(
     page.getByText("Liquidation price", { exact: true }),
   ).toBeVisible();
+  // A sync can replace database rows; disclosure identity must follow the position.
+  const position = await prisma.exchangePosition.findFirstOrThrow({
+    where: { account: { connectionId: c.id } },
+  });
+  await prisma.exchangePosition.update({
+    where: { id: position.id },
+    data: { id: `${position.id}-synced` },
+  });
+  const refreshed = page.waitForResponse(
+    (response) => response.url().includes("/api/positions?") && response.ok(),
+  );
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+  const body = await (await refreshed).json();
+  expect(body.positions[0].id).toBe(`${position.id}-synced`);
+  await expect(
+    page
+      .locator("details")
+      .filter({ has: page.locator("summary").filter({ hasText: "BTCUSDT" }) }),
+  ).toHaveAttribute("open", "");
+  await expect(
+    page.getByText("Liquidation price", { exact: true }),
+  ).toBeVisible();
+  await page.locator("summary").filter({ hasText: "BTCUSDT" }).click();
+  await expect(
+    page.getByText("Liquidation price", { exact: true }),
+  ).not.toBeVisible();
   await page.getByRole("button", { name: "Replace API key" }).click();
   await page
     .getByLabel("API key", { exact: true })
