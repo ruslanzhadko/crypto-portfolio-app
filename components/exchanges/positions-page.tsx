@@ -1,9 +1,14 @@
 "use client";
 import { ExchangeTokenLogo } from "./token-logo";
-import { useState, type SelectHTMLAttributes } from "react";
+import { useEffect, useState, type SelectHTMLAttributes } from "react";
 import { ChevronDown, Info } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +16,90 @@ import { useExchangeData } from "./use-exchange-data";
 import { ExchangeErrorNotice, Money, Quantity, Updated } from "./shared";
 import type { ConnectionDto } from "./exchanges-page";
 import type { OpenPosition } from "@/lib/exchanges/types";
+
+function realizedWithFunding(p: PositionDto): string | null {
+  return p.funding?.status === "complete" &&
+    p.funding.amount != null &&
+    p.funding.realizedPnl != null
+    ? String(Number(p.funding.realizedPnl) + Number(p.funding.amount))
+    : null;
+}
+
+function PnlBreakdown({ p }: { p: PositionDto }) {
+  const t = useTranslations("Exchanges");
+  const [open, setOpen] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    const update = () => setMobile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          onPointerDown={(event) => {
+            if (event.pointerType === "mouse" && open) event.preventDefault();
+          }}
+          onPointerEnter={(event) => {
+            if (event.pointerType === "mouse") setOpen(true);
+          }}
+          className="mt-1 block min-h-6 text-xs font-normal text-text-muted underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-primary"
+        >
+          {t("pnlBreakdown")}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side={mobile ? "bottom" : "right"}
+        align="start"
+        sideOffset={12}
+        collisionPadding={16}
+        onPointerLeave={(event) => {
+          if (event.pointerType === "mouse") setOpen(false);
+        }}
+        className="w-72 max-w-[calc(100vw-2rem)] space-y-1 rounded-lg bg-surface p-3 text-sm"
+        aria-label={t("pnlBreakdown")}
+      >
+        <p>
+          {t("closedPnl")}:{" "}
+          <Quantity
+            value={p.funding?.realizedPnl ?? null}
+            maximumFractionDigits={4}
+          />{" "}
+          {p.settle}
+        </p>
+        <p>
+          Funding:{" "}
+          <Quantity
+            value={p.funding?.status === "complete" ? p.funding.amount : null}
+            maximumFractionDigits={4}
+          />{" "}
+          {p.settle}
+        </p>
+        <p className="border-t border-border pt-1 font-medium">
+          {t("pnlWithFunding")}:{" "}
+          <Quantity
+            value={
+              p.funding?.realizedPnl != null &&
+              p.funding?.status === "complete" &&
+              p.funding.amount != null
+                ? String(
+                    Number(p.funding.realizedPnl) + Number(p.funding.amount),
+                  )
+                : null
+            }
+            maximumFractionDigits={4}
+          />{" "}
+          {p.settle}
+        </p>
+        <p className="text-xs text-text-muted">{t("pnlExcludesFees")}</p>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function PositionSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
   return (
@@ -194,14 +283,23 @@ export function PositionsPage({
                   <ExchangeTokenLogo symbol={p.base} />
                   {p.symbol}
                 </p>
-                <span
-                  className={`text-sm font-medium ${p.side === "long" ? "text-success" : "text-danger"}`}
-                >
-                  {p.side === "long" ? "Long" : "Short"}
-                </span>
-                <span className="ml-2 text-xs text-text-muted">
-                  {t("details")}
-                </span>
+                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span
+                    className={`text-sm font-medium ${p.side === "long" ? "text-success" : "text-danger"}`}
+                  >
+                    {p.side === "long" ? "Long" : "Short"}
+                  </span>
+                  <span
+                    className="text-xs text-text-muted"
+                    title={t("leverage")}
+                  >
+                    <Quantity value={p.leverage} maximumFractionDigits={4} />
+                    {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
+                  </span>
+                  <span className="text-xs text-text-muted">
+                    {t("details")}
+                  </span>
+                </div>
               </div>
               <div>
                 <p className="text-xs text-text-muted">{t("size")}</p>
@@ -263,14 +361,7 @@ export function PositionsPage({
             </summary>
             <div className="border-t border-border bg-background/40 px-4 py-5 sm:px-6 lg:pr-8">
               <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-5 [&>div]:min-w-0 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
-                <div>
-                  <dt className="text-text-muted">{t("leverage")}</dt>
-                  <dd>
-                    <Quantity value={p.leverage} maximumFractionDigits={4} />
-                    {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
-                  </dd>
-                </div>
-                <div>
+                <div className="lg:col-start-2">
                   <dt className="text-text-muted">{t("margin")}</dt>
                   <dd>
                     <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
@@ -296,63 +387,11 @@ export function PositionsPage({
                   </dt>
                   <dd>
                     <Quantity
-                      value={p.funding?.realizedPnl ?? null}
+                      value={realizedWithFunding(p)}
                       maximumFractionDigits={4}
                     />{" "}
                     {p.settle}
-                    <div className="group/pnl relative mt-1 text-xs font-normal">
-                      <button
-                        type="button"
-                        className="w-fit cursor-help text-text-muted underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-primary"
-                      >
-                        {t("pnlBreakdown")}
-                      </button>
-                      <div
-                        role="tooltip"
-                        className="hidden mt-2 space-y-1 rounded-lg border border-border bg-surface p-3 text-sm shadow-sm group-hover/pnl:block group-focus-within/pnl:block"
-                      >
-                        <p>
-                          {t("realizedPnl")}:{" "}
-                          <Quantity
-                            value={p.funding?.realizedPnl ?? null}
-                            maximumFractionDigits={4}
-                          />{" "}
-                          {p.settle}
-                        </p>
-                        <p>
-                          Funding:{" "}
-                          <Quantity
-                            value={
-                              p.funding?.status === "complete"
-                                ? p.funding.amount
-                                : null
-                            }
-                            maximumFractionDigits={4}
-                          />{" "}
-                          {p.settle}
-                        </p>
-                        <p className="border-t border-border pt-1 font-medium">
-                          {t("pnlWithFunding")}:{" "}
-                          <Quantity
-                            value={
-                              p.funding?.realizedPnl != null &&
-                              p.funding?.status === "complete" &&
-                              p.funding.amount != null
-                                ? String(
-                                    Number(p.funding.realizedPnl) +
-                                      Number(p.funding.amount),
-                                  )
-                                : null
-                            }
-                            maximumFractionDigits={4}
-                          />{" "}
-                          {p.settle}
-                        </p>
-                        <p className="text-xs text-text-muted">
-                          {t("pnlExcludesFees")}
-                        </p>
-                      </div>
-                    </div>
+                    <PnlBreakdown p={p} />
                   </dd>
                 </div>
                 <div className="lg:text-right">

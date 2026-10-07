@@ -882,7 +882,7 @@
     "pnlBreakdown": "Расшифровка",
     "pnlWithFunding": "С funding",
     "pnlExcludesFees": "Без торговых комиссий.",
-    "realizedPnlDescription": "Результат частичных закрытий с открытия позиции, без комиссий и funding.",
+    "realizedPnlDescription": "Результат закрытий позиции плюс funding, без торговых комиссий.",
     "unrealizedPnl": "Нереализованный PnL",
     "liquidation": "Цена ликвидации",
     "leverage": "Плечо / режим",
@@ -983,6 +983,7 @@
     "minimumBalance": "Остатки от",
     "showAllBalances": "Все остатки",
     "hideValuationWarnings": "Скрывать предупреждения об оценке",
-    "hiddenDust": "Скрыто мелких остатков: {count}. Итоги не изменены; активы без цены остаются видимыми."
+    "hiddenDust": "Скрыто мелких остатков: {count}. Итоги не изменены; активы без цены остаются видимыми.",
+    "closedPnl": "Закрытия позиции"
   }
 }

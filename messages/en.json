@@ -882,7 +882,7 @@
     "pnlBreakdown": "Breakdown",
     "pnlWithFunding": "Including funding",
     "pnlExcludesFees": "Trading fees excluded.",
-    "realizedPnlDescription": "Trading PnL from partial closes since opening, excluding fees and funding.",
+    "realizedPnlDescription": "Position closing PnL plus funding, excluding trading fees.",
     "unrealizedPnl": "Unrealized PnL",
     "liquidation": "Liquidation price",
     "leverage": "Leverage / mode",
@@ -983,6 +983,7 @@
     "minimumBalance": "Balances from",
     "showAllBalances": "All balances",
     "hideValuationWarnings": "Hide valuation warnings",
-    "hiddenDust": "Small balances hidden: {count}. Totals are unchanged; unpriced assets remain visible."
+    "hiddenDust": "Small balances hidden: {count}. Totals are unchanged; unpriced assets remain visible.",
+    "closedPnl": "Position closes"
   }
 }
