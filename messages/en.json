@@ -209,6 +209,7 @@
     "unavailableChains": "Could not refresh: {chains}. Previous balances were preserved."
   },
   "Wallets": {
+    "exchangeManagedNote": "HyperCore balances are included under Exchanges and excluded from wallet capital.",
     "pageTitle": "Wallets",
     "pageDescription": "Track balances across your public addresses.",
     "portfolioValue": "Portfolio value",

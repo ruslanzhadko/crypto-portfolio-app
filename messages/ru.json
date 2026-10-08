@@ -209,6 +209,7 @@
     "unavailableChains": "Не удалось обновить: {chains}. Предыдущие балансы сохранены."
   },
   "Wallets": {
+    "exchangeManagedNote": "Баланс HyperCore учтён в разделе «Биржи» и не входит в капитал кошельков.",
     "pageTitle": "Кошельки",
     "pageDescription": "Отслеживайте балансы публичных адресов.",
     "portfolioValue": "Стоимость портфеля",

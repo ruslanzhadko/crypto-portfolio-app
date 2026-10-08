@@ -1,10 +1,14 @@
-import { NextRequest } from 'next/server';
-import { prisma } from '@/lib/db/prisma';
-import { walletCreateSchema } from '@/lib/utils/validators';
-import { requireUser } from '@/lib/api/auth-guard';
-import { apiError, created, handleUnknown, ok } from '@/lib/api/response';
+import {
+  migratedWalletIds,
+  isMigratedHypercore,
+} from "@/lib/exchanges/portfolio";
+import { NextRequest } from "next/server";
+import { prisma } from "@/lib/db/prisma";
+import { walletCreateSchema } from "@/lib/utils/validators";
+import { requireUser } from "@/lib/api/auth-guard";
+import { apiError, created, handleUnknown, ok } from "@/lib/api/response";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
@@ -13,7 +17,7 @@ export async function GET() {
 
     const wallets = await prisma.wallet.findMany({
       where: { userId: guard.user.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         // _count для tokenCount теж фільтруємо — щоб збігалося з totalUsd
         _count: {
@@ -24,23 +28,32 @@ export async function GET() {
         },
         balances: {
           where: { isSpam: false, isHidden: false },
-          select: { usdValue: true },
+          select: { usdValue: true, chainName: true },
         },
       },
     });
 
-    const data = wallets.map((w) => ({
-      id: w.id,
-      address: w.address,
-      network: w.network,
-      label: w.label,
-      isActive: w.isActive,
-      lastSyncAt: w.lastSyncAt,
-      createdAt: w.createdAt,
-      tokenCount: w._count.balances,
-      transactionCount: w._count.transactions,
-      totalUsd: w.balances.reduce((s, b) => s + b.usdValue, 0),
-    }));
+    const migrated = await migratedWalletIds(guard.user.id);
+    const data = wallets.map((wallet) => {
+      const w = {
+        ...wallet,
+        balances: wallet.balances.filter(
+          (b) => !isMigratedHypercore(wallet.id, b.chainName, migrated),
+        ),
+      };
+      return {
+        id: w.id,
+        address: w.address,
+        network: w.network,
+        label: w.label,
+        isActive: w.isActive,
+        lastSyncAt: w.lastSyncAt,
+        createdAt: w.createdAt,
+        tokenCount: w.balances.length,
+        transactionCount: w._count.transactions,
+        totalUsd: w.balances.reduce((s, b) => s + b.usdValue, 0),
+      };
+    });
 
     return ok({ wallets: data });
   } catch (err) {
@@ -56,11 +69,15 @@ export async function POST(req: NextRequest) {
     const body = (await req.json().catch(() => null)) as unknown;
     const parsed = walletCreateSchema.safeParse(body);
     if (!parsed.success) {
-      return apiError('BAD_REQUEST', 'Помилка валідації', parsed.error.flatten());
+      return apiError(
+        "BAD_REQUEST",
+        "Помилка валідації",
+        parsed.error.flatten(),
+      );
     }
     const { address, network, label } = parsed.data;
 
-    const normalizedAddress = address.startsWith('0x')
+    const normalizedAddress = address.startsWith("0x")
       ? address.toLowerCase()
       : address;
 
@@ -74,7 +91,7 @@ export async function POST(req: NextRequest) {
       },
     });
     if (existing) {
-      return apiError('CONFLICT', 'Цей гаманець вже додано');
+      return apiError("CONFLICT", "Цей гаманець вже додано");
     }
 
     const wallet = await prisma.wallet.create({

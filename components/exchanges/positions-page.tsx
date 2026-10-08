@@ -202,116 +202,124 @@ export function PositionsPage({
           </Link>
         )}
       </div>
-      {!compact && result.data?.summary && (
-        <div
-          className="w-full max-w-xl rounded-xl border border-border bg-surface px-5 py-4"
-          aria-label={t("positionsSummary")}
-        >
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span className="font-medium">
-              {t("positionsSummary")} · {result.data.summary.count}
-            </span>
-            <span className="text-xs text-text-muted tabular-nums">
-              Long {result.data.summary.long} · Short{" "}
-              {result.data.summary.short}
-            </span>
+      <div
+        className={
+          !compact
+            ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+            : "contents"
+        }
+      >
+        {!compact && result.data?.summary && (
+          <div
+            className="w-full rounded-xl border border-border bg-surface px-5 py-4"
+            aria-label={t("positionsSummary")}
+          >
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="font-medium">
+                {t("positionsSummary")} · {result.data.summary.count}
+              </span>
+              <span className="text-xs text-text-muted tabular-nums">
+                Long {result.data.summary.long} · Short{" "}
+                {result.data.summary.short}
+              </span>
+            </div>
+            <dl className="grid grid-cols-3 gap-3 sm:gap-4">
+              {(
+                [
+                  ["positionVolume", "volume"],
+                  ["realizedPnl", "realized"],
+                  ["unrealizedPnl", "unrealized"],
+                ] as const
+              ).map(([label, key]) => {
+                const metric = result.data!.summary![key];
+                return (
+                  <div key={key} className="min-w-0">
+                    <dt className="mb-1.5 min-h-8 text-xs text-text-muted sm:min-h-0">
+                      {t(label)}
+                    </dt>
+                    <dd
+                      className={`break-words text-sm sm:text-lg font-medium tabular-nums ${key !== "volume" && Number(metric.value) !== 0 ? (Number(metric.value) > 0 ? "text-success" : "text-danger") : ""}`}
+                    >
+                      <Money value={metric.value} />
+                    </dd>
+                    {metric.known < result.data!.summary!.count && (
+                      <p className="mt-1 text-xs text-text-muted">
+                        {t("summaryCoverage", {
+                          known: metric.known,
+                          total: result.data!.summary!.count,
+                        })}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </dl>
           </div>
-          <dl className="grid grid-cols-3 gap-3 sm:gap-4">
-            {(
-              [
-                ["positionVolume", "volume"],
-                ["realizedPnl", "realized"],
-                ["unrealizedPnl", "unrealized"],
-              ] as const
-            ).map(([label, key]) => {
-              const metric = result.data!.summary![key];
-              return (
-                <div key={key} className="min-w-0">
-                  <dt className="mb-1.5 min-h-8 text-xs text-text-muted sm:min-h-0">
-                    {t(label)}
-                  </dt>
-                  <dd
-                    className={`break-words text-sm sm:text-lg font-medium tabular-nums ${key !== "volume" && Number(metric.value) !== 0 ? (Number(metric.value) > 0 ? "text-success" : "text-danger") : ""}`}
-                  >
-                    <Money value={metric.value} />
-                  </dd>
-                  {metric.known < result.data!.summary!.count && (
-                    <p className="mt-1 text-xs text-text-muted">
-                      {t("summaryCoverage", {
-                        known: metric.known,
-                        total: result.data!.summary!.count,
-                      })}
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </dl>
-        </div>
-      )}
-      {!compact && (
-        <div
-          className={`grid gap-2 sm:grid-cols-2 ${connectionId ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}
-        >
-          {!connectionId && (
-            <>
-              <PositionSelect
-                aria-label={t("exchange")}
-                value={exchange}
-                onChange={(e) => filter(setExchange, e.target.value)}
-              >
-                <option value="">{t("allExchanges")}</option>
-                <option value="binance">Binance</option>
-                <option value="bybit">Bybit</option>
-                <option value="gate">Gate</option>
-                <option value="okx">OKX</option>
-                <option value="hyperliquid">Hyperliquid</option>
-              </PositionSelect>
-              <PositionSelect
-                aria-label={t("account")}
-                value={account}
-                disabled={!!connectionId}
-                onChange={(e) => filter(setAccount, e.target.value)}
-              >
-                <option value="">{t("allAccounts")}</option>
-                {options.data?.connections.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </PositionSelect>
-            </>
-          )}
-          <Input
-            aria-label={t("coin")}
-            value={coin}
-            onChange={(e) => filter(setCoin, e.target.value)}
-            placeholder={t("coin")}
-            maxLength={40}
-          />
-          <PositionSelect
-            aria-label={t("side")}
-            value={side}
-            onChange={(e) => filter(setSide, e.target.value)}
+        )}
+        {!compact && (
+          <div
+            className={`grid gap-2 sm:grid-cols-2 ${connectionId ? "xl:grid-cols-3" : "xl:grid-cols-3"}`}
           >
-            <option value="">{t("bothSides")}</option>
-            <option value="long">Long</option>
-            <option value="short">Short</option>
-          </PositionSelect>
-          <PositionSelect
-            aria-label={t("sort")}
-            value={sort}
-            onChange={(e) => filter(setSort, e.target.value)}
-          >
-            <option value="size">{t("sortSize")}</option>
-            <option value="pnl">{t("sortPnl")}</option>
-            <option value="pnlAsc">{t("sortPnlAsc")}</option>
-            <option value="roe">{t("sortRoe")}</option>
-            <option value="roeAsc">{t("sortRoeAsc")}</option>
-            <option value="symbol">{t("coin")}</option>
-          </PositionSelect>
-        </div>
-      )}
+            {!connectionId && (
+              <>
+                <PositionSelect
+                  aria-label={t("exchange")}
+                  value={exchange}
+                  onChange={(e) => filter(setExchange, e.target.value)}
+                >
+                  <option value="">{t("allExchanges")}</option>
+                  <option value="binance">Binance</option>
+                  <option value="bybit">Bybit</option>
+                  <option value="gate">Gate</option>
+                  <option value="okx">OKX</option>
+                  <option value="hyperliquid">Hyperliquid</option>
+                </PositionSelect>
+                <PositionSelect
+                  aria-label={t("account")}
+                  value={account}
+                  disabled={!!connectionId}
+                  onChange={(e) => filter(setAccount, e.target.value)}
+                >
+                  <option value="">{t("allAccounts")}</option>
+                  {options.data?.connections.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label}
+                    </option>
+                  ))}
+                </PositionSelect>
+              </>
+            )}
+            <Input
+              aria-label={t("coin")}
+              value={coin}
+              onChange={(e) => filter(setCoin, e.target.value)}
+              placeholder={t("coin")}
+              maxLength={40}
+            />
+            <PositionSelect
+              aria-label={t("side")}
+              value={side}
+              onChange={(e) => filter(setSide, e.target.value)}
+            >
+              <option value="">{t("bothSides")}</option>
+              <option value="long">Long</option>
+              <option value="short">Short</option>
+            </PositionSelect>
+            <PositionSelect
+              aria-label={t("sort")}
+              value={sort}
+              onChange={(e) => filter(setSort, e.target.value)}
+            >
+              <option value="size">{t("sortSize")}</option>
+              <option value="pnl">{t("sortPnl")}</option>
+              <option value="pnlAsc">{t("sortPnlAsc")}</option>
+              <option value="roe">{t("sortRoe")}</option>
+              <option value="roeAsc">{t("sortRoeAsc")}</option>
+              <option value="symbol">{t("coin")}</option>
+            </PositionSelect>
+          </div>
+        )}
+      </div>
       <ExchangeErrorNotice code={result.error} />
       {result.data &&
         result.data.connectionCount > 0 &&

@@ -106,7 +106,6 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
         "[wallet-sync] HyperCore unavailable; keeping its previous balances",
       );
     const unavailableChains = [
-      ...(exchangeManaged ? HYPERCORE_CHAINS : []),
       ...(!robinhoodSynced ? ["robinhood"] : []),
       ...(results[1]?.status === "rejected" ? ["hyperevm"] : []),
       ...(results[2]?.status === "rejected"
@@ -150,6 +149,7 @@ async function saveBalances(
     }
   }
 
+  let protectedChains = [...unavailableChains];
   await prisma.$transaction(async (tx) => {
     // Fence a wallet sync started before the worker's HyperCore cutover.
     if (process.env.EXCHANGES_ENABLED === "true") {
@@ -159,9 +159,12 @@ async function saveBalances(
         select: { id: true },
       });
       if (migrated) {
-        unavailableChains = [
-          ...new Set([...unavailableChains, ...HYPERCORE_CHAINS]),
+        protectedChains = [
+          ...new Set([...protectedChains, ...HYPERCORE_CHAINS]),
         ];
+        unavailableChains = unavailableChains.filter(
+          (chain) => !HYPERCORE_CHAINS.includes(chain),
+        );
         for (let i = toSave.length - 1; i >= 0; i--)
           if (HYPERCORE_CHAINS.includes(toSave[i]!.chainName))
             toSave.splice(i, 1);
@@ -170,8 +173,8 @@ async function saveBalances(
     await tx.tokenBalance.deleteMany({
       where: {
         walletId,
-        ...(unavailableChains.length
-          ? { chainName: { notIn: unavailableChains } }
+        ...(protectedChains.length
+          ? { chainName: { notIn: protectedChains } }
           : {}),
       },
     });

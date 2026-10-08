@@ -1,32 +1,45 @@
-import { Wallet } from 'lucide-react';
-import { getTranslations } from 'next-intl/server';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
-import { AddWalletDialog } from '@/components/wallets/add-wallet-dialog';
-import { WalletGallery } from '@/components/wallets/wallet-gallery';
-import { EmptyState } from '@/components/common/empty-state';
+import { Wallet } from "lucide-react";
+import { getTranslations } from "next-intl/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db/prisma";
+import { AddWalletDialog } from "@/components/wallets/add-wallet-dialog";
+import { WalletGallery } from "@/components/wallets/wallet-gallery";
+import {
+  migratedWalletIds,
+  isMigratedHypercore,
+} from "@/lib/exchanges/portfolio";
+import { EmptyState } from "@/components/common/empty-state";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function WalletsPage() {
   const session = await auth();
   if (!session?.user?.id) return null;
 
-  const t = await getTranslations('Wallets');
+  const t = await getTranslations("Wallets");
 
   const wallets = await prisma.wallet.findMany({
     where: { userId: session.user.id },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: "desc" },
     include: {
-      _count: { select: { balances: { where: { isSpam: false, isHidden: false } } } },
+      _count: {
+        select: { balances: { where: { isSpam: false, isHidden: false } } },
+      },
       balances: {
         where: { isSpam: false, isHidden: false },
-        select: { usdValue: true, priceChange24h: true },
+        select: { usdValue: true, priceChange24h: true, chainName: true },
       },
     },
   });
 
-  const data = wallets.map((w) => {
+  const migrated = await migratedWalletIds(session.user.id);
+  const data = wallets.map((wallet) => {
+    const w = {
+      ...wallet,
+      balances: wallet.balances.filter(
+        (b) => !isMigratedHypercore(wallet.id, b.chainName, migrated),
+      ),
+    };
     const totalUsd = w.balances.reduce((s, b) => s + b.usdValue, 0);
     // Estimate 24h-ago value per balance: prevValue = usdValue / (1 + change/100)
     // Clamp change to avoid division by zero when priceChange24h === -100
@@ -43,7 +56,7 @@ export default async function WalletsPage() {
       network: w.network,
       label: w.label,
       lastSyncAt: w.lastSyncAt,
-      tokenCount: w._count.balances,
+      tokenCount: w.balances.length,
       totalUsd,
       change24hUsd: Number.isFinite(change24hUsd) ? change24hUsd : 0,
       change24hPct: Number.isFinite(change24hPct) ? change24hPct : 0,
@@ -54,19 +67,24 @@ export default async function WalletsPage() {
     <div className="space-y-5 md:space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-2xl font-bold leading-tight tracking-tight md:text-3xl">{t('pageTitle')}</h1>
+          <h1 className="text-2xl font-bold leading-tight tracking-tight md:text-3xl">
+            {t("pageTitle")}
+          </h1>
           <p className="mt-1 text-sm leading-6 text-text-muted sm:text-[15px]">
-            {t('pageDescription')}
+            {t("pageDescription")}
           </p>
         </div>
         <AddWalletDialog />
       </div>
 
+      {migrated.length > 0 && (
+        <p className="text-xs text-text-muted">{t("exchangeManagedNote")}</p>
+      )}
       {data.length === 0 ? (
         <EmptyState
           icon={Wallet}
-          title={t('emptyTitle')}
-          description={t('emptyDescription')}
+          title={t("emptyTitle")}
+          description={t("emptyDescription")}
         />
       ) : (
         <WalletGallery wallets={data} />

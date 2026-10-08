@@ -209,6 +209,7 @@
     "unavailableChains": "Не вдалося оновити: {chains}. Попередні баланси збережено."
   },
   "Wallets": {
+    "exchangeManagedNote": "Баланс HyperCore враховано в розділі «Біржі» й не входить до капіталу гаманців.",
     "pageTitle": "Гаманці",
     "pageDescription": "Відстежуйте баланси публічних адрес.",
     "portfolioValue": "Вартість портфеля",
