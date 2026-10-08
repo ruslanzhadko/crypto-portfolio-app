@@ -346,6 +346,9 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await page.goto("/en/positions");
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   const positionDetails = page.locator("details").filter({has: page.getByText("BTCUSDT", {exact:true})});
+  const statistics = page.getByLabel("Position statistics", { exact: true });
+  await expect(statistics).toContainText("Long 1 · Short 0");
+  await expect(statistics.getByText("Position exposure", { exact: true })).toBeVisible();
   await positionDetails.locator("summary").click();
   await expect(positionDetails.getByText("Funding since opening", {exact:true})).toBeVisible();
   await expect(positionDetails.getByText("-1.25 USDT", {exact:true})).toBeVisible();
@@ -372,6 +375,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("short");
   await expect(page.getByText(/No open positions match/)).toBeVisible();
+  await expect(statistics).toContainText("Long 0 · Short 0");
   await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();

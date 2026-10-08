@@ -166,6 +166,14 @@ export function PositionsPage({
     workerOnline: boolean;
     connectionCount: number;
     incomplete: boolean;
+    summary?: {
+      count: number;
+      long: number;
+      short: number;
+      volume: { value: string | null; known: number };
+      realized: { value: string | null; known: number };
+      unrealized: { value: string | null; known: number };
+    };
   }>(`/api/positions?${qs}`);
   const options = useExchangeData<{ connections: ConnectionDto[] }>(
     "/api/exchanges",
@@ -194,6 +202,53 @@ export function PositionsPage({
           </Link>
         )}
       </div>
+      {!compact && result.data?.summary && (
+        <div
+          className="w-full max-w-xl rounded-xl border border-border bg-surface px-5 py-4"
+          aria-label={t("positionsSummary")}
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="font-medium">
+              {t("positionsSummary")} · {result.data.summary.count}
+            </span>
+            <span className="text-xs text-text-muted tabular-nums">
+              Long {result.data.summary.long} · Short{" "}
+              {result.data.summary.short}
+            </span>
+          </div>
+          <dl className="grid grid-cols-3 gap-3 sm:gap-4">
+            {(
+              [
+                ["positionVolume", "volume"],
+                ["realizedPnl", "realized"],
+                ["unrealizedPnl", "unrealized"],
+              ] as const
+            ).map(([label, key]) => {
+              const metric = result.data!.summary![key];
+              return (
+                <div key={key} className="min-w-0">
+                  <dt className="mb-1.5 min-h-8 text-xs text-text-muted sm:min-h-0">
+                    {t(label)}
+                  </dt>
+                  <dd
+                    className={`break-words text-sm sm:text-lg font-medium tabular-nums ${key !== "volume" && Number(metric.value) !== 0 ? (Number(metric.value) > 0 ? "text-success" : "text-danger") : ""}`}
+                  >
+                    <Money value={metric.value} />
+                  </dd>
+                  {metric.known < result.data!.summary!.count && (
+                    <p className="mt-1 text-xs text-text-muted">
+                      {t("summaryCoverage", {
+                        known: metric.known,
+                        total: result.data!.summary!.count,
+                      })}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      )}
       {!compact && (
         <div
           className={`grid gap-2 sm:grid-cols-2 ${connectionId ? "lg:grid-cols-3" : "lg:grid-cols-5"}`}

@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import { summarizePositions } from "@/lib/exchanges/position-summary";
+import { settlementPrices } from "@/lib/exchanges/pricing";
 import {
   exchangeGuard,
   exchangeJson,
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
         : q.sort === "size"
           ? { notionalUsd: { sort: "desc", nulls: "last" } }
           : { symbol: "asc" };
-    const [positions, total, connections, heartbeat] =
+    const [positions, summaryRows, connections, heartbeat] =
       await prisma.$transaction([
         prisma.exchangePosition.findMany({
           where,
@@ -70,7 +72,16 @@ export async function GET(req: NextRequest) {
             },
           },
         }),
-        prisma.exchangePosition.count({ where }),
+        prisma.exchangePosition.findMany({
+          where,
+          select: {
+            side: true,
+            settle: true,
+            notionalUsd: true,
+            unrealizedPnlUsd: true,
+            funding: true,
+          },
+        }),
         prisma.exchangeConnection.findMany({
           where: {
             userId: guard.user.id,
@@ -103,7 +114,13 @@ export async function GET(req: NextRequest) {
           !["ACTIVE", "PARTIAL"].includes(account.connection.status) ||
           Date.now() - p.updatedAt.getTime() > 90_000,
       })),
-      total,
+      total: summaryRows.length,
+      summary: summarizePositions(
+        summaryRows,
+        summaryRows.length
+          ? await settlementPrices().catch(() => new Map<string, string>())
+          : new Map<string, string>(),
+      ),
       page: q.page,
       limit: q.limit,
       workerOnline: !!heartbeat,

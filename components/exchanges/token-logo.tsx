@@ -41,6 +41,8 @@ const catalogIds: Record<string, string> = {
   MET: "meteora",
   TREE: "treehouse",
   MORPHO: "morpho",
+  LYN: "everlyn",
+  COOL: "usdc-is-cool",
 };
 const resolved = new Map<string, string | null>();
 const pending = new Map<string, Promise<string | null>>();
@@ -52,7 +54,7 @@ function findLogo(ticker: string) {
   const lookup = lookupQueue
     .then(async () => {
       const response = await fetch(
-        `/api/market/search?q=${encodeURIComponent(ticker === "PURR" ? "purr" : (catalogIds[ticker] ?? ticker))}`,
+        `/api/market/search?q=${encodeURIComponent(ticker === "PURR" ? "purr" : ticker === "COOL" ? "usdc is cool" : (catalogIds[ticker] ?? ticker))}`,
       );
       if (!response.ok) throw new Error("Logo metadata unavailable");
       const data = (await response.json()) as {
