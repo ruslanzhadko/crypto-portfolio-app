@@ -25,6 +25,22 @@ function realizedWithFunding(p: PositionDto): string | null {
     : null;
 }
 
+function liquidationDistance(p: PositionDto): number | null {
+  const mark = Number(p.markPrice),
+    liquidation = Number(p.liquidationPrice);
+  if (
+    !Number.isFinite(mark) ||
+    !Number.isFinite(liquidation) ||
+    mark <= 0 ||
+    liquidation <= 0
+  )
+    return null;
+  return Math.max(
+    0,
+    (p.side === "short" ? liquidation - mark : mark - liquidation) / mark,
+  );
+}
+
 function marginReturn(p: PositionDto) {
   return p.margin && Number(p.margin) > 0 && p.unrealizedPnl != null
     ? `${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
@@ -126,6 +142,7 @@ export function PositionsPage({
   compact?: boolean;
 }) {
   const t = useTranslations("Exchanges");
+  const locale = useLocale();
   const [exchange, setExchange] = useState(""),
     [account, setAccount] = useState(connectionId ?? ""),
     [coin, setCoin] = useState("");
@@ -259,6 +276,7 @@ export function PositionsPage({
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
         {result.data?.positions.map((p) => {
           const netRealized = realizedWithFunding(p);
+          const distance = liquidationDistance(p);
           return (
             <details
               key={`${p.connection.id}:${p.positionKey}`}
@@ -401,10 +419,33 @@ export function PositionsPage({
                       />{" "}
                       {p.settle}
                     </dd>
+                    <p
+                      className="mt-1 text-xs text-text-muted"
+                      title={t("liquidationDistanceDescription")}
+                    >
+                      {t("liquidationDistance")}:{" "}
+                      {distance == null
+                        ? "—"
+                        : new Intl.NumberFormat(locale, {
+                            style: "percent",
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          }).format(distance)}
+                    </p>
                   </div>
                   <div>
                     <dt className="text-text-muted">{t("closedPnl")}</dt>
-                    <dd>
+                    <dd
+                      className={
+                        p.funding?.realizedPnl == null
+                          ? "text-text-muted"
+                          : Number(p.funding.realizedPnl) > 0
+                            ? "text-success"
+                            : Number(p.funding.realizedPnl) < 0
+                              ? "text-danger"
+                              : undefined
+                      }
+                    >
                       <Quantity
                         value={p.funding?.realizedPnl ?? null}
                         maximumFractionDigits={4}
