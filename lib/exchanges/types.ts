@@ -1,4 +1,4 @@
-export type ExchangeId = "binance" | "bybit" | "gate" | "okx" | "hyperliquid";
+export type ExchangeId = "binance" | "bybit" | "gate" | "okx" | "hyperliquid" | "aster";
 export type SyncStatus =
   | "PENDING"
   | "ACTIVE"
@@ -17,6 +17,8 @@ export type ErrorCode =
   | "INVALID_RESPONSE"
   | "UNSUPPORTED_ACCOUNT"
   | "FUTURES_UNAVAILABLE"
+  | "SPOT_UNAVAILABLE"
+  | "PRIVATE_ACCOUNT"
   | "UNPRICED_ASSETS"
   | "DUPLICATE_ACCOUNT"
   | "CONFIGURATION";

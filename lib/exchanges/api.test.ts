@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   query: vi.fn(),
   accountDelete: vi.fn(),
+  wallet: vi.fn(),
+  findUnique: vi.fn(),
 }));
 vi.mock("@/lib/api/auth-guard", () => ({ requireUser: mocks.guard }));
 vi.mock("@/lib/auth", () => ({ auth: mocks.getSession }));
@@ -19,11 +21,13 @@ vi.mock("@/lib/db/prisma", () => {
   const db = {
     exchangeConnection: {
       findFirst: mocks.findFirst,
+      findUnique: mocks.findUnique,
       update: mocks.update,
       create: mocks.create,
       count: vi.fn().mockResolvedValue(0),
     },
     exchangeSyncJob: { deleteMany: mocks.deleteJobs },
+    wallet: { findFirst: mocks.wallet },
     capitalEvent: { create: mocks.event },
     exchangeAccount: { deleteMany: mocks.accountDelete },
     authRateLimit: { upsert: vi.fn().mockResolvedValue({ attempts: 1 }) },
@@ -79,6 +83,47 @@ beforeEach(() => {
   });
 });
 describe("exchange API authorization and secrets", () => {
+  it("links Aster only to an active EVM wallet owned by the user without credentials", async () => {
+    mocks.wallet.mockResolvedValue({
+      id: "wallet",
+      address: `0x${"a".repeat(40)}`,
+    });
+    mocks.findUnique.mockResolvedValue(null);
+    const response = await createConnection(
+      request("POST", {
+        exchange: "aster",
+        label: "Aster",
+        walletId: "wallet",
+      }),
+    );
+    expect(response.status).toBe(201);
+    expect(mocks.wallet.mock.calls[0]![0].where).toEqual({
+      id: "wallet",
+      userId: "user-a",
+      isActive: true,
+      network: "EVM",
+    });
+    expect(mocks.create.mock.calls[0]![0].data).toMatchObject({
+      exchange: "aster",
+      walletId: "wallet",
+      userId: "user-a",
+    });
+    expect(mocks.create.mock.calls[0]![0].data.credentials).toBeUndefined();
+    expect(mocks.enqueue).toHaveBeenCalled();
+  });
+  it("rejects a foreign wallet and duplicate wallet links before writes", async () => {
+    mocks.wallet.mockResolvedValue(null);
+    const body = { exchange: "aster", label: "Aster", walletId: "foreign" };
+    expect((await createConnection(request("POST", body))).status).toBe(404);
+    mocks.wallet.mockResolvedValue({
+      id: "wallet",
+      address: `0x${"a".repeat(40)}`,
+    });
+    mocks.findUnique.mockResolvedValue({ id: "linked", status: "ACTIVE" });
+    expect((await createConnection(request("POST", body))).status).toBe(409);
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
   it.each(["gate", "okx"])(
     "accepts %s and encrypts all required credentials",
     async (exchange) => {

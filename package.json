@@ -53,6 +53,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "jose": "^6.2.12",
+    "lossless-json": "^4.3.0",
     "lucide-react": "^0.383.0",
     "next": "15.5.27",
     "next-auth": "^5.0.0-beta.32",

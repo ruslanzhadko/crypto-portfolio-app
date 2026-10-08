@@ -61,6 +61,10 @@ export function ExchangeErrorNotice({
   const t = useTranslations("Exchanges");
   const [hidden, setHidden] = useDisplayPreference(warningPreference, "false");
   if (!code || (code === "UNPRICED_ASSETS" && hidden === "true")) return null;
+  if (code === "SPOT_UNAVAILABLE")
+    return (
+      <p className="text-sm text-text-muted">{t("errors.SPOT_UNAVAILABLE")}</p>
+    );
   return (
     <p
       role="alert"

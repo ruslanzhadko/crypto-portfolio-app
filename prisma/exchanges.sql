@@ -146,7 +146,7 @@ CREATE TABLE "CapitalEvent" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "ExchangeConnection_walletId_key" ON "ExchangeConnection"("walletId");
+CREATE UNIQUE INDEX "ExchangeConnection_walletId_exchange_key" ON "ExchangeConnection"("walletId", "exchange");
 
 -- CreateIndex
 CREATE INDEX "ExchangeConnection_userId_status_idx" ON "ExchangeConnection"("userId", "status");

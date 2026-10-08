@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExchangeErrorNotice } from "./shared";
 import { exchangeAction } from "./use-exchange-data";
+import { useExchangeData } from "./use-exchange-data";
 
 export function ConnectionForm({
   workerIp,
@@ -25,6 +26,16 @@ export function ConnectionForm({
   const t = useTranslations("Exchanges"),
     locale = useLocale();
   const [exchange, setExchange] = useState(initialExchange);
+  const wallets = useExchangeData<{
+    wallets: {
+      id: string;
+      label: string | null;
+      address: string;
+      network: string;
+      isActive: boolean;
+    }[];
+  }>("/api/wallets", 60_000);
+  const walletBased = exchange === "aster";
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -33,14 +44,22 @@ export function ConnectionForm({
     setError(null);
     const form = event.currentTarget,
       values = new FormData(form);
-    const body = {
-      apiKey: values.get("apiKey"),
-      secret: values.get("secret"),
-      ...(exchange === "okx" ? { passphrase: values.get("passphrase") } : {}),
-      ...(connectionId
-        ? { password: values.get("password") || undefined }
-        : { exchange: values.get("exchange"), label: values.get("label") }),
-    };
+    const body = walletBased
+      ? {
+          exchange: "aster",
+          label: values.get("label"),
+          walletId: values.get("walletId"),
+        }
+      : {
+          apiKey: values.get("apiKey"),
+          secret: values.get("secret"),
+          ...(exchange === "okx"
+            ? { passphrase: values.get("passphrase") }
+            : {}),
+          ...(connectionId
+            ? { password: values.get("password") || undefined }
+            : { exchange: values.get("exchange"), label: values.get("label") }),
+        };
     try {
       await exchangeAction(
         connectionId
@@ -68,14 +87,16 @@ export function ConnectionForm({
         {t(connectionId ? "replaceKey" : "connectExchange")}
       </h2>
       <p className="text-sm leading-relaxed text-text-muted">
-        {t("keyInstructions")}
+        {t(walletBased ? "asterWalletInstructions" : "keyInstructions")}
       </p>
-      <p className="text-sm">
-        {t("workerIp")}:{" "}
-        <code className="select-all rounded bg-surface-2 px-2 py-1">
-          {workerIp ?? t("ipNotConfigured")}
-        </code>
-      </p>
+      {!walletBased && (
+        <p className="text-sm">
+          {t("workerIp")}:{" "}
+          <code className="select-all rounded bg-surface-2 px-2 py-1">
+            {workerIp ?? t("ipNotConfigured")}
+          </code>
+        </p>
+      )}
       <p className="text-xs text-text-muted">{t("supported")}</p>
       {!connectionId && (
         <div className="grid gap-4 sm:grid-cols-2">
@@ -93,6 +114,7 @@ export function ConnectionForm({
                 <option value="binance">Binance</option>
                 <option value="gate">Gate</option>
                 <option value="okx">OKX</option>
+                <option value="aster">Aster</option>
               </select>
               <ChevronDown
                 aria-hidden="true"
@@ -112,34 +134,60 @@ export function ConnectionForm({
           </div>
         </div>
       )}
-      <div className="grid gap-4 sm:grid-cols-2">
+      {walletBased ? (
         <div className="space-y-2">
-          <Label htmlFor="exchange-key">API key</Label>
-          <Input
-            id="exchange-key"
-            name="apiKey"
-            type="password"
-            autoComplete="new-password"
+          <Label htmlFor="aster-wallet">{t("wallet")}</Label>
+          <select
+            id="aster-wallet"
+            name="walletId"
             required
-            minLength={8}
-            maxLength={256}
-            spellCheck={false}
-          />
+            defaultValue=""
+            className="h-10 w-full rounded-lg border border-border bg-surface-2 px-3 text-sm"
+          >
+            <option value="" disabled>
+              {t("selectWallet")}
+            </option>
+            {wallets.data?.wallets
+              .filter((w) => w.isActive && w.network === "EVM")
+              .map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.label ?? w.address} · {w.address.slice(0, 6)}…
+                  {w.address.slice(-4)}
+                </option>
+              ))}
+          </select>
+          <ExchangeErrorNotice code={wallets.error} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="exchange-secret">API secret</Label>
-          <Input
-            id="exchange-secret"
-            name="secret"
-            type="password"
-            autoComplete="new-password"
-            required
-            minLength={8}
-            maxLength={512}
-            spellCheck={false}
-          />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="exchange-key">API key</Label>
+            <Input
+              id="exchange-key"
+              name="apiKey"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={256}
+              spellCheck={false}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="exchange-secret">API secret</Label>
+            <Input
+              id="exchange-secret"
+              name="secret"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              maxLength={512}
+              spellCheck={false}
+            />
+          </div>
         </div>
-      </div>
+      )}
       {exchange === "okx" && (
         <div className="max-w-sm space-y-2">
           <Label htmlFor="exchange-passphrase">API Passphrase</Label>
@@ -185,7 +233,7 @@ export function ConnectionForm({
         </Button>
       )}
       <div className="flex gap-2">
-        <Button type="submit" disabled={busy || !workerIp}>
+        <Button type="submit" disabled={busy || (!walletBased && !workerIp)}>
           {t(busy ? "saving" : "saveAndCheck")}
         </Button>
         <Button

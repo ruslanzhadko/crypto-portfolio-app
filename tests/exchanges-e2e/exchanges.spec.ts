@@ -120,6 +120,7 @@ test.beforeEach(async ({ page }) => {
     await route.fulfill({ json: { results: symbol === "DUST" ? [{ symbol: "DUST", thumb: "/logo.png" }] : [] } });
   });
   await prisma.exchangeConnection.deleteMany({ where: { userId } });
+  await prisma.wallet.deleteMany({ where: { userId, label: "Aster wallet" } });
   await prisma.portfolioCapitalSnapshot.deleteMany({ where: { userId } });
   await prisma.capitalEvent.deleteMany({ where: { userId } });
   await prisma.authRateLimit.deleteMany({
@@ -191,6 +192,30 @@ test("Gate and OKX connection forms, encrypted passphrase and OKX replacement", 
   expect(updated.credentialVersion).toBe(2);
   expect(updated.credentials).not.toBe(c.credentials);
   expect(updated.credentials).not.toContain("okx-replacement-passphrase");
+});
+
+test("Aster links an existing wallet without keys and coexists with Hyperliquid", async ({ page }) => {
+  const wallet = await prisma.wallet.create({ data: { userId, address: `0x${"d".repeat(40)}`, network: "EVM", label: "Aster wallet" } });
+  await prisma.exchangeConnection.create({ data: { userId, exchange: "hyperliquid", walletId: wallet.id, label: "Hyper wallet" } });
+  await page.goto("/en/exchanges");
+  await page.getByRole("button", { name: "Connect exchange" }).click();
+  await page.getByLabel("Exchange", { exact: true }).selectOption("aster");
+  await expect(page.getByLabel("API key", { exact: true })).toHaveCount(0);
+  await page.getByLabel("Account name").fill("Main Aster");
+  await page.getByLabel("Wallet", { exact: true }).selectOption(wallet.id);
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByRole("link", { name: "Main Aster" })).toBeVisible();
+  const connection = await prisma.exchangeConnection.findFirstOrThrow({ where: { userId, exchange: "aster", walletId: wallet.id } });
+  expect(connection.credentials).toBeNull();
+  await page.getByRole("link", { name: "Main Aster" }).click();
+  await expect(page.getByRole("button", { name: "Replace API key" })).toHaveCount(0);
+  await expect(page.getByText(/Aster positions and futures collateral/)).toBeVisible();
+  await prisma.exchangeConnection.deleteMany({ where: { walletId: wallet.id } });
+  await prisma.wallet.delete({ where: { id: wallet.id } });
 });
 
 test("connect → queued sync → balances and positions → replace key → disconnect", async ({
@@ -407,6 +432,13 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(page.getByText(/No open positions match/)).toBeVisible();
   await expect(statistics).toContainText("Long 0 · Short 0");
   await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
+  await page.getByRole("combobox", { name: "Unrealized PnL result", exact: true }).selectOption("profit");
+  await expect(page.getByText(/No open positions match/)).toBeVisible();
+  await expect(statistics).toContainText("Long 0 · Short 0");
+  await page.getByRole("combobox", { name: "Unrealized PnL result", exact: true }).selectOption("loss");
+  await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
+  await expect(statistics).toContainText("Long 1 · Short 0");
+  await page.getByRole("combobox", { name: "Unrealized PnL result", exact: true }).selectOption("");
   for (const sort of ["pnl", "pnlAsc", "roe", "roeAsc"]) {
     const response = await page.request.get(`/api/positions?sort=${sort}`);
     expect(response.ok()).toBe(true);

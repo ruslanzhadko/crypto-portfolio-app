@@ -109,7 +109,7 @@ model Wallet {
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   balances     TokenBalance[]
   transactions WalletTransaction[]
-  exchangeConnection ExchangeConnection?
+  exchangeConnections ExchangeConnection[]
 
   @@unique([userId, address, network])
   @@index([userId])
@@ -376,7 +376,7 @@ model ExchangeConnection {
   status String @default("PENDING")
   errorCode String?
   externalAccountId String?
-  walletId String? @unique
+  walletId String?
   hyperCoreMigratedAt DateTime?
   balancesAt DateTime?
   positionsAt DateTime?
@@ -391,6 +391,7 @@ model ExchangeConnection {
   runs ExchangeSyncRun[]
   @@unique([userId, exchange, keyFingerprint])
   @@unique([userId, exchange, externalAccountId])
+  @@unique([walletId, exchange])
   @@index([userId, status])
 }
 

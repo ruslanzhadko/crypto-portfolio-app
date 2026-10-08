@@ -88,6 +88,14 @@ pushes update both Vercel and the production worker automatically. Database
 migrations and changes to the root-owned deployment script remain explicit
 operations; ordinary source pushes do not perform them.
 
+The wallet exchange index is the one targeted exception: the worker's startup
+prepares a unique `(walletId, exchange)` index and removes the previous unique
+`walletId` index in one transaction. This changes no stored rows and permits
+Aster and Hyperliquid on the same wallet. The upgrade is idempotent and is
+verified against the previous schema in the isolated database tests. An older
+worker that used the single-wallet index cannot be restored without adapting
+its wallet discovery query to the compound index.
+
 ## Failures and retry
 
 Build failure leaves the current worker running. Failed heartbeat restores

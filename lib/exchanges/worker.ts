@@ -13,6 +13,7 @@ import { BinanceAdapter, BybitAdapter } from "./adapters";
 import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
 import { HyperliquidAdapter } from "./hyperliquid";
+import { AsterAdapter } from "./aster";
 import { settlementPrices } from "./pricing";
 import { claimJob, enqueue, retryDelay } from "./queue";
 import {
@@ -40,7 +41,7 @@ export async function discoverHyperliquid() {
       network: "EVM",
       isActive: true,
       user: { isBlocked: false },
-      exchangeConnection: null,
+      exchangeConnections: { none: { exchange: "hyperliquid" } },
       balances: { some: { chainName: { in: HYPERCORE_CHAINS } } },
     },
     select: { id: true, userId: true, label: true, address: true },
@@ -49,7 +50,9 @@ export async function discoverHyperliquid() {
     if (!exchangesEnabled(wallet.userId)) continue;
     await prisma.$transaction(async (tx) => {
       const c = await tx.exchangeConnection.upsert({
-        where: { walletId: wallet.id },
+        where: {
+          walletId_exchange: { walletId: wallet.id, exchange: "hyperliquid" },
+        },
         update: {},
         create: {
           userId: wallet.userId,
@@ -261,7 +264,7 @@ export async function runOneJob(): Promise<boolean> {
       });
   }, 30_000);
   try {
-    if (c.exchange === "hyperliquid" && !c.wallet?.isActive)
+    if (["hyperliquid", "aster"].includes(c.exchange) && !c.wallet?.isActive)
       throw new ExchangeError("UNSUPPORTED_ACCOUNT");
     let cached = clients.get(c.id);
     if (cached && cached.version !== c.credentialVersion) {
@@ -271,9 +274,12 @@ export async function runOneJob(): Promise<boolean> {
     }
     if (!cached) {
       let adapter: ExchangeAdapter;
-      if (c.exchange === "hyperliquid") {
+      if (["hyperliquid", "aster"].includes(c.exchange)) {
         if (!c.wallet?.isActive) throw new ExchangeError("UNSUPPORTED_ACCOUNT");
-        adapter = new HyperliquidAdapter(c.wallet.address, settlementPrices);
+        adapter =
+          c.exchange === "aster"
+            ? new AsterAdapter(c.wallet.address, settlementPrices)
+            : new HyperliquidAdapter(c.wallet.address, settlementPrices);
       } else {
         if (
           !c.credentials ||

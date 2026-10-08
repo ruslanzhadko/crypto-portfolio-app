@@ -127,7 +127,66 @@ export async function createConnection(req: NextRequest) {
   try {
     const guard = await exchangeGuard(req);
     if (!guard.ok) return guard.response;
-    const parsed = createSchema.safeParse(await readBody(req));
+    const body = await readBody(req);
+    const walletLink = z
+      .object({
+        exchange: z.literal("aster"),
+        walletId: z.string().min(1).max(100),
+        label: z.string().trim().min(1).max(80),
+      })
+      .strict()
+      .safeParse(body);
+    if (walletLink.success) {
+      const userId = guard.user.id;
+      const result = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
+        const wallet = await tx.wallet.findFirst({
+          where: {
+            id: walletLink.data.walletId,
+            userId,
+            isActive: true,
+            network: "EVM",
+          },
+          select: { id: true, address: true },
+        });
+        if (!wallet) return failure("NOT_FOUND", 404);
+        const existing = await tx.exchangeConnection.findUnique({
+          where: {
+            walletId_exchange: { walletId: wallet.id, exchange: "aster" },
+          },
+        });
+        if (existing && existing.status !== "DISCONNECTED")
+          return failure("DUPLICATE_ACCOUNT", 409);
+        const count = await tx.exchangeConnection.count({
+          where: {
+            userId,
+            status: { not: "DISCONNECTED" },
+            exchange: { not: "hyperliquid" },
+          },
+        });
+        if (count >= MAX_CONNECTIONS) return failure("CONNECTION_LIMIT", 409);
+        const data = {
+          label: walletLink.data.label,
+          status: "PENDING",
+          errorCode: null,
+          externalAccountId: wallet.address.toLowerCase(),
+        };
+        const connection = existing
+          ? await tx.exchangeConnection.update({
+              where: { id: existing.id },
+              data: { ...data, credentialVersion: { increment: 1 } },
+              select: connectionSelect,
+            })
+          : await tx.exchangeConnection.create({
+              data: { ...data, userId, walletId: wallet.id, exchange: "aster" },
+              select: connectionSelect,
+            });
+        await enqueue(connection.id, tx);
+        return exchangeJson({ connection }, 201);
+      });
+      return result;
+    }
+    const parsed = createSchema.safeParse(body);
     if (!parsed.success) return failure("BAD_REQUEST");
     const { apiKey, secret, passphrase, exchange, label } = parsed.data,
       id = randomUUID(),
@@ -230,7 +289,8 @@ export async function changeConnection(
       ({ label, paused } = parsed.data);
     }
     if (action === "credentials") {
-      if (existing.exchange === "hyperliquid") return failure("BAD_REQUEST");
+      if (["hyperliquid", "aster"].includes(existing.exchange))
+        return failure("BAD_REQUEST");
       const parsed = credentialsSchema
         .extend({ password: z.string().max(256).optional() })
         .strict()

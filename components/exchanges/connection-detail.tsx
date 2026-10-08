@@ -78,6 +78,11 @@ export function ConnectionDetail({ id }: { id: string }) {
             <ConnectionStatus status={c.status} />
           </div>
           <ExchangeErrorNotice code={c.errorCode} />
+          {c.exchange === "aster" && (
+            <p className="text-sm text-text-muted">
+              {t("asterWalletInstructions")}
+            </p>
+          )}
           {c.status !== "DISCONNECTED" && (
             <div className="flex flex-wrap gap-2">
               <Button
@@ -99,7 +104,7 @@ export function ConnectionDetail({ id }: { id: string }) {
               >
                 {t(c.status === "PAUSED" ? "resume" : "pause")}
               </Button>
-              {c.exchange !== "hyperliquid" && (
+              {!["hyperliquid", "aster"].includes(c.exchange) && (
                 <Button
                   variant="outline"
                   disabled={busy}

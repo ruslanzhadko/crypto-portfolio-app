@@ -8,10 +8,12 @@ import {
   workerHeartbeat,
 } from "../lib/exchanges/worker";
 import { sleep } from "../lib/exchanges/transport";
+import { prepareWalletConnections } from "../lib/exchanges/wallet-schema";
 
 async function main() {
   if (process.env.EXCHANGES_ENABLED !== "true")
     throw new Error("EXCHANGES_ENABLED must be true");
+  await prepareWalletConnections();
   const owner = newWorkerId();
   let stopping = false,
     lastDiscovery = 0;

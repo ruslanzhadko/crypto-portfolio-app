@@ -147,6 +147,7 @@ export function PositionsPage({
     [account, setAccount] = useState(connectionId ?? ""),
     [coin, setCoin] = useState("");
   const [side, setSide] = useState(""),
+    [pnlResult, setPnlResult] = useState(""),
     [sort, setSort] = useState("size"),
     [page, setPage] = useState(1);
   const [searchCoin, setSearchCoin] = useState("");
@@ -164,6 +165,7 @@ export function PositionsPage({
   if (account) qs.set("connectionId", account);
   if (searchCoin) qs.set("coin", searchCoin);
   if (side) qs.set("side", side);
+  if (pnlResult) qs.set("result", pnlResult);
   const result = useExchangeData<{
     positions: PositionDto[];
     total: number;
@@ -279,6 +281,7 @@ export function PositionsPage({
                   <option value="gate">Gate</option>
                   <option value="okx">OKX</option>
                   <option value="hyperliquid">Hyperliquid</option>
+                  <option value="aster">Aster</option>
                 </PositionSelect>
                 <PositionSelect
                   aria-label={t("account")}
@@ -323,10 +326,23 @@ export function PositionsPage({
               <option value="roeAsc">{t("sortRoeAsc")}</option>
               <option value="symbol">{t("coin")}</option>
             </PositionSelect>
+            <PositionSelect
+              aria-label={t("resultFilter")}
+              value={pnlResult}
+              onChange={(e) => filter(setPnlResult, e.target.value)}
+            >
+              <option value="">{t("allResults")}</option>
+              <option value="profit">{t("profitablePositions")}</option>
+              <option value="loss">{t("losingPositions")}</option>
+            </PositionSelect>
           </div>
         )}
       </div>
-      <p role="status" className="h-4 text-xs text-text-muted" aria-live="polite">
+      <p
+        role="status"
+        className="h-4 text-xs text-text-muted"
+        aria-live="polite"
+      >
         {result.data && (result.loading || coin.trim() !== searchCoin)
           ? t("updatingPositions")
           : null}
@@ -446,6 +462,7 @@ export function PositionsPage({
                         gate: "Gate",
                         okx: "OKX",
                         hyperliquid: "Hyperliquid",
+                        aster: "Aster",
                       } as Record<string, string>
                     )[p.connection.exchange] ?? p.connection.exchange}
                   </p>

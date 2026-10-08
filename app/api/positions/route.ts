@@ -19,11 +19,12 @@ export async function GET(req: NextRequest) {
     const parsed = z
       .object({
         exchange: z
-          .enum(["binance", "bybit", "gate", "okx", "hyperliquid"])
+          .enum(["binance", "bybit", "gate", "okx", "hyperliquid", "aster"])
           .optional(),
         connectionId: z.string().max(100).optional(),
         coin: z.string().max(40).optional(),
         side: z.enum(["long", "short"]).optional(),
+        result: z.enum(["profit", "loss"]).optional(),
         sort: z
           .enum(["size", "pnl", "pnlAsc", "roe", "roeAsc", "symbol"])
           .default("size"),
@@ -35,6 +36,9 @@ export async function GET(req: NextRequest) {
     const q = parsed.data;
     const where: Prisma.ExchangePositionWhereInput = {
       ...(q.side ? { side: q.side } : {}),
+      ...(q.result
+        ? { unrealizedPnlUsd: q.result === "profit" ? { gt: 0 } : { lt: 0 } }
+        : {}),
       ...(q.coin ? { base: { contains: q.coin, mode: "insensitive" } } : {}),
       account: {
         connection: {
@@ -142,7 +146,12 @@ export async function GET(req: NextRequest) {
       incomplete: connections.some(
         (c) =>
           (c.status !== "ACTIVE" &&
-            !(c.status === "PARTIAL" && c.errorCode === "UNPRICED_ASSETS")) ||
+            !(
+              c.status === "PARTIAL" &&
+              ["UNPRICED_ASSETS", "SPOT_UNAVAILABLE"].includes(
+                c.errorCode ?? "",
+              )
+            )) ||
           !c.positionsAt ||
           Date.now() - c.positionsAt.getTime() > 90_000,
       ),

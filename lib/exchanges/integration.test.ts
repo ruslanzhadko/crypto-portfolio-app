@@ -2,6 +2,7 @@ import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/prisma";
 import { claimJob, enqueue as enqueueJob } from "./queue";
 import { commitResult } from "./worker";
+import { prepareWalletConnections } from "./wallet-schema";
 import {
   getCapitalOverview,
   getCapitalHistory,
@@ -16,13 +17,16 @@ const enabled =
   new URL(url).pathname === "/exchange_test" &&
   process.env.DATABASE_URL === url;
 if (process.env.CI && !enabled)
-  throw new Error('CI requires an explicit isolated localhost /exchange_test database');
+  throw new Error(
+    "CI requires an explicit isolated localhost /exchange_test database",
+  );
 const userId = "exchange-integration-user";
 async function enqueue(connectionId: string) {
   await enqueueJob(connectionId);
   // Lease tests need a due job independently of host/Docker clock skew.
   await prisma.exchangeSyncJob.update({
-    where: { connectionId }, data: { dueAt: new Date(0) },
+    where: { connectionId },
+    data: { dueAt: new Date(0) },
   });
 }
 const snapshot: SyncResult = {
@@ -50,7 +54,17 @@ const snapshot: SyncResult = {
       ],
       positions: [
         {
-          funding: { amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", breakEvenPrice: "69960", nextRate: "0.0001", nextTime: Date.now() + 3600_000, since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
+          funding: {
+            amount: "-1.25",
+            realizedPnl: "7.5",
+            tradingFees: "0.25",
+            breakEvenPrice: "69960",
+            nextRate: "0.0001",
+            nextTime: Date.now() + 3600_000,
+            since: 1700000000000,
+            updatedAt: 1700001000000,
+            status: "complete",
+          },
           positionKey: "BTCUSDT:1",
           symbol: "BTCUSDT",
           base: "BTC",
@@ -161,11 +175,31 @@ describe.skipIf(!enabled)("exchange database integration", () => {
     const overview = await getCapitalOverview(userId);
     expect(overview.totalUsd).toBe("900");
     expect(overview.positionCount).toBe(1);
-    expect((await prisma.exchangePosition.findFirst({ where: { account: { connectionId: c.id } } }))?.funding).toMatchObject({ amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", breakEvenPrice: "69960", nextRate: "0.0001", status: "complete" });
+    expect(
+      (
+        await prisma.exchangePosition.findFirst({
+          where: { account: { connectionId: c.id } },
+        })
+      )?.funding,
+    ).toMatchObject({
+      amount: "-1.25",
+      realizedPnl: "7.5",
+      tradingFees: "0.25",
+      breakEvenPrice: "69960",
+      nextRate: "0.0001",
+      status: "complete",
+    });
     expect(overview.unrealizedPnlUsd).toBe("-100");
     // A connection-level warning from another account must not leak onto a healthy account.
-    await prisma.exchangeConnection.update({ where: { id: c.id }, data: { status: "PARTIAL", errorCode: "UNPRICED_ASSETS" } });
-    expect((await getCapitalOverview(userId)).accounts.find((a) => a.connectionId === c.id)?.errorCode).toBeNull();
+    await prisma.exchangeConnection.update({
+      where: { id: c.id },
+      data: { status: "PARTIAL", errorCode: "UNPRICED_ASSETS" },
+    });
+    expect(
+      (await getCapitalOverview(userId)).accounts.find(
+        (a) => a.connectionId === c.id,
+      )?.errorCode,
+    ).toBeNull();
     await enqueue(c.id);
     job = (await claimJob())!;
     expect(
@@ -217,6 +251,34 @@ describe.skipIf(!enabled)("exchange database integration", () => {
       await prisma.portfolioCapitalSnapshot.count({ where: { userId } }),
     ).toBe(1);
     await prisma.exchangeConnection.delete({ where: { id: c.id } });
+  });
+  it("allows independent Aster and Hyperliquid links for one wallet", async () => {
+    // Existing installations have the old one-exchange-per-wallet index.
+    await prisma.$executeRaw`CREATE UNIQUE INDEX IF NOT EXISTS "ExchangeConnection_walletId_key" ON "ExchangeConnection"("walletId")`;
+    await prepareWalletConnections();
+    await prepareWalletConnections();
+    const wallet = await prisma.wallet.create({
+      data: { userId, network: "EVM", address: `0x${"c".repeat(40)}` },
+    });
+    const data = { userId, walletId: wallet.id, label: "Wallet exchange" };
+    await prisma.exchangeConnection.create({
+      data: { ...data, exchange: "aster" },
+    });
+    await prisma.exchangeConnection.create({
+      data: { ...data, exchange: "hyperliquid" },
+    });
+    expect(
+      await prisma.exchangeConnection.count({ where: { walletId: wallet.id } }),
+    ).toBe(2);
+    await expect(
+      prisma.exchangeConnection.create({
+        data: { ...data, exchange: "aster" },
+      }),
+    ).rejects.toMatchObject({ code: "P2002" });
+    await prisma.exchangeConnection.deleteMany({
+      where: { walletId: wallet.id },
+    });
+    await prisma.wallet.delete({ where: { id: wallet.id } });
   });
   it("excludes migrated legacy HyperCore balances while preserving the stored rows", async () => {
     const wallet = await prisma.wallet.create({
