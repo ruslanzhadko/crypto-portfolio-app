@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExchangeData } from "./use-exchange-data";
-import { ExchangeErrorNotice, Money, Quantity, Updated } from "./shared";
+import { ExchangeErrorNotice, Money, Quantity } from "./shared";
 import type { ConnectionDto } from "./exchanges-page";
 import type { OpenPosition } from "@/lib/exchanges/types";
 
@@ -147,6 +147,32 @@ function NextFunding({ p }: { p: PositionDto }) {
         )}
       </p>
     </>
+  );
+}
+
+function PositionUpdated({ value }: { value: string }) {
+  const locale = useLocale();
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    setNow(Date.now());
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(tick);
+  }, []);
+  const timestamp = Date.parse(value);
+  if (!now || !Number.isFinite(timestamp)) return <span>—</span>;
+  const seconds = Math.max(0, Math.floor((now - timestamp) / 1000));
+  const unit = seconds < 60 ? "second" : seconds < 3600 ? "minute" : "hour";
+  const amount =
+    unit === "second"
+      ? seconds
+      : Math.floor(seconds / (unit === "minute" ? 60 : 3600));
+  return (
+    <span>
+      {new Intl.RelativeTimeFormat(locale, {
+        numeric: "always",
+        style: "short",
+      }).format(-amount, unit)}
+    </span>
   );
 }
 
@@ -448,9 +474,6 @@ export function PositionsPage({
                     <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
                     {p.settle}
                   </dd>
-                  <p className="mt-1 flex min-h-6 flex-wrap gap-x-2 text-xs text-text-muted">
-                    {t("updated")} <Updated value={p.updatedAt} />
-                  </p>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("liquidation")}</dt>
@@ -476,6 +499,12 @@ export function PositionsPage({
                     />{" "}
                     {p.settle}
                     <PnlBreakdown p={p} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-text-muted">{t("updated")}</dt>
+                  <dd>
+                    <PositionUpdated value={p.updatedAt} />
                   </dd>
                 </div>
                 <div className="lg:col-start-6 lg:text-right">
