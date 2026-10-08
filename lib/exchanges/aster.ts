@@ -207,9 +207,8 @@ export class AsterAdapter implements ExchangeAdapter {
           positions,
         },
       ],
-      failedAccounts: [
-        { accountKey: "spot", kind: "spot", errorCode: "SPOT_UNAVAILABLE" },
-      ],
+      // Spot is outside this public-wallet connection's scope, not a failed source.
+      failedAccounts: [],
       externalAccountId: this.address.toLowerCase(),
     };
   }

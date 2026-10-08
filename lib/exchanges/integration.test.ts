@@ -122,6 +122,76 @@ describe.skipIf(!enabled)("exchange database integration", () => {
     });
     await prisma.$disconnect();
   });
+  it("does not count unsupported Aster spot as stale and removes its old placeholder after futures sync", async () => {
+    const c = await prisma.exchangeConnection.create({
+      data: {
+        userId,
+        exchange: "aster",
+        label: "Aster futures",
+        status: "PARTIAL",
+        errorCode: "SPOT_UNAVAILABLE",
+      },
+    });
+    await prisma.exchangeAccount.create({
+      data: {
+        connectionId: c.id,
+        accountKey: "spot",
+        kind: "spot",
+        mode: "unknown",
+        complete: false,
+        errorCode: "SPOT_UNAVAILABLE",
+      },
+    });
+    expect((await getCapitalOverview(userId)).accounts).toHaveLength(0);
+    const futures: SyncResult = {
+      accounts: [
+        {
+          ...snapshot.accounts[0]!,
+          accountKey: "futures",
+          kind: "futures",
+          mode: "public-wallet",
+        },
+      ],
+      failedAccounts: [],
+    };
+    await enqueue(c.id);
+    const job = (await claimJob())!;
+    expect(await commitResult(c.id, 1, job.token, futures, new Date())).toBe(
+      true,
+    );
+    const stored = await prisma.exchangeConnection.findUniqueOrThrow({
+      where: { id: c.id },
+      include: { accounts: true },
+    });
+    expect(stored.status).toBe("ACTIVE");
+    expect(stored.errorCode).toBeNull();
+    expect(stored.accounts.map((a) => a.kind)).toEqual(["futures"]);
+    const overview = await getCapitalOverview(userId);
+    expect(overview.complete).toBe(true);
+    expect(overview.stale).toBe(false);
+    // Genuine incomplete futures valuation must still surface as incomplete.
+    await enqueue(c.id);
+    const next = (await claimJob())!;
+    await commitResult(
+      c.id,
+      1,
+      next.token,
+      {
+        ...futures,
+        accounts: [
+          {
+            ...futures.accounts[0]!,
+            complete: false,
+            equityUsd: null,
+            errorCode: "UNPRICED_ASSETS",
+          },
+        ],
+      },
+      new Date(),
+    );
+    expect((await getCapitalOverview(userId)).complete).toBe(false);
+    await prisma.exchangeConnection.delete({ where: { id: c.id } });
+  });
   it("leases one job to one worker and fences stale writers after credential changes", async () => {
     const c = await prisma.exchangeConnection.create({
       data: { userId, exchange: "bybit", label: "Fence test" },

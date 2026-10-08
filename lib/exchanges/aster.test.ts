@@ -138,9 +138,7 @@ describe("Aster public wallet adapter", () => {
         nextTime: next,
       },
     });
-    expect(result.failedAccounts).toEqual([
-      { accountKey: "spot", kind: "spot", errorCode: "SPOT_UNAVAILABLE" },
-    ]);
+    expect(result.failedAccounts).toEqual([]);
     await adapter.fetch();
     expect(premium).toHaveBeenCalledTimes(1);
   });

@@ -97,6 +97,16 @@ export async function commitResult(
       )
         return false;
       const activeKeys = result.accounts.map((a) => a.accountKey);
+      // Remove only the never-synced placeholder created by the old Aster adapter.
+      if (c.exchange === "aster")
+        await tx.exchangeAccount.deleteMany({
+          where: {
+            connectionId,
+            kind: "spot",
+            errorCode: "SPOT_UNAVAILABLE",
+            balancesAt: null,
+          },
+        });
       // Hyperliquid can change account mode. Remove obsolete pools only after a full successful response.
       if (c.exchange === "hyperliquid" && result.failedAccounts.length === 0)
         await tx.exchangeAccount.deleteMany({

@@ -84,49 +84,58 @@ export async function getCapitalOverview(userId: string) {
     kind: "wallet" as const,
   }));
   const accounts = connections.flatMap((c) =>
-    c.accounts.map((a) => {
-      // Until HyperCore migration is complete, legacy wallet balances remain authoritative.
-      const included =
-        c.exchange !== "hyperliquid" || c.hyperCoreMigratedAt !== null;
-      const stale =
-        c.status === "PAUSED" ||
-        !a.balancesAt ||
-        Date.now() - a.balancesAt.getTime() >
-          (a.kind === "spot" ? 300_000 : 90_000) ||
-        (a.kind !== "spot" &&
-          (!a.positionsAt || Date.now() - a.positionsAt.getTime() > 90_000));
-      return {
-        id: a.id,
-        connectionId: c.id,
-        label: c.label,
-        exchange: c.exchange,
-        kind: a.kind,
-        mode: a.mode,
-        equityUsd: a.equityUsd?.toFixed() ?? null,
-        availableUsd: a.availableUsd?.toFixed() ?? null,
-        unrealizedPnlUsd: a.unrealizedPnlUsd?.toFixed() ?? null,
-        complete: a.complete && !a.errorCode,
-        stale,
-        included,
-        status: c.status,
-        // A partial sibling account must not make this account look broken.
-        errorCode: a.errorCode,
-        balancesAt: a.balancesAt?.toISOString() ?? null,
-        positionsAt: a.positionsAt?.toISOString() ?? null,
-        balances: a.balances.map((b) => ({
-          id: b.id,
-          assetId: b.assetId,
-          symbol: b.symbol,
-          total: b.total.toFixed(),
-          free: b.free?.toFixed() ?? null,
-          locked: b.locked?.toFixed() ?? null,
-          debt: b.debt?.toFixed() ?? null,
-          priceUsd: b.priceUsd?.toFixed() ?? null,
-          usdValue: b.usdValue?.toFixed() ?? null,
-        })),
-        positionCount: a._count.positions,
-      };
-    }),
+    c.accounts
+      .filter(
+        (a) =>
+          !(
+            c.exchange === "aster" &&
+            a.kind === "spot" &&
+            a.errorCode === "SPOT_UNAVAILABLE"
+          ),
+      )
+      .map((a) => {
+        // Until HyperCore migration is complete, legacy wallet balances remain authoritative.
+        const included =
+          c.exchange !== "hyperliquid" || c.hyperCoreMigratedAt !== null;
+        const stale =
+          c.status === "PAUSED" ||
+          !a.balancesAt ||
+          Date.now() - a.balancesAt.getTime() >
+            (a.kind === "spot" ? 300_000 : 90_000) ||
+          (a.kind !== "spot" &&
+            (!a.positionsAt || Date.now() - a.positionsAt.getTime() > 90_000));
+        return {
+          id: a.id,
+          connectionId: c.id,
+          label: c.label,
+          exchange: c.exchange,
+          kind: a.kind,
+          mode: a.mode,
+          equityUsd: a.equityUsd?.toFixed() ?? null,
+          availableUsd: a.availableUsd?.toFixed() ?? null,
+          unrealizedPnlUsd: a.unrealizedPnlUsd?.toFixed() ?? null,
+          complete: a.complete && !a.errorCode,
+          stale,
+          included,
+          status: c.status,
+          // A partial sibling account must not make this account look broken.
+          errorCode: a.errorCode,
+          balancesAt: a.balancesAt?.toISOString() ?? null,
+          positionsAt: a.positionsAt?.toISOString() ?? null,
+          balances: a.balances.map((b) => ({
+            id: b.id,
+            assetId: b.assetId,
+            symbol: b.symbol,
+            total: b.total.toFixed(),
+            free: b.free?.toFixed() ?? null,
+            locked: b.locked?.toFixed() ?? null,
+            debt: b.debt?.toFixed() ?? null,
+            priceUsd: b.priceUsd?.toFixed() ?? null,
+            usdValue: b.usdValue?.toFixed() ?? null,
+          })),
+          positionCount: a._count.positions,
+        };
+      }),
   );
   const walletsUsd = sum(walletSources.map((w) => w.valueUsd));
   const exchangesUsd = sum(
