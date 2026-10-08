@@ -208,6 +208,8 @@ export function PositionsPage({
                 <option value="">{t("allExchanges")}</option>
                 <option value="binance">Binance</option>
                 <option value="bybit">Bybit</option>
+                <option value="gate">Gate</option>
+                <option value="okx">OKX</option>
                 <option value="hyperliquid">Hyperliquid</option>
               </PositionSelect>
               <PositionSelect
@@ -364,6 +366,8 @@ export function PositionsPage({
                       {
                         binance: "Binance",
                         bybit: "Bybit",
+                        gate: "Gate",
+                        okx: "OKX",
                         hyperliquid: "Hyperliquid",
                       } as Record<string, string>
                     )[p.connection.exchange] ?? p.connection.exchange}

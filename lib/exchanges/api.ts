@@ -87,7 +87,7 @@ export async function readBody(req: NextRequest): Promise<unknown> {
 }
 const createSchema = credentialsSchema
   .extend({
-    exchange: z.enum(["bybit", "binance"]),
+    exchange: z.enum(["bybit", "binance", "gate", "okx"]),
     label: z.string().trim().min(1).max(80),
   })
   .strict();
@@ -129,10 +129,15 @@ export async function createConnection(req: NextRequest) {
     if (!guard.ok) return guard.response;
     const parsed = createSchema.safeParse(await readBody(req));
     if (!parsed.success) return failure("BAD_REQUEST");
-    const { apiKey, secret, exchange, label } = parsed.data,
+    const { apiKey, secret, passphrase, exchange, label } = parsed.data,
       id = randomUUID(),
       userId = guard.user.id;
-    const credentials = encryptCredentials({ apiKey, secret }, userId, id);
+    if (exchange === "okx" && !passphrase) return failure("BAD_REQUEST");
+    const credentials = encryptCredentials(
+      { apiKey, secret, ...(exchange === "okx" ? { passphrase } : {}) },
+      userId,
+      id,
+    );
     const fingerprint = credentialFingerprint(apiKey);
     const result = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
@@ -231,6 +236,8 @@ export async function changeConnection(
         .strict()
         .safeParse(await readBody(req));
       if (!parsed.success) return failure("BAD_REQUEST");
+      if (existing.exchange === "okx" && !parsed.data.passphrase)
+        return failure("BAD_REQUEST");
       const session = await auth();
       const recent =
         session?.user.authenticatedAt &&
@@ -249,7 +256,13 @@ export async function changeConnection(
       }
       replacement = {
         credentials: encryptCredentials(
-          { apiKey: parsed.data.apiKey, secret: parsed.data.secret },
+          {
+            apiKey: parsed.data.apiKey,
+            secret: parsed.data.secret,
+            ...(existing.exchange === "okx"
+              ? { passphrase: parsed.data.passphrase }
+              : {}),
+          },
           userId,
           id,
         ),

@@ -15,7 +15,9 @@ export async function GET(req: NextRequest) {
     if (!guard.ok) return guard.response;
     const parsed = z
       .object({
-        exchange: z.enum(["binance", "bybit", "hyperliquid"]).optional(),
+        exchange: z
+          .enum(["binance", "bybit", "gate", "okx", "hyperliquid"])
+          .optional(),
         connectionId: z.string().max(100).optional(),
         coin: z.string().max(40).optional(),
         side: z.enum(["long", "short"]).optional(),
@@ -76,7 +78,12 @@ export async function GET(req: NextRequest) {
             ...(q.exchange ? { exchange: q.exchange } : {}),
             ...(q.connectionId ? { id: q.connectionId } : {}),
           },
-          select: { id: true, status: true, errorCode: true, positionsAt: true },
+          select: {
+            id: true,
+            status: true,
+            errorCode: true,
+            positionsAt: true,
+          },
         }),
         prisma.exchangeWorkerLease.findFirst({
           where: {
@@ -103,7 +110,8 @@ export async function GET(req: NextRequest) {
       connectionCount: connections.length,
       incomplete: connections.some(
         (c) =>
-          (c.status !== "ACTIVE" && !(c.status === "PARTIAL" && c.errorCode === "UNPRICED_ASSETS")) ||
+          (c.status !== "ACTIVE" &&
+            !(c.status === "PARTIAL" && c.errorCode === "UNPRICED_ASSETS")) ||
           !c.positionsAt ||
           Date.now() - c.positionsAt.getTime() > 90_000,
       ),

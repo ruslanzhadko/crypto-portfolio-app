@@ -12,6 +12,7 @@ export const credentialsSchema = z
   .object({
     apiKey: z.string().trim().min(8).max(256),
     secret: z.string().trim().min(8).max(512),
+    passphrase: z.string().min(1).max(256).optional(),
   })
   .strict();
 

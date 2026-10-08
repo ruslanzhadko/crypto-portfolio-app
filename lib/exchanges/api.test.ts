@@ -40,6 +40,7 @@ import {
   changeConnection,
   readBody,
 } from "./api";
+import { decryptCredentials } from "./crypto";
 const request = (method: string, body?: unknown, origin = "https://app.test") =>
   new NextRequest("https://app.test/api/exchanges", {
     method,
@@ -78,6 +79,56 @@ beforeEach(() => {
   });
 });
 describe("exchange API authorization and secrets", () => {
+  it.each(["gate", "okx"])(
+    "accepts %s and encrypts all required credentials",
+    async (exchange) => {
+      const credentials = {
+        apiKey: "key-test-1234",
+        secret: "private-secret-test",
+        ...(exchange === "okx" ? { passphrase: "private-passphrase" } : {}),
+      };
+      const response = await createConnection(
+        request("POST", { exchange, label: "New exchange", ...credentials }),
+      );
+      expect(response.status).toBe(201);
+      const { data, select } = mocks.create.mock.calls[0]![0];
+      expect(data.exchange).toBe(exchange);
+      expect(decryptCredentials(data.credentials, "user-a", data.id)).toEqual(
+        credentials,
+      );
+      expect(data.credentials).not.toContain("private-passphrase");
+      expect(select.credentials).toBeUndefined();
+      expect(JSON.stringify(await response.json())).not.toContain(
+        "private-passphrase",
+      );
+    },
+  );
+  it("requires OKX passphrase on both create and replacement before writes", async () => {
+    const credentials = {
+      apiKey: "key-test-1234",
+      secret: "private-secret-test",
+    };
+    expect(
+      (
+        await createConnection(
+          request("POST", { exchange: "okx", label: "OKX", ...credentials }),
+        )
+      ).status,
+    ).toBe(400);
+    mocks.findFirst.mockResolvedValue({ id: "connection", exchange: "okx" });
+    expect(
+      (
+        await changeConnection(
+          request("POST", credentials),
+          "connection",
+          "credentials",
+        )
+      ).status,
+    ).toBe(400);
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
   it("rejects cross-origin mutations before database writes", async () => {
     const response = await createConnection(
       request("POST", {}, "https://attacker.test"),

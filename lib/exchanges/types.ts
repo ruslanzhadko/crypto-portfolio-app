@@ -1,4 +1,4 @@
-export type ExchangeId = "binance" | "bybit" | "hyperliquid";
+export type ExchangeId = "binance" | "bybit" | "gate" | "okx" | "hyperliquid";
 export type SyncStatus =
   | "PENDING"
   | "ACTIVE"
@@ -23,6 +23,7 @@ export type ErrorCode =
 export interface Credentials {
   apiKey: string;
   secret: string;
+  passphrase?: string;
 }
 export interface AssetBalance {
   assetId: string;

@@ -142,6 +142,7 @@ export function ConnectionDetail({ id }: { id: string }) {
           {replacing && (
             <ConnectionForm
               connectionId={id}
+              exchange={c.exchange}
               workerIp={config.data?.workerIp ?? null}
               onSaved={() => {
                 setReplacing(false);

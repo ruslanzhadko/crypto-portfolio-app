@@ -1,6 +1,6 @@
 # Биржевые балансы и позиции
 
-Реализованы серверные подключения Binance/Bybit, worker, позиции Hyperliquid,
+Реализованы серверные подключения Binance/Bybit/Gate/OKX, worker, позиции Hyperliquid,
 сводный капитал, новый дашборд и история снимков. Функция выключена по умолчанию.
 Это мониторинг: приложение не размещает ордера, не переводит и не выводит средства.
 
@@ -10,6 +10,8 @@
 | ----------- | ---------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | Binance     | Spot, классический USDⓈ-M                      | USDT/USDC, hedge и one-way        | Только read-only с IP restriction; если futures endpoint недоступен, сохраняется spot и показывается частичный результат |
 | Bybit       | Unified UTA, cross/isolated, все монеты        | Linear USDT/USDC, hedge и one-way | Classic и portfolio margin не поддержаны; открытые inverse/options блокируют синхронизацию общего счёта                  |
+| Gate        | Classic Spot и отдельный USDT futures wallet | USDT perpetuals, one-way/hedge | Read-only ключ основного аккаунта с IP whitelist; Unified, portfolio margin и split positions не поддержаны |
+| OKX global  | Единый trading account, включая spot | Linear USDT/USDC SWAP, net/long/short | Read-only + IP whitelist + API Passphrase; режимы 1/2/3, без portfolio margin, открытых inverse/options/delivery/spot-margin позиций |
 | Hyperliquid | HyperCore spot и classic perp equity / unified | Основной perp DEX                 | По существующему EVM-адресу; portfolio margin и HIP-3 не поддержаны                                                      |
 
 Funding-счета, Earn, займы как отдельные продукты, история сделок и инвестиционная
@@ -20,6 +22,32 @@ CCXT закреплён на `4.5.85` и используется как сер�
 Адаптеры обращаются к native read endpoints, чтобы сохранять исходные decimal-строки
 и контролировать пагинацию/режимы, а не зависеть от неодинаковой унификации CCXT.
 Экземпляры клиентов переиспользуются; CCXT не импортируется в клиентский интерфейс.
+
+### Подключение Gate и OKX
+
+- Gate: отдельный read-only ключ основного аккаунта с разрешениями Spot, Futures,
+  Account и Unified (последнее нужно только для чтения текущего режима). Добавить
+  исходящий IP worker. Через `account/main_keys` проверяются права именно текущего
+  ключа; неоднозначные маски и отсутствие доступа к проверке прав отклоняются.
+- OKX: глобальный аккаунт `okx.com`, ключ с разрешением Read, IP worker и API
+  Passphrase. Passphrase хранится в том же AES-GCM envelope, что key/secret,
+  никогда не возвращается в API и повторно вводится при замене ключа.
+- Для Gate капитал futures равен `total + unrealised_pnl`, отдельно от spot.
+  Для OKX капитал берётся из `totalEq` один раз, без прибавления монет или PnL.
+  Количество контрактов пересчитывается в монеты через `quanto_multiplier` / `ctVal`.
+- Накопленные funding, закрытый PnL и комиссии приходят с текущей позицией:
+  Gate `pnl_fund/pnl_pnl/pnl_fee`, OKX `fundingFee/pnl/fee`. Отдельные запросы истории
+  не нужны. Комиссионный cash flow превращается в расходы со знаком минус при
+  расчёте итогового PnL; rebates сохраняются. Отсутствующие значения не заменяются
+  нулями. POINT-комиссии Gate и дополнительные liquidation/settlement-компоненты
+  OKX не дают вычислять неподтверждённый итог или цену безубыточности.
+- Публичные параметры контрактов и следующий funding кэшируются. Публичные GET
+  проверены без ключей; приватное подключение конкретного аккаунта требует пилотной
+  сверки после добавления ключа. Нужны обновлённые web и worker; миграция БД не нужна.
+
+Источники схем: [Gate account](https://www.gate.com/docs/developers/apiv4/en/account/),
+[Gate futures](https://www.gate.com/docs/developers/apiv4/en/futures/),
+[OKX API v5](https://app.okx.com/docs-v5/en/).
 
 ## Перед запуском с реальными ключами
 

@@ -12,16 +12,19 @@ import { exchangeAction } from "./use-exchange-data";
 export function ConnectionForm({
   workerIp,
   connectionId,
+  exchange: initialExchange = "bybit",
   onSaved,
   onCancel,
 }: {
   workerIp: string | null;
   connectionId?: string;
+  exchange?: string;
   onSaved: () => void;
   onCancel: () => void;
 }) {
   const t = useTranslations("Exchanges"),
     locale = useLocale();
+  const [exchange, setExchange] = useState(initialExchange);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -33,6 +36,7 @@ export function ConnectionForm({
     const body = {
       apiKey: values.get("apiKey"),
       secret: values.get("secret"),
+      ...(exchange === "okx" ? { passphrase: values.get("passphrase") } : {}),
       ...(connectionId
         ? { password: values.get("password") || undefined }
         : { exchange: values.get("exchange"), label: values.get("label") }),
@@ -82,10 +86,13 @@ export function ConnectionForm({
                 id="exchange"
                 name="exchange"
                 className="h-10 w-full appearance-none rounded-lg border border-border bg-surface-2 pl-3 pr-10 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                defaultValue="bybit"
+                value={exchange}
+                onChange={(event) => setExchange(event.target.value)}
               >
                 <option value="bybit">Bybit</option>
                 <option value="binance">Binance</option>
+                <option value="gate">Gate</option>
+                <option value="okx">OKX</option>
               </select>
               <ChevronDown
                 aria-hidden="true"
@@ -133,6 +140,24 @@ export function ConnectionForm({
           />
         </div>
       </div>
+      {exchange === "okx" && (
+        <div className="max-w-sm space-y-2">
+          <Label htmlFor="exchange-passphrase">API Passphrase</Label>
+          <Input
+            id="exchange-passphrase"
+            name="passphrase"
+            type="password"
+            autoComplete="new-password"
+            required
+            maxLength={256}
+            spellCheck={false}
+          />
+          <p className="text-xs text-text-muted">{t("passphraseHint")}</p>
+        </div>
+      )}
+      {exchange === "gate" && (
+        <p className="text-xs text-text-muted">{t("gatePermissionsHint")}</p>
+      )}
       {connectionId && (
         <div className="max-w-sm space-y-2">
           <Label htmlFor="exchange-password">{t("password")}</Label>

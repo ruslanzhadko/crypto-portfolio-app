@@ -1,4 +1,4 @@
-import { binance, bybit, type Exchange } from "ccxt";
+import { binance, bybit, gate, okx, type Exchange } from "ccxt";
 import { prisma } from "@/lib/db/prisma";
 import type { Credentials } from "./types";
 
@@ -22,18 +22,27 @@ export async function reserveRequest(exchange: string, weight = 1) {
   await sleep(Math.max(0, rows[0]!.start.getTime() - Date.now()));
 }
 export function createTransport(
-  id: "binance" | "bybit",
+  id: "binance" | "bybit" | "gate" | "okx",
   credentials: Credentials,
 ) {
-  const client: Exchange =
-    id === "binance"
-      ? new binance({ ...credentials, enableRateLimit: true, timeout: 15_000 })
-      : new bybit({ ...credentials, enableRateLimit: true, timeout: 15_000 });
+  const Client = { binance, bybit, gate, okx }[id];
+  const client: Exchange = new Client({
+    apiKey: credentials.apiKey,
+    secret: credentials.secret,
+    password: credentials.passphrase,
+    enableRateLimit: true,
+    timeout: 15_000,
+  });
   client.verbose = false;
   // Only internally selected paths and GET methods reach this transport.
   const request: Request = async (path, api, params = {}, weight = 1) => {
     await reserveRequest(id, weight);
-    return client.request(path, api, "GET", params);
+    return client.request(
+      path,
+      id === "gate" ? api.split(":") : api,
+      "GET",
+      params,
+    );
   };
   return {
     request,

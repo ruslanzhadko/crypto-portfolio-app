@@ -123,6 +123,52 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+test("Gate and OKX connection forms, encrypted passphrase and OKX replacement", async ({ page }) => {
+  await page.goto("/en/exchanges");
+  await page.getByRole("button", { name: "Connect exchange" }).click();
+  await page.getByLabel("Exchange", { exact: true }).selectOption("okx");
+  const passphrase = page.getByLabel("API Passphrase", { exact: true });
+  await expect(passphrase).toHaveAttribute("type", "password");
+  await expect(passphrase).toHaveAttribute("required", "");
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    await expect(passphrase).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    if (process.env.EXCHANGE_VISUAL_QA) await page.screenshot({ path: `test-results/okx-connection-${width}.png`, fullPage: true });
+  }
+  await page.getByLabel("Exchange", { exact: true }).selectOption("gate");
+  await expect(passphrase).toHaveCount(0);
+  await page.getByLabel("Account name").fill("Main Gate");
+  await page.getByLabel("API key", { exact: true }).fill("gate-fixture-key-1234");
+  await page.getByLabel("API secret", { exact: true }).fill("gate-fixture-secret");
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByRole("link", { name: "Main Gate" })).toBeVisible();
+  expect((await prisma.exchangeConnection.findFirstOrThrow({ where: { userId, label: "Main Gate" } })).exchange).toBe("gate");
+  await page.getByRole("button", { name: "Connect exchange" }).click();
+  await page.getByLabel("Exchange", { exact: true }).selectOption("okx");
+  await page.getByLabel("Account name").fill("Main OKX");
+  await page.getByLabel("API key", { exact: true }).fill("okx-fixture-key-1234");
+  await page.getByLabel("API secret", { exact: true }).fill("okx-fixture-secret");
+  await passphrase.fill("okx-fixture-passphrase");
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByRole("link", { name: "Main OKX" })).toBeVisible();
+  const c = await prisma.exchangeConnection.findFirstOrThrow({ where: { userId, label: "Main OKX" } });
+  expect(c.exchange).toBe("okx");
+  expect(c.credentials).not.toContain("okx-fixture-passphrase");
+  await page.getByRole("link", { name: "Main OKX" }).click();
+  await page.getByRole("button", { name: "Replace API key" }).click();
+  await expect(passphrase).toBeVisible();
+  await page.getByLabel("API key", { exact: true }).fill("okx-replacement-key-5678");
+  await page.getByLabel("API secret", { exact: true }).fill("okx-replacement-secret");
+  await passphrase.fill("okx-replacement-passphrase");
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByText("••••5678", { exact: false })).toBeVisible();
+  const updated = await prisma.exchangeConnection.findUniqueOrThrow({ where: { id: c.id } });
+  expect(updated.credentialVersion).toBe(2);
+  expect(updated.credentials).not.toBe(c.credentials);
+  expect(updated.credentials).not.toContain("okx-replacement-passphrase");
+});
+
 test("connect → queued sync → balances and positions → replace key → disconnect", async ({
   page,
 }) => {

@@ -24,6 +24,12 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllEnvs());
 describe("exchange credential encryption", () => {
+  it("round trips an OKX passphrase inside the authenticated encrypted envelope", () => {
+    const value = { ...credentials, passphrase: "okx-private-passphrase" };
+    const envelope = encryptCredentials(value, "u", "c");
+    expect(envelope).not.toContain(value.passphrase);
+    expect(decryptCredentials(envelope, "u", "c")).toEqual(value);
+  });
   it("round trips without storing plaintext and randomizes every envelope", () => {
     const a = encryptCredentials(credentials, "u", "c"),
       b = encryptCredentials(credentials, "u", "c");
