@@ -74,6 +74,7 @@ describe("funding attribution", () => {
             qty: "3",
             size: "3",
             cashFlow: "0",
+            fee: "0.5",
           },
           {
             symbol: p.symbol,
@@ -90,7 +91,11 @@ describe("funding attribution", () => {
       },
     }));
     await reader.enrich([p]);
-    expect(p.funding).toMatchObject({ amount: "-0.25", realizedPnl: "12" });
+    expect(p.funding).toMatchObject({
+      amount: "-0.25",
+      realizedPnl: "12",
+      tradingFees: "3.5",
+    });
   });
   it("uses native Hyperliquid funding and realized PnL from partial closes without funding history", async () => {
     const now = Date.now(),
@@ -105,6 +110,8 @@ describe("funding attribution", () => {
           sz: "1",
           startPosition: "3",
           closedPnl: "7.5",
+          fee: "-0.05",
+          feeToken: p.settle,
         },
         {
           coin: p.base,
@@ -113,6 +120,9 @@ describe("funding attribution", () => {
           sz: "3",
           startPosition: "0",
           closedPnl: "0",
+          fee: "0.25",
+          builderFee: "0.1",
+          feeToken: p.settle,
         },
       ];
     });
@@ -120,10 +130,111 @@ describe("funding attribution", () => {
       [p],
       new Map([[p.positionKey, "-10.6607"]]),
     );
-    expect(p.funding).toMatchObject({ amount: "10.6607", realizedPnl: "7.5" });
+    expect(p.funding).toMatchObject({
+      amount: "10.6607",
+      realizedPnl: "7.5",
+      tradingFees: "0.2",
+    });
     expect(info).toHaveBeenCalledTimes(1);
   });
 
+  it.each(["USDT", "BNB"])(
+    "includes Binance opening and close fees without double-counting income commissions (%s)",
+    async (asset) => {
+      const now = Date.now(),
+        p = position();
+      const request = vi.fn(async (path: string) => {
+        if (path === "userTrades")
+          return [
+            {
+              symbol: p.symbol,
+              positionSide: "BOTH",
+              side: "BUY",
+              qty: "3",
+              time: now - 3000,
+              commission: "0.15",
+              commissionAsset: asset,
+            },
+            {
+              symbol: p.symbol,
+              positionSide: "BOTH",
+              side: "SELL",
+              qty: "1",
+              time: now - 1000,
+              commission: "0.05",
+              commissionAsset: asset,
+            },
+            {
+              symbol: p.symbol,
+              positionSide: "BOTH",
+              side: "SELL",
+              qty: "4",
+              time: now - 4000,
+              commission: "99",
+              commissionAsset: asset,
+            },
+          ];
+        if (path === "income")
+          return [
+            {
+              symbol: p.symbol,
+              asset: p.settle,
+              incomeType: "REALIZED_PNL",
+              income: "5",
+              tranId: 1,
+              time: now - 1000,
+            },
+            {
+              symbol: p.symbol,
+              asset,
+              incomeType: "COMMISSION",
+              income: "-0.05",
+              tranId: 2,
+              time: now - 1000,
+            },
+          ];
+        if (path === "positionRisk")
+          return [
+            {
+              symbol: p.symbol,
+              positionSide: "BOTH",
+              positionAmt: "2",
+              entryPrice: "100",
+            },
+          ];
+        throw Error("unexpected request");
+      });
+      await new FundingReader("binance", request).enrich([p]);
+      expect(p.funding).toMatchObject({
+        amount: "0",
+        realizedPnl: "5",
+        tradingFees: asset === "USDT" ? "0.2" : null,
+      });
+      expect(request).toHaveBeenCalledTimes(3);
+    },
+  );
+  it("does not attribute the previous position's reversal fee to the current position", async () => {
+    const p = position(),
+      now = Date.now();
+    await new FundingReader("hyperliquid", undefined, async () => [
+      {
+        coin: p.base,
+        time: now - 1000,
+        side: "B",
+        sz: "5",
+        startPosition: "-3",
+        closedPnl: "42",
+        fee: "1",
+        feeToken: p.settle,
+      },
+    ]).enrich([p], new Map([[p.positionKey, "0"]]));
+    expect(p.funding).toMatchObject({
+      status: "complete",
+      amount: "0",
+      realizedPnl: "0",
+      tradingFees: null,
+    });
+  });
   it("refreshes at HH:01 rather than ten minutes after startup", () => {
     const hour = Date.UTC(2026, 9, 7, 14);
     expect(fundingPeriod(hour + 59_999)).toBe(fundingPeriod(hour - 1));

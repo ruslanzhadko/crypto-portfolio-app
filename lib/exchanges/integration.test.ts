@@ -50,7 +50,7 @@ const snapshot: SyncResult = {
       ],
       positions: [
         {
-          funding: { amount: "-1.25", realizedPnl: "7.5", since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
+          funding: { amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
           positionKey: "BTCUSDT:1",
           symbol: "BTCUSDT",
           base: "BTC",
@@ -161,7 +161,7 @@ describe.skipIf(!enabled)("exchange database integration", () => {
     const overview = await getCapitalOverview(userId);
     expect(overview.totalUsd).toBe("900");
     expect(overview.positionCount).toBe(1);
-    expect((await prisma.exchangePosition.findFirst({ where: { account: { connectionId: c.id } } }))?.funding).toMatchObject({ amount: "-1.25", realizedPnl: "7.5", status: "complete" });
+    expect((await prisma.exchangePosition.findFirst({ where: { account: { connectionId: c.id } } }))?.funding).toMatchObject({ amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", status: "complete" });
     expect(overview.unrealizedPnlUsd).toBe("-100");
     // A connection-level warning from another account must not leak onto a healthy account.
     await prisma.exchangeConnection.update({ where: { id: c.id }, data: { status: "PARTIAL", errorCode: "UNPRICED_ASSETS" } });

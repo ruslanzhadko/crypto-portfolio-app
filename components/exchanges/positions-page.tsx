@@ -20,8 +20,13 @@ import type { OpenPosition } from "@/lib/exchanges/types";
 function realizedWithFunding(p: PositionDto): string | null {
   return p.funding?.status === "complete" &&
     p.funding.amount != null &&
-    p.funding.realizedPnl != null
-    ? String(Number(p.funding.realizedPnl) + Number(p.funding.amount))
+    p.funding.realizedPnl != null &&
+    p.funding.tradingFees != null
+    ? String(
+        Number(p.funding.realizedPnl) +
+          Number(p.funding.amount) -
+          Number(p.funding.tradingFees),
+      )
     : null;
 }
 
@@ -79,23 +84,22 @@ function PnlBreakdown({ p }: { p: PositionDto }) {
           />{" "}
           {p.settle}
         </p>
-        <p className="border-t border-border pt-1 font-medium">
-          {t("pnlWithFunding")}:{" "}
+        <p>
+          {t("tradingFees")}:{" "}
           <Quantity
-            value={
-              p.funding?.realizedPnl != null &&
-              p.funding?.status === "complete" &&
-              p.funding.amount != null
-                ? String(
-                    Number(p.funding.realizedPnl) + Number(p.funding.amount),
-                  )
-                : null
-            }
+            value={p.funding?.tradingFees ?? null}
             maximumFractionDigits={4}
           />{" "}
           {p.settle}
         </p>
-        <p className="text-xs text-text-muted">{t("pnlExcludesFees")}</p>
+        <p className="border-t border-border pt-1 font-medium">
+          {t("netRealizedPnl")}:{" "}
+          <Quantity value={realizedWithFunding(p)} maximumFractionDigits={4} />{" "}
+          {p.settle}
+        </p>
+        {p.funding?.tradingFees == null && (
+          <p className="text-xs text-text-muted">{t("feesUnavailable")}</p>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -277,7 +281,7 @@ export function PositionsPage({
               );
             }}
           >
-            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-5">
+            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 [&>div>p+p]:mt-1.5 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-5">
               <div>
                 <p className="flex items-center gap-3 font-semibold">
                   <ExchangeTokenLogo symbol={p.base} />
@@ -290,7 +294,7 @@ export function PositionsPage({
                     {p.side === "long" ? "Long" : "Short"}
                   </span>
                   <span
-                    className="text-xs text-text-muted"
+                    className="text-sm text-text-muted"
                     title={t("leverage")}
                   >
                     <Quantity value={p.leverage} maximumFractionDigits={4} />
@@ -360,8 +364,24 @@ export function PositionsPage({
               </div>
             </summary>
             <div className="border-t border-border bg-background/40 px-4 py-5 sm:px-6 lg:pr-8">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-5 [&>div]:min-w-0 [&_dd]:mt-1 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
-                <div className="lg:col-start-2">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-5 [&>div]:min-w-0 [&_dd]:mt-2 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
+                <div>
+                  <dt
+                    className="text-text-muted"
+                    title={t("liquidationDistanceDescription")}
+                  >
+                    {t("liquidationDistance")}
+                  </dt>
+                  <dd>
+                    {p.markPrice &&
+                    Number(p.markPrice) > 0 &&
+                    p.liquidationPrice &&
+                    Number(p.liquidationPrice) > 0
+                      ? `${(((Number(p.markPrice) - Number(p.liquidationPrice)) / Number(p.markPrice)) * (p.side === "long" ? 100 : -100)).toFixed(2)}%`
+                      : "—"}
+                  </dd>
+                </div>
+                <div>
                   <dt className="text-text-muted">{t("margin")}</dt>
                   <dd>
                     <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
@@ -405,14 +425,17 @@ export function PositionsPage({
                       ? `${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
                       : "—"}
                   </dd>
+                  <p className="mt-1 flex min-h-6 flex-wrap items-center gap-x-2 text-xs text-text-muted lg:justify-end">
+                    {t("updated")} <Updated value={p.updatedAt} />
+                  </p>
                 </div>
               </dl>
-              <p className="mt-5 flex flex-wrap items-center justify-end gap-2 text-xs text-text-muted">
-                {t("updated")} <Updated value={p.updatedAt} />
-              </p>
-              <div className="mt-3">
-                <ExchangeErrorNotice code={p.errorCode} />
-              </div>
+
+              {p.errorCode && (
+                <div className="mt-3">
+                  <ExchangeErrorNotice code={p.errorCode} />
+                </div>
+              )}
             </div>
           </details>
         ))}

@@ -882,7 +882,7 @@
     "pnlBreakdown": "Розшифрування",
     "pnlWithFunding": "З funding",
     "pnlExcludesFees": "Без торгових комісій.",
-    "realizedPnlDescription": "Результат закриттів позиції плюс funding, без торгових комісій.",
+    "realizedPnlDescription": "Результат закриттів плюс funding мінус торгові комісії з відкриття позиції.",
     "unrealizedPnl": "Нереалізований PnL",
     "liquidation": "Ціна ліквідації",
     "leverage": "Плече / режим",
@@ -984,6 +984,11 @@
     "showAllBalances": "Усі залишки",
     "hideValuationWarnings": "Приховувати попередження про оцінку",
     "hiddenDust": "Приховано дрібних залишків: {count}. Підсумки не змінено; активи без ціни залишаються видимими.",
-    "closedPnl": "Закриття позиції"
+    "closedPnl": "Закриття позиції",
+    "tradingFees": "Торгові комісії",
+    "netRealizedPnl": "Разом",
+    "feesUnavailable": "Комісії недоступні або потребують конвертації валюти.",
+    "liquidationDistance": "До ліквідації",
+    "liquidationDistanceDescription": "Зміна ціни маркування до поточної ціни ліквідації."
   }
 }

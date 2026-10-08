@@ -41,7 +41,7 @@ const fixture: SyncResult = {
       ],
       positions: [
         {
-          funding: { amount: "-1.25", realizedPnl: "7.5", since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
+          funding: { amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
           positionKey: "BTCUSDT:1",
           symbol: "BTCUSDT",
           base: "BTC",
@@ -303,7 +303,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(positionDetails.getByText("-1.25 USDT", {exact:true})).toBeVisible();
   await expect(positionDetails.getByText("Account", {exact:true})).toHaveCount(0);
   await expect(positionDetails.getByText("Realized PnL", {exact:true})).toBeVisible();
-  await expect(positionDetails.locator("dl > div").filter({ has: page.locator("dt").filter({ hasText: /^Realized PnL$/ }) }).locator("dd")).toContainText("6.25 USDT");
+  await expect(positionDetails.locator("dl > div").filter({ has: page.locator("dt").filter({ hasText: /^Realized PnL$/ }) }).locator("dd")).toContainText("6 USDT");
   await expect(positionDetails.getByText("Unrealized PnL", {exact:true})).toHaveCount(1);
   await expect(positionDetails.getByText("Funding since opening", {exact:true})).toHaveCount(1);
   await expect(positionDetails.getByText(/Already included in account equity/)).toHaveCount(0);
@@ -317,9 +317,9 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
     else await trigger.click();
     const breakdown = page.getByRole("menu", { name: "Breakdown", exact: true });
     await expect(breakdown).toBeVisible();
-    await expect(breakdown).toContainText("Including funding: 6.25 USDT");
+    await expect(breakdown).toContainText("Total: 6 USDT");
     await expect(breakdown).toContainText("Position closes: 7.5 USDT");
-    await expect(breakdown).toContainText("Trading fees excluded.");
+    await expect(breakdown).toContainText("Trading fees: 0.25 USDT");
     expect(await positionDetails.evaluate(el => el.getBoundingClientRect().height)).toBe(height);
     const bounds = await breakdown.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);

@@ -6,6 +6,8 @@ export type FundingSummary = {
   amount: string | null;
   /** Trading PnL from reductions in this position cycle, excluding fees/funding. */
   realizedPnl?: string | null;
+  /** Paid trading fees in settlement currency; negative values are rebates. */
+  tradingFees?: string | null;
   since: number | null;
   updatedAt: number;
   status: "complete" | "unavailable" | "pending";
@@ -172,7 +174,12 @@ export class FundingReader {
     };
     const now = Date.now(),
       earliest = now - LOOKBACK;
-    const trades: { time: number; quantity: string }[] = [],
+    const trades: {
+        time: number;
+        quantity: string;
+        fee?: unknown;
+        feeAsset?: unknown;
+      }[] = [],
       ledger: Row[] = [];
     const signedSize = new D(p.baseSize)
       .mul(p.side === "short" ? -1 : 1)
@@ -200,6 +207,8 @@ export class FundingReader {
             throw new Error("Ambiguous trade history");
           trades.push({
             time: timestamp(r.time),
+            fee: r.commission,
+            feeAsset: r.commissionAsset,
             quantity: new D(rd(r.qty))
               .mul(r.side === "SELL" ? -1 : 1)
               .toFixed(),
@@ -245,6 +254,8 @@ export class FundingReader {
               throw new Error("Invalid trade side");
             trades.push({
               time: timestamp(r.transactionTime),
+              fee: r.fee,
+              feeAsset: r.currency,
               quantity: new D(rd(r.qty))
                 .mul(r.side === "Sell" ? -1 : 1)
                 .toFixed(),
@@ -282,6 +293,8 @@ export class FundingReader {
           ledger.push(r);
           trades.push({
             time: timestamp(r.time),
+            fee: r.fee,
+            feeAsset: r.feeToken,
             quantity: new D(rd(r.sz)).mul(r.side === "A" ? -1 : 1).toFixed(),
           });
         }
@@ -290,6 +303,38 @@ export class FundingReader {
       endTime = startTime - 1;
     }
     if (since === null) throw new Error("Opening outside available history");
+    // Include opening fees as well as additions/reductions. Funding/PnL use
+    // a strict boundary, but the opening execution itself incurs a fee.
+    // Do not charge the previous position's portion of a reversal execution.
+    let tradingFees: string | null = null;
+    try {
+      const cycle = trades.filter((trade) => trade.time >= since!);
+      const beforeOpening = new D(signedSize).minus(
+        sum(cycle.map((t) => t.quantity)),
+      );
+      if (!beforeOpening.isZero())
+        throw new Error("Reversal fee allocation unavailable");
+      const opening = cycle.filter((t) => t.time === since);
+      if (
+        opening.some(
+          (t) =>
+            new D(t.quantity).isNegative() !== new D(signedSize).isNegative(),
+        )
+      )
+        throw new Error("Ambiguous opening fills");
+      tradingFees = decimal(
+        sum(
+          cycle.map((t) => {
+            const fee = rd(t.fee);
+            if (!new D(fee).isZero() && t.feeAsset !== p.settle)
+              throw new Error("Fee conversion unavailable");
+            return fee;
+          }),
+        ),
+      );
+    } catch {
+      // Missing/foreign-currency fees must not hide valid funding or imply zero fees.
+    }
     const values: string[] = [],
       realized: string[] = [];
     if (this.venue === "bybit") {
@@ -337,7 +382,12 @@ export class FundingReader {
       for (const r of ledger)
         if (timestamp(r.time) > since) realized.push(rd(r.closedPnl));
       if (native)
-        return { ...native, since, realizedPnl: decimal(sum(realized)) };
+        return {
+          ...native,
+          since,
+          realizedPnl: decimal(sum(realized)),
+          tradingFees,
+        };
       let startTime = since + 1;
       for (;;) {
         const batch = rows(
@@ -377,6 +427,7 @@ export class FundingReader {
     return {
       amount: decimal(sum(values)),
       realizedPnl: decimal(sum(realized)),
+      tradingFees,
       since,
       updatedAt: now,
       status: "complete",
