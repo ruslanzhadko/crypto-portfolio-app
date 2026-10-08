@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type Route } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../lib/db/prisma";
 import { commitResult } from "../../lib/exchanges/worker";
@@ -15,6 +15,30 @@ async function claimJob() {
     where: { connection: { userId } }, data: { dueAt: new Date(0) },
   });
   return claimDueJob();
+}
+async function checkSearchKeepsPositions(page: Page) {
+  let release!: () => void, started!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const requested = new Promise<void>(resolve => { started = resolve; });
+  const handler = async (route: Route) => {
+    if (new URL(route.request().url()).searchParams.get('coin') === 'BTC') {
+      started();
+      await gate;
+    }
+    await route.continue();
+  };
+  await page.route('**/api/positions?**', handler);
+  try {
+    await page.getByRole('textbox', {name:'Asset',exact:true}).fill('BTC');
+    await requested;
+    await expect(page.getByText('BTCUSDT', {exact:true})).toBeVisible();
+    await expect(page.getByLabel('Position statistics', {exact:true})).toBeVisible();
+    await expect(page.getByText('Updating positions…', {exact:true})).toBeVisible();
+  } finally { release(); }
+  await expect(page.getByText('Updating positions…', {exact:true})).toHaveCount(0);
+  await page.unroute('**/api/positions?**', handler);
+  await page.getByRole('textbox', {name:'Asset',exact:true}).fill('');
+  await expect(page.getByText('Updating positions…', {exact:true})).toHaveCount(0);
 }
 const fixture: SyncResult = {
   accounts: [
@@ -206,6 +230,7 @@ test("connect → queued sync → balances and positions → replace key → dis
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Exchange", exact: true })).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Account", exact: true })).toHaveCount(0);
+  await checkSearchKeepsPositions(page);
   await page.locator("summary").filter({ hasText: "BTCUSDT" }).click();
   await expect(
     page.getByText("Liquidation price", { exact: true }),
@@ -349,6 +374,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
+  await checkSearchKeepsPositions(page);
   const positionDetails = page.locator("details").filter({has: page.getByText("BTCUSDT", {exact:true})});
   const statistics = page.getByLabel("Position statistics", { exact: true });
   await expect(statistics).toContainText("Long 1 · Short 0");

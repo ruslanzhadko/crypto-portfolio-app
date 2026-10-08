@@ -1,8 +1,12 @@
-import { prisma } from '@/lib/db/prisma';
-import { requireUser } from '@/lib/api/auth-guard';
-import { apiError, handleUnknown, ok } from '@/lib/api/response';
+import {
+  migratedWalletIds,
+  isMigratedHypercore,
+} from "@/lib/exchanges/portfolio";
+import { prisma } from "@/lib/db/prisma";
+import { requireUser } from "@/lib/api/auth-guard";
+import { apiError, handleUnknown, ok } from "@/lib/api/response";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
@@ -16,14 +20,20 @@ export async function GET(
       where: { id: (await params).id, userId: guard.user.id },
       select: { id: true },
     });
-    if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
+    if (!wallet) return apiError("NOT_FOUND", "Гаманець не знайдено");
 
-    const tokens = await prisma.tokenBalance.findMany({
+    const allTokens = await prisma.tokenBalance.findMany({
       where: { walletId: wallet.id },
-      orderBy: { usdValue: 'desc' },
+      orderBy: { usdValue: "desc" },
     });
 
-    const totalUsd = tokens.reduce((s, t) => s + t.usdValue, 0);
+    const migrated = await migratedWalletIds(guard.user.id);
+    const tokens = allTokens.filter(
+      (b) => !isMigratedHypercore(wallet.id, b.chainName, migrated),
+    );
+    const totalUsd = tokens
+      .filter((t) => !t.isSpam && !t.isHidden)
+      .reduce((s, t) => s + t.usdValue, 0);
     return ok({ tokens, totalUsd });
   } catch (err) {
     return handleUnknown(err);

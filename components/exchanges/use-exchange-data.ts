@@ -2,16 +2,22 @@
 import { useCallback, useEffect, useState } from "react";
 
 /** Poll persisted data only; no request to exchanges originates in a browser. */
-export function useExchangeData<T>(url: string, interval = 15_000) {
+export function useExchangeData<T>(
+  url: string,
+  interval = 15_000,
+  keepPreviousData = false,
+) {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [revision, setRevision] = useState(0);
+  const [loading, setLoading] = useState(true);
   const refresh = useCallback(() => setRevision((n) => n + 1), []);
   useEffect(() => {
     const controller = new AbortController();
     let active = true,
       busy = false;
-    setData(null);
+    if (!keepPreviousData) setData(null);
+    setLoading(true);
     async function load() {
       if (busy || document.visibilityState === "hidden") return;
       busy = true;
@@ -31,6 +37,7 @@ export function useExchangeData<T>(url: string, interval = 15_000) {
           setError(e instanceof Error ? e.message : "UNAVAILABLE");
       } finally {
         busy = false;
+        if (active) setLoading(false);
       }
     }
     void load();
@@ -47,8 +54,8 @@ export function useExchangeData<T>(url: string, interval = 15_000) {
       clearInterval(timer);
       document.removeEventListener("visibilitychange", visible);
     };
-  }, [url, interval, revision]);
-  return { data, error, refresh };
+  }, [url, interval, revision, keepPreviousData]);
+  return { data, error, refresh, loading };
 }
 export async function exchangeAction(
   url: string,

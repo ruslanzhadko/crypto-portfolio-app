@@ -149,6 +149,11 @@ export function PositionsPage({
   const [side, setSide] = useState(""),
     [sort, setSort] = useState("size"),
     [page, setPage] = useState(1);
+  const [searchCoin, setSearchCoin] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchCoin(coin.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [coin]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const qs = new URLSearchParams({
     page: String(page),
@@ -157,7 +162,7 @@ export function PositionsPage({
   });
   if (exchange) qs.set("exchange", exchange);
   if (account) qs.set("connectionId", account);
-  if (coin) qs.set("coin", coin);
+  if (searchCoin) qs.set("coin", searchCoin);
   if (side) qs.set("side", side);
   const result = useExchangeData<{
     positions: PositionDto[];
@@ -174,7 +179,7 @@ export function PositionsPage({
       realized: { value: string | null; known: number };
       unrealized: { value: string | null; known: number };
     };
-  }>(`/api/positions?${qs}`);
+  }>(`/api/positions?${qs}`, 15_000, true);
   const options = useExchangeData<{ connections: ConnectionDto[] }>(
     "/api/exchanges",
     60_000,
@@ -213,6 +218,7 @@ export function PositionsPage({
           <div
             className="w-full rounded-xl border border-border bg-surface px-5 py-4"
             aria-label={t("positionsSummary")}
+            aria-busy={result.loading || coin.trim() !== searchCoin}
           >
             <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-sm">
               <span className="font-medium">
@@ -320,6 +326,11 @@ export function PositionsPage({
           </div>
         )}
       </div>
+      <p role="status" className="h-4 text-xs text-text-muted" aria-live="polite">
+        {result.data && (result.loading || coin.trim() !== searchCoin)
+          ? t("updatingPositions")
+          : null}
+      </p>
       <ExchangeErrorNotice code={result.error} />
       {result.data &&
         result.data.connectionCount > 0 &&

@@ -546,6 +546,7 @@
     "emptyDescription": "Add a few wallets to compare."
   },
   "WalletDetail": {
+    "exchangeManagedNote": "HyperCore balances are included under Exchanges and excluded from wallet capital.",
     "copyWalletAddress": "Copy wallet address",
     "walletAddressCopied": "Wallet address copied",
     "walletAddressCopyFailed": "Could not copy wallet address",
@@ -840,6 +841,7 @@
     "moreNetworksSoon": "More networks to come"
   },
   "Exchanges": {
+    "updatingPositions": "Updating positions…",
     "title": "Exchanges",
     "subtitle": "Read-only accounts, balances and connection health.",
     "connectExchange": "Connect exchange",

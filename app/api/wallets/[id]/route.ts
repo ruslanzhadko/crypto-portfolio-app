@@ -1,3 +1,7 @@
+import {
+  migratedWalletIds,
+  isMigratedHypercore,
+} from "@/lib/exchanges/portfolio";
 import { prisma } from "@/lib/db/prisma";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { requireUser } from "@/lib/api/auth-guard";
@@ -24,10 +28,14 @@ export async function GET(
     });
     if (!wallet) return apiError("NOT_FOUND", "Гаманець не знайдено");
 
-    const totalUsd = wallet.balances
+    const migrated = await migratedWalletIds(guard.user.id);
+    const balances = wallet.balances.filter(
+      (b) => !isMigratedHypercore(wallet.id, b.chainName, migrated),
+    );
+    const totalUsd = balances
       .filter((b) => !b.isSpam && !b.isHidden)
       .reduce((s, b) => s + b.usdValue, 0);
-    return ok({ wallet: { ...wallet, totalUsd } });
+    return ok({ wallet: { ...wallet, balances, totalUsd } });
   } catch (err) {
     return handleUnknown(err);
   }

@@ -1,19 +1,23 @@
-import { getTranslations, getLocale } from 'next-intl/server';
-import { notFound } from 'next/navigation';
-import { ChevronLeft } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
-import { auth } from '@/lib/auth';
-import { prisma } from '@/lib/db/prisma';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { NetworkBadge } from '@/components/common/network-badge';
-import { TokenBalanceList } from '@/components/wallets/token-balance-list';
-import { WalletTransactions } from '@/components/wallets/wallet-transactions';
-import { WalletSyncButton } from '@/components/wallets/wallet-sync-button';
-import { CopyWalletAddressButton } from '@/components/wallets/copy-wallet-address-button';
-import { formatRelative, formatUsd, shortAddress } from '@/lib/utils/format';
+import {
+  migratedWalletIds,
+  isMigratedHypercore,
+} from "@/lib/exchanges/portfolio";
+import { getTranslations, getLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
+import { Link } from "@/i18n/navigation";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db/prisma";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { NetworkBadge } from "@/components/common/network-badge";
+import { TokenBalanceList } from "@/components/wallets/token-balance-list";
+import { WalletTransactions } from "@/components/wallets/wallet-transactions";
+import { WalletSyncButton } from "@/components/wallets/wallet-sync-button";
+import { CopyWalletAddressButton } from "@/components/wallets/copy-wallet-address-button";
+import { formatRelative, formatUsd, shortAddress } from "@/lib/utils/format";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function WalletDetailPage({
   params,
@@ -29,16 +33,20 @@ export default async function WalletDetailPage({
     where: { id, userId: session.user.id },
     include: {
       // Завантажуємо всі токени (для списку), але totalUsd — лише видимі
-      balances: { orderBy: { usdValue: 'desc' } },
+      balances: { orderBy: { usdValue: "desc" } },
     },
   });
 
   if (!wallet) notFound();
 
-  const t = await getTranslations('WalletDetail');
+  const t = await getTranslations("WalletDetail");
   const locale = await getLocale();
 
-  const totalUsd = wallet.balances
+  const migrated = await migratedWalletIds(session.user.id);
+  const balances = wallet.balances.filter(
+    (b) => !isMigratedHypercore(wallet.id, b.chainName, migrated),
+  );
+  const totalUsd = balances
     .filter((b) => !b.isSpam && !b.isHidden)
     .reduce((s, b) => s + b.usdValue, 0);
 
@@ -48,7 +56,7 @@ export default async function WalletDetailPage({
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link href="/wallets">
             <ChevronLeft className="h-4 w-4" />
-            {t('backToWallets')}
+            {t("backToWallets")}
           </Link>
         </Button>
       </div>
@@ -58,7 +66,7 @@ export default async function WalletDetailPage({
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 sm:gap-x-5 sm:gap-y-2">
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <h1 className="text-lg font-bold sm:text-2xl md:text-3xl">
-                {wallet.label ?? t('noLabel')}
+                {wallet.label ?? t("noLabel")}
               </h1>
               <NetworkBadge network={wallet.network} />
             </div>
@@ -68,23 +76,50 @@ export default async function WalletDetailPage({
               </p>
             </div>
             <div className="min-w-0">
-              <CopyWalletAddressButton address={wallet.address} displayAddress={shortAddress(wallet.address, 8)} />
+              <CopyWalletAddressButton
+                address={wallet.address}
+                displayAddress={shortAddress(wallet.address, 8)}
+              />
             </div>
             <div className="col-span-2 flex items-center justify-between gap-2 border-t border-border/60 pt-2">
               <p className="truncate text-[11px] text-text-muted sm:text-xs">
                 {wallet.lastSyncAt
-                  ? t('lastSync', { time: formatRelative(wallet.lastSyncAt, locale) })
-                  : t('notSynced')}
+                  ? t("lastSync", {
+                      time: formatRelative(wallet.lastSyncAt, locale),
+                    })
+                  : t("notSynced")}
               </p>
-              <WalletSyncButton walletId={wallet.id} className="h-9 shrink-0 px-3" />
+              <WalletSyncButton
+                walletId={wallet.id}
+                className="h-9 shrink-0 px-3"
+              />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <TokenBalanceList walletId={wallet.id} tokens={wallet.balances} totalUsd={totalUsd} />
+      {migrated.includes(wallet.id) && (
+        <p className="text-xs text-text-muted">
+          {t("exchangeManagedNote")}{" "}
+          <Link
+            href="/exchanges"
+            className="text-primary underline underline-offset-4"
+          >
+            Hyperliquid →
+          </Link>
+        </p>
+      )}
+      <TokenBalanceList
+        walletId={wallet.id}
+        tokens={balances}
+        totalUsd={totalUsd}
+      />
 
-      <WalletTransactions walletId={wallet.id} walletAddress={wallet.address} network={wallet.network} />
+      <WalletTransactions
+        walletId={wallet.id}
+        walletAddress={wallet.address}
+        network={wallet.network}
+      />
     </div>
   );
 }

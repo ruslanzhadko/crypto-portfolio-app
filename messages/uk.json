@@ -546,6 +546,7 @@
     "emptyDescription": "Додайте кілька гаманців для порівняння."
   },
   "WalletDetail": {
+    "exchangeManagedNote": "Баланс HyperCore враховано в розділі «Біржі» й не входить до капіталу гаманців.",
     "copyWalletAddress": "Скопіювати адресу гаманця",
     "walletAddressCopied": "Адресу гаманця скопійовано",
     "walletAddressCopyFailed": "Не вдалося скопіювати адресу гаманця",
@@ -840,6 +841,7 @@
     "moreNetworksSoon": "Більше мереж — попереду"
   },
   "Exchanges": {
+    "updatingPositions": "Оновлюємо позиції…",
     "title": "Біржі",
     "subtitle": "Акаунти, баланси та стан підключень — лише читання.",
     "connectExchange": "Підключити біржу",

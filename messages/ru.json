@@ -546,6 +546,7 @@
     "emptyDescription": "Добавьте несколько кошельков для сравнения."
   },
   "WalletDetail": {
+    "exchangeManagedNote": "Баланс HyperCore учтён в разделе «Биржи» и не входит в капитал кошельков.",
     "copyWalletAddress": "Скопировать адрес кошелька",
     "walletAddressCopied": "Адрес кошелька скопирован",
     "walletAddressCopyFailed": "Не удалось скопировать адрес кошелька",
@@ -840,6 +841,7 @@
     "moreNetworksSoon": "Больше сетей — впереди"
   },
   "Exchanges": {
+    "updatingPositions": "Обновляем позиции…",
     "title": "Биржи",
     "subtitle": "Аккаунты, балансы и состояние подключений — только чтение.",
     "connectExchange": "Подключить биржу",
