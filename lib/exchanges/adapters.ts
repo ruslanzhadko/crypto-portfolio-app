@@ -1,3 +1,4 @@
+import { NextFundingReader } from "./next-funding";
 import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import {
@@ -37,6 +38,9 @@ function bybitResult(value: unknown) {
 }
 
 export class BybitAdapter implements ExchangeAdapter {
+  private nextFunding = new NextFundingReader("bybit", (...args) =>
+    this.request(...args),
+  );
   private funding = new FundingReader("bybit", (...args) =>
     this.request(...args),
   );
@@ -194,6 +198,7 @@ export class BybitAdapter implements ExchangeAdapter {
       }
     }
     await this.funding.enrich(positions);
+    await this.nextFunding.enrich(positions);
     const coinRows = records(wallet.coin);
     const equity =
       decimal(wallet.totalEquity) ??
@@ -227,6 +232,9 @@ export class BybitAdapter implements ExchangeAdapter {
 }
 
 export class BinanceAdapter implements ExchangeAdapter {
+  private nextFunding = new NextFundingReader("binance", (...args) =>
+    this.request(...args),
+  );
   private funding = new FundingReader("binance", (...args) =>
     this.request(...args),
   );
@@ -393,6 +401,7 @@ export class BinanceAdapter implements ExchangeAdapter {
         });
       }
       await this.funding.enrich(positions);
+      await this.nextFunding.enrich(positions);
       const assets = records(wallet.assets);
       const balances: AssetBalance[] = assets
         .map((row) => {

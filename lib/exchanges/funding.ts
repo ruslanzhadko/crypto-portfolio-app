@@ -8,6 +8,10 @@ export type FundingSummary = {
   realizedPnl?: string | null;
   /** Paid trading fees in settlement currency; negative values are rebates. */
   tradingFees?: string | null;
+  breakEvenPrice?: string | null;
+  nextRate?: string | null;
+  nextTime?: number | null;
+  nextRateUpdatedAt?: number;
   since: number | null;
   updatedAt: number;
   status: "complete" | "unavailable" | "pending";
@@ -50,6 +54,29 @@ export function positionOpening(
     remaining = before;
   }
   return null;
+}
+
+/** Current-cycle breakeven using realized cash flows and fees already incurred. */
+export function positionBreakEven(p: OpenPosition): string | null {
+  const f = p.funding;
+  if (
+    !f ||
+    f.status !== "complete" ||
+    f.amount == null ||
+    f.realizedPnl == null ||
+    f.tradingFees == null ||
+    p.entryPrice == null
+  )
+    return null;
+  try {
+    const size = new D(p.baseSize).mul(p.side === "short" ? -1 : 1);
+    if (size.isZero()) return null;
+    const net = new D(f.realizedPnl).plus(f.amount).minus(f.tradingFees);
+    const price = new D(p.entryPrice).minus(net.div(size));
+    return price.isPositive() ? decimal(price.toFixed(18)) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Funding reads are isolated from balance sync, bounded and cached; never fabricate a partial total. */
@@ -117,6 +144,9 @@ export class FundingReader {
       }
       this.cache.set(key, p.funding);
     }
+    for (const p of positions)
+      if (p.funding)
+        p.funding = { ...p.funding, breakEvenPrice: positionBreakEven(p) };
   }
   private key(p: OpenPosition) {
     return `${p.positionKey}:${p.side}:${p.baseSize}:${p.entryPrice}`;

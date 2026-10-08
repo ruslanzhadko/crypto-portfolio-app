@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
-import { FundingReader, positionOpening, fundingPeriod } from "./funding";
+import {
+  FundingReader,
+  positionOpening,
+  fundingPeriod,
+  positionBreakEven,
+} from "./funding";
 import type { OpenPosition } from "./types";
 const position = (): OpenPosition => ({
   positionKey: "BTCUSDT:BOTH",
@@ -21,6 +26,34 @@ const position = (): OpenPosition => ({
   unrealizedPnlUsd: "2",
 });
 describe("funding attribution", () => {
+  it.each([
+    ["long", "10", "95"],
+    ["short", "10", "105"],
+    ["long", "-10", "105"],
+    ["short", "-10", "95"],
+  ] as const)(
+    "breakeven offsets cash flow for %s with %s net",
+    (side, net, expected) => {
+      const p = position();
+      p.side = side;
+      p.funding = {
+        amount: "2",
+        realizedPnl: String(Number(net) + 1),
+        tradingFees: "3",
+        since: 1,
+        updatedAt: 1,
+        status: "complete",
+      };
+      expect(positionBreakEven(p)).toBe(expected);
+      // At the resulting price, unrealized trading PnL exactly offsets net cash flow.
+      expect(
+        (Number(expected) - 100) * 2 * (side === "long" ? 1 : -1) + Number(net),
+      ).toBe(0);
+      p.funding.tradingFees = null;
+      expect(positionBreakEven(p)).toBeNull();
+    },
+  );
+
   it("normalizes Hyperliquid paid and received funding independently of direction", async () => {
     for (const [raw, expected] of [
       ["-10.6607", "10.6607"],

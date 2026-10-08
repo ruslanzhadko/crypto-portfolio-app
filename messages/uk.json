@@ -989,6 +989,12 @@
     "netRealizedPnl": "Разом",
     "feesUnavailable": "Комісії недоступні або потребують конвертації валюти.",
     "liquidationDistance": "До ліквідації",
-    "liquidationDistanceDescription": "Зміна ціни маркування до поточної ціни ліквідації."
+    "liquidationDistanceDescription": "Зміна ціни маркування до поточної ціни ліквідації.",
+    "breakEven": "Ціна беззбитковості",
+    "breakEvenDescription": "Для залишкового обсягу: закриття + funding − вже сплачені комісії. Майбутні комісія закриття та funding не включені.",
+    "nextFunding": "Наступний funding",
+    "nextFundingDescription": "Поточна оцінка біржі; ставка може змінитися. Додатна ставка: Long платить Short.",
+    "fundingIn": "через {hours} год {minutes} хв",
+    "fundingTimePending": "Очікуємо оновлення часу"
   }
 }

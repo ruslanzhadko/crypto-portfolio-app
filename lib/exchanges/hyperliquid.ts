@@ -1,3 +1,4 @@
+import { NextFundingReader } from "./next-funding";
 import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import { record, records } from "./adapters";
@@ -11,6 +12,11 @@ import {
 } from "./types";
 
 export class HyperliquidAdapter implements ExchangeAdapter {
+  private nextFunding = new NextFundingReader(
+    "hyperliquid",
+    undefined,
+    (body) => this.info(body),
+  );
   private funding = new FundingReader("hyperliquid", undefined, (body) =>
     this.info({ ...body, user: this.address }),
   );
@@ -143,6 +149,7 @@ export class HyperliquidAdapter implements ExchangeAdapter {
       },
     );
     await this.funding.enrich(positions, nativeFunding);
+    await this.nextFunding.enrich(positions);
     const isUnified = mode === "unifiedAccount" || mode === "portfolioMargin";
     if (mode === "portfolioMargin")
       throw new ExchangeError("UNSUPPORTED_ACCOUNT");

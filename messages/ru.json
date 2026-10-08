@@ -989,6 +989,12 @@
     "netRealizedPnl": "Итого",
     "feesUnavailable": "Комиссии недоступны или требуют пересчёта валюты.",
     "liquidationDistance": "До ликвидации",
-    "liquidationDistanceDescription": "Изменение цены маркировки до текущей цены ликвидации."
+    "liquidationDistanceDescription": "Изменение цены маркировки до текущей цены ликвидации.",
+    "breakEven": "Цена безубыточности",
+    "breakEvenDescription": "Для оставшегося объёма: закрытия + funding − уже уплаченные комиссии. Будущая комиссия закрытия и funding не включены.",
+    "nextFunding": "Следующий funding",
+    "nextFundingDescription": "Текущая оценка биржи; до расчёта ставка может измениться. Положительная ставка: Long платит Short.",
+    "fundingIn": "через {hours} ч {minutes} мин",
+    "fundingTimePending": "Ожидаем обновления времени"
   }
 }

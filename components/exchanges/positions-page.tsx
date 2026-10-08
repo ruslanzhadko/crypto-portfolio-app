@@ -2,7 +2,7 @@
 import { ExchangeTokenLogo } from "./token-logo";
 import { useEffect, useState, type SelectHTMLAttributes } from "react";
 import { ChevronDown, Info } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
   DropdownMenu,
@@ -102,6 +102,51 @@ function PnlBreakdown({ p }: { p: PositionDto }) {
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function marginReturn(p: PositionDto) {
+  return p.margin && Number(p.margin) > 0 && p.unrealizedPnl != null
+    ? `${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
+    : "—";
+}
+function NextFunding({ p }: { p: PositionDto }) {
+  const t = useTranslations("Exchanges"),
+    locale = useLocale();
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    setNow(Date.now());
+    const tick = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(tick);
+  }, []);
+  const time = p.funding?.nextTime;
+  const upcoming = time != null && time > now && now > 0;
+  const minutes = upcoming ? Math.ceil((time! - now) / 60_000) : 0;
+  return (
+    <>
+      <dd title={t("nextFundingDescription")}>
+        {upcoming && p.funding?.nextRate != null
+          ? `${(Number(p.funding.nextRate) * 100).toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}%`
+          : "—"}
+      </dd>
+      <p className="mt-1 min-h-6 text-xs text-text-muted">
+        {upcoming ? (
+          <>
+            {new Intl.DateTimeFormat(locale, {
+              hour: "2-digit",
+              minute: "2-digit",
+            }).format(time!)}{" "}
+            ·{" "}
+            {t("fundingIn", {
+              hours: Math.floor(minutes / 60),
+              minutes: minutes % 60,
+            })}
+          </>
+        ) : (
+          t("fundingTimePending")
+        )}
+      </p>
+    </>
   );
 }
 
@@ -358,6 +403,12 @@ export function PositionsPage({
                 >
                   <Money value={p.unrealizedPnlUsd} />
                 </p>
+                <p
+                  className="text-xs text-text-muted"
+                  title={t("returnOnMargin") + ": " + t("returnFormula")}
+                >
+                  {marginReturn(p)}
+                </p>
                 {p.stale && (
                   <p className="text-xs text-warning">{t("stale")}</p>
                 )}
@@ -368,17 +419,16 @@ export function PositionsPage({
                 <div>
                   <dt
                     className="text-text-muted"
-                    title={t("liquidationDistanceDescription")}
+                    title={t("breakEvenDescription")}
                   >
-                    {t("liquidationDistance")}
+                    {t("breakEven")}
                   </dt>
                   <dd>
-                    {p.markPrice &&
-                    Number(p.markPrice) > 0 &&
-                    p.liquidationPrice &&
-                    Number(p.liquidationPrice) > 0
-                      ? `${(((Number(p.markPrice) - Number(p.liquidationPrice)) / Number(p.markPrice)) * (p.side === "long" ? 100 : -100)).toFixed(2)}%`
-                      : "—"}
+                    <Quantity
+                      value={p.funding?.breakEvenPrice ?? null}
+                      maximumFractionDigits={4}
+                    />{" "}
+                    {p.settle}
                   </dd>
                 </div>
                 <div>
@@ -387,6 +437,9 @@ export function PositionsPage({
                     <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
                     {p.settle}
                   </dd>
+                  <p className="mt-1 flex min-h-6 flex-wrap gap-x-2 text-xs text-text-muted">
+                    {t("updated")} <Updated value={p.updatedAt} />
+                  </p>
                 </div>
                 <div>
                   <dt className="text-text-muted">{t("liquidation")}</dt>
@@ -415,19 +468,8 @@ export function PositionsPage({
                   </dd>
                 </div>
                 <div className="lg:text-right">
-                  <dt className="text-text-muted" title={t("returnFormula")}>
-                    {t("returnOnMargin")}
-                  </dt>
-                  <dd>
-                    {p.margin &&
-                    Number(p.margin) > 0 &&
-                    p.unrealizedPnl !== null
-                      ? `${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
-                      : "—"}
-                  </dd>
-                  <p className="mt-1 flex min-h-6 flex-wrap items-center gap-x-2 text-xs text-text-muted lg:justify-end">
-                    {t("updated")} <Updated value={p.updatedAt} />
-                  </p>
+                  <dt className="text-text-muted">{t("nextFunding")}</dt>
+                  <NextFunding p={p} />
                 </div>
               </dl>
 

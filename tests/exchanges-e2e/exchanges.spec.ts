@@ -41,7 +41,7 @@ const fixture: SyncResult = {
       ],
       positions: [
         {
-          funding: { amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
+          funding: { amount: "-1.25", realizedPnl: "7.5", tradingFees: "0.25", breakEvenPrice: "69960", nextRate: "0.0001", nextTime: Date.now() + 3600_000, since: 1700000000000, updatedAt: 1700001000000, status: "complete" },
           positionKey: "BTCUSDT:1",
           symbol: "BTCUSDT",
           base: "BTC",
@@ -307,6 +307,11 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(positionDetails.getByText("Unrealized PnL", {exact:true})).toHaveCount(1);
   await expect(positionDetails.getByText("Funding since opening", {exact:true})).toHaveCount(1);
   await expect(positionDetails.getByText(/Already included in account equity/)).toHaveCount(0);
+  await expect(positionDetails.locator("summary").getByText("-6.02%", { exact: true })).toBeVisible();
+  await expect(positionDetails.getByText("Break-even price", { exact: true })).toBeVisible();
+  await expect(positionDetails.getByText("69,960 USDT", { exact: true })).toBeVisible();
+  await expect(positionDetails.getByText("Next funding", { exact: true })).toBeVisible();
+  await expect(positionDetails.getByText("0.01%", { exact: true })).toBeVisible();
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     const trigger = positionDetails.getByRole("button", { name: "Breakdown", exact: true });

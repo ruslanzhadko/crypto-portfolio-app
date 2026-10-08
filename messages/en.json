@@ -989,6 +989,12 @@
     "netRealizedPnl": "Total",
     "feesUnavailable": "Fees are unavailable or require currency conversion.",
     "liquidationDistance": "To liquidation",
-    "liquidationDistanceDescription": "Mark price change to the current liquidation price."
+    "liquidationDistanceDescription": "Mark price change to the current liquidation price.",
+    "breakEven": "Break-even price",
+    "breakEvenDescription": "For the remaining size: closes + funding − fees already incurred. Future closing fees and funding are excluded.",
+    "nextFunding": "Next funding",
+    "nextFundingDescription": "Current exchange estimate; rate may change before settlement. Positive rate: longs pay shorts.",
+    "fundingIn": "in {hours}h {minutes}m",
+    "fundingTimePending": "Awaiting settlement time update"
   }
 }
