@@ -199,7 +199,9 @@ test("connect → queued sync → balances and positions → replace key → dis
   ).toBe(true);
   await saveCapitalSnapshot(userId);
   await page.getByRole("link", { name: "Main Bybit" }).click();
-  await expect(page).toHaveURL(new RegExp(`/exchanges/${c.id}$`));
+  // Allow the protected dynamic route to finish streaming on cold CI runners.
+  // Keep the balance/position assertions below: navigation alone is not success.
+  await expect(page).toHaveURL(new RegExp(`/exchanges/${c.id}$`), { timeout: 15000 });
   await expect(page.getByText("$12,540.50", { exact: true })).toBeVisible();
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Exchange", exact: true })).toHaveCount(0);
