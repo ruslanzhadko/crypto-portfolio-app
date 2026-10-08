@@ -3,7 +3,13 @@ import { useLocale, useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
 import { useDisplayPreference, warningPreference } from "./display-preferences";
 
-export function Money({ value }: { value: string | null | undefined }) {
+export function Money({
+  value,
+  signed = false,
+}: {
+  value: string | null | undefined;
+  signed?: boolean;
+}) {
   const locale = useLocale();
   return (
     <span className="tabular-nums">
@@ -13,6 +19,7 @@ export function Money({ value }: { value: string | null | undefined }) {
             style: "currency",
             currency: "USD",
             maximumFractionDigits: 2,
+            signDisplay: signed ? "exceptZero" : "auto",
           }).format(Number(value))}
     </span>
   );

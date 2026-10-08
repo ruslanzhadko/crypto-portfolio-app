@@ -25,8 +25,10 @@ export function BalanceTable({
   const threshold = ["0", "0.10", "1", "10"].includes(minimum)
     ? Number(minimum)
     : 0.1;
-  const balances = allBalances.filter(
-    (b) => b.usdValue === null || Math.abs(Number(b.usdValue)) >= threshold,
+  const balances = allBalances.filter((b) =>
+    b.usdValue === null
+      ? threshold === 0 && hideWarnings !== "true"
+      : Math.abs(Number(b.usdValue)) >= threshold,
   );
   return (
     <section className="min-w-0 space-y-3">

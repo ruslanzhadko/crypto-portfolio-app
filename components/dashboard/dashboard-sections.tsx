@@ -264,6 +264,7 @@ export function DashboardSections({
             )}
           </>
         )}
+        {exchangesEnabled && <div id="capital-sources" />}
       </div>
     </div>
   );

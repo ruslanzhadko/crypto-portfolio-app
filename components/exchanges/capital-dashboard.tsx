@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -30,6 +31,10 @@ export function CapitalDashboard({
 }: {
   walletAssets: React.ReactNode;
 }) {
+  const [sourcesTarget, setSourcesTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setSourcesTarget(document.getElementById("capital-sources"));
+  }, []);
   const t = useTranslations("Exchanges"),
     locale = useLocale();
   const [scope, setScope] = useState<"all" | "wallets" | "exchanges">("all"),
@@ -85,6 +90,82 @@ export function CapitalDashboard({
       : scope === "exchanges"
         ? overview?.exchangesUsd
         : overview?.totalUsd;
+  const sources = overview ? (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold">{t("sources")}</h2>
+      <div className="divide-y divide-border rounded-xl border border-border">
+        {scope !== "exchanges" &&
+          overview.walletSources.map((w) => (
+            <div
+              key={w.id}
+              className="flex flex-wrap items-center justify-between gap-2 p-3"
+            >
+              <div>
+                <Link
+                  href={`/wallets/${w.id}`}
+                  className="text-sm hover:text-primary"
+                >
+                  {w.label}
+                </Link>
+                <p>
+                  <Updated value={w.updatedAt} />
+                </p>
+              </div>
+              <div className="text-right">
+                <Money value={w.valueUsd} />
+                {Number(value) > 0 && (
+                  <p className="text-xs text-text-muted">
+                    {((Number(w.valueUsd) / Number(value)) * 100).toFixed(1)}%
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        {scope !== "wallets" &&
+          overview.accounts.map((a) => (
+            <div
+              key={a.id}
+              className="flex flex-wrap items-center justify-between gap-2 p-3"
+            >
+              <div>
+                <Link
+                  className="text-sm hover:text-primary"
+                  href={`/exchanges/${a.connectionId}`}
+                >
+                  {a.label} · {t(`kinds.${a.kind}`)}
+                </Link>
+                <p>
+                  <Updated value={a.balancesAt} />
+                  {a.stale && (
+                    <span className="ml-2 text-xs text-warning">
+                      {t("stale")}
+                    </span>
+                  )}
+                  {!a.included && (
+                    <span className="ml-2 text-xs text-warning">
+                      {t("migrationPending")}
+                    </span>
+                  )}
+                </p>
+              </div>
+              <div className="text-right">
+                <Money value={a.equityUsd} />
+                {a.included && a.equityUsd !== null && Number(value) > 0 && (
+                  <p className="text-xs text-text-muted">
+                    {((Number(a.equityUsd) / Number(value)) * 100).toFixed(1)}%
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        {overview.connectionCount === 0 && scope !== "wallets" && (
+          <Link href="/exchanges" className="block p-4 text-sm text-primary">
+            {t("connectExchange")} →
+          </Link>
+        )}
+      </div>
+    </section>
+  ) : null;
   return (
     <div className="min-w-0 space-y-5">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
@@ -347,92 +428,6 @@ export function CapitalDashboard({
               {t("legacyHistory")}
             </Link>
           </div>
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold">{t("sources")}</h2>
-            <div className="divide-y divide-border rounded-xl border border-border">
-              {scope !== "exchanges" &&
-                overview.walletSources.map((w) => (
-                  <div
-                    key={w.id}
-                    className="flex flex-wrap items-center justify-between gap-2 p-3"
-                  >
-                    <div>
-                      <Link
-                        href={`/wallets/${w.id}`}
-                        className="text-sm hover:text-primary"
-                      >
-                        {w.label}
-                      </Link>
-                      <p>
-                        <Updated value={w.updatedAt} />
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Money value={w.valueUsd} />
-                      {Number(value) > 0 && (
-                        <p className="text-xs text-text-muted">
-                          {((Number(w.valueUsd) / Number(value)) * 100).toFixed(
-                            1,
-                          )}
-                          %
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              {scope !== "wallets" &&
-                overview.accounts.map((a) => (
-                  <div
-                    key={a.id}
-                    className="flex flex-wrap items-center justify-between gap-2 p-3"
-                  >
-                    <div>
-                      <Link
-                        className="text-sm hover:text-primary"
-                        href={`/exchanges/${a.connectionId}`}
-                      >
-                        {a.label} · {t(`kinds.${a.kind}`)}
-                      </Link>
-                      <p>
-                        <Updated value={a.balancesAt} />
-                        {a.stale && (
-                          <span className="ml-2 text-xs text-warning">
-                            {t("stale")}
-                          </span>
-                        )}
-                        {!a.included && (
-                          <span className="ml-2 text-xs text-warning">
-                            {t("migrationPending")}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <Money value={a.equityUsd} />
-                      {a.included &&
-                        a.equityUsd !== null &&
-                        Number(value) > 0 && (
-                          <p className="text-xs text-text-muted">
-                            {(
-                              (Number(a.equityUsd) / Number(value)) *
-                              100
-                            ).toFixed(1)}
-                            %
-                          </p>
-                        )}
-                    </div>
-                  </div>
-                ))}
-              {overview.connectionCount === 0 && scope !== "wallets" && (
-                <Link
-                  href="/exchanges"
-                  className="block p-4 text-sm text-primary"
-                >
-                  {t("connectExchange")} →
-                </Link>
-              )}
-            </div>
-          </section>
           <section id="assets" className="scroll-mt-6 space-y-5">
             <h2 className="text-lg font-semibold">{t("assets")}</h2>
             {scope !== "exchanges" && walletAssets}
@@ -441,6 +436,8 @@ export function CapitalDashboard({
             )}
           </section>
           {scope !== "wallets" && <PositionsPage compact />}
+          {sources &&
+            (sourcesTarget ? createPortal(sources, sourcesTarget) : sources)}
         </>
       )}
     </div>

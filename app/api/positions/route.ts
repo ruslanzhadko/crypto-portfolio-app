@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { summarizePositions } from "@/lib/exchanges/position-summary";
 import { settlementPrices } from "@/lib/exchanges/pricing";
+import { compareMarginReturn } from "@/lib/exchanges/position-sort";
 import {
   exchangeGuard,
   exchangeJson,
@@ -23,7 +24,9 @@ export async function GET(req: NextRequest) {
         connectionId: z.string().max(100).optional(),
         coin: z.string().max(40).optional(),
         side: z.enum(["long", "short"]).optional(),
-        sort: z.enum(["size", "pnl", "symbol"]).default("size"),
+        sort: z
+          .enum(["size", "pnl", "pnlAsc", "roe", "roeAsc", "symbol"])
+          .default("size"),
         page: z.coerce.number().int().min(1).max(10000).default(1),
         limit: z.coerce.number().int().min(1).max(100).default(25),
       })
@@ -43,8 +46,13 @@ export async function GET(req: NextRequest) {
       },
     };
     const orderBy: Prisma.ExchangePositionOrderByWithRelationInput =
-      q.sort === "pnl"
-        ? { unrealizedPnlUsd: { sort: "desc", nulls: "last" } }
+      q.sort === "pnl" || q.sort === "pnlAsc"
+        ? {
+            unrealizedPnlUsd: {
+              sort: q.sort === "pnlAsc" ? "asc" : "desc",
+              nulls: "last",
+            },
+          }
         : q.sort === "size"
           ? { notionalUsd: { sort: "desc", nulls: "last" } }
           : { symbol: "asc" };
@@ -53,8 +61,8 @@ export async function GET(req: NextRequest) {
         prisma.exchangePosition.findMany({
           where,
           orderBy: [orderBy, { id: "asc" }],
-          skip: (q.page - 1) * q.limit,
-          take: q.limit,
+          skip: q.sort.startsWith("roe") ? undefined : (q.page - 1) * q.limit,
+          take: q.sort.startsWith("roe") ? undefined : q.limit,
           include: {
             account: {
               select: {
@@ -104,8 +112,14 @@ export async function GET(req: NextRequest) {
           select: { name: true },
         }),
       ]);
+    // Derived return must be sorted before pagination, with missing margins last.
+    const visible = q.sort.startsWith("roe")
+      ? positions
+          .sort((a, b) => compareMarginReturn(a, b, q.sort === "roeAsc"))
+          .slice((q.page - 1) * q.limit, q.page * q.limit)
+      : positions;
     return exchangeJson({
-      positions: positions.map(({ account, ...p }) => ({
+      positions: visible.map(({ account, ...p }) => ({
         ...p,
         account: account.kind,
         connection: account.connection,

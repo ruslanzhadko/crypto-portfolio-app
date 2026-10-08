@@ -43,7 +43,7 @@ function liquidationDistance(p: PositionDto): number | null {
 
 function marginReturn(p: PositionDto) {
   return p.margin && Number(p.margin) > 0 && p.unrealizedPnl != null
-    ? `${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
+    ? `${Number(p.unrealizedPnl) > 0 ? "+" : ""}${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
     : "—";
 }
 function NextFunding({ p }: { p: PositionDto }) {
@@ -305,6 +305,9 @@ export function PositionsPage({
           >
             <option value="size">{t("sortSize")}</option>
             <option value="pnl">{t("sortPnl")}</option>
+            <option value="pnlAsc">{t("sortPnlAsc")}</option>
+            <option value="roe">{t("sortRoe")}</option>
+            <option value="roeAsc">{t("sortRoeAsc")}</option>
             <option value="symbol">{t("coin")}</option>
           </PositionSelect>
         </div>
@@ -435,10 +438,10 @@ export function PositionsPage({
                   <p
                     className={`text-xl font-semibold ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
                   >
-                    <Money value={p.unrealizedPnlUsd} />
+                    <Money value={p.unrealizedPnlUsd} signed />
                   </p>
                   <p
-                    className="text-xs text-text-muted"
+                    className="text-sm text-text-muted"
                     title={t("returnOnMargin") + ": " + t("returnFormula")}
                   >
                     {marginReturn(p)}

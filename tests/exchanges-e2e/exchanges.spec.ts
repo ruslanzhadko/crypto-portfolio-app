@@ -311,24 +311,28 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
   if (process.env.EXCHANGE_VISUAL_QA) await page.locator('.recharts-surface').first().screenshot({ path: "test-results/capital-chart-desktop.png" });
   await page.getByText("Capital history", { exact: true }).click();
+  await expect(page.locator("#capital-sources").getByRole("heading", {name: "Capital sources"})).toBeVisible();
+  expect(await page.locator("#capital-sources").evaluate(el => el.parentElement?.lastElementChild === el)).toBe(true);
   await expect(page.locator('.recharts-surface').first()).not.toBeVisible();
   await page.reload();
   await expect(page.locator('.recharts-surface').first()).not.toBeVisible();
   await page.getByText("Capital history", { exact: true }).click();
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
+  await expect(page.getByText("UNKNOWN", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toBeVisible();
   await page.getByLabel("Balances from").selectOption("0");
   await expect(page.getByText("DUST", { exact: true })).toBeVisible();
+  await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "DUST", exact: true })).toHaveAttribute("src", /\/logo\.png$/);
   const widths = await page.locator("table th").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
   await page.locator("table summary").first().click();
   expect(await page.locator("table th").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width))).toEqual(widths);
-  await page.getByLabel("Hide valuation warnings").check();
+  await page.getByLabel("Hide unpriced assets and valuation warnings").check();
+  await expect(page.getByText("UNKNOWN", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toHaveCount(0);
   await page.reload();
-  await expect(page.getByLabel("Hide valuation warnings")).toBeChecked();
+  await expect(page.getByLabel("Hide unpriced assets and valuation warnings")).toBeChecked();
   await expect(page.getByLabel("Balances from")).toHaveValue("0");
   if (process.env.EXCHANGE_VISUAL_QA) {
     await page.getByLabel("Balances from").scrollIntoViewIfNeeded();
@@ -377,6 +381,14 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(page.getByText(/No open positions match/)).toBeVisible();
   await expect(statistics).toContainText("Long 0 · Short 0");
   await page.getByRole("combobox", { name: "Direction", exact: true }).selectOption("");
+  for (const sort of ["pnl", "pnlAsc", "roe", "roeAsc"]) {
+    const response = await page.request.get(`/api/positions?sort=${sort}`);
+    expect(response.ok()).toBe(true);
+  }
+  await prisma.exchangePosition.updateMany({where: {account: {connection: {userId}}}, data: {unrealizedPnl: "120.5", unrealizedPnlUsd: "120.5"}});
+  await page.reload();
+  await expect(page.locator("summary").filter({hasText:"BTCUSDT"})).toContainText("+$120.50");
+  await expect(page.locator("summary").filter({hasText:"BTCUSDT"})).toContainText("+6.02%");
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   expect(
