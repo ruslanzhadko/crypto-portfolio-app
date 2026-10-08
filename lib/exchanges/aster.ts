@@ -98,20 +98,29 @@ export class AsterAdapter implements ExchangeAdapter {
           if (
             typeof p.id !== "string" ||
             typeof p.symbol !== "string" ||
-            typeof p.collateral !== "string" ||
-            !p.symbol.endsWith(p.collateral) ||
-            !["BOTH", "LONG", "SHORT"].includes(String(p.positionSide)) ||
-            typeof p.isolated !== "boolean"
+            !["BOTH", "LONG", "SHORT"].includes(String(p.positionSide))
+          )
+            throw new ExchangeError("INVALID_RESPONSE");
+          // Live RPC responses may omit the optional fields shown in the docs.
+          // Use the pair's supported quote only when collateral was not supplied;
+          // never manufacture leverage, margin mode, entry or liquidation prices.
+          const quote = p.symbol.match(/(USDT|USDC|USD1)$/)?.[1];
+          const collateral = p.collateral === undefined ? quote : p.collateral;
+          if (
+            typeof collateral !== "string" ||
+            !collateral ||
+            !quote ||
+            p.symbol.length <= quote.length
           )
             throw new ExchangeError("INVALID_RESPONSE");
           const size = amount.abs().toFixed(),
-            rate = rates.get(p.collateral) ?? null;
+            rate = rates.get(collateral) ?? null;
           return [
             {
               positionKey: p.id,
               symbol: p.symbol,
-              base: p.symbol.slice(0, -p.collateral.length),
-              settle: p.collateral,
+              base: p.symbol.slice(0, -quote.length),
+              settle: collateral,
               side:
                 p.positionSide === "SHORT" ||
                 (p.positionSide === "BOTH" && amount.isNegative())
@@ -126,7 +135,12 @@ export class AsterAdapter implements ExchangeAdapter {
               // The public RPC does not expose liquidation, fees or paid funding.
               liquidationPrice: null,
               leverage: decimal(p.leverage),
-              marginMode: p.isolated ? "isolated" : "cross",
+              marginMode:
+                typeof p.isolated === "boolean"
+                  ? p.isolated
+                    ? "isolated"
+                    : "cross"
+                  : null,
               margin: decimal(p.marginValue),
               unrealizedPnl: decimal(p.unrealizedProfit),
               unrealizedPnlUsd: multiply(decimal(p.unrealizedProfit), rate),

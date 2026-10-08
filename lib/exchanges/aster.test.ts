@@ -37,6 +37,53 @@ function response() {
 }
 const prices = async () => new Map([["USDT", "0.99"]]);
 describe("Aster public wallet adapter", () => {
+  it("accepts the reduced live RPC response for positions opened before linking", async () => {
+    const raw = {
+      result: {
+        address,
+        accountPrivacy: "disabled",
+        perpAssets: [{ asset: "USDT", walletBalance: "-833.34159171" }],
+        positions: [
+          {
+            tradingProduct: "perps",
+            positions: [
+              {
+                id: "98000003122518_ETHUSDT_LONG",
+                symbol: "ETHUSDT",
+                positionAmount: "1.090",
+                positionSide: "LONG",
+                notionalValue: "2697.01970000000",
+                unrealizedProfit: "927.12130000000",
+                cumRealized: "317.09328003",
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const result = await new AsterAdapter(
+      address,
+      async () => new Map([["USDT", "1"]]),
+      async () => raw,
+      async () => [],
+    ).fetch();
+    expect(result.accounts[0]!.positions![0]).toMatchObject({
+      base: "ETH",
+      settle: "USDT",
+      side: "long",
+      baseSize: "1.09",
+      notionalUsd: "2697.0197",
+      unrealizedPnl: "927.1213",
+      entryPrice: null,
+      markPrice: null,
+      leverage: null,
+      marginMode: null,
+      margin: null,
+      funding: { amount: null, realizedPnl: null, tradingFees: null },
+    });
+    expect(result.accounts[0]!.equityUsd).toBe("93.77970829");
+    expect(result.accounts[0]!.complete).toBe(true);
+  });
   it("sends only the documented public read request and preserves numeric JSON balances", async () => {
     const fetch = vi
       .fn()
