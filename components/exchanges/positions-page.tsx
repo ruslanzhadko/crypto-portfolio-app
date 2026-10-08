@@ -326,7 +326,7 @@ export function PositionsPage({
               );
             }}
           >
-            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 [&>div>p+p]:mt-1.5 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-5">
+            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 [&>div>p+p]:mt-1.5 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-6 [&>div]:min-w-0">
               <div>
                 <p className="flex items-center gap-3 font-semibold">
                   <ExchangeTokenLogo symbol={p.base} />
@@ -344,9 +344,6 @@ export function PositionsPage({
                   >
                     <Quantity value={p.leverage} maximumFractionDigits={4} />
                     {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
-                  </span>
-                  <span className="text-xs text-text-muted">
-                    {t("details")}
                   </span>
                 </div>
               </div>
@@ -396,6 +393,20 @@ export function PositionsPage({
                   )}
                 </p>
               </div>
+              <div>
+                <p className="text-[15px] font-medium break-words">
+                  {p.connection.label}
+                </p>
+                <p className="text-xs text-text-muted">
+                  {(
+                    {
+                      binance: "Binance",
+                      bybit: "Bybit",
+                      hyperliquid: "Hyperliquid",
+                    } as Record<string, string>
+                  )[p.connection.exchange] ?? p.connection.exchange}
+                </p>
+              </div>
               <div className="text-right">
                 <p className="text-xs text-text-muted">{t("unrealizedPnl")}</p>
                 <p
@@ -415,7 +426,7 @@ export function PositionsPage({
               </div>
             </summary>
             <div className="border-t border-border bg-background/40 px-4 py-5 sm:px-6 lg:pr-8">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-5 [&>div]:min-w-0 [&_dd]:mt-2 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-6 [&>div]:min-w-0 [&_dd]:mt-2 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
                 <div>
                   <dt
                     className="text-text-muted"
@@ -467,7 +478,7 @@ export function PositionsPage({
                     <PnlBreakdown p={p} />
                   </dd>
                 </div>
-                <div className="lg:text-right">
+                <div className="lg:col-start-6 lg:text-right">
                   <dt className="text-text-muted">{t("nextFunding")}</dt>
                   <NextFunding p={p} />
                 </div>
