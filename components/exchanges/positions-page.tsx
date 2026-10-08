@@ -4,11 +4,6 @@ import { useEffect, useState, type SelectHTMLAttributes } from "react";
 import { ChevronDown, Info } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -28,81 +23,6 @@ function realizedWithFunding(p: PositionDto): string | null {
           Number(p.funding.tradingFees),
       )
     : null;
-}
-
-function PnlBreakdown({ p }: { p: PositionDto }) {
-  const t = useTranslations("Exchanges");
-  const [open, setOpen] = useState(false);
-  const [mobile, setMobile] = useState(false);
-  useEffect(() => {
-    const query = window.matchMedia("(max-width: 639px)");
-    const update = () => setMobile(query.matches);
-    update();
-    query.addEventListener("change", update);
-    return () => query.removeEventListener("change", update);
-  }, []);
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          onPointerDown={(event) => {
-            if (event.pointerType === "mouse" && open) event.preventDefault();
-          }}
-          onPointerEnter={(event) => {
-            if (event.pointerType === "mouse") setOpen(true);
-          }}
-          className="mt-1 block min-h-6 text-xs font-normal text-text-muted underline decoration-dotted underline-offset-4 focus-visible:outline focus-visible:outline-primary"
-        >
-          {t("pnlBreakdown")}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side={mobile ? "bottom" : "right"}
-        align="start"
-        sideOffset={12}
-        collisionPadding={16}
-        onPointerLeave={(event) => {
-          if (event.pointerType === "mouse") setOpen(false);
-        }}
-        className="w-72 max-w-[calc(100vw-2rem)] space-y-1 rounded-lg bg-surface p-3 text-sm"
-        aria-label={t("pnlBreakdown")}
-      >
-        <p>
-          {t("closedPnl")}:{" "}
-          <Quantity
-            value={p.funding?.realizedPnl ?? null}
-            maximumFractionDigits={4}
-          />{" "}
-          {p.settle}
-        </p>
-        <p>
-          Funding:{" "}
-          <Quantity
-            value={p.funding?.status === "complete" ? p.funding.amount : null}
-            maximumFractionDigits={4}
-          />{" "}
-          {p.settle}
-        </p>
-        <p>
-          {t("tradingFees")}:{" "}
-          <Quantity
-            value={p.funding?.tradingFees ?? null}
-            maximumFractionDigits={4}
-          />{" "}
-          {p.settle}
-        </p>
-        <p className="border-t border-border pt-1 font-medium">
-          {t("netRealizedPnl")}:{" "}
-          <Quantity value={realizedWithFunding(p)} maximumFractionDigits={4} />{" "}
-          {p.settle}
-        </p>
-        {p.funding?.tradingFees == null && (
-          <p className="text-xs text-text-muted">{t("feesUnavailable")}</p>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }
 
 function marginReturn(p: PositionDto) {
@@ -337,190 +257,211 @@ export function PositionsPage({
         </p>
       )}
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
-        {result.data?.positions.map((p) => (
-          <details
-            key={`${p.connection.id}:${p.positionKey}`}
-            className="group"
-            open={expanded[`${p.connection.id}:${p.positionKey}`] ?? false}
-            onToggle={(event) => {
-              const open = event.currentTarget.open;
-              const key = `${p.connection.id}:${p.positionKey}`;
-              setExpanded((previous) =>
-                previous[key] === open
-                  ? previous
-                  : { ...previous, [key]: open },
-              );
-            }}
-          >
-            <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 [&>div>p+p]:mt-1.5 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-6 [&>div]:min-w-0">
-              <div>
-                <p className="flex items-center gap-3 font-semibold">
-                  <ExchangeTokenLogo symbol={p.base} />
-                  {p.symbol}
-                </p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span
-                    className={`text-sm font-medium ${p.side === "long" ? "text-success" : "text-danger"}`}
-                  >
-                    {p.side === "long" ? "Long" : "Short"}
-                  </span>
-                  <span
-                    className="text-sm text-text-muted"
-                    title={t("leverage")}
-                  >
-                    <Quantity value={p.leverage} maximumFractionDigits={4} />
-                    {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs text-text-muted">{t("size")}</p>
-                <p className="text-[15px] font-medium tabular-nums">
-                  <Quantity value={p.baseSize} maximumFractionDigits={4} />{" "}
-                  {p.base}
-                </p>
-                <p className="text-xs text-text-muted">
-                  <Money value={p.notionalUsd} />
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-text-muted">{t("entryMark")}</p>
-                <p className="text-[15px] font-medium tabular-nums">
-                  <Quantity value={p.entryPrice} maximumFractionDigits={4} /> /{" "}
-                  <Quantity value={p.markPrice} maximumFractionDigits={4} />
-                </p>
-                <p className="text-xs text-text-muted">{p.settle}</p>
-              </div>
-              <div className="text-right lg:text-left">
-                <p className="text-xs text-text-muted">{t("funding")}</p>
-                <p
-                  className={`text-[15px] font-medium tabular-nums ${p.funding?.amount == null ? "text-text-muted" : Number(p.funding.amount) >= 0 ? "text-success" : "text-danger"}`}
-                  title={
-                    p.funding?.status === "complete"
-                      ? undefined
-                      : t(
-                          !p.funding || p.funding.status === "pending"
-                            ? "fundingPending"
-                            : "fundingUnavailable",
-                        )
-                  }
-                >
-                  {p.funding?.status === "complete" ? (
-                    <>
-                      {Number(p.funding.amount) > 0 ? "+" : ""}
-                      <Quantity
-                        value={p.funding.amount}
-                        maximumFractionDigits={4}
-                      />{" "}
-                      {p.settle}
-                    </>
-                  ) : (
-                    "—"
-                  )}
-                </p>
-              </div>
-              <div>
-                <p className="text-[15px] font-medium break-words">
-                  {p.connection.label}
-                </p>
-                <p className="text-xs text-text-muted">
-                  {(
-                    {
-                      binance: "Binance",
-                      bybit: "Bybit",
-                      hyperliquid: "Hyperliquid",
-                    } as Record<string, string>
-                  )[p.connection.exchange] ?? p.connection.exchange}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-text-muted">{t("unrealizedPnl")}</p>
-                <p
-                  className={`text-xl font-semibold ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
-                >
-                  <Money value={p.unrealizedPnlUsd} />
-                </p>
-                <p
-                  className="text-xs text-text-muted"
-                  title={t("returnOnMargin") + ": " + t("returnFormula")}
-                >
-                  {marginReturn(p)}
-                </p>
-                {p.stale && (
-                  <p className="text-xs text-warning">{t("stale")}</p>
-                )}
-              </div>
-            </summary>
-            <div className="border-t border-border bg-background/40 px-4 py-5 sm:px-6 lg:pr-8">
-              <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-6 [&>div]:min-w-0 [&_dd]:mt-2 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
+        {result.data?.positions.map((p) => {
+          const netRealized = realizedWithFunding(p);
+          return (
+            <details
+              key={`${p.connection.id}:${p.positionKey}`}
+              className="group"
+              open={expanded[`${p.connection.id}:${p.positionKey}`] ?? false}
+              onToggle={(event) => {
+                const open = event.currentTarget.open;
+                const key = `${p.connection.id}:${p.positionKey}`;
+                setExpanded((previous) =>
+                  previous[key] === open
+                    ? previous
+                    : { ...previous, [key]: open },
+                );
+              }}
+            >
+              <summary className="grid cursor-pointer list-none grid-cols-2 items-center gap-x-6 gap-y-4 [&>div>p+p]:mt-1.5 px-4 py-5 sm:px-6 lg:pr-8 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary lg:grid-cols-6 [&>div]:min-w-0">
                 <div>
-                  <dt
-                    className="text-text-muted"
-                    title={t("breakEvenDescription")}
-                  >
-                    {t("breakEven")}
-                  </dt>
-                  <dd>
-                    <Quantity
-                      value={p.funding?.breakEvenPrice ?? null}
-                      maximumFractionDigits={4}
-                    />{" "}
-                    {p.settle}
-                  </dd>
+                  <p className="flex items-center gap-3 font-semibold">
+                    <ExchangeTokenLogo symbol={p.base} />
+                    {p.symbol}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span
+                      className={`text-sm font-medium ${p.side === "long" ? "text-success" : "text-danger"}`}
+                    >
+                      {p.side === "long" ? "Long" : "Short"}
+                    </span>
+                    <span
+                      className="text-sm text-text-muted"
+                      title={t("leverage")}
+                    >
+                      <Quantity value={p.leverage} maximumFractionDigits={4} />
+                      {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
+                    </span>
+                  </div>
                 </div>
                 <div>
-                  <dt className="text-text-muted">{t("margin")}</dt>
-                  <dd>
-                    <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
-                    {p.settle}
-                  </dd>
+                  <p className="text-xs text-text-muted">{t("size")}</p>
+                  <p className="text-[15px] font-medium tabular-nums">
+                    <Quantity value={p.baseSize} maximumFractionDigits={4} />{" "}
+                    {p.base}
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    <Money value={p.notionalUsd} />
+                  </p>
                 </div>
                 <div>
-                  <dt className="text-text-muted">{t("liquidation")}</dt>
-                  <dd>
-                    <Quantity
-                      value={p.liquidationPrice}
-                      maximumFractionDigits={4}
-                    />{" "}
-                    {p.settle}
-                  </dd>
+                  <p className="text-xs text-text-muted">{t("entryMark")}</p>
+                  <p className="text-[15px] font-medium tabular-nums">
+                    <Quantity value={p.entryPrice} maximumFractionDigits={4} />{" "}
+                    / <Quantity value={p.markPrice} maximumFractionDigits={4} />
+                  </p>
+                  <p className="text-xs text-text-muted">{p.settle}</p>
                 </div>
-                <div>
-                  <dt
-                    className="text-text-muted"
+                <div className="text-right lg:text-left">
+                  <p
+                    className="text-xs text-text-muted"
                     title={t("realizedPnlDescription")}
                   >
                     {t("realizedPnl")}
-                  </dt>
-                  <dd>
+                  </p>
+                  <p
+                    className={`text-[15px] font-medium tabular-nums ${netRealized == null ? "text-text-muted" : Number(netRealized) > 0 ? "text-success" : Number(netRealized) < 0 ? "text-danger" : ""}`}
+                  >
+                    {netRealized != null && Number(netRealized) > 0 ? "+" : ""}
                     <Quantity
-                      value={realizedWithFunding(p)}
+                      value={netRealized}
                       maximumFractionDigits={4}
                     />{" "}
                     {p.settle}
-                    <PnlBreakdown p={p} />
-                  </dd>
+                  </p>
                 </div>
                 <div>
-                  <dt className="text-text-muted">{t("updated")}</dt>
-                  <dd>
-                    <PositionUpdated value={p.updatedAt} />
-                  </dd>
+                  <p className="text-[15px] font-medium break-words">
+                    {p.connection.label}
+                  </p>
+                  <p className="text-xs text-text-muted">
+                    {(
+                      {
+                        binance: "Binance",
+                        bybit: "Bybit",
+                        hyperliquid: "Hyperliquid",
+                      } as Record<string, string>
+                    )[p.connection.exchange] ?? p.connection.exchange}
+                  </p>
                 </div>
-                <div className="lg:col-start-6 lg:text-right">
-                  <dt className="text-text-muted">{t("nextFunding")}</dt>
-                  <NextFunding p={p} />
+                <div className="text-right">
+                  <p className="text-xs text-text-muted">
+                    {t("unrealizedPnl")}
+                  </p>
+                  <p
+                    className={`text-xl font-semibold ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
+                  >
+                    <Money value={p.unrealizedPnlUsd} />
+                  </p>
+                  <p
+                    className="text-xs text-text-muted"
+                    title={t("returnOnMargin") + ": " + t("returnFormula")}
+                  >
+                    {marginReturn(p)}
+                  </p>
+                  {p.stale && (
+                    <p className="text-xs text-warning">{t("stale")}</p>
+                  )}
                 </div>
-              </dl>
+              </summary>
+              <div className="border-t border-border bg-background/40 px-4 py-5 sm:px-6 lg:pr-8">
+                <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-6 [&>div]:min-w-0 [&_dd]:mt-2 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
+                  <div>
+                    <dt
+                      className="text-text-muted"
+                      title={t("breakEvenDescription")}
+                    >
+                      {t("breakEven")}
+                    </dt>
+                    <dd>
+                      <Quantity
+                        value={p.funding?.breakEvenPrice ?? null}
+                        maximumFractionDigits={4}
+                      />{" "}
+                      {p.settle}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">{t("margin")}</dt>
+                    <dd>
+                      <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
+                      {p.settle}
+                    </dd>
+                    <p className="mt-1 text-xs font-normal text-text-muted">
+                      {t("updated")} <PositionUpdated value={p.updatedAt} />
+                    </p>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">{t("liquidation")}</dt>
+                    <dd>
+                      <Quantity
+                        value={p.liquidationPrice}
+                        maximumFractionDigits={4}
+                      />{" "}
+                      {p.settle}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">{t("closedPnl")}</dt>
+                    <dd>
+                      <Quantity
+                        value={p.funding?.realizedPnl ?? null}
+                        maximumFractionDigits={4}
+                      />{" "}
+                      {p.settle}
+                    </dd>
+                    <dt className="mt-3 text-text-muted">{t("funding")}</dt>
+                    <dd
+                      className={
+                        p.funding?.amount == null
+                          ? "text-text-muted"
+                          : Number(p.funding.amount) >= 0
+                            ? "text-success"
+                            : "text-danger"
+                      }
+                    >
+                      <Quantity
+                        value={
+                          p.funding?.status === "complete"
+                            ? p.funding.amount
+                            : null
+                        }
+                        maximumFractionDigits={4}
+                      />{" "}
+                      {p.settle}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">{t("tradingFees")}</dt>
+                    <dd>
+                      <Quantity
+                        value={p.funding?.tradingFees ?? null}
+                        maximumFractionDigits={4}
+                      />{" "}
+                      {p.settle}
+                    </dd>
+                    {p.funding?.tradingFees == null && (
+                      <p className="mt-1 text-xs text-text-muted">
+                        {t("feesUnavailable")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="lg:col-start-6 lg:text-right">
+                    <dt className="text-text-muted">{t("nextFunding")}</dt>
+                    <NextFunding p={p} />
+                  </div>
+                </dl>
 
-              {p.errorCode && (
-                <div className="mt-3">
-                  <ExchangeErrorNotice code={p.errorCode} />
-                </div>
-              )}
-            </div>
-          </details>
-        ))}
+                {p.errorCode && (
+                  <div className="mt-3">
+                    <ExchangeErrorNotice code={p.errorCode} />
+                  </div>
+                )}
+              </div>
+            </details>
+          );
+        })}
       </div>
       {!compact && result.data && result.data.total > result.data.limit && (
         <div className="flex items-center justify-end gap-3">

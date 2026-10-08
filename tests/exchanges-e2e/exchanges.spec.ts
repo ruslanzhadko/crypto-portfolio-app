@@ -303,7 +303,7 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(positionDetails.getByText("-1.25 USDT", {exact:true})).toBeVisible();
   await expect(positionDetails.getByText("Account", {exact:true})).toHaveCount(0);
   await expect(positionDetails.getByText("Realized PnL", {exact:true})).toBeVisible();
-  await expect(positionDetails.locator("dl > div").filter({ has: page.locator("dt").filter({ hasText: /^Realized PnL$/ }) }).locator("dd")).toContainText("6 USDT");
+  await expect(positionDetails.locator("summary")).toContainText("+6 USDT");
   await expect(positionDetails.getByText("Unrealized PnL", {exact:true})).toHaveCount(1);
   await expect(positionDetails.getByText("Funding since opening", {exact:true})).toHaveCount(1);
   await expect(positionDetails.getByText(/Already included in account equity/)).toHaveCount(0);
@@ -314,25 +314,13 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(positionDetails.getByText("0.01%", { exact: true })).toBeVisible();
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
-    const trigger = positionDetails.getByRole("button", { name: "Breakdown", exact: true });
-    await trigger.scrollIntoViewIfNeeded();
-    const height = await positionDetails.evaluate(el => el.getBoundingClientRect().height);
-    if (width >= 1024) await trigger.hover();
-    else if (width === 390) await trigger.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, ctrlKey: false });
-    else await trigger.click();
-    const breakdown = page.getByRole("menu", { name: "Breakdown", exact: true });
-    await expect(breakdown).toBeVisible();
-    await expect(breakdown).toContainText("Total: 6 USDT");
-    await expect(breakdown).toContainText("Position closes: 7.5 USDT");
-    await expect(breakdown).toContainText("Trading fees: 0.25 USDT");
-    expect(await positionDetails.evaluate(el => el.getBoundingClientRect().height)).toBe(height);
-    const bounds = await breakdown.boundingBox();
-    expect(bounds!.x).toBeGreaterThanOrEqual(0);
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    await expect(positionDetails.getByRole("button", {name:"Breakdown",exact:true})).toHaveCount(0);
+    await expect(positionDetails.getByText("Position closes", {exact:true})).toBeVisible();
+    await expect(positionDetails.getByText("7.5 USDT", {exact:true})).toBeVisible();
+    await expect(positionDetails.getByText("Trading fees", {exact:true})).toBeVisible();
+    await expect(positionDetails.getByText("0.25 USDT", {exact:true})).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     if (process.env.EXCHANGE_VISUAL_QA) await page.screenshot({path:`test-results/positions-pnl-${width}.png`});
-    await page.keyboard.press("Escape");
-    await expect(breakdown).not.toBeVisible();
     await page.mouse.move(0, 0);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
