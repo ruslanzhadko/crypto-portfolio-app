@@ -276,6 +276,12 @@ export function PositionsPage({
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
         {result.data?.positions.map((p) => {
           const netRealized = realizedWithFunding(p);
+          const closedAfterFees =
+            p.funding?.realizedPnl != null && p.funding.tradingFees != null
+              ? String(
+                  Number(p.funding.realizedPnl) - Number(p.funding.tradingFees),
+                )
+              : null;
           const distance = liquidationDistance(p);
           return (
             <details
@@ -434,32 +440,41 @@ export function PositionsPage({
                     </p>
                   </div>
                   <div>
-                    <dt className="text-text-muted">{t("closedPnl")}</dt>
+                    <dt
+                      className="text-text-muted"
+                      title={t("closedAfterFeesDescription")}
+                    >
+                      {t("closedAfterFees")}
+                    </dt>
                     <dd
                       className={
-                        p.funding?.realizedPnl == null
+                        closedAfterFees == null
                           ? "text-text-muted"
-                          : Number(p.funding.realizedPnl) > 0
+                          : Number(closedAfterFees) > 0
                             ? "text-success"
-                            : Number(p.funding.realizedPnl) < 0
+                            : Number(closedAfterFees) < 0
                               ? "text-danger"
                               : undefined
                       }
                     >
                       <Quantity
-                        value={p.funding?.realizedPnl ?? null}
+                        value={closedAfterFees}
                         maximumFractionDigits={4}
                       />{" "}
                       {p.settle}
                     </dd>
-                    <dt className="mt-3 text-text-muted">{t("funding")}</dt>
+                  </div>
+                  <div>
+                    <dt className="text-text-muted">{t("funding")}</dt>
                     <dd
                       className={
                         p.funding?.amount == null
                           ? "text-text-muted"
-                          : Number(p.funding.amount) >= 0
+                          : Number(p.funding.amount) > 0
                             ? "text-success"
-                            : "text-danger"
+                            : Number(p.funding.amount) < 0
+                              ? "text-danger"
+                              : undefined
                       }
                     >
                       <Quantity
@@ -472,21 +487,6 @@ export function PositionsPage({
                       />{" "}
                       {p.settle}
                     </dd>
-                  </div>
-                  <div>
-                    <dt className="text-text-muted">{t("tradingFees")}</dt>
-                    <dd>
-                      <Quantity
-                        value={p.funding?.tradingFees ?? null}
-                        maximumFractionDigits={4}
-                      />{" "}
-                      {p.settle}
-                    </dd>
-                    {p.funding?.tradingFees == null && (
-                      <p className="mt-1 text-xs text-text-muted">
-                        {t("feesUnavailable")}
-                      </p>
-                    )}
                   </div>
                   <div className="lg:col-start-6 lg:text-right">
                     <dt className="text-text-muted">{t("nextFunding")}</dt>

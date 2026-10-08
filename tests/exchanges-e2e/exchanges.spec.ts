@@ -315,10 +315,8 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   for (const width of [1440, 1024, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(positionDetails.getByRole("button", {name:"Breakdown",exact:true})).toHaveCount(0);
-    await expect(positionDetails.getByText("Position closes", {exact:true})).toBeVisible();
-    await expect(positionDetails.getByText("7.5 USDT", {exact:true})).toBeVisible();
-    await expect(positionDetails.getByText("Trading fees", {exact:true})).toBeVisible();
-    await expect(positionDetails.getByText("0.25 USDT", {exact:true})).toBeVisible();
+    await expect(positionDetails.getByText("PnL after fees", {exact:true})).toBeVisible();
+    await expect(positionDetails.getByText("7.25 USDT", {exact:true})).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     if (process.env.EXCHANGE_VISUAL_QA) await page.screenshot({path:`test-results/positions-pnl-${width}.png`});
     await page.mouse.move(0, 0);

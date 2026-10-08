@@ -984,6 +984,8 @@
     "showAllBalances": "All balances",
     "hideValuationWarnings": "Hide valuation warnings",
     "hiddenDust": "Small balances hidden: {count}. Totals are unchanged; unpriced assets remain visible.",
+    "closedAfterFees": "PnL after fees",
+    "closedAfterFeesDescription": "Position closes minus trading fees. Funding is shown separately.",
     "closedPnl": "Position closes",
     "tradingFees": "Trading fees",
     "netRealizedPnl": "Total",

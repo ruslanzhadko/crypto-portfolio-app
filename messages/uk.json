@@ -984,6 +984,8 @@
     "showAllBalances": "Усі залишки",
     "hideValuationWarnings": "Приховувати попередження про оцінку",
     "hiddenDust": "Приховано дрібних залишків: {count}. Підсумки не змінено; активи без ціни залишаються видимими.",
+    "closedAfterFees": "PnL після комісій",
+    "closedAfterFeesDescription": "Закриття позиції мінус торгові комісії. Funding показано окремо.",
     "closedPnl": "Закриття позиції",
     "tradingFees": "Торгові комісії",
     "netRealizedPnl": "Разом",

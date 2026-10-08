@@ -984,6 +984,8 @@
     "showAllBalances": "Все остатки",
     "hideValuationWarnings": "Скрывать предупреждения об оценке",
     "hiddenDust": "Скрыто мелких остатков: {count}. Итоги не изменены; активы без цены остаются видимыми.",
+    "closedAfterFees": "PnL после комиссий",
+    "closedAfterFeesDescription": "Закрытия позиции минус торговые комиссии. Funding показан отдельно.",
     "closedPnl": "Закрытия позиции",
     "tradingFees": "Торговые комиссии",
     "netRealizedPnl": "Итого",
