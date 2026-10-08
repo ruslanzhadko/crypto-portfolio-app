@@ -21,6 +21,7 @@ import {
 import { fetchPrices, type PriceQuery } from "@/lib/services/price-feed";
 import { getChainInfo } from "@/lib/utils/networks";
 import { exchangesEnabled, HYPERCORE_CHAINS } from "@/lib/exchanges/config";
+import { syncWalletExchanges } from "@/lib/exchanges/wallet-discovery";
 
 export interface SyncResult {
   unavailableChains?: string[];
@@ -112,7 +113,15 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
         ? ["hypercore", "hypercore-perps"]
         : []),
     ];
-    return saveBalances(walletId, tokens, unavailableChains);
+    const result = await saveBalances(walletId, tokens, unavailableChains);
+    // Exchange discovery is independent of on-chain balances. A private or
+    // unavailable exchange must not turn a successful wallet sync into an error.
+    await syncWalletExchanges(walletId).catch(() => {
+      console.warn(
+        "[wallet-sync] Exchange discovery unavailable; wallet balances saved",
+      );
+    });
+    return result;
   }
   return saveBalances(walletId, tokens, []);
 }

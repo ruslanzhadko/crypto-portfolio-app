@@ -1,6 +1,6 @@
 import { record, records } from "./adapters";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
-import { reserveRequest } from "./transport";
+import { reserveRequest } from "./rate-budget";
 import { parse } from "lossless-json";
 import {
   ExchangeError,
@@ -8,6 +8,26 @@ import {
   type SyncResult,
   type OpenPosition,
 } from "./types";
+
+export async function readAsterBalance(address: string): Promise<unknown> {
+  await reserveRequest("aster");
+  const response = await fetch("https://tapi.asterdex.com/info", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: 1,
+      jsonrpc: "2.0",
+      method: "aster_getBalance",
+      params: [address, "latest"],
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok)
+    throw new ExchangeError(
+      response.status === 429 ? "RATE_LIMIT" : "UNAVAILABLE",
+    );
+  return parse(await response.text(), undefined, (value) => value);
+}
 
 /** Public address-based RPC. Never signs requests or asks for a wallet private key. */
 export class AsterAdapter implements ExchangeAdapter {
@@ -19,28 +39,7 @@ export class AsterAdapter implements ExchangeAdapter {
   constructor(
     private address: string,
     private prices: () => Promise<Map<string, string>>,
-    private balance: (address: string) => Promise<unknown> = async (
-      address,
-    ) => {
-      await reserveRequest("aster");
-      const response = await fetch("https://tapi.asterdex.com/info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: 1,
-          jsonrpc: "2.0",
-          method: "aster_getBalance",
-          params: [address, "latest"],
-        }),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok)
-        throw new ExchangeError(
-          response.status === 429 ? "RATE_LIMIT" : "UNAVAILABLE",
-        );
-      // RPC wallet balances are JSON numbers, not decimal strings.
-      return parse(await response.text(), undefined, (value) => value);
-    },
+    private balance: (address: string) => Promise<unknown> = readAsterBalance,
     private premium: () => Promise<unknown> = async () => {
       await reserveRequest("aster");
       const response = await fetch(

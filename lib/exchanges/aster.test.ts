@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-vi.mock("./transport", () => ({
+vi.mock("./rate-budget", () => ({
   reserveRequest: vi.fn().mockResolvedValue(undefined),
 }));
 afterEach(() => vi.unstubAllGlobals());

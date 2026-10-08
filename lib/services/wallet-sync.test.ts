@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { syncWallet } from "./wallet-sync";
+import { syncWalletExchanges } from "@/lib/exchanges/wallet-discovery";
 
 const mocks = vi.hoisted(() => ({
   migration: vi.fn().mockResolvedValue(null),
@@ -26,6 +27,9 @@ vi.mock("./coingecko", () => ({
   searchCoins: vi.fn(),
 }));
 vi.mock("./price-feed", () => ({ fetchPrices: mocks.fetchPrices }));
+vi.mock("@/lib/exchanges/wallet-discovery", () => ({
+  syncWalletExchanges: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/lib/db/prisma", () => {
   const db = {
     exchangeConnection: { findFirst: mocks.migration },
@@ -65,6 +69,7 @@ const native = {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+  vi.mocked(syncWalletExchanges).mockResolvedValue(undefined);
   mocks.migration.mockResolvedValue(null);
   mocks.ankr.mockResolvedValue([native]);
   mocks.robinhood.mockResolvedValue([{ ...native, chainName: "robinhood" }]);
@@ -74,6 +79,17 @@ beforeEach(() => {
   mocks.count.mockResolvedValue(0);
   mocks.contractIds.mockResolvedValue(new Map());
   mocks.fetchPrices.mockResolvedValue(new Map());
+});
+describe("exchange discovery during wallet sync", () => {
+  it("checks existing wallets and keeps saved balances if Aster cannot be read", async () => {
+    vi.mocked(syncWalletExchanges).mockRejectedValueOnce(
+      new Error("private account"),
+    );
+    const result = await syncWallet("wallet");
+    expect(syncWalletExchanges).toHaveBeenCalledWith("wallet");
+    expect(result.totalUsd).toBeGreaterThan(0);
+    expect(mocks.createMany).toHaveBeenCalled();
+  });
 });
 describe("contract market identity", () => {
   it("stores CoinGecko ID only from the exact chain and contract", async () => {
