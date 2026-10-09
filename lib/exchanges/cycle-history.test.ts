@@ -103,16 +103,26 @@ function fixture(venue: "bingx" | "aster" = "bingx") {
       else if (path.endsWith("income"))
         data =
           params.incomeType === "COMMISSION"
-            ? fills.map((r) => ({
-                symbol: p.symbol,
-                incomeType: "COMMISSION",
-                asset: "USDT",
-                income: r.commission,
-                time: r.time,
-                tranId: r.id,
-                tradeId: r.id,
-              }))
-            : ledger;
+            ? fills
+                .filter(
+                  (r) =>
+                    r.time >= Number(params.startTime) &&
+                    r.time <= Number(params.endTime),
+                )
+                .map((r) => ({
+                  symbol: p.symbol,
+                  incomeType: "COMMISSION",
+                  asset: r.commissionAsset,
+                  income: r.commission,
+                  time: r.time,
+                  tranId: r.id,
+                  tradeId: r.id,
+                }))
+            : ledger.filter(
+                (r) =>
+                  r.time >= Number(params.startTime) &&
+                  r.time <= Number(params.endTime),
+              );
       else if (path.endsWith("positions") || path.endsWith("positionRisk"))
         data = [
           {
@@ -138,6 +148,52 @@ function fixture(venue: "bingx" | "aster" = "bingx") {
 }
 afterEach(() => vi.useRealTimers());
 describe("current cycle funding and fees", () => {
+  it("reads a 108-day Aster cycle and keeps ASTER fees separate from USDT", async () => {
+    const f = fixture("aster");
+    const old = now - 108 * 86400_000;
+    f.fills[0]!.time = old;
+    f.fills[0]!.commissionAsset = "ASTER";
+    f.fills[1]!.time = old + 1000;
+    f.ledger[0]!.time = old + 3000;
+    await f.reader.enrich([f.p]);
+    expect(f.p.funding).toMatchObject({
+      since: old,
+      amount: "0.18",
+      realizedPnl: "50",
+      tradingFees: null,
+      tradingFeesByAsset: { ASTER: "0.8", USDT: "-0.1" },
+      breakEvenPrice: null,
+      status: "complete",
+    });
+    expect(f.request.mock.calls.length).toBeLessThanOrEqual(82);
+  });
+  it("ignores foreign commissions from a previous Aster cycle", async () => {
+    const f = fixture("aster");
+    f.fills.push(
+      {
+        ...f.fills[0]!,
+        id: "old1",
+        tradeId: "old1",
+        qty: "1",
+        time: opening - 2000,
+        commissionAsset: "ASTER",
+      },
+      {
+        ...f.fills[1]!,
+        id: "old2",
+        tradeId: "old2",
+        qty: "1",
+        time: opening - 1000,
+        commissionAsset: "ASTER",
+      },
+    );
+    await f.reader.enrich([f.p]);
+    expect(f.p.funding).toMatchObject({
+      since: opening,
+      tradingFees: "0.7",
+      amount: "0.18",
+    });
+  });
   it.each(["bingx", "aster"] as const)(
     "reads %s opening, reductions, rebates and funding without double counting",
     async (venue) => {

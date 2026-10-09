@@ -78,7 +78,8 @@ export class CycleHistoryReader {
     p: OpenPosition,
     positions: OpenPosition[],
   ): Promise<FundingSummary> {
-    let budget = 30;
+    // Aster needs up to 26 weekly windows each for fills, commissions and funding.
+    let budget = this.venue === "aster" ? 82 : 30;
     const get = async (path: string, params: Row = {}, weight = 1) => {
       if (--budget < 0) throw new Error("History budget exhausted");
       const response = await this.request(
@@ -99,7 +100,7 @@ export class CycleHistoryReader {
         throw new Error("Split positions unsupported");
     }
     const now = Date.now(),
-      earliest = now - LOOKBACK;
+      earliest = now - (this.venue === "aster" ? 180 * 86400_000 : LOOKBACK);
     const signedSize = new D(p.baseSize)
       .mul(p.side === "short" ? -1 : 1)
       .toFixed();
@@ -107,6 +108,7 @@ export class CycleHistoryReader {
       time: number;
       quantity: string;
       fee: string;
+      feeAsset: string;
       pnl: string | null;
       id: string | null;
     }[] = [];
@@ -207,15 +209,11 @@ export class CycleHistoryReader {
         const quantity = rd(r.qty ?? r.volume);
         if (!new D(quantity).isPositive())
           throw new Error("Invalid fill quantity");
-        if (
-          !new D(fee).isZero() &&
-          (r.currency ?? r.commissionAsset ?? p.settle) !== p.settle
-        )
-          throw new Error("Foreign fee asset");
         trades.push({
           time: t,
           quantity: new D(quantity).mul(r.side === "SELL" ? -1 : 1).toFixed(),
           fee: new D(fee).negated().toFixed(),
+          feeAsset: String(r.commissionAsset ?? r.currency ?? p.settle),
           pnl: decimal(r.realizedPnl),
           id: id == null ? null : String(id),
         });
@@ -225,6 +223,11 @@ export class CycleHistoryReader {
     }
     if (since === null) throw new Error("Opening outside history");
     const cycle = trades.filter((r) => r.time >= since!);
+    const foreignFees = cycle.some(
+      (r) => !new D(r.fee).isZero() && r.feeAsset !== p.settle,
+    );
+    if (foreignFees && this.venue !== "aster")
+      throw new Error("Foreign fee asset");
     if (
       !new D(signedSize).minus(sum(cycle.map((r) => r.quantity))).isZero() ||
       cycle.some(
@@ -235,13 +238,14 @@ export class CycleHistoryReader {
     )
       throw new Error("Reversal allocation unavailable");
     let fees = decimal(sum(cycle.map((r) => r.fee)));
+    let tradingFeesByAsset: Record<string, string> | undefined;
     // Aster's income ledger has unambiguous cash-flow signs, unlike fee fields
     // across API revisions. Match commissions to fills rather than a hedge symbol.
     if (this.venue === "aster") {
       if (cycle.some((r) => r.id === null))
         throw new Error("Missing fill identities");
       const cycleIds = new Set(cycle.map((r) => r.id));
-      const values: string[] = [],
+      const values = new Map<string, string[]>(),
         seen = new Set<string>(),
         charged = new Set<string>();
       for (let start = since; start <= now; ) {
@@ -264,7 +268,8 @@ export class CycleHistoryReader {
         for (const r of batch) {
           if (
             r.symbol !== p.symbol ||
-            r.asset !== p.settle ||
+            typeof r.asset !== "string" ||
+            !/^[A-Z0-9]{1,20}$/.test(r.asset) ||
             r.incomeType !== "COMMISSION" ||
             time(r.time) < start ||
             time(r.time) > end ||
@@ -277,14 +282,26 @@ export class CycleHistoryReader {
           seen.add(id);
           if (cycleIds.has(String(r.tradeId))) {
             charged.add(String(r.tradeId));
-            values.push(new D(rd(r.income)).negated().toFixed());
+            const amounts = values.get(r.asset) ?? [];
+            amounts.push(new D(rd(r.income)).negated().toFixed());
+            values.set(r.asset, amounts);
           }
         }
         start = end + 1;
       }
       if (cycle.some((r) => !new D(r.fee).isZero() && !charged.has(r.id!)))
         throw new Error("Commission ledger incomplete");
-      fees = decimal(sum(values));
+      tradingFeesByAsset = Object.fromEntries(
+        [...values].map(([asset, amounts]) => [asset, sum(amounts)]),
+      );
+      fees =
+        foreignFees ||
+        [...values].some(
+          ([asset, amounts]) =>
+            asset !== p.settle && amounts.some((v) => !new D(v).isZero()),
+        )
+          ? null
+          : decimal(tradingFeesByAsset[p.settle] ?? "0");
     }
     const reductions = cycle.filter((r) => r.time > since!);
     let realized = reductions.every((r) => r.pnl !== null)
@@ -396,6 +413,7 @@ export class CycleHistoryReader {
       amount,
       realizedPnl: realized,
       tradingFees: fees,
+      tradingFeesByAsset,
       since,
       updatedAt: now,
       status: amount === null ? "unavailable" : "complete",

@@ -542,9 +542,17 @@ export function PositionsPage({
                   <div>
                     <dt
                       className="text-text-muted"
-                      title={t("closedAfterFeesDescription")}
+                      title={
+                        closedAfterFees == null
+                          ? undefined
+                          : t("closedAfterFeesDescription")
+                      }
                     >
-                      {t("closedAfterFees")}
+                      {t(
+                        closedAfterFees == null
+                          ? "closedPnl"
+                          : "closedAfterFees",
+                      )}
                     </dt>
                     <dd
                       className={
@@ -558,11 +566,30 @@ export function PositionsPage({
                       }
                     >
                       <Quantity
-                        value={closedAfterFees}
+                        value={
+                          closedAfterFees ?? p.funding?.realizedPnl ?? null
+                        }
                         maximumFractionDigits={4}
                       />{" "}
                       {p.settle}
                     </dd>
+                    {closedAfterFees == null &&
+                      p.funding?.tradingFeesByAsset && (
+                        <div className="mt-2 text-xs text-text-muted">
+                          <p>{t("tradingFees")}</p>
+                          {Object.entries(p.funding.tradingFeesByAsset).map(
+                            ([asset, fee]) => (
+                              <p key={asset}>
+                                <Quantity
+                                  value={fee}
+                                  maximumFractionDigits={8}
+                                />{" "}
+                                {asset}
+                              </p>
+                            ),
+                          )}
+                        </div>
+                      )}
                   </div>
                   <div>
                     <dt className="text-text-muted">{t("funding")}</dt>

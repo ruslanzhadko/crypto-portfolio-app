@@ -8,6 +8,8 @@ export type FundingSummary = {
   realizedPnl?: string | null;
   /** Paid trading fees in settlement currency; negative values are rebates. */
   tradingFees?: string | null;
+  /** Actual paid fees by currency; never sum different assets without historical FX. */
+  tradingFeesByAsset?: Record<string, string>;
   breakEvenPrice?: string | null;
   nextRate?: string | null;
   nextTime?: number | null;
