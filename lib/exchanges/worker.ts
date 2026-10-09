@@ -13,6 +13,7 @@ import { BinanceAdapter, BybitAdapter } from "./adapters";
 import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
 import { BingxAdapter } from "./bingx";
+import { BitgetAdapter } from "./bitget";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
 import { AsterApiAdapter, createAsterTransport } from "./aster-api";
@@ -110,7 +111,12 @@ export async function commitResult(
           },
         });
       // Hyperliquid can change account mode. Remove obsolete pools only after a full successful response.
-      if (c.exchange === "hyperliquid" && result.failedAccounts.length === 0)
+      if (
+        result.failedAccounts.length === 0 &&
+        (c.exchange === "hyperliquid" ||
+          (c.exchange === "bitget" &&
+            result.accounts.some((a) => a.kind !== "futures")))
+      )
         await tx.exchangeAccount.deleteMany({
           where: { connectionId, accountKey: { notIn: activeKeys } },
         });
@@ -306,45 +312,59 @@ export async function runOneJob(): Promise<boolean> {
       } else {
         if (
           !c.credentials ||
-          !["binance", "bybit", "gate", "okx", "bingx"].includes(c.exchange)
+          !["binance", "bybit", "gate", "okx", "bingx", "bitget"].includes(
+            c.exchange,
+          )
         )
           throw new ExchangeError("INVALID_KEY");
         const credentials = decryptCredentials(c.credentials, c.userId, c.id);
         const transport = createTransport(
-          c.exchange as "binance" | "bybit" | "gate" | "okx" | "bingx",
+          c.exchange as
+            | "binance"
+            | "bybit"
+            | "gate"
+            | "okx"
+            | "bingx"
+            | "bitget",
           credentials,
         );
         adapter =
-          c.exchange === "bingx"
-            ? new BingxAdapter(
+          c.exchange === "bitget"
+            ? new BitgetAdapter(
                 transport.request,
                 settlementPrices,
                 transport.close,
               )
-            : c.exchange === "gate"
-              ? new GateAdapter(
+            : c.exchange === "bingx"
+              ? new BingxAdapter(
                   transport.request,
                   settlementPrices,
-                  credentials.apiKey,
                   transport.close,
                 )
-              : c.exchange === "okx"
-                ? new OkxAdapter(
+              : c.exchange === "gate"
+                ? new GateAdapter(
                     transport.request,
                     settlementPrices,
+                    credentials.apiKey,
                     transport.close,
                   )
-                : c.exchange === "binance"
-                  ? new BinanceAdapter(
+                : c.exchange === "okx"
+                  ? new OkxAdapter(
                       transport.request,
                       settlementPrices,
                       transport.close,
                     )
-                  : new BybitAdapter(
-                      transport.request,
-                      settlementPrices,
-                      transport.close,
-                    );
+                  : c.exchange === "binance"
+                    ? new BinanceAdapter(
+                        transport.request,
+                        settlementPrices,
+                        transport.close,
+                      )
+                    : new BybitAdapter(
+                        transport.request,
+                        settlementPrices,
+                        transport.close,
+                      );
         // Re-encrypt with the active key version; old versions remain available during rollout.
         const encrypted = encryptCredentials(credentials, c.userId, c.id);
         await prisma.exchangeConnection.updateMany({

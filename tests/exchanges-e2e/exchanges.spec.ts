@@ -149,6 +149,103 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+test("Bitget connection requires encrypted Passphrase and renders Classic and Unified accounts", async ({
+  page,
+}) => {
+  await page.goto("/en/exchanges");
+  await page.getByRole("button", { name: "Connect exchange" }).click();
+  await page.getByLabel("Exchange", { exact: true }).selectOption("bitget");
+  const passphrase = page.getByLabel("API Passphrase", { exact: true });
+  await expect(passphrase).toHaveAttribute("type", "password");
+  await expect(passphrase).toHaveAttribute("required", "");
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    await expect(passphrase).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    if (process.env.EXCHANGE_VISUAL_QA)
+      await page.screenshot({
+        path: `test-results/bitget-connection-${width}.png`,
+        fullPage: true,
+      });
+  }
+  await page.getByLabel("Account name").fill("Main Bitget");
+  await page
+    .getByLabel("API key", { exact: true })
+    .fill("bitget-fixture-key-1234");
+  await page
+    .getByLabel("API secret", { exact: true })
+    .fill("bitget-fixture-secret");
+  await passphrase.fill("bitget-fixture-passphrase");
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByRole("link", { name: "Main Bitget" })).toBeVisible();
+  const c = await prisma.exchangeConnection.findFirstOrThrow({
+    where: { userId, label: "Main Bitget" },
+  });
+  expect(c.exchange).toBe("bitget");
+  expect(c.credentials).not.toContain("bitget-fixture-passphrase");
+  await expect
+    .poll(
+      async () =>
+        !!(await prisma.exchangeSyncJob.findUnique({
+          where: { connectionId: c.id },
+        })),
+    )
+    .toBe(true);
+  const account = fixture.accounts[0]!;
+  const job = (await claimJob())!;
+  expect(
+    await commitResult(
+      c.id,
+      1,
+      job.token,
+      {
+        accounts: [
+          {
+            ...account,
+            accountKey: "spot",
+            kind: "spot",
+            mode: "spot",
+            equityUsd: "20",
+            positions: [],
+            balances: [],
+          },
+          {
+            ...account,
+            accountKey: "futures:usdt-futures",
+            kind: "futures",
+            mode: "classic",
+          },
+        ],
+        failedAccounts: [],
+      },
+      new Date(),
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Main Bitget" }).click();
+  await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
+  const positions = await page.request.get("/api/positions?exchange=bitget");
+  expect((await positions.json()).positions).toHaveLength(1);
+  const nextJob = (await claimJob())!;
+  expect(
+    await commitResult(
+      c.id,
+      1,
+      nextJob.token,
+      { accounts: [{ ...account, mode: "bitget-basic" }], failedAccounts: [] },
+      new Date(),
+    ),
+  ).toBe(true);
+  await page.reload();
+  await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
+  expect(
+    await prisma.exchangeAccount.count({ where: { connectionId: c.id } }),
+  ).toBe(1);
+});
+
 test("BingX connects with encrypted read-only credentials on desktop and mobile", async ({ page }) => {
   await page.goto("/en/exchanges");
   await page.getByRole("button", { name: "Connect exchange" }).click();

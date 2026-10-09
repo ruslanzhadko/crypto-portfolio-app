@@ -88,7 +88,7 @@ export async function readBody(req: NextRequest): Promise<unknown> {
 }
 const createSchema = credentialsSchema
   .extend({
-    exchange: z.enum(["bybit", "binance", "gate", "okx", "bingx"]),
+    exchange: z.enum(["bybit", "binance", "gate", "okx", "bingx", "bitget"]),
     label: z.string().trim().min(1).max(80),
   })
   .strict();
@@ -192,9 +192,14 @@ export async function createConnection(req: NextRequest) {
     const { apiKey, secret, passphrase, exchange, label } = parsed.data,
       id = randomUUID(),
       userId = guard.user.id;
-    if (exchange === "okx" && !passphrase) return failure("BAD_REQUEST");
+    if (["okx", "bitget"].includes(exchange) && !passphrase)
+      return failure("BAD_REQUEST");
     const credentials = encryptCredentials(
-      { apiKey, secret, ...(exchange === "okx" ? { passphrase } : {}) },
+      {
+        apiKey,
+        secret,
+        ...(["okx", "bitget"].includes(exchange) ? { passphrase } : {}),
+      },
       userId,
       id,
     );
@@ -296,7 +301,10 @@ export async function changeConnection(
         .strict()
         .safeParse(await readBody(req));
       if (!parsed.success) return failure("BAD_REQUEST");
-      if (existing.exchange === "okx" && !parsed.data.passphrase)
+      if (
+        ["okx", "bitget"].includes(existing.exchange) &&
+        !parsed.data.passphrase
+      )
         return failure("BAD_REQUEST");
       if (
         existing.exchange === "aster" &&
@@ -325,7 +333,7 @@ export async function changeConnection(
           {
             apiKey: parsed.data.apiKey,
             secret: parsed.data.secret,
-            ...(existing.exchange === "okx"
+            ...(["okx", "bitget"].includes(existing.exchange)
               ? { passphrase: parsed.data.passphrase }
               : {}),
           },

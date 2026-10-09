@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
             "gate",
             "okx",
             "bingx",
+            "bitget",
             "hyperliquid",
             "aster",
           ])

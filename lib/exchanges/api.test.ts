@@ -181,13 +181,13 @@ describe("exchange API authorization and secrets", () => {
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.enqueue).not.toHaveBeenCalled();
   });
-  it.each(["gate", "okx", "bingx"])(
+  it.each(["gate", "okx", "bingx", "bitget"])(
     "accepts %s and encrypts all required credentials",
     async (exchange) => {
       const credentials = {
         apiKey: "key-test-1234",
         secret: "private-secret-test",
-        ...(exchange === "okx" ? { passphrase: "private-passphrase" } : {}),
+        ...(["okx", "bitget"].includes(exchange) ? { passphrase: "private-passphrase" } : {}),
       };
       const response = await createConnection(
         request("POST", { exchange, label: "New exchange", ...credentials }),
@@ -205,7 +205,7 @@ describe("exchange API authorization and secrets", () => {
       );
     },
   );
-  it("requires OKX passphrase on both create and replacement before writes", async () => {
+  it.each(["okx", "bitget"])("requires %s passphrase on both create and replacement before writes", async (exchange) => {
     const credentials = {
       apiKey: "key-test-1234",
       secret: "private-secret-test",
@@ -213,11 +213,11 @@ describe("exchange API authorization and secrets", () => {
     expect(
       (
         await createConnection(
-          request("POST", { exchange: "okx", label: "OKX", ...credentials }),
+          request("POST", { exchange, label: "Passphrase required", ...credentials }),
         )
       ).status,
     ).toBe(400);
-    mocks.findFirst.mockResolvedValue({ id: "connection", exchange: "okx" });
+    mocks.findFirst.mockResolvedValue({ id: "connection", exchange });
     expect(
       (
         await changeConnection(

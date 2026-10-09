@@ -4,6 +4,7 @@ export type ExchangeId =
   | "gate"
   | "okx"
   | "bingx"
+  | "bitget"
   | "hyperliquid"
   | "aster";
 export type SyncStatus =

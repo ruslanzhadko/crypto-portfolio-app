@@ -280,6 +280,7 @@ export function PositionsPage({
                   <option value="bybit">Bybit</option>
                   <option value="gate">Gate</option>
                   <option value="okx">OKX</option>
+                  <option value="bitget">Bitget</option>
                   <option value="hyperliquid">Hyperliquid</option>
                   <option value="aster">Aster</option>
                 </PositionSelect>
@@ -461,6 +462,7 @@ export function PositionsPage({
                         bybit: "Bybit",
                         gate: "Gate",
                         okx: "OKX",
+                        bitget: "Bitget",
                         hyperliquid: "Hyperliquid",
                         aster: "Aster",
                       } as Record<string, string>

@@ -122,6 +122,72 @@ describe.skipIf(!enabled)("exchange database integration", () => {
     });
     await prisma.$disconnect();
   });
+  it("replaces Bitget capital pools on full mode changes and preserves Classic spot during positions polling", async () => {
+    const c = await prisma.exchangeConnection.create({
+      data: { userId, exchange: "bitget", label: "Bitget modes" },
+    });
+    const base = snapshot.accounts[0]!;
+    const spot = {
+      ...base,
+      accountKey: "spot",
+      kind: "spot" as const,
+      mode: "spot",
+      equityUsd: "100",
+      positions: [],
+    };
+    const futures = {
+      ...base,
+      accountKey: "futures:usdt-futures",
+      kind: "futures" as const,
+      mode: "classic",
+      equityUsd: "120",
+    };
+    async function commit(
+      accounts: SyncResult["accounts"],
+      failedAccounts: SyncResult["failedAccounts"] = [],
+    ) {
+      await enqueue(c.id);
+      const job = (await claimJob())!;
+      expect(
+        await commitResult(
+          c.id,
+          1,
+          job.token,
+          { accounts, failedAccounts },
+          new Date(),
+        ),
+      ).toBe(true);
+      return prisma.exchangeAccount.findMany({
+        where: { connectionId: c.id },
+        orderBy: { accountKey: "asc" },
+      });
+    }
+    expect((await commit([spot, futures])).map((a) => a.accountKey)).toEqual([
+      futures.accountKey,
+      "spot",
+    ]);
+    expect((await commit([futures])).map((a) => a.accountKey)).toEqual([
+      futures.accountKey,
+      "spot",
+    ]);
+    expect(
+      (
+        await commit(
+          [futures],
+          [{ accountKey: "spot", kind: "spot", errorCode: "UNAVAILABLE" }],
+        )
+      ).map((a) => a.accountKey),
+    ).toEqual([futures.accountKey, "spot"]);
+    const unified = { ...base, equityUsd: "220" };
+    const pools = await commit([unified]);
+    expect(pools.map((a) => a.accountKey)).toEqual(["unified"]);
+    expect(pools[0]!.equityUsd?.toString()).toBe("220");
+    expect((await commit([spot, futures])).map((a) => a.accountKey)).toEqual([
+      futures.accountKey,
+      "spot",
+    ]);
+    await prisma.exchangeConnection.delete({ where: { id: c.id } });
+  });
   it("does not count unsupported Aster spot as stale and removes its old placeholder after futures sync", async () => {
     const c = await prisma.exchangeConnection.create({
       data: {

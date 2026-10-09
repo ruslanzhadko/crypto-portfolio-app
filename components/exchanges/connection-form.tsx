@@ -54,7 +54,7 @@ export function ConnectionForm({
       : {
           apiKey: values.get("apiKey"),
           secret: values.get("secret"),
-          ...(exchange === "okx"
+          ...(["okx", "bitget"].includes(exchange)
             ? { passphrase: values.get("passphrase") }
             : {}),
           ...(connectionId
@@ -122,6 +122,7 @@ export function ConnectionForm({
                 <option value="gate">Gate</option>
                 <option value="okx">OKX</option>
                 <option value="bingx">BingX</option>
+                <option value="bitget">Bitget</option>
                 <option value="aster">Aster</option>
               </select>
               <ChevronDown
@@ -202,7 +203,7 @@ export function ConnectionForm({
           </div>
         </div>
       )}
-      {exchange === "okx" && (
+      {["okx", "bitget"].includes(exchange) && (
         <div className="max-w-sm space-y-2">
           <Label htmlFor="exchange-passphrase">API Passphrase</Label>
           <Input
@@ -214,7 +215,9 @@ export function ConnectionForm({
             maxLength={256}
             spellCheck={false}
           />
-          <p className="text-xs text-text-muted">{t("passphraseHint")}</p>
+          {exchange === "okx" && (
+            <p className="text-xs text-text-muted">{t("passphraseHint")}</p>
+          )}
         </div>
       )}
       {exchange === "gate" && (
@@ -222,6 +225,11 @@ export function ConnectionForm({
       )}
       {exchange === "bingx" && (
         <p className="text-xs text-text-muted">{t("bingxPermissionsHint")}</p>
+      )}
+      {exchange === "bitget" && (
+        <p className="text-sm leading-relaxed text-text-muted">
+          {t("bitgetPermissionsHint")}
+        </p>
       )}
       {connectionId && (
         <div className="max-w-sm space-y-2">
