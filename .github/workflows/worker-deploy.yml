@@ -21,7 +21,8 @@ jobs:
       NEXT_TELEMETRY_DISABLED: '1'
     services:
       postgres:
-        image: postgres:16-alpine
+        # Google mirror of Docker Official Images avoids shared-runner Hub pull limits.
+        image: mirror.gcr.io/library/postgres:16-alpine
         env:
           POSTGRES_USER: exchange_test
           POSTGRES_PASSWORD: ci-test-only
