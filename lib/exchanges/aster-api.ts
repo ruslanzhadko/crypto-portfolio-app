@@ -1,4 +1,5 @@
 import { aster } from "ccxt";
+import { isIP } from "node:net";
 import { record, records } from "./adapters";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import { positive, textField, timestamp } from "./provider-utils";
@@ -20,6 +21,40 @@ const PRIVATE_PATHS = new Set([
   "v3/userTrades",
   "v3/income",
 ]);
+/** Agent responses can encode the saved IP list as text or an array. */
+export function assertAsterIpWhitelist(value: unknown) {
+  let list: unknown = value;
+  if (typeof list === "string") {
+    const text = list.trim();
+    if (text.startsWith("[")) {
+      try {
+        list = JSON.parse(text);
+      } catch {
+        throw new ExchangeError("IP_RESTRICTED");
+      }
+    } else list = text.split(/[\s,;]+/);
+  }
+  if (
+    !Array.isArray(list) ||
+    !list.length ||
+    list.some((ip) => {
+      if (typeof ip !== "string") return true;
+      const [address, prefix, extra] = ip.trim().split("/");
+      const version = isIP(address ?? "");
+      return (
+        !version ||
+        address === "0.0.0.0" ||
+        address === "::" ||
+        extra !== undefined ||
+        (prefix !== undefined &&
+          (!/^\d+$/.test(prefix) ||
+            Number(prefix) < 1 ||
+            Number(prefix) > (version === 4 ? 32 : 128)))
+      );
+    })
+  )
+    throw new ExchangeError("IP_RESTRICTED");
+}
 /** Only a separate Aster API Wallet is accepted; the main wallet's key is never needed. */
 export function createAsterTransport(user: string, credentials: Credentials) {
   if (
@@ -89,6 +124,7 @@ export class AsterApiAdapter implements ExchangeAdapter {
     public close = async () => {},
   ) {}
   async verify() {
+    this.verified = false;
     const agents = records(await this.request("v3/agent", "fapiPrivate"));
     const agent = agents.find(
       (r) =>
@@ -108,14 +144,7 @@ export class AsterApiAdapter implements ExchangeAdapter {
       )
     )
       throw new ExchangeError("UNSAFE_KEY");
-    if (
-      typeof agent.ipWhitelist !== "string" ||
-      !agent.ipWhitelist.trim() ||
-      agent.ipWhitelist
-        .split(/\s+/)
-        .some((ip) => ["*", "0.0.0.0", "0.0.0.0/0", "::/0"].includes(ip))
-    )
-      throw new ExchangeError("IP_RESTRICTED");
+    assertAsterIpWhitelist(agent.ipWhitelist);
     this.verified = true;
     return { externalAccountId: this.user.toLowerCase() };
   }

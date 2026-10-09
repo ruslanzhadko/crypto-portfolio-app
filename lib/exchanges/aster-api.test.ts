@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { aster } from "ccxt";
 vi.mock("./rate-budget", () => ({ reserveRequest: vi.fn() }));
-import { AsterApiAdapter, createAsterTransport } from "./aster-api";
+import {
+  AsterApiAdapter,
+  createAsterTransport,
+  assertAsterIpWhitelist,
+} from "./aster-api";
 const user = `0x${"a".repeat(40)}`;
 const secret = "1".repeat(64),
   client = new aster({ privateKey: secret });
@@ -64,6 +68,28 @@ function fixture() {
 }
 afterEach(() => vi.restoreAllMocks());
 describe("Aster authenticated API Wallet", () => {
+  it.each([
+    "34.118.101.48",
+    ["34.118.101.48"],
+    '["34.118.101.48"]',
+    "34.118.101.48,203.0.113.10",
+    "34.118.101.48/32",
+  ])("accepts saved restricted IP lists: %j", (value) => {
+    expect(() => assertAsterIpWhitelist(value)).not.toThrow();
+  });
+  it.each([
+    "",
+    [],
+    [""],
+    undefined,
+    "*",
+    '["0.0.0.0/0"]',
+    ["34.118.101.48", "::/0"],
+    "unknown",
+    "34.118.101.48/0",
+  ])("rejects missing, malformed and unrestricted IP lists: %j", (value) => {
+    expect(() => assertAsterIpWhitelist(value)).toThrow("IP_RESTRICTED");
+  });
   it("checks separate signer identity and uses only allowlisted signed GET requests", async () => {
     const transport = createAsterTransport(user, { apiKey: signer, secret });
     const signed = client.sign("v3/account", "fapiPrivate", "GET", {
