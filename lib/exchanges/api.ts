@@ -87,7 +87,7 @@ export async function readBody(req: NextRequest): Promise<unknown> {
 }
 const createSchema = credentialsSchema
   .extend({
-    exchange: z.enum(["bybit", "binance", "gate", "okx"]),
+    exchange: z.enum(["bybit", "binance", "gate", "okx", "bingx"]),
     label: z.string().trim().min(1).max(80),
   })
   .strict();

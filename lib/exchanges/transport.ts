@@ -1,4 +1,4 @@
-import { binance, bybit, gate, okx, type Exchange } from "ccxt";
+import { binance, bybit, gate, okx, bingx, type Exchange } from "ccxt";
 import { reserveRequest } from "./rate-budget";
 export { reserveRequest, sleep } from "./rate-budget";
 import type { Credentials } from "./types";
@@ -10,10 +10,10 @@ export type Request = (
   weight?: number,
 ) => Promise<unknown>;
 export function createTransport(
-  id: "binance" | "bybit" | "gate" | "okx",
+  id: "binance" | "bybit" | "gate" | "okx" | "bingx",
   credentials: Credentials,
 ) {
-  const Client = { binance, bybit, gate, okx }[id];
+  const Client = { binance, bybit, gate, okx, bingx }[id];
   const client: Exchange = new Client({
     apiKey: credentials.apiKey,
     secret: credentials.secret,
@@ -27,7 +27,7 @@ export function createTransport(
     await reserveRequest(id, weight);
     return client.request(
       path,
-      id === "gate" ? api.split(":") : api,
+      ["gate", "bingx"].includes(id) ? api.split(":") : api,
       "GET",
       params,
     );

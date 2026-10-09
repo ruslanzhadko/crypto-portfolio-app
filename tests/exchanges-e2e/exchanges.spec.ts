@@ -148,6 +148,37 @@ test.afterAll(async () => {
   await prisma.$disconnect();
 });
 
+test("BingX connects with encrypted read-only credentials on desktop and mobile", async ({ page }) => {
+  await page.goto("/en/exchanges");
+  await page.getByRole("button", { name: "Connect exchange" }).click();
+  await page.getByLabel("Exchange", { exact: true }).selectOption("bingx");
+  await expect(page.getByLabel("API Passphrase", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("BingX: enable Read only", { exact: false })).toBeVisible();
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByLabel("Account name").fill("Main BingX");
+  await page.getByLabel("API key", { exact: true }).fill("bingx-fixture-key-1234");
+  await page.getByLabel("API secret", { exact: true }).fill("bingx-fixture-secret");
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByRole("link", { name: "Main BingX" })).toBeVisible();
+  const c = await prisma.exchangeConnection.findFirstOrThrow({ where: { userId, label: "Main BingX" } });
+  expect(c.exchange).toBe("bingx");
+  expect(c.credentials).not.toContain("bingx-fixture-secret");
+  await expect.poll(async () => (await prisma.exchangeSyncJob.findUnique({ where: { connectionId: c.id } })) !== null).toBe(true);
+  const job = (await claimJob())!;
+  const futures = fixture.accounts[0]!;
+  expect(await commitResult(c.id, 1, job.token, { accounts: [
+    { ...futures, accountKey: "futures:usdt", kind: "futures", mode: "perpetual", balances: futures.balances.map(b => ({ ...b, assetId: "bingx:USDT" })), positions: futures.positions!.map(p => ({ ...p, symbol: "BTC-USDT" })) },
+    { ...futures, accountKey: "spot", kind: "spot", mode: "spot", equityUsd: "20", positions: [], unrealizedPnlUsd: null, balances: [] },
+  ], failedAccounts: [] }, new Date())).toBe(true);
+  const response = await page.request.get("/api/positions?exchange=bingx");
+  expect(response.status()).toBe(200);
+  expect((await response.json()).positions[0].symbol).toBe("BTC-USDT");
+  await page.getByRole("link", { name: "Main BingX" }).click();
+  await expect(page.getByText("BTC-USDT", { exact: true })).toBeVisible();
+});
 test("Gate and OKX connection forms, encrypted passphrase and OKX replacement", async ({ page }) => {
   await page.goto("/en/exchanges");
   await page.getByRole("button", { name: "Connect exchange" }).click();
@@ -212,6 +243,7 @@ test("Aster links an existing wallet without keys and coexists with Hyperliquid"
   const connection = await prisma.exchangeConnection.findFirstOrThrow({ where: { userId, exchange: "aster", walletId: wallet.id } });
   expect(connection.credentials).toBeNull();
   await page.getByRole("link", { name: "Main Aster" }).click();
+  await expect(page).toHaveURL(`/en/exchanges/${connection.id}`, { timeout: 15000 });
   await expect(page.getByRole("button", { name: "Replace API key" })).toHaveCount(0);
   await expect(page.getByText(/Aster positions and futures collateral/)).toBeVisible();
   await prisma.exchangeConnection.deleteMany({ where: { walletId: wallet.id } });

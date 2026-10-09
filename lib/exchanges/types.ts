@@ -1,4 +1,11 @@
-export type ExchangeId = "binance" | "bybit" | "gate" | "okx" | "hyperliquid" | "aster";
+export type ExchangeId =
+  | "binance"
+  | "bybit"
+  | "gate"
+  | "okx"
+  | "bingx"
+  | "hyperliquid"
+  | "aster";
 export type SyncStatus =
   | "PENDING"
   | "ACTIVE"

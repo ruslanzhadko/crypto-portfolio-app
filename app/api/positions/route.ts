@@ -19,7 +19,15 @@ export async function GET(req: NextRequest) {
     const parsed = z
       .object({
         exchange: z
-          .enum(["binance", "bybit", "gate", "okx", "hyperliquid", "aster"])
+          .enum([
+            "binance",
+            "bybit",
+            "gate",
+            "okx",
+            "bingx",
+            "hyperliquid",
+            "aster",
+          ])
           .optional(),
         connectionId: z.string().max(100).optional(),
         coin: z.string().max(40).optional(),

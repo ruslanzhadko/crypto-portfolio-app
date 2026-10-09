@@ -114,6 +114,7 @@ export function ConnectionForm({
                 <option value="binance">Binance</option>
                 <option value="gate">Gate</option>
                 <option value="okx">OKX</option>
+                <option value="bingx">BingX</option>
                 <option value="aster">Aster</option>
               </select>
               <ChevronDown
@@ -205,6 +206,9 @@ export function ConnectionForm({
       )}
       {exchange === "gate" && (
         <p className="text-xs text-text-muted">{t("gatePermissionsHint")}</p>
+      )}
+      {exchange === "bingx" && (
+        <p className="text-xs text-text-muted">{t("bingxPermissionsHint")}</p>
       )}
       {connectionId && (
         <div className="max-w-sm space-y-2">

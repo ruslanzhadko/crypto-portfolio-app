@@ -12,6 +12,7 @@ import { createTransport } from "./transport";
 import { BinanceAdapter, BybitAdapter } from "./adapters";
 import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
+import { BingxAdapter } from "./bingx";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
 import { settlementPrices } from "./pricing";
@@ -293,39 +294,45 @@ export async function runOneJob(): Promise<boolean> {
       } else {
         if (
           !c.credentials ||
-          !["binance", "bybit", "gate", "okx"].includes(c.exchange)
+          !["binance", "bybit", "gate", "okx", "bingx"].includes(c.exchange)
         )
           throw new ExchangeError("INVALID_KEY");
         const credentials = decryptCredentials(c.credentials, c.userId, c.id);
         const transport = createTransport(
-          c.exchange as "binance" | "bybit" | "gate" | "okx",
+          c.exchange as "binance" | "bybit" | "gate" | "okx" | "bingx",
           credentials,
         );
         adapter =
-          c.exchange === "gate"
-            ? new GateAdapter(
+          c.exchange === "bingx"
+            ? new BingxAdapter(
                 transport.request,
                 settlementPrices,
-                credentials.apiKey,
                 transport.close,
               )
-            : c.exchange === "okx"
-              ? new OkxAdapter(
+            : c.exchange === "gate"
+              ? new GateAdapter(
                   transport.request,
                   settlementPrices,
+                  credentials.apiKey,
                   transport.close,
                 )
-              : c.exchange === "binance"
-                ? new BinanceAdapter(
+              : c.exchange === "okx"
+                ? new OkxAdapter(
                     transport.request,
                     settlementPrices,
                     transport.close,
                   )
-                : new BybitAdapter(
-                    transport.request,
-                    settlementPrices,
-                    transport.close,
-                  );
+                : c.exchange === "binance"
+                  ? new BinanceAdapter(
+                      transport.request,
+                      settlementPrices,
+                      transport.close,
+                    )
+                  : new BybitAdapter(
+                      transport.request,
+                      settlementPrices,
+                      transport.close,
+                    );
         // Re-encrypt with the active key version; old versions remain available during rollout.
         const encrypted = encryptCredentials(credentials, c.userId, c.id);
         await prisma.exchangeConnection.updateMany({

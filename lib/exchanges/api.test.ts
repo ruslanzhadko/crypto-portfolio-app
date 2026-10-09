@@ -124,7 +124,7 @@ describe("exchange API authorization and secrets", () => {
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.enqueue).not.toHaveBeenCalled();
   });
-  it.each(["gate", "okx"])(
+  it.each(["gate", "okx", "bingx"])(
     "accepts %s and encrypts all required credentials",
     async (exchange) => {
       const credentials = {
