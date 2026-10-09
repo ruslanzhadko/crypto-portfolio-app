@@ -1018,6 +1018,10 @@
     "nextFunding": "Next funding",
     "nextFundingDescription": "Current exchange estimate; rate may change before settlement. Positive rate: longs pay shorts.",
     "fundingIn": "in {hours}h {minutes}m",
-    "fundingTimePending": "Awaiting settlement time update"
+    "fundingTimePending": "Awaiting settlement time update",
+    "connectAsterApi": "Connect Aster API",
+    "asterSigner": "API Wallet address (signer)",
+    "asterSignerSecret": "API Wallet key",
+    "asterApiInstructions": "Create a separate Aster API Wallet with read-only access: canRead enabled; spot trading, perpetual trading and withdrawals disabled. Allowlist the worker IP. Enter this API Wallet address and its key, never your main wallet private key. This upgrades your current futures account; spot is not included yet."
   }
 }

@@ -15,6 +15,7 @@ import { OkxAdapter } from "./okx";
 import { BingxAdapter } from "./bingx";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
+import { AsterApiAdapter, createAsterTransport } from "./aster-api";
 import { settlementPrices } from "./pricing";
 import { claimJob, enqueue, retryDelay } from "./queue";
 import {
@@ -287,10 +288,21 @@ export async function runOneJob(): Promise<boolean> {
       let adapter: ExchangeAdapter;
       if (["hyperliquid", "aster"].includes(c.exchange)) {
         if (!c.wallet?.isActive) throw new ExchangeError("UNSUPPORTED_ACCOUNT");
-        adapter =
-          c.exchange === "aster"
-            ? new AsterAdapter(c.wallet.address, settlementPrices)
-            : new HyperliquidAdapter(c.wallet.address, settlementPrices);
+        if (c.exchange === "aster" && c.credentials) {
+          const credentials = decryptCredentials(c.credentials, c.userId, c.id);
+          const transport = createAsterTransport(c.wallet.address, credentials);
+          adapter = new AsterApiAdapter(
+            c.wallet.address,
+            credentials.apiKey,
+            transport.request,
+            settlementPrices,
+            transport.close,
+          );
+        } else
+          adapter =
+            c.exchange === "aster"
+              ? new AsterAdapter(c.wallet.address, settlementPrices)
+              : new HyperliquidAdapter(c.wallet.address, settlementPrices);
       } else {
         if (
           !c.credentials ||

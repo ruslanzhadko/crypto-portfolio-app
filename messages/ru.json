@@ -1018,6 +1018,10 @@
     "nextFunding": "Следующий funding",
     "nextFundingDescription": "Текущая оценка биржи; до расчёта ставка может измениться. Положительная ставка: Long платит Short.",
     "fundingIn": "через {hours} ч {minutes} мин",
-    "fundingTimePending": "Ожидаем обновления времени"
+    "fundingTimePending": "Ожидаем обновления времени",
+    "connectAsterApi": "Подключить API Aster",
+    "asterSigner": "Адрес API Wallet (signer)",
+    "asterSignerSecret": "Ключ API Wallet",
+    "asterApiInstructions": "В Aster создай отдельный API Wallet с доступом только для чтения: canRead включён, торговля спотом и фьючерсами и вывод выключены. Добавь IP worker. Укажи адрес этого API Wallet и его ключ, а не приватный ключ основного кошелька. Подключение дополнит текущий аккаунт фьючерсов; спот пока не включён."
   }
 }

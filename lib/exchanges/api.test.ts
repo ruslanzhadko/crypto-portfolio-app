@@ -83,6 +83,63 @@ beforeEach(() => {
   });
 });
 describe("exchange API authorization and secrets", () => {
+  it("upgrades an owned Aster wallet with encrypted API credentials without deleting its last balances", async () => {
+    const { aster } = await import("ccxt");
+    const secret = "1".repeat(64),
+      client = new aster({ privateKey: secret });
+    const apiKey = client.ethGetAddressFromPrivateKey(secret);
+    mocks.findFirst.mockResolvedValue({
+      id: "connection",
+      exchange: "aster",
+      walletId: "wallet",
+      status: "ACTIVE",
+      label: "Aster",
+    });
+    mocks.wallet.mockResolvedValue({ address: `0x${"a".repeat(40)}` });
+    mocks.getSession.mockResolvedValue({
+      user: { authenticatedAt: Date.now() },
+    });
+    const response = await changeConnection(
+      request("POST", { apiKey, secret }),
+      "connection",
+      "credentials",
+    );
+    expect(response.status).toBe(200);
+    const data = mocks.update.mock.calls[0]![0].data;
+    expect(
+      decryptCredentials(data.credentials, "user-a", "connection"),
+    ).toEqual({ apiKey, secret });
+    expect(data.status).toBe("PENDING");
+    expect(data.credentialVersion).toEqual({ increment: 1 });
+    expect(mocks.accountDelete).not.toHaveBeenCalled();
+    expect(mocks.enqueue).toHaveBeenCalled();
+    expect(JSON.stringify(await response.json())).not.toContain(secret);
+    await client.close();
+  });
+  it("rejects attaching Aster credentials to inactive or foreign wallets", async () => {
+    mocks.findFirst.mockResolvedValue({
+      id: "connection",
+      exchange: "aster",
+      walletId: "foreign",
+    });
+    mocks.getSession.mockResolvedValue({
+      user: { authenticatedAt: Date.now() },
+    });
+    mocks.wallet.mockResolvedValue(null);
+    expect(
+      (
+        await changeConnection(
+          request("POST", {
+            apiKey: `0x${"b".repeat(40)}`,
+            secret: "1".repeat(64),
+          }),
+          "connection",
+          "credentials",
+        )
+      ).status,
+    ).toBe(404);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
   it("links Aster only to an active EVM wallet owned by the user without credentials", async () => {
     mocks.wallet.mockResolvedValue({
       id: "wallet",

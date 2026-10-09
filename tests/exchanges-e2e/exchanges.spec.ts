@@ -1,5 +1,6 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
 import bcrypt from "bcryptjs";
+import { aster } from "ccxt";
 import { prisma } from "../../lib/db/prisma";
 import { commitResult } from "../../lib/exchanges/worker";
 import { claimJob as claimDueJob } from "../../lib/exchanges/queue";
@@ -177,6 +178,7 @@ test("BingX connects with encrypted read-only credentials on desktop and mobile"
   expect(response.status()).toBe(200);
   expect((await response.json()).positions[0].symbol).toBe("BTC-USDT");
   await page.getByRole("link", { name: "Main BingX" }).click();
+  await expect(page).toHaveURL(`/en/exchanges/${c.id}`, { timeout: 15000 });
   await expect(page.getByText("BTC-USDT", { exact: true })).toBeVisible();
 });
 test("Gate and OKX connection forms, encrypted passphrase and OKX replacement", async ({ page }) => {
@@ -246,6 +248,24 @@ test("Aster links an existing wallet without keys and coexists with Hyperliquid"
   await expect(page).toHaveURL(`/en/exchanges/${connection.id}`, { timeout: 15000 });
   await expect(page.getByRole("button", { name: "Replace API key" })).toHaveCount(0);
   await expect(page.getByText(/Aster positions and futures collateral/)).toBeVisible();
+  await page.getByRole("button", { name: "Connect Aster API", exact: true }).click();
+  await expect(page.getByText(/never your main wallet private key/)).toBeVisible();
+  const secret = "1".repeat(64), signerClient = new aster({ privateKey: secret });
+  const signer = signerClient.ethGetAddressFromPrivateKey(secret);
+  await page.getByLabel("API Wallet address (signer)", { exact: true }).fill(signer);
+  await page.getByLabel("API Wallet key", { exact: true }).fill(secret);
+  for (const width of [390, 768, 1440]) {
+    await page.setViewportSize({ width, height: 960 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await page.getByRole("button", { name: "Save and verify" }).click();
+  await expect(page.getByRole("button", { name: "Replace API key" })).toBeVisible();
+  const upgraded = await prisma.exchangeConnection.findUniqueOrThrow({ where: { id: connection.id } });
+  expect(upgraded.walletId).toBe(wallet.id);
+  expect(upgraded.credentials).not.toContain(secret);
+  expect(upgraded.keyMask).not.toBeNull();
+  expect(await prisma.exchangeConnection.count({ where: { userId, walletId: wallet.id, exchange: "aster" } })).toBe(1);
+  await signerClient.close();
   await prisma.exchangeConnection.deleteMany({ where: { walletId: wallet.id } });
   await prisma.wallet.delete({ where: { id: wallet.id } });
 });

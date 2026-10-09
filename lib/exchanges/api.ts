@@ -10,6 +10,7 @@ import {
   credentialsSchema,
   credentialFingerprint,
   encryptCredentials,
+  decryptCredentials,
   maskKey,
 } from "./crypto";
 import { enqueue } from "./queue";
@@ -289,14 +290,19 @@ export async function changeConnection(
       ({ label, paused } = parsed.data);
     }
     if (action === "credentials") {
-      if (["hyperliquid", "aster"].includes(existing.exchange))
-        return failure("BAD_REQUEST");
+      if (existing.exchange === "hyperliquid") return failure("BAD_REQUEST");
       const parsed = credentialsSchema
         .extend({ password: z.string().max(256).optional() })
         .strict()
         .safeParse(await readBody(req));
       if (!parsed.success) return failure("BAD_REQUEST");
       if (existing.exchange === "okx" && !parsed.data.passphrase)
+        return failure("BAD_REQUEST");
+      if (
+        existing.exchange === "aster" &&
+        (!/^0x[0-9a-f]{40}$/i.test(parsed.data.apiKey) ||
+          !/^(0x)?[0-9a-f]{64}$/i.test(parsed.data.secret))
+      )
         return failure("BAD_REQUEST");
       const session = await auth();
       const recent =
@@ -336,6 +342,32 @@ export async function changeConnection(
         where: { id, userId, status: { not: "DISCONNECTED" } },
       });
       if (!c) return failure("NOT_FOUND", 404);
+      if (replacement && c.exchange === "aster") {
+        const wallet = await tx.wallet.findFirst({
+          where: {
+            id: c.walletId ?? "",
+            userId,
+            isActive: true,
+            network: "EVM",
+          },
+          select: { address: true },
+        });
+        if (!wallet) return failure("NOT_FOUND", 404);
+        if (
+          decryptCredentials(
+            replacement.credentials,
+            userId,
+            id,
+          ).apiKey.toLowerCase() === wallet.address.toLowerCase()
+        )
+          return failure("BAD_REQUEST");
+        const { createAsterTransport } = await import("./aster-api");
+        const transport = createAsterTransport(
+          wallet.address,
+          decryptCredentials(replacement.credentials, userId, id),
+        );
+        await transport.close();
+      }
       if (action === "sync") {
         if (["PAUSED", "INVALID_KEY", "UNSUPPORTED"].includes(c.status))
           return failure("CONNECTION_INACTIVE", 409);
@@ -362,7 +394,10 @@ export async function changeConnection(
         });
       } else {
         if (replacement) {
-          await tx.exchangeAccount.deleteMany({ where: { connectionId: id } });
+          if (c.exchange !== "aster")
+            await tx.exchangeAccount.deleteMany({
+              where: { connectionId: id },
+            });
           await tx.capitalEvent.create({
             data: {
               userId,

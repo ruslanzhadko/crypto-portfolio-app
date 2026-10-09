@@ -35,7 +35,8 @@ export function ConnectionForm({
       isActive: boolean;
     }[];
   }>("/api/wallets", 60_000);
-  const walletBased = exchange === "aster";
+  const walletBased = exchange === "aster" && !connectionId;
+  const asterApi = exchange === "aster" && !!connectionId;
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -87,7 +88,13 @@ export function ConnectionForm({
         {t(connectionId ? "replaceKey" : "connectExchange")}
       </h2>
       <p className="text-sm leading-relaxed text-text-muted">
-        {t(walletBased ? "asterWalletInstructions" : "keyInstructions")}
+        {t(
+          asterApi
+            ? "asterApiInstructions"
+            : walletBased
+              ? "asterWalletInstructions"
+              : "keyInstructions",
+        )}
       </p>
       {!walletBased && (
         <p className="text-sm">
@@ -162,7 +169,9 @@ export function ConnectionForm({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="exchange-key">API key</Label>
+            <Label htmlFor="exchange-key">
+              {asterApi ? t("asterSigner") : "API key"}
+            </Label>
             <Input
               id="exchange-key"
               name="apiKey"
@@ -171,11 +180,14 @@ export function ConnectionForm({
               required
               minLength={8}
               maxLength={256}
+              pattern={asterApi ? "0x[0-9a-fA-F]{40}" : undefined}
               spellCheck={false}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="exchange-secret">API secret</Label>
+            <Label htmlFor="exchange-secret">
+              {asterApi ? t("asterSignerSecret") : "API secret"}
+            </Label>
             <Input
               id="exchange-secret"
               name="secret"
@@ -184,6 +196,7 @@ export function ConnectionForm({
               required
               minLength={8}
               maxLength={512}
+              pattern={asterApi ? "(0x)?[0-9a-fA-F]{64}" : undefined}
               spellCheck={false}
             />
           </div>

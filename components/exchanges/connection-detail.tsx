@@ -78,7 +78,7 @@ export function ConnectionDetail({ id }: { id: string }) {
             <ConnectionStatus status={c.status} />
           </div>
           <ExchangeErrorNotice code={c.errorCode} />
-          {c.exchange === "aster" && (
+          {c.exchange === "aster" && !c.keyMask && (
             <p className="text-sm text-text-muted">
               {t("asterWalletInstructions")}
             </p>
@@ -104,13 +104,17 @@ export function ConnectionDetail({ id }: { id: string }) {
               >
                 {t(c.status === "PAUSED" ? "resume" : "pause")}
               </Button>
-              {!["hyperliquid", "aster"].includes(c.exchange) && (
+              {c.exchange !== "hyperliquid" && (
                 <Button
                   variant="outline"
                   disabled={busy}
                   onClick={() => setReplacing((v) => !v)}
                 >
-                  {t("replaceKey")}
+                  {t(
+                    c.exchange === "aster" && !c.keyMask
+                      ? "connectAsterApi"
+                      : "replaceKey",
+                  )}
                 </Button>
               )}
               <Button

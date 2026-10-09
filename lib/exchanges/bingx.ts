@@ -11,6 +11,7 @@ import {
   type SyncResult,
 } from "./types";
 import type { Request } from "./transport";
+import { CycleHistoryReader } from "./cycle-history";
 
 export function bingxData(value: unknown): unknown {
   const envelope = record(value);
@@ -30,6 +31,9 @@ export function bingxData(value: unknown): unknown {
 /** Spot and USDT perpetuals use separate equity pools. All requests are GET. */
 export class BingxAdapter implements ExchangeAdapter {
   private verified = false;
+  private history = new CycleHistoryReader("bingx", (...args) =>
+    this.request(...args),
+  );
   constructor(
     private request: Request,
     private prices: () => Promise<Map<string, string>>,
@@ -183,6 +187,7 @@ export class BingxAdapter implements ExchangeAdapter {
       positions.length
     )
       throw new ExchangeError("INVALID_RESPONSE");
+    await this.history.enrich(positions);
     const total = sum(wallets.map((wallet) => rd(wallet.balance))),
       free = sum(wallets.map((wallet) => rd(wallet.availableMargin)));
     const complete = rate !== null;

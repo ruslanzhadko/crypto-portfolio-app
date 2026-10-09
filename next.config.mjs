@@ -14,7 +14,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.dexscreener.com' },
     ],
   },
-  serverExternalPackages: ['@prisma/client', 'bcryptjs'],
+  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'ccxt'],
 };
 
 export default withNextIntl(nextConfig);
