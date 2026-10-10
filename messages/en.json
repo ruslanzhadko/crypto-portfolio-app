@@ -899,6 +899,8 @@
     "size": "Position size",
     "entryMark": "Entry / mark",
     "realizedPnl": "Realized PnL",
+    "pnlBeforeForeignFees": "PnL before {assets} fees",
+    "asterWalletBalanceNote": "Aster: this balance excludes unrealized PnL and may be negative. Account equity above includes unrealized PnL.",
     "pnlBreakdown": "Breakdown",
     "pnlWithFunding": "Including funding",
     "pnlExcludesFees": "Trading fees excluded.",

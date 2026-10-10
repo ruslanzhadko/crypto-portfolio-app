@@ -34,6 +34,11 @@ export function BalanceTable({
     <section className="min-w-0 space-y-3">
       <h3 className="font-semibold">{t("exchangeAssets")}</h3>
       <p className="text-xs text-text-muted">{t("assetEquityNote")}</p>
+      {allBalances.some(
+        (b) => b.account.exchange === "aster" && Number(b.total) < 0,
+      ) && (
+        <p className="text-xs text-text-muted">{t("asterWalletBalanceNote")}</p>
+      )}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
         <label className="flex items-center gap-2">
           {t("minimumBalance")}

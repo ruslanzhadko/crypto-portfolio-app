@@ -899,6 +899,8 @@
     "size": "Размер позиции",
     "entryMark": "Вход / маркировка",
     "realizedPnl": "Реализованный PnL",
+    "pnlBeforeForeignFees": "PnL до комиссий в {assets}",
+    "asterWalletBalanceNote": "Aster: здесь показан баланс без нереализованного PnL. Он может быть отрицательным. Капитал счёта выше учитывает нереализованный PnL.",
     "pnlBreakdown": "Расшифровка",
     "pnlWithFunding": "С funding",
     "pnlExcludesFees": "Без торговых комиссий.",

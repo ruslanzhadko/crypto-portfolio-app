@@ -372,6 +372,26 @@ export function PositionsPage({
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
         {result.data?.positions.map((p) => {
           const netRealized = realizedWithFunding(p);
+          const foreignFees = Object.entries(
+            p.funding?.tradingFeesByAsset ?? {},
+          )
+            .filter(
+              ([asset, amount]) => asset !== p.settle && Number(amount) !== 0,
+            )
+            .map(([asset]) => asset);
+          const beforeForeignFees =
+            netRealized == null &&
+            foreignFees.length > 0 &&
+            p.funding?.status === "complete" &&
+            p.funding.realizedPnl != null &&
+            p.funding.amount != null
+              ? String(
+                  Number(p.funding.realizedPnl) +
+                    Number(p.funding.amount) -
+                    Number(p.funding.tradingFeesByAsset?.[p.settle] ?? 0),
+                )
+              : null;
+          const displayedRealized = netRealized ?? beforeForeignFees;
           const closedAfterFees =
             p.funding?.realizedPnl != null && p.funding.tradingFees != null
               ? String(
@@ -379,6 +399,8 @@ export function PositionsPage({
                 )
               : null;
           const distance = liquidationDistance(p);
+          const displayedClosed =
+            closedAfterFees ?? p.funding?.realizedPnl ?? null;
           return (
             <details
               key={`${p.connection.id}:${p.positionKey}`}
@@ -438,14 +460,20 @@ export function PositionsPage({
                     className="text-xs text-text-muted"
                     title={t("realizedPnlDescription")}
                   >
-                    {t("realizedPnl")}
+                    {beforeForeignFees == null
+                      ? t("realizedPnl")
+                      : t("pnlBeforeForeignFees", {
+                          assets: foreignFees.join(", "),
+                        })}
                   </p>
                   <p
-                    className={`text-[15px] font-medium tabular-nums ${netRealized == null ? "text-text-muted" : Number(netRealized) > 0 ? "text-success" : Number(netRealized) < 0 ? "text-danger" : ""}`}
+                    className={`text-[15px] font-medium tabular-nums ${displayedRealized == null ? "text-text-muted" : Number(displayedRealized) > 0 ? "text-success" : Number(displayedRealized) < 0 ? "text-danger" : ""}`}
                   >
-                    {netRealized != null && Number(netRealized) > 0 ? "+" : ""}
+                    {displayedRealized != null && Number(displayedRealized) > 0
+                      ? "+"
+                      : ""}
                     <Quantity
-                      value={netRealized}
+                      value={displayedRealized}
                       maximumFractionDigits={4}
                     />{" "}
                     {p.settle}
@@ -556,19 +584,17 @@ export function PositionsPage({
                     </dt>
                     <dd
                       className={
-                        closedAfterFees == null
+                        displayedClosed == null
                           ? "text-text-muted"
-                          : Number(closedAfterFees) > 0
+                          : Number(displayedClosed) > 0
                             ? "text-success"
-                            : Number(closedAfterFees) < 0
+                            : Number(displayedClosed) < 0
                               ? "text-danger"
                               : undefined
                       }
                     >
                       <Quantity
-                        value={
-                          closedAfterFees ?? p.funding?.realizedPnl ?? null
-                        }
+                        value={displayedClosed}
                         maximumFractionDigits={4}
                       />{" "}
                       {p.settle}
