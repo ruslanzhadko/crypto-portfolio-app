@@ -2,6 +2,43 @@ import { describe, expect, it } from "vitest";
 import { summarizePositions } from "./position-summary";
 
 describe("position summary", () => {
+  it("includes Aster's known subtotal and identifies unconverted commissions", () => {
+    const summary = summarizePositions(
+      [
+        {
+          side: "long",
+          settle: "USDT",
+          notionalUsd: "2700",
+          unrealizedPnlUsd: "946",
+          funding: {
+            status: "complete",
+            realizedPnl: "431.4397",
+            amount: "-47.7296",
+            tradingFees: null,
+            tradingFeesByAsset: { ASTER: "0.0886178", USDT: "0" },
+          },
+        },
+        {
+          side: "short",
+          settle: "USDT",
+          notionalUsd: "100",
+          unrealizedPnlUsd: "-10",
+          funding: {
+            status: "complete",
+            realizedPnl: "-14.40",
+            amount: "0",
+            tradingFees: "0",
+          },
+        },
+      ],
+      new Map([["USDT", "1"]]),
+    );
+    expect(summary.realized).toEqual({
+      value: "369.3101",
+      known: 2,
+      excludedFeeAssets: ["ASTER"],
+    });
+  });
   it("converts settlement currencies and includes funding minus fees", () => {
     const summary = summarizePositions(
       [

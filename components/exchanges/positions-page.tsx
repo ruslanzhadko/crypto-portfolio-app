@@ -178,7 +178,11 @@ export function PositionsPage({
       long: number;
       short: number;
       volume: { value: string | null; known: number };
-      realized: { value: string | null; known: number };
+      realized: {
+        value: string | null;
+        known: number;
+        excludedFeeAssets?: string[];
+      };
       unrealized: { value: string | null; known: number };
     };
   }>(`/api/positions?${qs}`, 15_000, true);
@@ -240,10 +244,18 @@ export function PositionsPage({
                 ] as const
               ).map(([label, key]) => {
                 const metric = result.data!.summary![key];
+                const excludedFees =
+                  key === "realized"
+                    ? result.data!.summary!.realized.excludedFeeAssets
+                    : undefined;
                 return (
                   <div key={key} className="min-w-0">
                     <dt className="mb-1.5 min-h-8 text-xs text-text-muted sm:min-h-0">
-                      {t(label)}
+                      {excludedFees?.length
+                        ? t("pnlBeforeForeignFees", {
+                            assets: excludedFees.join(", "),
+                          })
+                        : t(label)}
                     </dt>
                     <dd
                       className={`break-words text-sm sm:text-lg font-medium tabular-nums ${key !== "volume" && Number(metric.value) !== 0 ? (Number(metric.value) > 0 ? "text-success" : "text-danger") : ""}`}
