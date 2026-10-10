@@ -900,6 +900,7 @@
     "entryMark": "Entry / mark",
     "realizedPnl": "Realized PnL",
     "pnlBeforeForeignFees": "PnL before {assets} fees",
+    "beforeForeignFees": "Before {assets} fees",
     "asterWalletBalanceNote": "Aster: futures equity includes unrealized PnL. The balance excluding PnL is available in details.",
     "asterEquityBalance": "Equity including PnL",
     "asterCashBalance": "Balance excluding PnL",

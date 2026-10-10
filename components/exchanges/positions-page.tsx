@@ -404,6 +404,21 @@ export function PositionsPage({
                 )
               : null;
           const displayedRealized = netRealized ?? beforeForeignFees;
+          const signedSize = Number(p.baseSize) * (p.side === "short" ? -1 : 1);
+          const breakEvenBeforeFees =
+            beforeForeignFees != null &&
+            p.entryPrice != null &&
+            Number.isFinite(signedSize) &&
+            signedSize !== 0
+              ? Number(p.entryPrice) - Number(beforeForeignFees) / signedSize
+              : null;
+          const estimatedBreakEven =
+            breakEvenBeforeFees != null &&
+            Number.isFinite(breakEvenBeforeFees) &&
+            breakEvenBeforeFees > 0
+              ? String(breakEvenBeforeFees)
+              : null;
+          const breakEven = p.funding?.breakEvenPrice ?? estimatedBreakEven;
           const closedAfterFees =
             p.funding?.realizedPnl != null && p.funding.tradingFees != null
               ? String(
@@ -539,12 +554,17 @@ export function PositionsPage({
                       {t("breakEven")}
                     </dt>
                     <dd>
-                      <Quantity
-                        value={p.funding?.breakEvenPrice ?? null}
-                        maximumFractionDigits={4}
-                      />{" "}
+                      <Quantity value={breakEven} maximumFractionDigits={4} />{" "}
                       {p.settle}
                     </dd>
+                    {p.funding?.breakEvenPrice == null &&
+                      estimatedBreakEven != null && (
+                        <p className="mt-1 text-xs text-text-muted">
+                          {t("beforeForeignFees", {
+                            assets: foreignFees.join(", "),
+                          })}
+                        </p>
+                      )}
                   </div>
                   <div>
                     <dt className="text-text-muted">{t("margin")}</dt>

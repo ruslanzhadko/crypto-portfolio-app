@@ -900,6 +900,7 @@
     "entryMark": "Вхід / маркування",
     "realizedPnl": "Реалізований PnL",
     "pnlBeforeForeignFees": "PnL до комісій у {assets}",
+    "beforeForeignFees": "До комісій у {assets}",
     "asterWalletBalanceNote": "Aster: показано ф’ючерсний капітал з урахуванням нереалізованого PnL. Баланс без PnL доступний у подробицях.",
     "asterEquityBalance": "Капітал з урахуванням PnL",
     "asterCashBalance": "Баланс без PnL",
