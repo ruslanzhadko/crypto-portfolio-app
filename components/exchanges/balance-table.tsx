@@ -20,7 +20,29 @@ export function BalanceTable({
     "false",
   );
   const allBalances = accounts
-    .flatMap((a) => a.balances.map((b) => ({ ...b, account: a })))
+    .flatMap((a) =>
+      a.balances.map((b) => {
+        // Account equity can be assigned to a token only for single-collateral accounts.
+        const showsEquity =
+          a.exchange === "aster" &&
+          a.kind === "futures" &&
+          a.balances.length === 1 &&
+          b.symbol === "USDT" &&
+          a.equityUsd !== null &&
+          b.priceUsd !== null &&
+          Number(b.priceUsd) > 0;
+        return {
+          ...b,
+          account: a,
+          cashTotal: b.total,
+          showsEquity,
+          total: showsEquity
+            ? String(Number(a.equityUsd) / Number(b.priceUsd))
+            : b.total,
+          usdValue: showsEquity ? a.equityUsd : b.usdValue,
+        };
+      }),
+    )
     .sort((a, b) => Number(b.usdValue ?? 0) - Number(a.usdValue ?? 0));
   const threshold = ["0", "0.10", "1", "10"].includes(minimum)
     ? Number(minimum)
@@ -34,9 +56,7 @@ export function BalanceTable({
     <section className="min-w-0 space-y-3">
       <h3 className="font-semibold">{t("exchangeAssets")}</h3>
       <p className="text-xs text-text-muted">{t("assetEquityNote")}</p>
-      {allBalances.some(
-        (b) => b.account.exchange === "aster" && Number(b.total) < 0,
-      ) && (
+      {allBalances.some((b) => b.showsEquity) && (
         <p className="text-xs text-text-muted">{t("asterWalletBalanceNote")}</p>
       )}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
@@ -119,6 +139,11 @@ export function BalanceTable({
                     <span className="text-xs text-text-muted">
                       {t(`kinds.${b.account.kind}`)}
                     </span>
+                    {b.showsEquity && (
+                      <p className="text-xs text-text-muted">
+                        {t("asterEquityBalance")}
+                      </p>
+                    )}
                     {b.account.stale && (
                       <p className="text-xs text-warning">{t("stale")}</p>
                     )}
@@ -129,6 +154,12 @@ export function BalanceTable({
                       <summary className="inline-block cursor-pointer">
                         {t("details")}
                       </summary>
+                      {b.showsEquity && (
+                        <p>
+                          {t("asterCashBalance")}:{" "}
+                          <Quantity value={b.cashTotal} />
+                        </p>
+                      )}
                       <p>
                         {t("available")}: <Quantity value={b.free} />
                       </p>
