@@ -244,10 +244,6 @@ export function PositionsPage({
                 ] as const
               ).map(([label, key]) => {
                 const metric = result.data!.summary![key];
-                const excludedFees =
-                  key === "realized"
-                    ? result.data!.summary!.realized.excludedFeeAssets
-                    : undefined;
                 return (
                   <div key={key} className="min-w-0">
                     <dt className="mb-1.5 min-h-8 text-xs text-text-muted sm:min-h-0">
@@ -258,13 +254,6 @@ export function PositionsPage({
                     >
                       <Money value={metric.value} />
                     </dd>
-                    {!!excludedFees?.length && (
-                      <p className="mt-1 text-xs text-text-muted">
-                        {t("beforeForeignFees", {
-                          assets: excludedFees.join(", "),
-                        })}
-                      </p>
-                    )}
                     {metric.known < result.data!.summary!.count && (
                       <p className="mt-1 text-xs text-text-muted">
                         {t("summaryCoverage", {
@@ -387,41 +376,8 @@ export function PositionsPage({
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-surface">
         {result.data?.positions.map((p) => {
           const netRealized = realizedWithFunding(p);
-          const foreignFees = Object.entries(
-            p.funding?.tradingFeesByAsset ?? {},
-          )
-            .filter(
-              ([asset, amount]) => asset !== p.settle && Number(amount) !== 0,
-            )
-            .map(([asset]) => asset);
-          const beforeForeignFees =
-            netRealized == null &&
-            foreignFees.length > 0 &&
-            p.funding?.status === "complete" &&
-            p.funding.realizedPnl != null &&
-            p.funding.amount != null
-              ? String(
-                  Number(p.funding.realizedPnl) +
-                    Number(p.funding.amount) -
-                    Number(p.funding.tradingFeesByAsset?.[p.settle] ?? 0),
-                )
-              : null;
-          const displayedRealized = netRealized ?? beforeForeignFees;
-          const signedSize = Number(p.baseSize) * (p.side === "short" ? -1 : 1);
-          const breakEvenBeforeFees =
-            beforeForeignFees != null &&
-            p.entryPrice != null &&
-            Number.isFinite(signedSize) &&
-            signedSize !== 0
-              ? Number(p.entryPrice) - Number(beforeForeignFees) / signedSize
-              : null;
-          const estimatedBreakEven =
-            breakEvenBeforeFees != null &&
-            Number.isFinite(breakEvenBeforeFees) &&
-            breakEvenBeforeFees > 0
-              ? String(breakEvenBeforeFees)
-              : null;
-          const breakEven = p.funding?.breakEvenPrice ?? estimatedBreakEven;
+          const displayedRealized = netRealized;
+          const breakEven = p.funding?.breakEvenPrice ?? null;
           const closedAfterFees =
             p.funding?.realizedPnl != null && p.funding.tradingFees != null
               ? String(
@@ -504,13 +460,6 @@ export function PositionsPage({
                     />{" "}
                     {p.settle}
                   </p>
-                  {beforeForeignFees != null && (
-                    <p className="text-xs text-text-muted">
-                      {t("beforeForeignFees", {
-                        assets: foreignFees.join(", "),
-                      })}
-                    </p>
-                  )}
                 </div>
                 <div>
                   <p className="text-[15px] font-medium break-words">
@@ -563,14 +512,6 @@ export function PositionsPage({
                       <Quantity value={breakEven} maximumFractionDigits={4} />{" "}
                       {p.settle}
                     </dd>
-                    {p.funding?.breakEvenPrice == null &&
-                      estimatedBreakEven != null && (
-                        <p className="mt-1 text-xs text-text-muted">
-                          {t("beforeForeignFees", {
-                            assets: foreignFees.join(", "),
-                          })}
-                        </p>
-                      )}
                   </div>
                   <div>
                     <dt className="text-text-muted">{t("margin")}</dt>

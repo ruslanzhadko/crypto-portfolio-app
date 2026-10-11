@@ -100,6 +100,7 @@ function fixture(venue: "bingx" | "aster" = "bingx") {
             r.time >= Number(params.startTs ?? params.startTime) &&
             r.time <= Number(params.endTs ?? params.endTime),
         );
+      else if (path === "v3/klines") data = [[Number(params.startTime), "2"]];
       else if (path.endsWith("income"))
         data =
           params.incomeType === "COMMISSION"
@@ -148,7 +149,7 @@ function fixture(venue: "bingx" | "aster" = "bingx") {
 }
 afterEach(() => vi.useRealTimers());
 describe("current cycle funding and fees", () => {
-  it("reads a 108-day Aster cycle and keeps ASTER fees separate from USDT", async () => {
+  it("converts historical ASTER fees in a 108-day cycle and retains native amounts", async () => {
     const f = fixture("aster");
     const old = now - 108 * 86400_000;
     f.fills[0]!.time = old;
@@ -160,12 +161,12 @@ describe("current cycle funding and fees", () => {
       since: old,
       amount: "0.18",
       realizedPnl: "50",
-      tradingFees: null,
+      tradingFees: "1.5",
       tradingFeesByAsset: { ASTER: "0.8", USDT: "-0.1" },
-      breakEvenPrice: null,
+      breakEvenPrice: "1951.32",
       status: "complete",
     });
-    expect(f.request.mock.calls.length).toBeLessThanOrEqual(82);
+    expect(f.request.mock.calls.length).toBeLessThanOrEqual(98);
   });
   it("ignores foreign commissions from a previous Aster cycle", async () => {
     const f = fixture("aster");
@@ -192,6 +193,20 @@ describe("current cycle funding and fees", () => {
       since: opening,
       tradingFees: "0.7",
       amount: "0.18",
+    });
+  });
+  it("preserves native fees without inventing a conversion when historical prices are missing", async () => {
+    const f = fixture("aster");
+    f.fills[0]!.commissionAsset = "ASTER";
+    const request = f.request.getMockImplementation()!;
+    f.request.mockImplementation(async (path, api, params, weight) =>
+      path === "v3/klines" ? [] : request(path, api, params, weight),
+    );
+    await f.reader.enrich([f.p]);
+    expect(f.p.funding).toMatchObject({
+      tradingFees: null,
+      tradingFeesByAsset: { ASTER: "0.8", USDT: "-0.1" },
+      breakEvenPrice: null,
     });
   });
   it.each(["bingx", "aster"] as const)(

@@ -79,7 +79,7 @@ export class CycleHistoryReader {
     positions: OpenPosition[],
   ): Promise<FundingSummary> {
     // Aster needs up to 26 weekly windows each for fills, commissions and funding.
-    let budget = this.venue === "aster" ? 82 : 30;
+    let budget = this.venue === "aster" ? 98 : 30;
     const get = async (path: string, params: Row = {}, weight = 1) => {
       if (--budget < 0) throw new Error("History budget exhausted");
       const response = await this.request(
@@ -248,6 +248,8 @@ export class CycleHistoryReader {
       const values = new Map<string, string[]>(),
         seen = new Set<string>(),
         charged = new Set<string>();
+      const foreignCharges: { asset: string; amount: string; time: number }[] =
+        [];
       for (let start = since; start <= now; ) {
         const end = Math.min(now, start + WEEK - 1);
         const batch = records(
@@ -285,6 +287,12 @@ export class CycleHistoryReader {
             const amounts = values.get(r.asset) ?? [];
             amounts.push(new D(rd(r.income)).negated().toFixed());
             values.set(r.asset, amounts);
+            if (r.asset !== p.settle && !new D(rd(r.income)).isZero())
+              foreignCharges.push({
+                asset: r.asset,
+                amount: new D(rd(r.income)).negated().toFixed(),
+                time: time(r.time),
+              });
           }
         }
         start = end + 1;
@@ -302,6 +310,52 @@ export class CycleHistoryReader {
         )
           ? null
           : decimal(tradingFeesByAsset[p.settle] ?? "0");
+      if (fees === null && p.settle === "USDT") {
+        // Convert each charge at its historical minute, never at today's price.
+        // Keep native amounts for audit and leave fees unknown on missing candles.
+        try {
+          const rates = new Map<string, string>();
+          let converted = new D(tradingFeesByAsset.USDT ?? "0");
+          for (const charge of foreignCharges) {
+            const minute = Math.floor(charge.time / 60_000) * 60_000;
+            const key = `${charge.asset}:${minute}`;
+            let rate = rates.get(key);
+            if (rate === undefined) {
+              if (--budget < 0) throw new Error("History budget exhausted");
+              const candles = await this.request(
+                "v3/klines",
+                "fapiPublic",
+                {
+                  symbol: `${charge.asset}USDT`,
+                  interval: "1m",
+                  startTime: minute,
+                  endTime: minute + 59_999,
+                  limit: 1,
+                },
+                1,
+              );
+              if (
+                !Array.isArray(candles) ||
+                candles.length !== 1 ||
+                !Array.isArray(candles[0]) ||
+                Number(candles[0][0]) !== minute
+              )
+                throw new Error("Historical fee price unavailable");
+              rate = rd(candles[0][1]);
+              if (!new D(rate).isPositive())
+                throw new Error("Invalid fee price");
+              rates.set(key, rate);
+            }
+            converted = converted.plus(new D(charge.amount).mul(rate));
+          }
+          // A foreign fill without its native ledger amount must not become zero.
+          if (foreignFees && foreignCharges.length === 0)
+            throw new Error("Missing fee conversion");
+          fees = decimal(converted.toFixed());
+        } catch {
+          fees = null;
+        }
+      }
     }
     const reductions = cycle.filter((r) => r.time > since!);
     let realized = reductions.every((r) => r.pnl !== null)

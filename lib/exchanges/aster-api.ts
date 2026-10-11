@@ -78,7 +78,7 @@ export function createAsterTransport(user: string, credentials: Credentials) {
   const request: Request = async (path, api, params = {}, weight = 1) => {
     if (
       !(api === "fapiPrivate" && PRIVATE_PATHS.has(path)) &&
-      !(api === "fapiPublic" && path === "v3/premiumIndex")
+      !(api === "fapiPublic" && ["v3/premiumIndex", "v3/klines"].includes(path))
     )
       throw new ExchangeError("INVALID_RESPONSE");
     await reserveRequest("aster", weight);

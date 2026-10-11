@@ -13,7 +13,6 @@ export function summarizePositions(rows: Row[], prices: Map<string, string>) {
   const volume = metric(),
     realized = metric(),
     unrealized = metric();
-  const excludedFeeAssets = new Set<string>();
   for (const row of rows) {
     if (row.notionalUsd != null) {
       volume.value = volume.value.plus(new D(row.notionalUsd.toString()).abs());
@@ -25,29 +24,17 @@ export function summarizePositions(rows: Row[], prices: Map<string, string>) {
     }
     const f = row.funding as FundingSummary | null;
     const price = prices.get(row.settle);
-    const foreignFees = Object.entries(f?.tradingFeesByAsset ?? {}).filter(
-      ([asset, amount]) => asset !== row.settle && !new D(amount).isZero(),
-    );
-    const beforeForeignFees =
-      f?.tradingFees == null && foreignFees.length > 0
-        ? (f?.tradingFeesByAsset?.[row.settle] ?? "0")
-        : null;
     if (
       price &&
       f?.status === "complete" &&
       f.amount != null &&
       f.realizedPnl != null &&
-      (f.tradingFees != null || beforeForeignFees != null)
+      f.tradingFees != null
     ) {
       realized.value = realized.value.plus(
-        new D(f.realizedPnl)
-          .plus(f.amount)
-          .minus(f.tradingFees ?? beforeForeignFees!)
-          .mul(price),
+        new D(f.realizedPnl).plus(f.amount).minus(f.tradingFees).mul(price),
       );
       realized.known++;
-      if (beforeForeignFees != null)
-        foreignFees.forEach(([asset]) => excludedFeeAssets.add(asset));
     }
   }
   const serialize = (m: ReturnType<typeof metric>) => ({
@@ -59,12 +46,7 @@ export function summarizePositions(rows: Row[], prices: Map<string, string>) {
     long: rows.filter((p) => p.side === "long").length,
     short: rows.filter((p) => p.side === "short").length,
     volume: serialize(volume),
-    realized: {
-      ...serialize(realized),
-      ...(excludedFeeAssets.size > 0
-        ? { excludedFeeAssets: [...excludedFeeAssets].sort() }
-        : {}),
-    },
+    realized: serialize(realized),
     unrealized: serialize(unrealized),
   };
 }
