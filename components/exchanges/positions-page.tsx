@@ -216,7 +216,7 @@ export function PositionsPage({
       <div
         className={
           !compact
-            ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
+            ? "grid items-start gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1.8fr)]"
             : "contents"
         }
       >
@@ -251,17 +251,20 @@ export function PositionsPage({
                 return (
                   <div key={key} className="min-w-0">
                     <dt className="mb-1.5 min-h-8 text-xs text-text-muted sm:min-h-0">
-                      {excludedFees?.length
-                        ? t("pnlBeforeForeignFees", {
-                            assets: excludedFees.join(", "),
-                          })
-                        : t(label)}
+                      {t(label)}
                     </dt>
                     <dd
                       className={`break-words text-sm sm:text-lg font-medium tabular-nums ${key !== "volume" && Number(metric.value) !== 0 ? (Number(metric.value) > 0 ? "text-success" : "text-danger") : ""}`}
                     >
                       <Money value={metric.value} />
                     </dd>
+                    {!!excludedFees?.length && (
+                      <p className="mt-1 text-xs text-text-muted">
+                        {t("beforeForeignFees", {
+                          assets: excludedFees.join(", "),
+                        })}
+                      </p>
+                    )}
                     {metric.known < result.data!.summary!.count && (
                       <p className="mt-1 text-xs text-text-muted">
                         {t("summaryCoverage", {
@@ -487,11 +490,7 @@ export function PositionsPage({
                     className="text-xs text-text-muted"
                     title={t("realizedPnlDescription")}
                   >
-                    {beforeForeignFees == null
-                      ? t("realizedPnl")
-                      : t("pnlBeforeForeignFees", {
-                          assets: foreignFees.join(", "),
-                        })}
+                    {t("realizedPnl")}
                   </p>
                   <p
                     className={`text-[15px] font-medium tabular-nums ${displayedRealized == null ? "text-text-muted" : Number(displayedRealized) > 0 ? "text-success" : Number(displayedRealized) < 0 ? "text-danger" : ""}`}
@@ -505,6 +504,13 @@ export function PositionsPage({
                     />{" "}
                     {p.settle}
                   </p>
+                  {beforeForeignFees != null && (
+                    <p className="text-xs text-text-muted">
+                      {t("beforeForeignFees", {
+                        assets: foreignFees.join(", "),
+                      })}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="text-[15px] font-medium break-words">
