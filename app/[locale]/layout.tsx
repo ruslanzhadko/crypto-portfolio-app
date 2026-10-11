@@ -32,7 +32,9 @@ export const metadata: Metadata = {
     title: 'CryptoPortfolio',
     statusBarStyle: 'default',
   },
-  icons: { apple: '/logo2.png' },
+  icons: {
+    apple: [{ url: '/icons/app-180.png', sizes: '180x180', type: 'image/png' }],
+  },
   description:
     'Track your crypto portfolio across 10 networks with real-time price analytics.',
 };
