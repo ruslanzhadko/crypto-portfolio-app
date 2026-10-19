@@ -1,7 +1,12 @@
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/prisma";
 import { claimJob, enqueue as enqueueJob } from "./queue";
-import { commitResult } from "./worker";
+import {
+  commitResult,
+  earliestDueAt,
+  pullForward,
+} from "./worker";
+import { nextIdleSlot } from "./config";
 import { prepareWalletConnections } from "./wallet-schema";
 import {
   getCapitalOverview,
@@ -475,5 +480,75 @@ describe.skipIf(!enabled)("exchange database integration", () => {
         },
       });
     expect((await getCapitalHistory(userId, 1)).changeUsd).toBeNull();
+  });
+  it("thins long capital history in SQL but keeps ends and composition changes", async () => {
+    await prisma.portfolioCapitalSnapshot.deleteMany({ where: { userId } });
+    const start = Date.now() - 1500 * 300_000;
+    await prisma.portfolioCapitalSnapshot.createMany({
+      data: Array.from({ length: 1500 }, (_, i) => ({
+        userId,
+        bucket: new Date(start + i * 300_000),
+        totalUsd: String(1000 + i),
+        walletsUsd: "1000",
+        exchangesUsd: String(i),
+        sourceSet: "same",
+        complete: true,
+        sources: [{ id: "x", kind: "wallet", valueUsd: "1" }],
+      })),
+    });
+    const history = await getCapitalHistory(userId, 7);
+    expect(history.points.length).toBeLessThanOrEqual(751);
+    expect(history.points[0]?.totalUsd).toBe("1000");
+    expect(history.points.at(-1)?.totalUsd).toBe("2499");
+    expect(history.changeUsd).toBe("1499");
+
+    // A composition change is always visible and disables the change figure.
+    await prisma.portfolioCapitalSnapshot.update({
+      where: { userId_bucket: { userId, bucket: new Date(start + 701 * 300_000) } },
+      data: { sourceSet: "changed" },
+    });
+    const changed = await getCapitalHistory(userId, 7);
+    expect(changed.points.some((p) => p.sourceSet === "changed")).toBe(true);
+    expect(changed.changeUsd).toBeNull();
+    await prisma.portfolioCapitalSnapshot.deleteMany({ where: { userId } });
+  });
+  it("schedules idle users for the next slot and pulls them forward when they return", async () => {
+    const c = await prisma.exchangeConnection.create({
+      data: { userId, exchange: "bybit", label: "Idle slot" },
+    });
+    await enqueue(c.id);
+    const job = (await claimJob())!;
+    const slot = nextIdleSlot();
+    expect(
+      await commitResult(c.id, 1, job.token, snapshot, new Date(), slot),
+    ).toBe(true);
+    const idle = await prisma.exchangeSyncJob.findUniqueOrThrow({
+      where: { connectionId: c.id },
+    });
+    expect(Math.abs(idle.dueAt.getTime() - slot.getTime())).toBeLessThan(5000);
+    expect((await earliestDueAt())!.getTime()).toBeLessThanOrEqual(
+      idle.dueAt.getTime(),
+    );
+
+    // A job in rate-limit backoff keeps its delay; a scheduled one runs now.
+    await pullForward([userId]);
+    const pulled = await prisma.exchangeSyncJob.findUniqueOrThrow({
+      where: { connectionId: c.id },
+    });
+    expect(pulled.dueAt.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+    const backoff = new Date(Date.now() + 600_000);
+    await prisma.exchangeSyncJob.update({
+      where: { connectionId: c.id },
+      data: { dueAt: backoff, attempts: 2 },
+    });
+    await pullForward([userId]);
+    expect(
+      (
+        await prisma.exchangeSyncJob.findUniqueOrThrow({
+          where: { connectionId: c.id },
+        })
+      ).dueAt.getTime(),
+    ).toBe(backoff.getTime());
+    await prisma.exchangeConnection.delete({ where: { id: c.id } });
   });
 });

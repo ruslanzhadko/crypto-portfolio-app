@@ -5,8 +5,10 @@ import {
   exchangesEnabled,
   BALANCE_INTERVAL_MS,
   HYPERCORE_CHAINS,
+  IDLE_SYNC_MS,
   POSITION_INTERVAL_MS,
   LEASE_MS,
+  nextIdleSlot,
 } from "./config";
 import { createTransport } from "./transport";
 import { BinanceAdapter, BybitAdapter } from "./adapters";
@@ -31,9 +33,11 @@ const clients = new Map<
   string,
   { version: number; adapter: ExchangeAdapter; touched: number }
 >();
+// Keep clients across idle slots, so verification and market caches survive them.
+const CLIENT_TTL_MS = IDLE_SYNC_MS + 5 * 60_000;
 export async function evictClients() {
   for (const [id, entry] of clients)
-    if (Date.now() - entry.touched > 300_000) {
+    if (Date.now() - entry.touched > CLIENT_TTL_MS) {
       clients.delete(id);
       await entry.adapter.close().catch(() => {});
     }
@@ -77,6 +81,7 @@ export async function commitResult(
   token: string,
   result: SyncResult,
   observedAt: Date,
+  nextDueAt?: Date,
 ) {
   return prisma.$transaction(
     async (tx) => {
@@ -234,7 +239,9 @@ export async function commitResult(
                     job.attempts,
                     transientFailure.errorCode === "RATE_LIMIT",
                   )
-                : POSITION_INTERVAL_MS),
+                : nextDueAt
+                  ? Math.max(0, nextDueAt.getTime() - Date.now())
+                  : POSITION_INTERVAL_MS),
           ),
         },
       });
@@ -244,7 +251,50 @@ export async function commitResult(
   );
 }
 
-export async function runOneJob(): Promise<boolean> {
+/** Capital snapshots are coalesced: one per user per interval, not one per job. */
+const dirtySnapshots = new Set<string>();
+const snapshotSavedAt = new Map<string, number>();
+const SNAPSHOT_MIN_INTERVAL_MS = 150_000;
+
+export async function flushCapitalSnapshots(
+  isActive: (userId: string) => boolean,
+  force = false,
+) {
+  for (const userId of [...dirtySnapshots]) {
+    const savedAt = snapshotSavedAt.get(userId) ?? 0;
+    if (!force && Date.now() - savedAt < SNAPSHOT_MIN_INTERVAL_MS) continue;
+    dirtySnapshots.delete(userId);
+    snapshotSavedAt.set(userId, Date.now());
+    await saveCapitalSnapshot(userId, { relaxed: !isActive(userId) }).catch(
+      () => {
+        console.error("[exchange-worker] Capital snapshot failed.");
+      },
+    );
+  }
+}
+
+/** Run a newly arrived viewer's scheduled (non-backoff) jobs now. */
+export async function pullForward(userIds: string[]) {
+  if (!userIds.length) return;
+  await prisma.$executeRaw`
+    UPDATE "ExchangeSyncJob" j SET "dueAt" = clock_timestamp()
+    FROM "ExchangeConnection" c
+    WHERE c.id = j."connectionId" AND c."userId" = ANY(${userIds})
+      AND j."dueAt" > clock_timestamp() AND j."leaseToken" IS NULL AND j.attempts = 0`;
+}
+
+/** Earliest job that could run; lets an idle worker sleep without polling. */
+export async function earliestDueAt(): Promise<Date | null> {
+  const rows = await prisma.$queryRaw<{ dueAt: Date | null }[]>`
+    SELECT min(j."dueAt") AS "dueAt" FROM "ExchangeSyncJob" j
+    JOIN "ExchangeConnection" c ON c.id = j."connectionId"
+    WHERE c.status IN ('PENDING', 'ACTIVE', 'PARTIAL', 'ERROR')`;
+  return rows[0]?.dueAt ?? null;
+}
+
+export async function runOneJob(
+  isActive: (userId: string) => boolean = () => true,
+): Promise<boolean> {
   const job = await claimJob();
   if (!job) return false;
   const c = await prisma.exchangeConnection.findUnique({
@@ -395,6 +445,7 @@ export async function runOneJob(): Promise<boolean> {
         job.token,
         result,
         new Date(),
+        isActive(c.userId) ? undefined : nextIdleSlot(),
       )
     ) {
       await prisma.exchangeSyncRun.create({
@@ -405,7 +456,7 @@ export async function runOneJob(): Promise<boolean> {
           durationMs: Date.now() - started,
         },
       });
-      await saveCapitalSnapshot(c.userId);
+      dirtySnapshots.add(c.userId);
     }
   } catch (error) {
     const code =
@@ -469,17 +520,18 @@ export async function runOneJob(): Promise<boolean> {
   return true;
 }
 
-export async function workerHeartbeat(owner: string) {
+/** `ttlMs` covers the gap until the next heartbeat: 90 s active, an idle slot otherwise. */
+export async function workerHeartbeat(owner: string, ttlMs = 90_000) {
   await prisma.exchangeWorkerLease.upsert({
     where: { name: `worker:${owner}` },
     create: {
       name: `worker:${owner}`,
       owner,
-      expiresAt: new Date(Date.now() + 90_000),
+      expiresAt: new Date(Date.now() + ttlMs),
     },
     update: {
       heartbeatAt: new Date(),
-      expiresAt: new Date(Date.now() + 90_000),
+      expiresAt: new Date(Date.now() + ttlMs),
     },
   });
 }

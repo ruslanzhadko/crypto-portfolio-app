@@ -10,6 +10,7 @@ import {
   getCapitalOverview,
   getCapitalHistory,
 } from "@/lib/exchanges/portfolio";
+import { withinActivityGrace } from "@/lib/exchanges/activity";
 export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
@@ -22,16 +23,17 @@ export async function GET(req: NextRequest) {
       .max(365)
       .safeParse(req.nextUrl.searchParams.get("days") ?? 30);
     if (!days.success) return failure("BAD_REQUEST");
+    const options = { relaxed: withinActivityGrace(guard.activeSince) };
     if (req.nextUrl.searchParams.get("view") === "overview")
       return exchangeJson({
-        overview: await getCapitalOverview(guard.user.id),
+        overview: await getCapitalOverview(guard.user.id, options),
       });
     if (req.nextUrl.searchParams.get("view") === "history")
       return exchangeJson({
         history: await getCapitalHistory(guard.user.id, days.data),
       });
     const [overview, history] = await Promise.all([
-      getCapitalOverview(guard.user.id),
+      getCapitalOverview(guard.user.id, options),
       getCapitalHistory(guard.user.id, days.data),
     ]);
     return exchangeJson({ overview, history });

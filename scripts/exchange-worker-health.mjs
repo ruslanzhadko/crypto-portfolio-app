@@ -1,17 +1,15 @@
 import { readFile } from "node:fs/promises";
-import { PrismaClient } from "@prisma/client";
 
-const db = new PrismaClient();
+// Docker healthcheck without a database query: a query every 30 s would keep
+// Neon awake around the clock. The worker refreshes this file from its event
+// loop and creates it only after its first successful database heartbeat.
+const MAX_AGE_MS = 90_000;
 try {
-  const owner = (
-    await readFile("/tmp/cryptoportfolio-worker-id", "utf8")
-  ).trim();
-  const lease = await db.exchangeWorkerLease.findUnique({
-    where: { name: `worker:${owner}` },
-  });
-  if (!lease || lease.expiresAt.getTime() <= Date.now()) process.exitCode = 1;
+  const { at } = JSON.parse(
+    await readFile("/tmp/cryptoportfolio-worker-alive", "utf8"),
+  );
+  if (typeof at !== "number" || Date.now() - at > MAX_AGE_MS)
+    process.exitCode = 1;
 } catch {
   process.exitCode = 1;
-} finally {
-  await db.$disconnect();
 }

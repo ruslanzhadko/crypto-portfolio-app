@@ -80,4 +80,32 @@ describe("GET /api/feed/media/[id]", () => {
     expect(response.status).toBe(304);
     expect(await response.text()).toBe("");
   });
+
+  it("answers a revalidation without reading image bytes and allows CDN caching", async () => {
+    mockFindUnique.mockResolvedValue({
+      postId: "cm123",
+      data: Buffer.from([0xff]),
+      mimeType: "image/jpeg",
+      byteSize: 1,
+      createdAt: new Date("2026-09-29T00:00:00Z"),
+      updatedAt: new Date("2026-09-29T00:00:00Z"),
+    });
+    const first = await GET(
+      new NextRequest("http://localhost/api/feed/media/cm123"),
+      params,
+    );
+    expect(first.headers.get("cdn-cache-control")).toContain("max-age");
+    mockFindUnique.mockClear();
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/feed/media/cm123", {
+        headers: { "If-None-Match": first.headers.get("etag")! },
+      }),
+      params,
+    );
+
+    expect(response.status).toBe(304);
+    expect(mockFindUnique).toHaveBeenCalledTimes(1);
+    expect(mockFindUnique.mock.calls[0]?.[0]?.select).not.toHaveProperty("data");
+  });
 });

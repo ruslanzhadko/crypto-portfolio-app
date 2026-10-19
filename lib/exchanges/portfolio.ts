@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { D, sum } from "./decimal";
-import { exchangesEnabled, HYPERCORE_CHAINS } from "./config";
+import { exchangesEnabled, HYPERCORE_CHAINS, staleLimits } from "./config";
 
 export async function migratedWalletIds(
   userId: string,
@@ -32,7 +32,16 @@ export function sourceSetHash(sources: string[]): string {
     .digest("hex");
 }
 
-export async function getCapitalOverview(userId: string) {
+export type OverviewOptions = {
+  /** Accept data from the last idle slot (viewer just arrived, or idle-slot snapshot). */
+  relaxed?: boolean;
+};
+
+export async function getCapitalOverview(
+  userId: string,
+  { relaxed = false }: OverviewOptions = {},
+) {
+  const limits = staleLimits(relaxed);
   const [connections, wallets, migrated, heartbeat] = await prisma.$transaction(
     async (tx) =>
       Promise.all([
@@ -48,17 +57,49 @@ export async function getCapitalOverview(userId: string) {
             positionsAt: true,
             hyperCoreMigratedAt: true,
             accounts: {
-              include: {
-                balances: true,
+              select: {
+                id: true,
+                kind: true,
+                mode: true,
+                equityUsd: true,
+                availableUsd: true,
+                unrealizedPnlUsd: true,
+                complete: true,
+                errorCode: true,
+                balancesAt: true,
+                positionsAt: true,
+                balances: {
+                  select: {
+                    id: true,
+                    assetId: true,
+                    symbol: true,
+                    total: true,
+                    free: true,
+                    locked: true,
+                    debt: true,
+                    priceUsd: true,
+                    usdValue: true,
+                  },
+                },
                 _count: { select: { positions: true } },
               },
             },
           },
           orderBy: { createdAt: "asc" },
         }),
+        // Only what the capital totals need: full balance rows are large.
         tx.wallet.findMany({
           where: { userId },
-          include: { balances: { where: { isHidden: false, isSpam: false } } },
+          select: {
+            id: true,
+            label: true,
+            address: true,
+            lastSyncAt: true,
+            balances: {
+              where: { isHidden: false, isSpam: false },
+              select: { chainName: true, usdValue: true },
+            },
+          },
         }),
         migratedWalletIds(userId, tx),
         tx.exchangeWorkerLease.findFirst({
@@ -101,9 +142,10 @@ export async function getCapitalOverview(userId: string) {
           c.status === "PAUSED" ||
           !a.balancesAt ||
           Date.now() - a.balancesAt.getTime() >
-            (a.kind === "spot" ? 300_000 : 90_000) ||
+            (a.kind === "spot" ? limits.spot : limits.futures) ||
           (a.kind !== "spot" &&
-            (!a.positionsAt || Date.now() - a.positionsAt.getTime() > 90_000));
+            (!a.positionsAt ||
+              Date.now() - a.positionsAt.getTime() > limits.futures));
         return {
           id: a.id,
           connectionId: c.id,
@@ -175,9 +217,12 @@ export async function getCapitalOverview(userId: string) {
 }
 export type CapitalOverview = Awaited<ReturnType<typeof getCapitalOverview>>;
 
-export async function saveCapitalSnapshot(userId: string) {
+export async function saveCapitalSnapshot(
+  userId: string,
+  options: OverviewOptions = {},
+) {
   if (!exchangesEnabled(userId)) return;
-  const overview = await getCapitalOverview(userId);
+  const overview = await getCapitalOverview(userId, options);
   // Record current known value, but never call stale/partial observations complete.
   const bucket = new Date(Math.floor(Date.now() / 300_000) * 300_000);
   const data = {
@@ -203,13 +248,42 @@ export async function saveCapitalSnapshot(userId: string) {
     update: data,
   });
 }
+type HistoryRow = {
+  bucket: Date;
+  totalUsd: Prisma.Decimal;
+  walletsUsd: Prisma.Decimal;
+  exchangesUsd: Prisma.Decimal;
+  complete: boolean;
+  sourceSet: string;
+  allComplete: boolean;
+  oneSourceSet: boolean;
+  n: bigint;
+};
+const MAX_HISTORY_POINTS = 720;
+
 export async function getCapitalHistory(userId: string, days: number) {
   const since = new Date(Date.now() - days * 86400_000);
+  // Thin the five-minute observations in SQL, so only chart points leave the
+  // database. First, last and source-set changes are always kept.
   const [snapshots, events] = await Promise.all([
-    prisma.portfolioCapitalSnapshot.findMany({
-      where: { userId, bucket: { gte: since } },
-      orderBy: { bucket: "asc" },
-    }),
+    prisma.$queryRaw<HistoryRow[]>`
+      SELECT bucket, "totalUsd", "walletsUsd", "exchangesUsd", complete, "sourceSet",
+             "allComplete", "oneSourceSet", n
+      FROM (
+        SELECT bucket, "totalUsd", "walletsUsd", "exchangesUsd", complete, "sourceSet",
+               row_number() OVER w - 1 AS i,
+               count(*) OVER () AS n,
+               lag("sourceSet") OVER w AS prev,
+               bool_and(complete) OVER () AS "allComplete",
+               min("sourceSet") OVER () = max("sourceSet") OVER () AS "oneSourceSet"
+        FROM "PortfolioCapitalSnapshot"
+        WHERE "userId" = ${userId} AND bucket >= ${since}
+        WINDOW w AS (ORDER BY bucket)
+      ) s
+      WHERE i % GREATEST(1, CEIL(n / ${MAX_HISTORY_POINTS}::numeric)) = 0
+         OR i = n - 1
+         OR (prev IS NOT NULL AND prev <> "sourceSet")
+      ORDER BY bucket`,
     prisma.capitalEvent.findMany({
       where: { userId, createdAt: { gte: since } },
       orderBy: { createdAt: "asc" },
@@ -221,18 +295,11 @@ export async function getCapitalHistory(userId: string, days: number) {
   const comparable =
     !!first &&
     !!last &&
-    snapshots.length >= 2 &&
-    snapshots.every((s) => s.complete && s.sourceSet === first.sourceSet);
-  // Bound chart payloads without deleting the underlying five-minute observations.
-  const stride = Math.max(1, Math.ceil(snapshots.length / 720));
-  const displayed = snapshots.filter(
-    (s, i) =>
-      i % stride === 0 ||
-      i === snapshots.length - 1 ||
-      (i > 0 && s.sourceSet !== snapshots[i - 1]?.sourceSet),
-  );
+    Number(first.n) >= 2 &&
+    first.allComplete &&
+    first.oneSourceSet;
   return {
-    points: displayed.map((s) => ({
+    points: snapshots.map((s) => ({
       timestamp: s.bucket.getTime(),
       totalUsd: s.totalUsd.toFixed(),
       walletsUsd: s.walletsUsd.toFixed(),

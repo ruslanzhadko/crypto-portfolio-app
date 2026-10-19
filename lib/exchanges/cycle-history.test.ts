@@ -199,8 +199,8 @@ describe("current cycle funding and fees", () => {
     const f = fixture("aster");
     f.fills[0]!.commissionAsset = "ASTER";
     const request = f.request.getMockImplementation()!;
-    f.request.mockImplementation(async (path, api, params, weight) =>
-      path === "v3/klines" ? [] : request(path, api, params, weight),
+    f.request.mockImplementation(async (path, api, params) =>
+      path === "v3/klines" ? [] : request(path, api, params),
     );
     await f.reader.enrich([f.p]);
     expect(f.p.funding).toMatchObject({

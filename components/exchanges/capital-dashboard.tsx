@@ -49,9 +49,10 @@ export function CapitalDashboard({
   const data = useExchangeData<{ overview: CapitalOverview }>(
     "/api/portfolio/capital?view=overview",
   );
+  // Snapshots use five-minute buckets; polling faster only re-reads them.
   const chartData = useExchangeData<{
     history: Awaited<ReturnType<typeof getCapitalHistory>>;
-  }>(`/api/portfolio/capital?view=history&days=${days}`, 60_000);
+  }>(`/api/portfolio/capital?view=history&days=${days}`, 300_000);
   const overview = data.data?.overview,
     history = chartData.data?.history;
   async function refresh() {

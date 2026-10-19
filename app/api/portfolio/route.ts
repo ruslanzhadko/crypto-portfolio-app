@@ -3,6 +3,10 @@ import { handleUnknown, ok } from "@/lib/api/response";
 import { getPortfolioOverview } from "@/lib/services/portfolio";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { getCapitalOverview } from "@/lib/exchanges/portfolio";
+import {
+  markExchangeActivity,
+  withinActivityGrace,
+} from "@/lib/exchanges/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +17,11 @@ export async function GET() {
 
     const overview = await getPortfolioOverview(guard.user.id);
     if (!exchangesEnabled(guard.user.id)) return ok(overview);
-    const capital = await getCapitalOverview(guard.user.id);
+    // Wallet pages include exchange capital, so they count as a viewer too.
+    const since = await markExchangeActivity(guard.user.id);
+    const capital = await getCapitalOverview(guard.user.id, {
+      relaxed: withinActivityGrace(since),
+    });
     return ok(
       {
         ...overview,

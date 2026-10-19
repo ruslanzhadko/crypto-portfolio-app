@@ -2,50 +2,129 @@ import { prisma } from "../lib/db/prisma";
 import { writeFile, unlink } from "node:fs/promises";
 import {
   discoverHyperliquid,
+  earliestDueAt,
   evictClients,
+  flushCapitalSnapshots,
   newWorkerId,
+  pullForward,
   runOneJob,
   workerHeartbeat,
 } from "../lib/exchanges/worker";
 import { sleep } from "../lib/exchanges/transport";
 import { prepareWalletConnections } from "../lib/exchanges/wallet-schema";
+import { createActivityClient } from "../lib/exchanges/activity-client";
+import { ACTIVITY_POLL_MS, nextIdleSlot } from "../lib/exchanges/config";
+
+const ACTIVE_HEARTBEAT_MS = 20_000;
+const ALIVE_FILE = "/tmp/cryptoportfolio-worker-alive";
+const MAINTENANCE_MS = 60_000;
+/** Neon scales to zero after 5 idle minutes; never wake it more often than this. */
+const MIN_IDLE_WAKE_MS = 5 * 60_000;
+/** Keeps the worker "online" in the UI until a little after the next slot. */
+const IDLE_LEASE_MARGIN_MS = 10 * 60_000;
+
+async function maintenance() {
+  await discoverHyperliquid();
+  await evictClients();
+  await prisma.exchangeSyncRun.deleteMany({
+    where: { createdAt: { lt: new Date(Date.now() - 7 * 86400_000) } },
+  });
+  await prisma.exchangeWorkerLease.deleteMany({
+    where: {
+      name: { startsWith: "worker:" },
+      expiresAt: { lt: new Date(Date.now() - 86400_000) },
+    },
+  });
+}
 
 async function main() {
   if (process.env.EXCHANGES_ENABLED !== "true")
     throw new Error("EXCHANGES_ENABLED must be true");
   await prepareWalletConnections();
   const owner = newWorkerId();
+  const activity = createActivityClient();
+  const isActive = (userId: string) => !activity || activity.isActive(userId);
+  console.log(
+    activity
+      ? "[exchange-worker] Viewer-driven mode: fast sync for viewers, otherwise every idle slot."
+      : "[exchange-worker] Activity signal not configured: fast sync for everyone.",
+  );
   let stopping = false,
-    lastDiscovery = 0;
+    fast = !activity,
+    lastMaintenance = 0,
+    viewers = new Set<string>(),
+    idleWakeAt = 0;
+  // Database heartbeat only while fast; an idle slot writes a long lease itself.
+  const heartbeat = setInterval(() => {
+    if (fast) void workerHeartbeat(owner).catch(() => {});
+  }, ACTIVE_HEARTBEAT_MS);
+  const writeAlive = () =>
+    writeFile(ALIVE_FILE, JSON.stringify({ at: Date.now() }), {
+      mode: 0o600,
+    }).catch(() => {});
+  let alive: ReturnType<typeof setInterval> | undefined;
   process.on("SIGTERM", () => {
     stopping = true;
   });
   process.on("SIGINT", () => {
     stopping = true;
   });
-  const heartbeat = setInterval(() => {
-    void workerHeartbeat(owner).catch(() => {});
-  }, 20_000);
   try {
     await workerHeartbeat(owner);
     await writeFile("/tmp/cryptoportfolio-worker-id", owner, { mode: 0o600 });
+    await writeAlive();
+    alive = setInterval(() => void writeAlive(), 15_000);
     while (!stopping) {
       try {
-        if (Date.now() - lastDiscovery > 60_000) {
-          await discoverHyperliquid();
-          await evictClients();
-          lastDiscovery = Date.now();
-          await prisma.exchangeSyncRun.deleteMany({
-            where: { createdAt: { lt: new Date(Date.now() - 7 * 86400_000) } },
-          });
-          await prisma.exchangeWorkerLease.deleteMany({
-            where: {
-              name: { startsWith: "worker:" },
-              expiresAt: { lt: new Date(Date.now() - 86400_000) },
-            },
-          });
+        if (activity) {
+          const current = await activity.poll();
+          const arrived = [...current].filter((id) => !viewers.has(id));
+          viewers = current;
+          if (arrived.length) {
+            await pullForward(arrived);
+            idleWakeAt = 0;
+          }
         }
-        if (!(await runOneJob())) await sleep(2000);
+        const wasFast = fast;
+        fast = !activity || viewers.size > 0;
+
+        if (fast) {
+          if (!wasFast) await workerHeartbeat(owner);
+          if (Date.now() - lastMaintenance > MAINTENANCE_MS) {
+            await maintenance();
+            lastMaintenance = Date.now();
+          }
+          if (!(await runOneJob(isActive))) {
+            await flushCapitalSnapshots(isActive);
+            await sleep(2000);
+          }
+          continue;
+        }
+
+        // Idle: one database window per slot, nothing in between.
+        if (Date.now() >= idleWakeAt) {
+          const slot = nextIdleSlot();
+          await workerHeartbeat(
+            owner,
+            slot.getTime() - Date.now() + IDLE_LEASE_MARGIN_MS,
+          );
+          await maintenance();
+          lastMaintenance = Date.now();
+          while (!stopping && (await runOneJob(isActive))) {
+            /* drain everything due in this slot */
+          }
+          await flushCapitalSnapshots(isActive, true);
+          const due = (await earliestDueAt())?.getTime() ?? slot.getTime();
+          idleWakeAt = Math.min(
+            slot.getTime(),
+            Math.max(due, Date.now() + MIN_IDLE_WAKE_MS),
+          );
+          // Close pooled connections so they cannot keep the compute awake.
+          await prisma.$disconnect();
+        }
+        await sleep(
+          Math.max(0, Math.min(ACTIVITY_POLL_MS, idleWakeAt - Date.now())),
+        );
       } catch {
         console.error(
           "[exchange-worker] Cycle failed; retrying. Provider details redacted.",
@@ -55,6 +134,8 @@ async function main() {
     }
   } finally {
     clearInterval(heartbeat);
+    clearInterval(alive);
+    await unlink(ALIVE_FILE).catch(() => {});
     await unlink("/tmp/cryptoportfolio-worker-id").catch(() => {});
     await prisma.exchangeWorkerLease.deleteMany({
       where: { name: `worker:${owner}` },

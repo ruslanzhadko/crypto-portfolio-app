@@ -14,6 +14,7 @@ import {
   maskKey,
 } from "./crypto";
 import { enqueue } from "./queue";
+import { markExchangeActivity } from "./activity";
 import { ExchangeError } from "./types";
 
 export function exchangeJson(body: unknown, status = 200) {
@@ -58,7 +59,9 @@ export async function exchangeGuard(req?: NextRequest) {
     if (counter.attempts > 15)
       return { ok: false as const, response: failure("RATE_LIMIT", 429) };
   }
-  return guard;
+  // Tells the worker someone is watching, so it switches to the fast cadence.
+  const activeSince = await markExchangeActivity(guard.user.id);
+  return { ...guard, activeSince };
 }
 export async function readBody(req: NextRequest): Promise<unknown> {
   if (!req.headers.get("content-type")?.startsWith("application/json"))

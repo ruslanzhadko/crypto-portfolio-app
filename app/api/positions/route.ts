@@ -11,11 +11,14 @@ import {
   failure,
   safeApiFailure,
 } from "@/lib/exchanges/api";
+import { withinActivityGrace } from "@/lib/exchanges/activity";
+import { staleLimits } from "@/lib/exchanges/config";
 export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     const guard = await exchangeGuard();
     if (!guard.ok) return guard.response;
+    const maxAge = staleLimits(withinActivityGrace(guard.activeSince)).futures;
     const parsed = z
       .object({
         exchange: z
@@ -139,7 +142,7 @@ export async function GET(req: NextRequest) {
         errorCode: account.errorCode,
         stale:
           !["ACTIVE", "PARTIAL"].includes(account.connection.status) ||
-          Date.now() - p.updatedAt.getTime() > 90_000,
+          Date.now() - p.updatedAt.getTime() > maxAge,
       })),
       total: summaryRows.length,
       summary: summarizePositions(
@@ -162,7 +165,7 @@ export async function GET(req: NextRequest) {
               )
             )) ||
           !c.positionsAt ||
-          Date.now() - c.positionsAt.getTime() > 90_000,
+          Date.now() - c.positionsAt.getTime() > maxAge,
       ),
     });
   } catch (e) {

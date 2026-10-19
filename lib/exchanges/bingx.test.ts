@@ -85,7 +85,8 @@ describe("BingX spot and perpetuals", () => {
         "/openApi/swap/v3/user/balance",
       ],
     ] as const) {
-      const signed = client.sign(path, [...api], "GET", {});
+      // CCXT types `api` as a string, but its BingX signer receives the path segments.
+      const signed = client.sign(path, [...api] as unknown as string, "GET", {});
       expect(signed.url).toContain(suffix + "?");
       expect(signed.url).toContain("signature=");
       expect(signed.headers?.["X-BX-APIKEY"]).toBe("fixture-key");
