@@ -1,13 +1,19 @@
 # CryptoPortfolio
 
-Моніторинг крипто-портфеля: Next.js 14 (App Router), TypeScript, Prisma, NextAuth.js (Auth.js v5), Tailwind.
+Моніторинг крипто-портфеля: гаманці, біржові рахунки й позиції, криптострічка та
+сповіщення. Next.js 15 (App Router), TypeScript, Prisma, PostgreSQL (Neon), NextAuth.js
+(Auth.js v5), Tailwind.
+
+Інфраструктура, ліміти Neon, бюджет і план переїзду worker: [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 
 ## Біржові баланси та позиції
 
-Binance, Bybit і Hyperliquid: read-only підключення, спотові активи, equity та
-відкриті позиції, окремий worker і загальна історія капіталу. Функція вимкнена до
+Binance, Bybit, Gate, OKX, BingX, Bitget, Aster і Hyperliquid: read-only підключення,
+спотові активи, equity, відкриті позиції з funding/комісіями, окремий worker і загальна
+історія капіталу. Функція вимкнена до
 налаштування міграції, секретів і пілотної перевірки. Інструкції, матриця підтримки,
-обмеження та перевірки перед production: [EXCHANGES.md](EXCHANGES.md).
+обмеження та перевірки перед production: [EXCHANGES.md](EXCHANGES.md),
+передача контексту: [EXCHANGES_HANDOFF.md](EXCHANGES_HANDOFF.md).
 
 ## Криптострічка з Telegram
 

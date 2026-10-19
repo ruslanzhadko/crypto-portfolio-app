@@ -64,3 +64,4 @@ SESSION_SUMMARY.md
 
 yarn.lock
 pnpm-lock.yaml
+.env*

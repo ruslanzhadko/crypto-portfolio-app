@@ -1,7 +1,10 @@
 # Биржевые балансы и позиции
 
-Реализованы серверные подключения Binance/Bybit/Gate/OKX, worker, позиции Hyperliquid,
-сводный капитал, новый дашборд и история снимков. Функция выключена по умолчанию.
+Реализованы серверные подключения Binance, Bybit, Gate, OKX, BingX, Bitget, Aster и
+Hyperliquid, worker, сводный капитал, дашборд и история снимков. Функция выключена по
+умолчанию и пока работает только на preview (`develop`). Подробная передача контекста —
+[EXCHANGES_HANDOFF.md](EXCHANGES_HANDOFF.md); нагрузка на БД и бюджет —
+[INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 Это мониторинг: приложение не размещает ордера, не переводит и не выводит средства.
 
 ## Поддержка
@@ -13,6 +16,9 @@
 | Gate        | Classic Spot и отдельный USDT futures wallet | USDT perpetuals, one-way/hedge | Read-only ключ основного аккаунта с IP whitelist; Unified, portfolio margin и split positions не поддержаны |
 | OKX global  | Единый trading account, включая spot | Linear USDT/USDC SWAP, net/long/short | Read-only + IP whitelist + API Passphrase; режимы 1/2/3, без portfolio margin, открытых inverse/options/delivery/spot-margin позиций |
 | Hyperliquid | HyperCore spot и classic perp equity / unified | Основной perp DEX                 | По существующему EVM-адресу; portfolio margin и HIP-3 не поддержаны                                                      |
+| BingX       | Spot и USDT perpetual                          | USDT perpetuals                   | Funding/PnL/комиссии текущего цикла из истории; неполная история → «—»                                                   |
+| Bitget      | Classic v2 (spot + USDT/USDC futures) или Unified v3, режим определяется автоматически | Linear USDT/USDC | Funding wallet, Earn, COIN-M не поддержаны; см. [docs/bitget.md](docs/bitget.md) |
+| Aster       | Фьючерсный счёт (по адресу кошелька или через API Wallet) | USDT perpetuals | Spot не поддержан; полные funding/комиссии/безубыточность только через API Wallet; см. [docs/ASTER.md](docs/ASTER.md) |
 
 Funding-счета, Earn, займы как отдельные продукты, история сделок и инвестиционная
 доходность не входят в релиз. Долги в поддерживаемом счёте сохраняются и учитываются
@@ -95,6 +101,25 @@ EXCHANGE_WORKER_PUBLIC_IP=<фиксированный исходящий IP work
 ключи локально через менеджер секретов или Node `crypto.randomBytes(32)`. Не
 используйте примеры/тестовые ключи из тестов. Эти переменные не имеют `NEXT_PUBLIC_`
 и не должны попадать в Git. Ключ шифрования нельзя хранить в самой БД.
+
+Режимы worker «активный / простой» (без них worker будит Neon круглосуточно):
+
+```dotenv
+# Vercel (Production/Preview) и worker — одинаковое значение, минимум 32 символа
+EXCHANGE_WORKER_SIGNAL_SECRET=<случайная строка>
+# Только worker: адрес приложения, которое он опрашивает (каждые 10 с, без БД)
+EXCHANGE_ACTIVITY_URL=https://<домен приложения>/api/worker/activity
+# Только worker и только для защищённого Preview: Protection Bypass for Automation
+EXCHANGE_ACTIVITY_BYPASS=<секрет обхода защиты Vercel>
+```
+
+Пока пользователь открыт на страницах бирж, позиций, дашборда или кошельков (и 10 минут
+после последнего запроса), его подключения обновляются как раньше — каждые ~30 с.
+Без зрителей все подключения синхронизируются одним окном в начале каждого получаса
+(`:00`/`:30`), после чего worker закрывает соединения с БД. Сигнал «пользователь смотрит»
+хранится в Vercel Runtime Cache, а не в PostgreSQL. Если `EXCHANGE_ACTIVITY_URL` или
+секрет не заданы, worker работает по-старому (быстро для всех). Docker healthcheck читает
+локальный файл, а не БД. Подробнее — [INFRASTRUCTURE.md](INFRASTRUCTURE.md) §3.1.
 
 Worker также нужны `DATABASE_URL`, `DIRECT_URL` и опционально `COINGECKO_API_KEY`.
 Курс USDT/USDC берётся по фиксированным CoinGecko ID; при недоступной оценке деньги
@@ -197,6 +222,9 @@ sudo journalctl -u cryptoportfolio-worker-update -f
   UI считает worker недоступным после 90 секунд.
 - Задержку `ExchangeSyncJob.dueAt`, последние успешные времена отдельных разделов,
   частоту safe error codes и рост нагрузки Neon. История запусков хранится 7 дней.
+- **Внимание:** текущий worker опрашивает БД каждые 2 секунды и не даёт Neon заснуть
+  (~6 CU·ч/сутки, исчерпание Free за ~16 дней). До выпуска в production нужны режимы
+  «активный / простой» — [INFRASTRUCTURE.md](INFRASTRUCTURE.md) §3.
 - Сверку equity с биржей, учёт всех страниц, отключение ключа, восстановление
   процесса и работу при временном отсутствии цен.
 
