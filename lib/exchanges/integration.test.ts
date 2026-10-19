@@ -551,4 +551,27 @@ describe.skipIf(!enabled)("exchange database integration", () => {
     ).toBe(backoff.getTime());
     await prisma.exchangeConnection.delete({ where: { id: c.id } });
   });
+  it("keeps an idle user's transient retry until the next slot", async () => {
+    const c = await prisma.exchangeConnection.create({
+      data: { userId, exchange: "bybit", label: "Idle retry" },
+    });
+    await enqueue(c.id);
+    const job = (await claimJob())!;
+    const slot = nextIdleSlot();
+    const failed: SyncResult = {
+      accounts: [],
+      failedAccounts: [
+        { accountKey: "unified", kind: "unified", errorCode: "UNAVAILABLE" },
+      ],
+    };
+    expect(
+      await commitResult(c.id, 1, job.token, failed, new Date(), slot),
+    ).toBe(true);
+    const retry = await prisma.exchangeSyncJob.findUniqueOrThrow({
+      where: { connectionId: c.id },
+    });
+    expect(retry.attempts).toBe(1);
+    expect(retry.dueAt.getTime()).toBeGreaterThanOrEqual(slot.getTime() - 1000);
+    await prisma.exchangeConnection.delete({ where: { id: c.id } });
+  });
 });

@@ -196,4 +196,16 @@ describe("Aster public wallet adapter", () => {
     expect(result.accounts[0]!.positions).toEqual([]);
     expect(result.accounts[0]!.equityUsd).toBe("0");
   });
+  it("treats a missing positions list as none when account data is present", async () => {
+    const result = await new AsterAdapter(address, prices, async () => ({
+      result: {
+        address,
+        accountPrivacy: "disabled",
+        perpAssets: [{ asset: "USDT", walletBalance: "50" }],
+        staking: { totalStakedAmount: null },
+      },
+    })).fetch();
+    expect(result.accounts[0]!.positions).toEqual([]);
+    expect(result.accounts[0]!.equityUsd).toBe("49.5");
+  });
 });

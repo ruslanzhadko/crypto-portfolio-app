@@ -233,15 +233,19 @@ export async function commitResult(
           attempts: transientFailure ? job.attempts + 1 : 0,
           forceBalances: false,
           dueAt: new Date(
-            Date.now() +
-              (transientFailure
-                ? retryDelay(
-                    job.attempts,
-                    transientFailure.errorCode === "RATE_LIMIT",
-                  )
-                : nextDueAt
-                  ? Math.max(0, nextDueAt.getTime() - Date.now())
-                  : POSITION_INTERVAL_MS),
+            Math.max(
+              Date.now() +
+                (transientFailure
+                  ? retryDelay(
+                      job.attempts,
+                      transientFailure.errorCode === "RATE_LIMIT",
+                    )
+                  : nextDueAt
+                    ? 0
+                    : POSITION_INTERVAL_MS),
+              // Without a viewer even a retry waits for the next idle slot.
+              nextDueAt?.getTime() ?? 0,
+            ),
           ),
         },
       });
@@ -482,7 +486,10 @@ export async function runOneJob(
           leaseUntil: null,
           attempts: { increment: 1 },
           dueAt: new Date(
-            Date.now() + retryDelay(job.attempts, code === "RATE_LIMIT"),
+            Math.max(
+              Date.now() + retryDelay(job.attempts, code === "RATE_LIMIT"),
+              isActive(c.userId) ? 0 : nextIdleSlot().getTime(),
+            ),
           ),
         },
       });

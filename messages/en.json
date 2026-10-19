@@ -988,7 +988,7 @@
       "UNSUPPORTED_ACCOUNT": "This account mode or its open products are not supported. Previous values may be stale.",
       "FUTURES_UNAVAILABLE": "Futures cannot be read with this key. Spot data is retained. Do not enable trading to bypass this restriction.",
       "SPOT_UNAVAILABLE": "Aster spot is not included: reading it requires API access. Futures positions remain available.",
-      "PRIVATE_ACCOUNT": "Aster account privacy hides balances and positions. Disable it in Aster to sync by wallet address. Previous data is retained.",
+      "PRIVATE_ACCOUNT": "Aster account privacy hides balances and positions. Disable privacy in Aster to sync by wallet address, or connect an Aster API Wallet. Previous data is retained.",
       "UNPRICED_ASSETS": "Some assets have no trusted USD valuation. The total is incomplete.",
       "DUPLICATE_ACCOUNT": "This key or exchange account is already connected.",
       "CONFIGURATION": "Exchange monitoring is not configured correctly. Contact the operator.",

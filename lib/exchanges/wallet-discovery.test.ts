@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
   enqueue: vi.fn(),
   lock: vi.fn(),
 }));
-vi.mock("./aster", () => ({ readAsterBalance: mocks.read }));
+vi.mock("./aster", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./aster")>()),
+  readAsterBalance: mocks.read,
+}));
 vi.mock("./queue", () => ({ enqueue: mocks.enqueue }));
 vi.mock("@/lib/db/prisma", () => {
   const db = {
@@ -27,7 +30,7 @@ vi.mock("@/lib/db/prisma", () => {
     prisma: { ...db, $transaction: (fn: (tx: typeof db) => unknown) => fn(db) },
   };
 });
-import { hasPublicAsterAccount, syncWalletExchanges } from "./wallet-discovery";
+import { asterAccountState, syncWalletExchanges } from "./wallet-discovery";
 const address = `0x${"a".repeat(40)}`;
 const publicAccount = {
   result: {
@@ -88,16 +91,26 @@ describe("wallet exchange discovery", () => {
     expect(mocks.enqueue).not.toHaveBeenCalled();
     expect(mocks.read).not.toHaveBeenCalled();
   });
-  it("does not mistake a private/default account for an empty public account", async () => {
+  it("links a private account so it can explain itself, but not an absent or empty one", async () => {
     mocks.read.mockResolvedValue({
       result: { address, accountPrivacy: "enabled" },
     });
-    await expect(syncWalletExchanges("wallet")).rejects.toMatchObject({
-      code: "PRIVATE_ACCOUNT",
+    await syncWalletExchanges("wallet");
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+
+    mocks.create.mockClear();
+    mocks.read.mockResolvedValue({
+      error: {
+        code: -32603,
+        message:
+          "Internal error: BinanceApiError[code=-40000005,msg=The account does not exist, please open a futures account.,params=null]",
+      },
     });
+    await syncWalletExchanges("wallet");
     expect(mocks.create).not.toHaveBeenCalled();
+
     expect(
-      hasPublicAsterAccount(
+      asterAccountState(
         {
           result: {
             address,
@@ -108,7 +121,11 @@ describe("wallet exchange discovery", () => {
         },
         address,
       ),
-    ).toBe(false);
+    ).toBe("absent");
+    // Other RPC failures stay failures, never "no account".
+    expect(() =>
+      asterAccountState({ error: { message: "rate limited" } }, address),
+    ).toThrow();
   });
   it("detects positions even with no collateral balance and rejects another address", () => {
     const payload = {
@@ -121,10 +138,25 @@ describe("wallet exchange discovery", () => {
         ],
       },
     };
-    expect(hasPublicAsterAccount(payload, address)).toBe(true);
+    expect(asterAccountState(payload, address)).toBe("listed");
     expect(() =>
-      hasPublicAsterAccount(payload, `0x${"b".repeat(40)}`),
+      asterAccountState(payload, `0x${"b".repeat(40)}`),
     ).toThrow();
+  });
+  it("accepts the live response that omits positions when there are none", () => {
+    expect(
+      asterAccountState(
+        {
+          result: {
+            address,
+            accountPrivacy: "disabled",
+            perpAssets: [{ asset: "USDT", walletBalance: "12.5" }],
+            staking: {},
+          },
+        },
+        address,
+      ),
+    ).toBe("listed");
   });
   it("checks limits and rechecks wallet activity after the public request", async () => {
     mocks.count.mockResolvedValue(10);

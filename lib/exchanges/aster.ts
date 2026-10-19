@@ -29,6 +29,19 @@ export async function readAsterBalance(address: string): Promise<unknown> {
   return parse(await response.text(), undefined, (value) => value);
 }
 
+/**
+ * Live RPC omits `positions` when a readable account has none (observed
+ * October 2026; the docs do not mark it optional). Accept that only when the
+ * account data itself arrived, so a truncated response is still rejected.
+ */
+export function asterPositionGroups(
+  result: Record<string, unknown>,
+): Record<string, unknown>[] {
+  if (result.positions === undefined && Array.isArray(result.perpAssets))
+    return [];
+  return records(result.positions);
+}
+
 /** Public address-based RPC. Never signs requests or asks for a wallet private key. */
 export class AsterAdapter implements ExchangeAdapter {
   private marketAt = 0;
@@ -88,7 +101,7 @@ export class AsterAdapter implements ExchangeAdapter {
         };
       })
       .filter((b) => !new D(b.total).isZero());
-    const positions: OpenPosition[] = records(result.positions).flatMap(
+    const positions: OpenPosition[] = asterPositionGroups(result).flatMap(
       (group) => {
         if (group.tradingProduct !== "perps")
           throw new ExchangeError("UNSUPPORTED_ACCOUNT");

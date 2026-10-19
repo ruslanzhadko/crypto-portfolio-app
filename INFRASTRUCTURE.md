@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | A | Оплатить Neon Launch, ограничить compute обеих веток 0,25 CU, включить spending notifications | **Сделано 20.10** |
 | B | Код: снижение egress (§2.2) и режимы worker «активный / простой» (§3.1). **Код готов 20.10** (тесты, интеграция на локальном PostgreSQL, замер: 0 SQL-запросов в простое). Развёрнуто в `develop` (`9b5aa20`), worker опрашивает сигнал каждые 10 с (HTTP 200). Осталось: подтвердить засыпание `exchange-dev` в Neon Monitoring | **Сделано 20.10** |
-| C | Выпуск бирж в production (см. ниже), удаление `exchange-dev`, наведение порядка в Preview | Октябрь, до 1 ноября |
+| C | Выпуск бирж в production (см. ниже), удаление `exchange-dev`, наведение порядка в Preview. **20.10:** бэкап `C:/Users/rzhad/cryptoportfolio-backups/prod-before-exchanges-20261020-0210.dump` (проверен восстановлением), 9 биржевых таблиц добавлены в production одной транзакцией, переменные Production в Vercel (новый keyring), `main` = `cebb70e`, production-worker `cryptoportfolio-worker-production` из `main` на той же VM, dev-worker остановлен (контейнер сохранён). Осталось: подключить ключи в production, затем удалить `exchange-dev`, переопределения Preview `develop` и Protection Bypass | **В процессе** |
 | D | Решение Free / Launch по замерам за 3–7 дней | Начало ноября |
 | E | Telegram listener с Render на текущую GCP VM (Render отключить). Платный VPS (Варшава/Украина) — только перед концом пробного периода GCP (~январь 2027): Docker-образы те же, новый IP заранее добавляется в whitelist ключей | E1: ноябрь; E2: декабрь |
 | F | Живой канал на странице (§3.4) — на текущей GCP VM | После C |
