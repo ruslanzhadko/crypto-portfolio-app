@@ -1,8 +1,10 @@
 # Инфраструктура, бюджет и план развития
 
-Обновлено 19 октября 2026 года. Заменяет `docs/NEON_OPTIMIZATION_PLAN.md`
+Обновлено 20 октября 2026 года. Заменяет `docs/NEON_OPTIMIZATION_PLAN.md`
 (его полезные части перенесены сюда). Биржевая часть описана в
 [EXCHANGES.md](EXCHANGES.md) и [EXCHANGES_HANDOFF.md](EXCHANGES_HANDOFF.md).
+Пошаговые инструкции переносов (Neon Free/Launch, выпуск в production, listener, VM, БД,
+бэкапы) и резерв оптимизаций — в [MIGRATIONS.md](MIGRATIONS.md).
 
 Бюджет на всю инфраструктуру (БД, хостинг worker, API): **ориентир $10–15 в месяц,
 потолок около $20**. Цель — не урезать функциональность и частоту обновлений, а
@@ -24,13 +26,13 @@
 
 | # | Этап | Когда |
 | --- | --- | --- |
-| A | Оплатить Neon Launch, ограничить compute обеих веток 0,25 CU, включить spending notifications | Сейчас |
-| B | Код: снижение egress (§2.2) и режимы worker «активный / простой» (§3.1). **Код готов 20.10** (тесты, интеграция на локальном PostgreSQL, замер: 0 SQL-запросов в простое). Осталось: переменные (EXCHANGES.md, «Режимы worker»), push в `develop`, проверка на `exchange-dev` | Октябрь |
+| A | Оплатить Neon Launch, ограничить compute обеих веток 0,25 CU, включить spending notifications | **Сделано 20.10** |
+| B | Код: снижение egress (§2.2) и режимы worker «активный / простой» (§3.1). **Код готов 20.10** (тесты, интеграция на локальном PostgreSQL, замер: 0 SQL-запросов в простое). Развёрнуто в `develop` (`9b5aa20`), worker опрашивает сигнал каждые 10 с (HTTP 200). Осталось: подтвердить засыпание `exchange-dev` в Neon Monitoring | **Сделано 20.10** |
 | C | Выпуск бирж в production (см. ниже), удаление `exchange-dev`, наведение порядка в Preview | Октябрь, до 1 ноября |
 | D | Решение Free / Launch по замерам за 3–7 дней | Начало ноября |
-| E | VPS (Варшава/Украина), перенос worker и Telegram listener (Render отключить) | Ноябрь |
-| F | Живой канал на странице (§3.4) | После E |
-| G | Триггеры на VPS в реальном времени, отключение cron-job.org (§3.2, §3.4) | После E |
+| E | Telegram listener с Render на текущую GCP VM (Render отключить). Платный VPS (Варшава/Украина) — только перед концом пробного периода GCP (~январь 2027): Docker-образы те же, новый IP заранее добавляется в whitelist ключей | E1: ноябрь; E2: декабрь |
+| F | Живой канал на странице (§3.4) — на текущей GCP VM | После C |
+| G | Триггеры в реальном времени на VM, отключение cron-job.org (§3.2, §3.4) | После C |
 
 Выпуск в production (этап C), кратко:
 
@@ -50,7 +52,10 @@
    Отключить автоматические preview-деплои (`git.deploymentEnabled` в `vercel.json`)
    или убрать переменные БД из Preview; при необходимости проверки — временная ветка Neon.
 
-## 1. Текущее состояние (19.10.2026)
+## 1. Состояние на 19.10.2026 (историческое)
+
+С 20.10 обе ветки снова работают (Neon Launch, compute 0,25 CU), функции Vercel выполняются
+в `fra1` — том же регионе, что и Neon. Актуальная сводка — MIGRATIONS.md §1.
 
 | Компонент | Где | Состояние |
 | --- | --- | --- |
@@ -113,9 +118,9 @@ Neon засыпает только после **5 минут без активн
 ```text
 Браузер ──15 с, пока вкладка активна──► Vercel API ──► Neon (UI-модель данных)
                                             │
-                                            └─ «пользователь смотрит» (HMAC-сигнал,
-                                               не чаще 1 раза в минуту)
-                                                    ▼
+                                            └─ отметка «пользователь смотрит» в Vercel
+                                               Runtime Cache (не чаще 1 раза в минуту)
+                                                    ▲ worker опрашивает каждые 10 с
 VPS: background service ── REST/WebSocket ──► биржи, Telegram, цены
      • в памяти: позиции, mark-цены, правила оповещений, буфер постов
      • в БД: активный режим — как сейчас; простой — одно окно раз в 30 мин;
@@ -130,25 +135,25 @@ VPS: background service ── REST/WebSocket ──► биржи, Telegram, ц
 | Простой | Никто не смотрит | Полная синхронизация всех подключений **раз в 30 минут**, затем закрыть соединения Prisma и не трогать БД до следующего окна |
 | Событие | Сработало правило (в будущем: ликвидация близко, исполнен ордер) | Сразу отправить уведомление в Telegram и записать событие |
 
-Сигнал «пользователь смотрит» идёт от Vercel к VPS по HTTP с HMAC-подписью и временной
-меткой. Рекомендуемый транспорт — **Cloudflare Tunnel** (бесплатно, HTTPS, без открытых
-входящих портов, переносится на любой VPS вместе с контейнером). Альтернатива — Caddy с
-доменом и открытым 443. Сигнал не содержит данных и секретов; потеря сигнала означает
-лишь задержку до следующего окна.
+**Реализовано 20.10.2026** (`9b5aa20`, развёрнуто в `develop`):
 
-Что поменяется в коде (план, не реализовано):
-
-- Расписание заданий хранить в памяти worker; не опрашивать `ExchangeSyncJob` каждые 2 с.
-  Очередь в БД оставить для ручного «Обновить» и восстановления после рестарта.
-- Heartbeat писать только в окнах и в активном режиме. UI в простое должен считать worker
-  живым по последнему окну (порог ~35–40 минут), а не по 90 секундам.
-- `saveCapitalSnapshot` — не чаще одного раза на 5-минутную корзину и пользователя;
-  считать сумму агрегатом в SQL, а не загружать каждую строку баланса.
-- `getCapitalHistory` — прореживание в SQL (`date_bin`/`DISTINCT ON`), без `sources`, если
-  график их не использует; при необходимости хранить отдельные часовые агрегаты.
-- Браузерный опрос — останавливать после ~5 минут без действий пользователя (как уже
-  сделано в ленте).
-- Media ленты — `s-maxage` для CDN и проверка ETag до чтения байтов.
+- Сигнал: API бирж/дашборда/кошельков отмечают пользователя в Vercel Runtime Cache
+  (`lib/exchanges/activity.ts`, не чаще раза в минуту, срок 10 минут). Worker раз в 10 с
+  читает `GET /api/worker/activity` (Bearer `EXCHANGE_WORKER_SIGNAL_SECRET`, для защищённого
+  Preview — `EXCHANGE_ACTIVITY_BYPASS`). Входящие порты на VM не нужны. Первоначальный
+  вариант с HMAC-push через Cloudflare Tunnel отложен до живого канала (§3.4).
+- Появившемуся зрителю задания переносятся на «сейчас» (кроме заданий в backoff).
+- В простое — одно окно в :00/:30: heartbeat с долгим сроком, обслуживание, все задания,
+  снимки капитала, затем `prisma.$disconnect()`. Между окнами — 0 SQL-запросов (замер на
+  локальном PostgreSQL с логированием всех запросов).
+- Docker healthcheck читает локальный файл `/tmp/cryptoportfolio-worker-alive` (раньше —
+  SQL каждые 30 с, что само держало Neon включённым).
+- Сразу после прихода зрителя (2 мин) данные последнего окна не помечаются устаревшими.
+- Снимки капитала объединяются (не чаще раза в 2,5 мин на пользователя); история капитала
+  прореживается в SQL (≤ ~720 точек, без JSON `sources`), опрос истории — раз в 5 мин;
+  overview читает только нужные столбцы; забытая вкладка перестаёт опрашивать через 30 мин
+  без действий; фото ленты кэшируются CDN (7 дней), ответ 304 не читает байты из БД.
+- Без настроенных переменных worker работает по-старому (быстро для всех).
 
 ### 3.2 Остальные фоновые задачи — в те же окна
 
@@ -271,6 +276,8 @@ Launch. Если включать Launch:
 
 ## 5. Переезд с GCP (бесплатный период закончится примерно в январе 2027)
 
+Пошаговая инструкция — [MIGRATIONS.md](MIGRATIONS.md) §6. Ниже — соображения и выбор страны.
+
 Worker уже работает в Docker (`Dockerfile.exchanges`) и деплоится через GitHub Actions по
 SSH (`.github/workflows/worker-deploy.yml`, `deploy/`). Для быстрого переезда:
 
@@ -361,7 +368,7 @@ ORDER BY pg_total_relation_size(relid) DESC;
 | --- | --- |
 | Production и Preview (общие, с июня) | `DATABASE_URL`, `DIRECT_URL`, `NEXT_PUBLIC_APP_URL`, `NEXTAUTH_SECRET`, `AUTH_SECRET`, `AUTH_TRUST_HOST`, `MORALIS_API_KEY`, `ANKR_API_KEY`, `HELIUS_API_KEY`, `SOLANA_RPC_URL`, `COINGECKO_API_KEY`, `COINGECKO_BASE_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `ADMIN_EMAIL`, `CRON_SECRET` |
 | Только Production | `NEXTAUTH_URL`, `AUTH_TELEGRAM_ID`, `AUTH_TELEGRAM_SECRET`, `ETHERSCAN_API_KEY`, `ROBINHOOD_BLOCKSCOUT_API_KEY` |
-| Только Preview для ветки `develop` (переопределения) | `DATABASE_URL`, `DIRECT_URL` (ветка `exchange-dev`), `EXCHANGES_ENABLED`, `EXCHANGE_ENCRYPTION_KEYS`, `EXCHANGE_ENCRYPTION_KEY_VERSION`, `EXCHANGE_FINGERPRINT_KEY`, `EXCHANGE_WORKER_PUBLIC_IP` |
+| Только Preview для ветки `develop` (переопределения) | `DATABASE_URL`, `DIRECT_URL` (ветка `exchange-dev`), `EXCHANGES_ENABLED`, `EXCHANGE_ENCRYPTION_KEYS`, `EXCHANGE_ENCRYPTION_KEY_VERSION`, `EXCHANGE_FINGERPRINT_KEY`, `EXCHANGE_WORKER_PUBLIC_IP`, `EXCHANGE_WORKER_SIGNAL_SECRET` (с 20.10) |
 
 Выводы:
 
@@ -405,7 +412,9 @@ dev-listener с отдельной сессией.
 - `/api/health` отвечает без SQL; БД проверяется только по `?db=1`.
 - Новые записи `PriceHistory` отключены.
 - `cron:local` отказывается работать с Neon без `ALLOW_REMOTE_CRON=true`.
-- Max compute production снижен до 0,5 CU.
+- Max compute production снижен до 0,5 CU; с 20.10 обе ветки 0,25 CU.
+- Этап B (20.10): режимы worker, сигнал через Runtime Cache, DB-free healthcheck, снижение
+  egress — подробно в §3.1.
 
 ## 9. Открытые вопросы
 

@@ -5,6 +5,7 @@
 (Auth.js v5), Tailwind.
 
 Інфраструктура, ліміти Neon, бюджет і план переїзду worker: [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
+Покрокові інструкції переносів (Neon, production, VM, БД, бекапи): [MIGRATIONS.md](MIGRATIONS.md).
 
 ## Біржові баланси та позиції
 
