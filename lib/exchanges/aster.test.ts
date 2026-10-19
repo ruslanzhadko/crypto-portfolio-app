@@ -208,4 +208,81 @@ describe("Aster public wallet adapter", () => {
     expect(result.accounts[0]!.positions).toEqual([]);
     expect(result.accounts[0]!.equityUsd).toBe("49.5");
   });
+  it("reads Shield Mode positions and counts their margin as locked collateral", async () => {
+    // Shape observed from the live RPC in October 2026 (lossless numbers as strings).
+    const result = await new AsterAdapter(
+      address,
+      async () => new Map([["USDT", "1"]]),
+      async () => ({
+        result: {
+          address,
+          accountPrivacy: "disabled",
+          perpAssets: [{ asset: "USDT", walletBalance: "240.73405729" }],
+          positions: [
+            {
+              tradingProduct: "shieldmode",
+              positions: [
+                {
+                  positionId: "1164712525996998700",
+                  symbol: "ETHUSDT",
+                  isLong: true,
+                  leverage: "1001",
+                  marginAsset: "USDT",
+                  margin: "5",
+                  entryPrice: "2407.0387822",
+                  liqPrice: "2405.47577",
+                  qty: "2.07931838",
+                  tp: null,
+                  sl: null,
+                  cumFundingFee: "0",
+                  pnl2usdt: "-0.9488433",
+                  pnlPercentage: "-0.18976866",
+                  createTime: "1792453904150",
+                  feeMode: "PROFIT",
+                },
+              ],
+            },
+          ],
+          staking: {},
+        },
+      }),
+      async () => [
+        {
+          symbol: "ETHUSDT",
+          markPrice: "2407.12",
+          lastFundingRate: "0.0001",
+          nextFundingTime: Date.now() + 3600_000,
+        },
+      ],
+    ).fetch();
+    const account = result.accounts[0]!;
+    expect(account.positions).toHaveLength(1);
+    expect(account.positions![0]).toMatchObject({
+      positionKey: "shield:1164712525996998700",
+      side: "long",
+      baseSize: "2.07931838",
+      markPrice: "2407.12",
+      liquidationPrice: "2405.47577",
+      leverage: "1001",
+      marginMode: "isolated",
+      margin: "5",
+      unrealizedPnlUsd: "-0.9488433",
+    });
+    expect(account.balances).toContainEqual(
+      expect.objectContaining({ assetId: "aster:shield:USDT", locked: "5" }),
+    );
+    // 240.73405729 cash + 5 margin - 0.9488433 PnL
+    expect(account.equityUsd).toBe("244.78521399");
+    expect(account.complete).toBe(true);
+  });
+  it("keeps syncing known data when Aster adds an unknown product", async () => {
+    const raw = response();
+    raw.result.positions.push({ tradingProduct: "future-product", positions: [] });
+    const result = await new AsterAdapter(address, prices, async () => raw).fetch();
+    expect(result.accounts[0]!).toMatchObject({
+      complete: false,
+      errorCode: "UNSUPPORTED_ACCOUNT",
+    });
+    expect(result.accounts[0]!.positions).toHaveLength(1);
+  });
 });

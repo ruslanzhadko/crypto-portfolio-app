@@ -39,10 +39,17 @@ export function asterAccountState(
     ) ||
     asterPositionGroups(result).some(
       (group) =>
-        group.tradingProduct === "perps" &&
+        (group.tradingProduct === "perps" ||
+          group.tradingProduct === "shieldmode") &&
         records(group.positions).some(
           (position) =>
-            !new D(requiredDecimal(position.positionAmount)).isZero(),
+            !new D(
+              requiredDecimal(
+                group.tradingProduct === "shieldmode"
+                  ? position.qty
+                  : position.positionAmount,
+              ),
+            ).isZero(),
         ),
     );
   return funded ? "listed" : "absent";

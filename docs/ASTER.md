@@ -27,6 +27,24 @@ Accounting details (API Wallet):
   state (e.g. −833 USDT cash, +936 unrealized, ~103 margin balance). It is never
   replaced with zero.
 
+Discovery (on every wallet sync) distinguishes three answers of the public
+RPC: an explicit "account does not exist" error (nothing is linked), a readable
+account with a balance or positions (linked), and a private account (linked, so
+the connection shows how to make it readable: disable privacy or connect an API
+Wallet). The live RPC omits `positions` when a readable account has none; that
+is treated as an empty list only when the account data itself is present.
+
+Shield Mode (public RPC, `tradingProduct: "shieldmode"`) has its own fields:
+`positionId`, `isLong`, `qty`, `margin`, `leverage`, `liqPrice`, `pnl2usdt`,
+`cumFundingFee`, `tp`/`sl`, `feeMode`. There is no mark price, so it comes from
+the public premium index (refreshed every 20 s while Shield positions are open).
+Opening a Shield position moves its margin out of `walletBalance` (observed:
+the balance fell by exactly the margin), so the margin is listed as a locked
+`aster:shield:<asset>` balance and equity stays balances + unrealized PnL.
+`cumFundingFee` has no documented sign and is not shown as paid/received
+funding. Products other than `perps` and `shieldmode` mark the account
+incomplete (`UNSUPPORTED_ACCOUNT`) without stopping its sync.
+
 Spot is not included in either mode. Hidden, mismatched or malformed responses
 are failures, never verified empty positions; stored values keep their previous
 timestamp. Next funding uses the public premium index, cached for five minutes.
