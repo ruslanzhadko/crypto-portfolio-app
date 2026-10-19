@@ -63,9 +63,13 @@ jobs:
           retention-days: 3
   deploy:
     needs: check
+    # One environment since October 2026: the VM runs only the production
+    # worker (from main); develop pushes are checked but not deployed. The
+    # `worker-preview` environment holds the SSH access to that same VM.
+    if: github.ref_name == 'main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    environment: ${{ github.ref_name == 'main' && 'worker-production' || 'worker-preview' }}
+    environment: worker-preview
     steps:
       - name: Deploy the checked commit using a restricted SSH key
         env:
