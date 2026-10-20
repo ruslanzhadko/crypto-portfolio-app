@@ -2,7 +2,7 @@
 
 Реализованы серверные подключения Binance, Bybit, Gate, OKX, BingX, Bitget, Aster и
 Hyperliquid, worker, сводный капитал, дашборд и история снимков. Функция выключена по
-умолчанию и пока работает только на preview (`develop`). Подробная передача контекста —
+умолчанию; с 20.10.2026 включена в production для пилота (владелец). Подробная передача контекста —
 [EXCHANGES_HANDOFF.md](EXCHANGES_HANDOFF.md); нагрузка на БД и бюджет —
 [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
 Это мониторинг: приложение не размещает ордера, не переводит и не выводит средства.
@@ -18,7 +18,7 @@ Hyperliquid, worker, сводный капитал, дашборд и истор
 | Hyperliquid | HyperCore spot и classic perp equity / unified | Основной perp DEX                 | По существующему EVM-адресу; portfolio margin и HIP-3 не поддержаны                                                      |
 | BingX       | Spot и USDT perpetual                          | USDT perpetuals                   | Funding/PnL/комиссии текущего цикла из истории; неполная история → «—»                                                   |
 | Bitget      | Classic v2 (spot + USDT/USDC futures) или Unified v3, режим определяется автоматически | Linear USDT/USDC | Funding wallet, Earn, COIN-M не поддержаны; см. [docs/bitget.md](docs/bitget.md) |
-| Aster       | Фьючерсный счёт (по адресу кошелька или через API Wallet) | USDT perpetuals | Spot не поддержан; полные funding/комиссии/безубыточность только через API Wallet; см. [docs/ASTER.md](docs/ASTER.md) |
+| Aster       | Фьючерсный счёт (по адресу кошелька или через API Wallet) | USDT perpetuals, Shield Mode (по адресу) | Spot не поддержан; полные funding/комиссии/безубыточность только через API Wallet; приватный аккаунт подключается с подсказкой; см. [docs/ASTER.md](docs/ASTER.md) |
 
 Funding-счета, Earn, займы как отдельные продукты, история сделок и инвестиционная
 доходность не входят в релиз. Долги в поддерживаемом счёте сохраняются и учитываются
@@ -172,7 +172,14 @@ docker run -d --name cryptoportfolio-exchanges --restart unless-stopped --env-fi
 
 ## Ротация и эксплуатация
 
-### Автообновление develop на текущей VM
+### Развёртывание worker (с 20.10.2026)
+
+Production-worker `cryptoportfolio-worker-production` разворачивается GitHub Actions из `main`
+на ту же VM ([deploy/GITHUB_ACTIONS.md](deploy/GITHUB_ACTIONS.md)); конфигурация —
+`/etc/cryptoportfolio-worker-deploy.conf`, секреты — `exchange-production.env`. Push в
+`develop` только прогоняет проверки. Описание ниже — историческое (таймер для develop).
+
+### Автообновление develop на текущей VM (история)
 
 Для VM пользователя `rzhadko` подготовлен systemd timer. Однократно после pull:
 

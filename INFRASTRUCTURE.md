@@ -27,30 +27,43 @@
 | # | Этап | Когда |
 | --- | --- | --- |
 | A | Оплатить Neon Launch, ограничить compute обеих веток 0,25 CU, включить spending notifications | **Сделано 20.10** |
-| B | Код: снижение egress (§2.2) и режимы worker «активный / простой» (§3.1). **Код готов 20.10** (тесты, интеграция на локальном PostgreSQL, замер: 0 SQL-запросов в простое). Развёрнуто в `develop` (`9b5aa20`), worker опрашивает сигнал каждые 10 с (HTTP 200). Осталось: подтвердить засыпание `exchange-dev` в Neon Monitoring | **Сделано 20.10** |
-| C | Выпуск бирж в production (см. ниже), удаление `exchange-dev`, наведение порядка в Preview. **20.10:** бэкап `C:/Users/rzhad/cryptoportfolio-backups/prod-before-exchanges-20261020-0210.dump` (проверен восстановлением), 9 биржевых таблиц добавлены в production одной транзакцией, переменные Production в Vercel (новый keyring), `main` = `cebb70e`, production-worker `cryptoportfolio-worker-production` из `main` на той же VM, dev-worker остановлен (контейнер сохранён). Осталось: подключить ключи в production, затем удалить `exchange-dev`, переопределения Preview `develop` и Protection Bypass | **В процессе** |
+| B | Режимы worker «активный / простой» (§3.1) и снижение egress (§2.2) | **Сделано 20.10**, работает в production |
+| C | Выпуск бирж в production | **Сделано 20.10** (подробно — MIGRATIONS.md §4). Осталась уборка, см. ниже |
 | D | Решение Free / Launch по замерам за 3–7 дней | Начало ноября |
 | E | Telegram listener с Render на текущую GCP VM (Render отключить). Платный VPS (Варшава/Украина) — только перед концом пробного периода GCP (~январь 2027): Docker-образы те же, новый IP заранее добавляется в whitelist ключей | E1: ноябрь; E2: декабрь |
 | F | Живой канал на странице (§3.4) — на текущей GCP VM | После C |
 | G | Триггеры в реальном времени на VM, отключение cron-job.org (§3.2, §3.4) | После C |
 
-Выпуск в production (этап C), кратко:
+### Состояние на вечер 20.10.2026
 
-1. Ветка-копия `production` в Neon как точка отката (бесплатно, пока не используется).
-2. Additive-миграция биржевых таблиц на production (`scripts/upgrade-exchanges.ts`,
-   `EXCHANGES_HANDOFF.md` §8.4) — с проверкой, что выбран нужный хост.
-3. Vercel Production: добавить `EXCHANGES_ENABLED=true`, `EXCHANGES_PILOT_USER_IDS=<id
-   владельца в production>`, `EXCHANGE_ENCRYPTION_KEYS`, `EXCHANGE_ENCRYPTION_KEY_VERSION`,
-   `EXCHANGE_FINGERPRINT_KEY`, `EXCHANGE_WORKER_PUBLIC_IP`.
-4. Merge `develop` → `main`; Vercel деплоит production.
-5. Env-файл worker на VM: production `DATABASE_URL`/`DIRECT_URL`, те же `EXCHANGE_*`, что в
-   Vercel Production; автодеплой worker — из `main`.
-6. Заново подключить биржевые ключи в интерфейсе production (старые зашифрованы для
-   `exchange-dev` и не переносятся). IP в whitelist ключей не меняется, пока worker на той же VM.
-7. Удалить `exchange-dev` и переопределения Preview для `develop` в Vercel.
-8. Preview: общие `DATABASE_URL`/`DIRECT_URL` для Preview ведут в production-БД (§6a).
-   Отключить автоматические preview-деплои (`git.deploymentEnabled` в `vercel.json`)
-   или убрать переменные БД из Preview; при необходимости проверки — временная ветка Neon.
+- Production (`main` = `e00a2bf`): биржи включены только для владельца
+  (`EXCHANGES_PILOT_USER_IDS`), остальные пользователи их не видят. Worker
+  `cryptoportfolio-worker-production` на GCP VM, разворачивается из `main` через GitHub Actions.
+- Подключены: Gate, OKX (ключи заново), Hyperliquid (найден по кошельку автоматически),
+  Aster на кошельках Main EVM и Binance Wallet (по адресу, приватность выключена).
+  Binance, Bybit, BingX, Bitget — подключить, когда понадобится (IP тот же, `34.118.101.48`).
+- Aster: поддержаны ответы без списка позиций, приватные аккаунты (подключаются с подсказкой),
+  Shield Mode (отдельная карточка «Aster Shield», маржа в активах) — EXCHANGES_HANDOFF.md §1.
+- Превью Vercel отключены (`vercel.json` → `git.deploymentEnabled`), push в `develop` только
+  прогоняет проверки.
+- Резервная копия production до миграции: `C:/Users/rzhad/cryptoportfolio-backups/prod-before-exchanges-20261020-0210.dump`
+  (проверена восстановлением).
+
+### Ближайшие шаги
+
+1. **Уборка тестового окружения** (после проверки бирж владельцем):
+   - Neon: удалить ветку `exchange-dev` (делает владелец в консоли);
+   - Vercel: удалить переопределения Preview для `develop` (`DATABASE_URL`, `DIRECT_URL`,
+     `EXCHANGES_ENABLED`, `EXCHANGE_*`, `EXCHANGE_WORKER_SIGNAL_SECRET`) и Protection Bypass
+     «exchange worker activity signal (develop)»;
+   - VM: удалить остановленный контейнер `cryptoportfolio-worker-dev` и файл
+     `~/.config/cryptoportfolio/exchange-dev.env`; на локальном ПК — пустую папку `D:/tmp`.
+2. По желанию до этапа G: в cron-job.org перевести `Check triggers` с 10 минут на :00/:30 —
+   база будет просыпаться раз в полчаса (оповещения о ценах — с задержкой до 30 минут).
+3. 28–31 октября — графики Neon (CU·ч и network transfer) и решение Free/Launch (этап D,
+   MIGRATIONS.md §3).
+4. Ноябрь: E1 (listener с Render на VM), F (живой канал), G (триггеры на VM).
+   Декабрь: E2 (платный VPS). Оповещения по позициям — после этого.
 
 ## 1. Состояние на 19.10.2026 (историческое)
 
@@ -406,6 +419,9 @@ dev-listener с отдельной сессией.
 
 ## 8. Уже сделано (сентябрь — октябрь)
 
+- 20.10: этапы A–C (Neon Launch с ограничением 0,25 CU, режимы worker, биржи в production,
+  превью отключены, поддержка Aster Shield и приватных аккаунтов Aster).
+
 - Опрос ленты: 30 с только в активной вкладке, остановка после 5 минут без действий;
   `/api/feed` кэшируется CDN 20 с.
 - Telegram listener перечитывает список каналов раз в 30 минут (раньше — 30 с).
@@ -426,7 +442,8 @@ dev-listener с отдельной сессией.
 
 ## 10. Критерии готовности
 
-- Ветка `exchange-dev` удалена; тесты идут локально, на пилоте в production или во временных ветках.
+- Ветка `exchange-dev` удалена; тесты идут локально, на пилоте в production или во временных
+  ветках. (Биржи уже в production с 20.10 — осталась только уборка.)
 - В простое на графике Neon видны длинные периоды `Endpoint inactive`; прогноз CU·ч и
   egress на месяц укладывается в лимит Free (или в выбранный бюджет Launch) с запасом.
 - Позиции и балансы обновляются раз в 30 минут без зрителей и каждые ~30 секунд при

@@ -1,8 +1,10 @@
 # Worker deployment through GitHub Actions
 
-Push to `develop` runs checks, then deploys the test worker. Push to `main`
-uses the separate `worker-production` GitHub environment. Configure production
-only after its database migration, credentials and dedicated worker are ready.
+Since 2026-10-20 there is one environment: push to `main` runs checks and
+deploys the production worker (`cryptoportfolio-worker-production`, configured by
+`/etc/cryptoportfolio-worker-deploy.conf` on the VM) using the `worker-preview`
+GitHub environment, which holds the SSH access to that VM. Push to `develop`
+only runs the checks. The sections below describe the original preview setup.
 The VM builds the Docker image; GitHub holds only a restricted SSH key, never
 the Neon password or exchange encryption keys. Vercel deploys independently.
 

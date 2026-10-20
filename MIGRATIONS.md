@@ -16,14 +16,15 @@
 
 ## 1. Текущая инфраструктура и стоимость
 
-| Компонент | Где сейчас | Стоимость сейчас | Цель |
+| Компонент | Где сейчас (20.10.2026, вечер) | Стоимость сейчас | Цель |
 | --- | --- | --- | --- |
-| Web + API | Vercel Hobby, функции в `fra1` (Франкфурт) | $0 | Без изменений |
-| БД | Neon, проект `cryptoportfolio` (`aws-eu-central-1`), ветки `production` и `exchange-dev`, обе 0,25 CU | Launch с 19.10.2026, $0,106/CU·ч | Free с 1.11 (если укладываемся) или Launch $3–8/мес |
-| Exchange worker | GCP VM `cryptoportfolio-worker`, `europe-central2-a`, Docker | Пробный период GCP (~до января 2027) | Платный VPS в декабре |
-| Telegram listener | Render, Background Worker `crypto-telegram-feed` (Starter) | ~$7/мес | На той же VM, Render отключить |
+| Web + API | Vercel Hobby, функции в `fra1` (Франкфурт); деплой только из `main`, превью отключены | $0 | Без изменений |
+| БД | Neon, проект `cryptoportfolio` (`aws-eu-central-1`), ветка `production` (0,25 CU); `exchange-dev` ждёт удаления | Launch с 19.10.2026, $0,106/CU·ч, без жёсткого лимита трат | Free с 1.11 (если укладываемся) или Launch $3–8/мес |
+| Exchange worker | GCP VM `cryptoportfolio-worker`, `europe-central2-a`, контейнер `cryptoportfolio-worker-production` из `main` | Пробный период GCP (~до января 2027) | Платный VPS в декабре |
+| Telegram listener | Render, Background Worker `crypto-telegram-feed` (Starter), автодеплой из `main` | ~$7/мес (за октябрь ~$5) | На той же VM, Render отключить |
 | Ценовые триггеры | cron-job.org → Vercel `/api/cron/*` каждые 10/30 мин | $0, но будят БД | В worker на VM, в реальном времени |
-| Сигнал «пользователь смотрит» | Vercel Runtime Cache, `/api/worker/activity` | $0 (вызовы функций в лимите Hobby) | Без изменений |
+| Сигнал «пользователь смотрит» | Vercel Runtime Cache, `/api/worker/activity`, опрос worker каждые 10 с | $0 (вызовы функций в лимите Hobby) | Без изменений |
+| Резервные копии | Ручная: `C:/Users/rzhad/cryptoportfolio-backups/` (20.10, до миграции) | $0 | Ежедневно с VM в R2/B2 (§8) |
 
 Бюджет: ориентир $10–15/мес, потолок ~$20. Ожидаемо после всех шагов: VPS ~$5–12 +
 резервный VPS ~€4–5 (по желанию) + Neon $0–8.
@@ -34,9 +35,10 @@
 | --- | --- | --- |
 | Vercel → Environment Variables | БД (`DATABASE_URL`, `DIRECT_URL`), авторизация, API-ключи провайдеров, бот Telegram, `CRON_SECRET`; для Preview `develop` — биржевые `EXCHANGE_*` и `EXCHANGE_WORKER_SIGNAL_SECRET`. Полная таблица — INFRASTRUCTURE.md §6a | Сайт и API |
 | Vercel → Deployment Protection | Protection Bypass for Automation (заметка «exchange worker activity signal (develop)») | Worker при опросе защищённого Preview |
-| VM: `/home/rzhadko/.config/cryptoportfolio/exchange-dev.env` | БД, `EXCHANGES_ENABLED`, keyring шифрования, fingerprint, `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_BYPASS` | Контейнер `cryptoportfolio-worker-dev` |
-| VM: `/etc/cryptoportfolio-worker-deploy.conf` (только для production-worker, ещё не создан) | Ветка, путь к env-файлу, имя контейнера | Root-скрипт деплоя |
-| GitHub → Environments `worker-preview` / `worker-production` | SSH-ключ деплоя, known_hosts, `WORKER_HOST`, `WORKER_USER` | GitHub Actions |
+| VM: `/home/rzhadko/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko | Контейнер `cryptoportfolio-worker-production` |
+| VM: `/etc/cryptoportfolio-worker-deploy.conf` (root, 600) | `branch=main`, state `/var/lib/cryptoportfolio-worker-production-deploy`, env-файл, имя контейнера | Root-скрипт деплоя |
+| VM: `exchange-dev.env` и остановленный `cryptoportfolio-worker-dev` | Старый тестовый набор | Удалить при уборке |
+| GitHub → Environment `worker-preview` | SSH-ключ деплоя, known_hosts, `WORKER_HOST`, `WORKER_USER` для этой VM; с 20.10 используется для деплоя из `main` (`worker-production` не нужен, пока VM одна) | GitHub Actions |
 | Render → Environment | `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `DATABASE_URL` | Telegram listener |
 | Neon | Строки подключения веток | — |
 
@@ -65,9 +67,26 @@ General → Transfer project; строки подключения не меня�
 проекта), старую организацию перевести на Free. Обратный перенос Launch → Free Neon не
 разрешает: тариф целевой организации должен быть не ниже исходной.
 
-## 4. Выпуск бирж в production (этап C)
+## 4. Выпуск бирж в production (этап C) — выполнен 20.10.2026
 
-Подробности, переменные и откат — EXCHANGES_HANDOFF.md §8. Кратко:
+Как было сделано фактически (пригодится для повторения на новой БД/VM):
+
+- Резервная копия: `pg_dump --format=custom` в контейнере `postgres:16-alpine` по `DIRECT_URL`,
+  проверка восстановлением во временный PostgreSQL и сверкой числа строк.
+- Схема: `prisma migrate diff --from-url <production DIRECT_URL> --to-schema-datamodel
+  prisma/schema.prisma --script` → проверить, что только `CREATE` (никаких `DROP`/`ALTER`
+  существующих таблиц) → обернуть в `BEGIN; … COMMIT;` → `prisma db execute`. Повторный diff
+  с `--exit-code` = 0. Это точнее, чем `scripts/upgrade-exchanges.ts`.
+- Vercel Production: 7 переменных `EXCHANGE*` с **новым** keyring (тестовый не переносился);
+  значения добавлялись через stdin `vercel env add`, не печатались.
+- VM: production env-файл и `/etc/cryptoportfolio-worker-deploy.conf`; тестовый контейнер
+  остановлен с `--restart=no`. Workflow: деплой только из `main`, environment `worker-preview`.
+- Грабли: при копировании env из PowerShell в файл попала строка приглашения — Docker
+  `--env-file` отказался его читать; в `--env-file` значения **без кавычек** (JSON keyring тоже);
+  упавший коммит помечается в `<state>/failed` — удалить метку перед повтором деплоя.
+- Ключи бирж подключены заново в интерфейсе production (IP whitelist не менялся).
+
+Исходный план (для справки), подробности и откат — EXCHANGES_HANDOFF.md §8:
 
 1. Neon: создать ветку-копию от `production` (точка отката).
 2. Проверить хост в строке подключения (production), прочитать `prisma/exchanges.sql`,
@@ -213,7 +232,8 @@ IP остаётся в whitelist до конца проверки.
 
 | Когда | Что |
 | --- | --- |
-| Октябрь, до 1.11 | Этап C (биржи в production), удаление `exchange-dev`, порядок в Preview |
+| 20.10 | Этапы A–C выполнены: биржи в production, превью отключены |
+| Октябрь, до 1.11 | Уборка: `exchange-dev`, переопределения Preview, bypass, тестовый контейнер на VM |
 | 28–31 октября | Снять графики Neon, решить Free/Launch |
 | 1 ноября | Смена тарифа Neon (если решено) |
 | Ноябрь | Listener на VM, отключение Render; живой канал; триггеры на VM |
