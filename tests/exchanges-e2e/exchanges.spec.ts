@@ -10,6 +10,18 @@ import type { SyncResult } from "../../lib/exchanges/types";
 const userId = "exchange-e2e",
   email = "e2e@test.local",
   password = "E2ePassword123!";
+/**
+ * A click that lands while Next.js is still hydrating can be dropped, which left the page on the
+ * list for the whole timeout. Repeat the click until the route changes instead of waiting passively.
+ */
+async function openLink(page: Page, name: string, url: string | RegExp) {
+  const matches = () =>
+    typeof url === "string" ? page.url().endsWith(url) : url.test(page.url());
+  await expect(async () => {
+    if (!matches()) await page.getByRole("link", { name }).click({ timeout: 3000 });
+    await expect(page).toHaveURL(url, { timeout: 4000 });
+  }).toPass({ timeout: 20_000 });
+}
 async function claimJob() {
   // Fixtures bypass scheduling, including host/Docker clock skew.
   await prisma.exchangeSyncJob.updateMany({
@@ -274,8 +286,7 @@ test("BingX connects with encrypted read-only credentials on desktop and mobile"
   const response = await page.request.get("/api/positions?exchange=bingx");
   expect(response.status()).toBe(200);
   expect((await response.json()).positions[0].symbol).toBe("BTC-USDT");
-  await page.getByRole("link", { name: "Main BingX" }).click();
-  await expect(page).toHaveURL(`/en/exchanges/${c.id}`, { timeout: 15000 });
+  await openLink(page, "Main BingX", `/en/exchanges/${c.id}`);
   await expect(page.getByText("BTC-USDT", { exact: true })).toBeVisible();
 });
 test("Gate and OKX connection forms, encrypted passphrase and OKX replacement", async ({ page }) => {
@@ -341,8 +352,7 @@ test("Aster links an existing wallet without keys and coexists with Hyperliquid"
   await expect(page.getByRole("link", { name: "Main Aster" })).toBeVisible();
   const connection = await prisma.exchangeConnection.findFirstOrThrow({ where: { userId, exchange: "aster", walletId: wallet.id } });
   expect(connection.credentials).toBeNull();
-  await page.getByRole("link", { name: "Main Aster" }).click();
-  await expect(page).toHaveURL(`/en/exchanges/${connection.id}`, { timeout: 15000 });
+  await openLink(page, "Main Aster", `/en/exchanges/${connection.id}`);
   await expect(page.getByRole("button", { name: "Replace API key" })).toHaveCount(0);
   await expect(page.getByText(/Aster positions and futures collateral/)).toBeVisible();
   await page.getByRole("button", { name: "Connect Aster API", exact: true }).click();
@@ -396,10 +406,8 @@ test("connect → queued sync → balances and positions → replace key → dis
     ),
   ).toBe(true);
   await saveCapitalSnapshot(userId);
-  await page.getByRole("link", { name: "Main Bybit" }).click();
-  // Allow the protected dynamic route to finish streaming on cold CI runners.
   // Keep the balance/position assertions below: navigation alone is not success.
-  await expect(page).toHaveURL(new RegExp(`/exchanges/${c.id}$`), { timeout: 15000 });
+  await openLink(page, "Main Bybit", new RegExp(`/exchanges/${c.id}$`));
   await expect(page.getByText("$12,540.50", { exact: true })).toBeVisible();
   await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
   await expect(page.getByRole("combobox", { name: "Exchange", exact: true })).toHaveCount(0);

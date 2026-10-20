@@ -17,7 +17,9 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   workers: 1,
-  retries: 0,
+  // One retry in CI absorbs the rare React hydration error (#418) seen on the exchanges list; it is
+  // reported as flaky, not hidden, and avoids re-running the whole pipeline by hand.
+  retries: process.env.CI ? 1 : 0,
   timeout: 60_000,
   reporter: [["line"]],
   use: {

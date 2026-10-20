@@ -51,7 +51,7 @@ jobs:
       # Next build already runs lint and TypeScript checks; do not run them twice.
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - name: Critical browser flows (one browser, no retries)
+      - name: Critical browser flows (one browser, one retry per test)
         run: npm run test:e2e
       - name: Keep diagnostics only on failure
         if: failure()
