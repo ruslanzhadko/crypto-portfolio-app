@@ -445,6 +445,7 @@ async function main() {
   if (signal) {
     let ticking = false;
     let wasLive = false;
+    let sourcesSyncedAt = Date.now();
     tickTimer = setInterval(() => {
       if (ticking) return;
       ticking = true;
@@ -454,8 +455,14 @@ async function main() {
           // Source refresh and catch-up share the window, so the database wakes once per window.
           if (buffer.windowDue() || (live && !wasLive)) {
             await syncSources();
+            sourcesSyncedAt = Date.now();
             await catchUpMissedPosts();
           } else if (live) {
+            // A channel added in the admin panel starts being watched within a minute while the feed is open.
+            if (Date.now() - sourcesSyncedAt >= 60_000) {
+              await syncSources();
+              sourcesSyncedAt = Date.now();
+            }
             await catchUpMissedPosts();
           }
           wasLive = live;
