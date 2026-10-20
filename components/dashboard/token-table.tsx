@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, Fragment } from 'react';
+import { useEffect, useMemo, useState, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowUpDown, ChevronDown, ChevronRight, Eye, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,6 +86,29 @@ export function TokenTable({
     [...tokens, ...spamTokens].flatMap((token) => token.chains),
   )).sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [tokens, spamTokens]);
 
+  const tickerSymbols = useMemo(
+    () => [...new Set(tokens.filter((tok) => tok.exchangeOnly).map((tok) => tok.symbol.toUpperCase()))].sort().join(','),
+    [tokens],
+  );
+  const [tickerChanges, setTickerChanges] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!tickerSymbols) return;
+    const controller = new AbortController();
+    fetch(`/api/market/changes?symbols=${encodeURIComponent(tickerSymbols)}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { changes?: Record<string, number> } | null) => {
+        if (body?.changes) setTickerChanges(body.changes);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [tickerSymbols]);
+  const changeOf = (tok: UnifiedToken): number | null =>
+    tok.exchangeOnly
+      ? (tickerChanges[tok.symbol.toUpperCase()] ?? null)
+      : tok.priceChange24h !== 0
+        ? tok.priceChange24h
+        : null;
+
   const sorted = useMemo(() => {
     const arr = filterDashboardTokens(showSpam ? spam : tokens, selectedChains, search)
       .filter((token) => (threshold === null ? !hideLowValue || token.totalUsd >= 1 : token.totalUsd >= threshold));
@@ -102,14 +125,15 @@ export function TokenTable({
           bv = b.totalBalance;
           break;
         case 'change':
-          av = a.priceChange24h;
-          bv = b.priceChange24h;
+          av = changeOf(a) ?? 0;
+          bv = changeOf(b) ?? 0;
           break;
       }
       return desc ? bv - av : av - bv;
     });
     return arr;
-  }, [tokens, spam, showSpam, selectedChains, search, sortKey, desc, hideLowValue, threshold]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- changeOf reads tickerChanges
+  }, [tokens, spam, showSpam, selectedChains, search, sortKey, desc, hideLowValue, threshold, tickerChanges]);
 
   function toggleChain(chain: string) {
     setSelectedChains((current) => {
@@ -260,9 +284,19 @@ export function TokenTable({
                 const hiddenCount =
                   tok.wallets.length - visibleWallets.length + tok.exchanges.length - visibleExchanges.length;
                 const groups = groupByWallet(visibleWallets);
-                const hasBreakdown = groups.length > 0 || visibleExchanges.length > 0;
+                const lineCount = visibleWallets.length + visibleExchanges.length;
+                const hasBreakdown = lineCount > 1;
                 const sourceCount = groups.length + visibleExchanges.length;
                 const isMulti = sourceCount > 1;
+                const onlyExchange = lineCount === 1 ? visibleExchanges[0] : undefined;
+                const onlyWallet = lineCount === 1 ? visibleWallets[0] : undefined;
+                const subtitle = onlyExchange
+                  ? `${onlyExchange.label} · ${te.has(`kinds.${onlyExchange.kind}`) ? te(`kinds.${onlyExchange.kind}`) : onlyExchange.kind}`
+                  : onlyWallet
+                    ? `${tok.name} · ${onlyWallet.walletLabel ?? shortAddress(onlyWallet.walletAddress, 4)}`
+                    : tok.exchangeOnly
+                      ? [...new Set(tok.exchanges.map((h) => exchangeName(h.exchange)))].join(' · ')
+                      : tok.name;
                 return (
                   <Fragment key={tok.key}>
                     <tr
@@ -300,10 +334,8 @@ export function TokenTable({
                           <div className="min-w-0">
                             <p className="font-medium">{tok.symbol}</p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">
-                              <span className="truncate">
-                                {tok.exchangeOnly
-                                  ? [...new Set(tok.exchanges.map((h) => exchangeName(h.exchange)))].join(' · ')
-                                  : tok.name}
+                              <span className="truncate" title={subtitle}>
+                                {subtitle}
                               </span>
                               {isMulti && (
                                 <span
@@ -341,8 +373,8 @@ export function TokenTable({
                         {formatUsd(tok.totalUsd)}
                       </td>
                       <td className="hidden px-4 py-3 text-right lg:table-cell">
-                        {tok.priceChange24h !== 0 ? (
-                          <PriceChange value={tok.priceChange24h} size="sm" />
+                        {changeOf(tok) !== null ? (
+                          <PriceChange value={changeOf(tok)!} size="sm" />
                         ) : (
                           <span className="text-text-muted">—</span>
                         )}
