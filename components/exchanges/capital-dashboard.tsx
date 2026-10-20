@@ -287,7 +287,7 @@ export function CapitalDashboard({
                 </div>
               </summary>
               {chart.length > 0 ? (
-                <div className="mt-3 h-44 min-w-0 sm:h-48">
+                <div className="mt-3 h-44 min-w-0 overflow-hidden sm:h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
                       <XAxis
