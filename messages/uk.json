@@ -1009,7 +1009,7 @@
     "positionsIncomplete": "Частина акаунтів синхронізована не повністю. Список може бути неповним або застарілим.",
     "minimumBalance": "Залишки від",
     "showAllBalances": "Усі залишки",
-    "hideValuationWarnings": "Приховати монети без оцінки та попередження",
+    "hideValuationWarnings": "Приховати монети без оцінки",
     "hiddenDust": "Приховано активів: {count}. Підсумки не змінені.",
     "closedAfterFees": "PnL після комісій",
     "closedAfterFeesDescription": "Закриття позиції мінус торгові комісії. Funding показано окремо.",

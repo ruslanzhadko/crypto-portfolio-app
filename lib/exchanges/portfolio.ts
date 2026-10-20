@@ -156,7 +156,10 @@ export async function getCapitalOverview(
           equityUsd: a.equityUsd?.toFixed() ?? null,
           availableUsd: a.availableUsd?.toFixed() ?? null,
           unrealizedPnlUsd: a.unrealizedPnlUsd?.toFixed() ?? null,
-          complete: a.complete && !a.errorCode,
+          // Unpriced coins are left out of equity by design, not a gap.
+          complete:
+            (a.complete && !a.errorCode) ||
+            (a.errorCode === "UNPRICED_ASSETS" && a.equityUsd !== null),
           stale,
           included,
           status: c.status,
@@ -185,7 +188,10 @@ export async function getCapitalOverview(
   );
   const complete =
     connections.every(
-      (c) => c.accounts.length > 0 && ["ACTIVE", "PAUSED"].includes(c.status),
+      (c) =>
+        c.accounts.length > 0 &&
+        (["ACTIVE", "PAUSED"].includes(c.status) ||
+          (c.status === "PARTIAL" && c.errorCode === "UNPRICED_ASSETS")),
     ) &&
     accounts.every((a) => a.complete && a.included && a.equityUsd !== null);
   const sourceSet = sourceSetHash([

@@ -1,7 +1,6 @@
 "use client";
 import { useLocale, useTranslations } from "next-intl";
 import { AlertCircle } from "lucide-react";
-import { useDisplayPreference, warningPreference } from "./display-preferences";
 
 export function Money({
   value,
@@ -59,8 +58,9 @@ export function ExchangeErrorNotice({
   code: string | null | undefined;
 }) {
   const t = useTranslations("Exchanges");
-  const [hidden, setHidden] = useDisplayPreference(warningPreference, "false");
-  if (!code || (code === "UNPRICED_ASSETS" && hidden === "true")) return null;
+  // Coins without a USD price are simply left out of totals; the asset list
+  // has its own toggle for them, so this is not shown as a problem.
+  if (!code || code === "UNPRICED_ASSETS") return null;
   if (code === "SPOT_UNAVAILABLE")
     return (
       <p className="text-sm text-text-muted">{t("errors.SPOT_UNAVAILABLE")}</p>
@@ -72,20 +72,20 @@ export function ExchangeErrorNotice({
     >
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
       {t.has(`errors.${code}`) ? t(`errors.${code}`) : t("errors.UNAVAILABLE")}
-      {code === "UNPRICED_ASSETS" && (
-        <button
-          type="button"
-          className="ml-auto shrink-0 underline underline-offset-4"
-          onClick={() => setHidden("true")}
-        >
-          {t("hideValuationWarnings")}
-        </button>
-      )}
     </p>
   );
 }
-export function ConnectionStatus({ status }: { status: string }) {
+export function ConnectionStatus({
+  status: raw,
+  errorCode,
+}: {
+  status: string;
+  errorCode?: string | null;
+}) {
   const t = useTranslations("Exchanges");
+  // Partial only because some coins have no price: the account itself is fine.
+  const status =
+    raw === "PARTIAL" && errorCode === "UNPRICED_ASSETS" ? "ACTIVE" : raw;
   return (
     <span
       className={`rounded-md px-2 py-1 text-xs ${status === "ACTIVE" ? "bg-success/10 text-success" : "bg-surface-2 text-text-muted"}`}

@@ -1009,7 +1009,7 @@
     "positionsIncomplete": "Часть аккаунтов синхронизирована не полностью. Список может быть неполным или устаревшим.",
     "minimumBalance": "Остатки от",
     "showAllBalances": "Все остатки",
-    "hideValuationWarnings": "Скрыть монеты без оценки и предупреждения",
+    "hideValuationWarnings": "Скрыть монеты без оценки",
     "hiddenDust": "Скрыто активов: {count}. Итоги не изменены.",
     "closedAfterFees": "PnL после комиссий",
     "closedAfterFeesDescription": "Закрытия позиции минус торговые комиссии. Funding показан отдельно.",

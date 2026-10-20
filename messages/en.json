@@ -1009,7 +1009,7 @@
     "positionsIncomplete": "Some accounts have not synced completely. The list may be incomplete or stale.",
     "minimumBalance": "Balances from",
     "showAllBalances": "All balances",
-    "hideValuationWarnings": "Hide unpriced assets and valuation warnings",
+    "hideValuationWarnings": "Hide coins without a price",
     "hiddenDust": "Assets hidden: {count}. Totals are unchanged.",
     "closedAfterFees": "PnL after fees",
     "closedAfterFeesDescription": "Position closes minus trading fees. Funding is shown separately.",

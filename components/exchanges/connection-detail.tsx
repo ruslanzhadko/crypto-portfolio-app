@@ -75,7 +75,7 @@ export function ConnectionDetail({ id }: { id: string }) {
                 {c.exchange} {c.keyMask}
               </p>
             </div>
-            <ConnectionStatus status={c.status} />
+            <ConnectionStatus status={c.status} errorCode={c.errorCode} />
           </div>
           <ExchangeErrorNotice code={c.errorCode} />
           {c.exchange === "aster" && !c.keyMask && (

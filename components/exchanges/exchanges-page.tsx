@@ -104,7 +104,10 @@ export function ExchangesPage() {
                     )}
                   </p>
                 </div>
-                <ConnectionStatus status={connection.status} />
+                <ConnectionStatus
+                  status={connection.status}
+                  errorCode={connection.errorCode}
+                />
               </div>
               <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                 {accounts.map((a) => (

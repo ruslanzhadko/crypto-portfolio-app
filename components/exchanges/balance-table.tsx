@@ -15,9 +15,9 @@ export function BalanceTable({
     "exchange-dust-minimum",
     "0.10",
   );
-  const [hideWarnings, setHideWarnings] = useDisplayPreference(
+  const [hideUnpriced, setHideUnpriced] = useDisplayPreference(
     warningPreference,
-    "false",
+    "true",
   );
   const allBalances = accounts
     .flatMap((a) =>
@@ -47,9 +47,11 @@ export function BalanceTable({
   const threshold = ["0", "0.10", "1", "10"].includes(minimum)
     ? Number(minimum)
     : 0.1;
+  // Unpriced coins are not part of any total; the toggle alone decides
+  // whether they are listed. The minimum applies to priced coins.
   const balances = allBalances.filter((b) =>
     b.usdValue === null
-      ? threshold === 0 && hideWarnings !== "true"
+      ? hideUnpriced !== "true"
       : Math.abs(Number(b.usdValue)) >= threshold,
   );
   return (
@@ -77,8 +79,8 @@ export function BalanceTable({
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
-            checked={hideWarnings === "true"}
-            onChange={(e) => setHideWarnings(String(e.target.checked))}
+            checked={hideUnpriced === "true"}
+            onChange={(e) => setHideUnpriced(String(e.target.checked))}
           />
           {t("hideValuationWarnings")}
         </label>
