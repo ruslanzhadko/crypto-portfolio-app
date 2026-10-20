@@ -107,6 +107,9 @@ written at once while the feed is open…» означает, что сигна�
 (`npm run telegram:feed:auth -- --qr`, QR в Telegram → Устройства), подставить в
 `TELEGRAM_USER_SESSION` в `telegram-feed.env`, пересоздать контейнер.
 
+Проверено 21.10: посты идут в ленту (~5 с при открытой ленте), новый канал подхватывается за минуту,
+строка «caught up @канал» в логе означает, что пост подобран опросом, а не обновлением Telegram.
+
 Осталось: через 2–3 дня без проблем удалить сервис `crypto-telegram-feed` на Render
 (Settings → Delete). Возобновлять его нельзя — нужна будет новая сессия.
 
