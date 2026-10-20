@@ -956,7 +956,6 @@
     "historyNote": "Change in value includes deposits, withdrawals and connected accounts. It is not investment profit.",
     "valueChange": "Change in value",
     "sourceChanges": "Source changes",
-    "legacyHistory": "Previous wallet history",
     "sources": "Capital sources",
     "assets": "Assets",
     "kinds": {
@@ -1003,7 +1002,6 @@
       "FORBIDDEN": "This action is not allowed.",
       "INTERNAL_ERROR": "The request could not be completed. Try again later."
     },
-    "legacyNote": "Saved snapshots of the previous wallet-only portfolio. Exchange balances are not reconstructed for past dates.",
     "walletDetails": "Wallet details and market",
     "noWalletAssets": "No visible wallet assets.",
     "migrationPending": "Migration pending; not added to total",

@@ -472,12 +472,6 @@ export function CapitalDashboard({
                 </details>
               )}
             </details>
-            <Link
-              className="mt-2 inline-block text-xs text-primary"
-              href="/dashboard/history"
-            >
-              {t("legacyHistory")}
-            </Link>
           </div>
           <section id="assets" className="scroll-mt-6 space-y-5">
             <h2 className="text-lg font-semibold">{t("assets")}</h2>
