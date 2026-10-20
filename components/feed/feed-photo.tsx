@@ -54,13 +54,13 @@ export function FeedPhoto({
 
   return (
     <Dialog.Root>
-      <div className="mt-3 w-full max-w-md">
-        <div className="relative overflow-hidden rounded-xl bg-surface-2">
+      <div className="mt-3 w-fit max-w-full">
+        <div className="relative w-fit max-w-full overflow-hidden rounded-xl bg-surface-2">
           <Dialog.Trigger asChild>
             <button
               type="button"
               aria-label={t("viewPhoto")}
-              className="block w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              className="block cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -69,7 +69,7 @@ export function FeedPhoto({
                 loading="lazy"
                 decoding="async"
                 onError={() => markFailed(currentImage)}
-                className="max-h-72 w-full object-contain sm:max-h-80"
+                className="min-h-16 min-w-32 max-h-72 w-auto max-w-full object-contain sm:max-h-80 sm:max-w-md"
               />
             </button>
           </Dialog.Trigger>
