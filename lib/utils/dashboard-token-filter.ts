@@ -1,11 +1,11 @@
 import type { AggregatedToken } from '@/lib/services/portfolio';
 
 /** Keep token amounts aligned with the selected network, not the unfiltered portfolio. */
-export function filterDashboardTokens(
-  tokens: AggregatedToken[],
+export function filterDashboardTokens<T extends AggregatedToken>(
+  tokens: T[],
   selectedChains: ReadonlySet<string>,
   search: string,
-): AggregatedToken[] {
+): T[] {
   const query = search.trim().toLocaleLowerCase();
   const portfolioTotal = tokens.reduce((sum, token) => sum + token.totalUsd, 0);
 
@@ -21,6 +21,8 @@ export function filterDashboardTokens(
     const chains = Array.from(new Set(wallets.map((wallet) => wallet.chainName)));
     return [{
       ...token,
+      // A network filter is about on-chain balances: exchange holdings drop out.
+      ...('exchanges' in token ? { exchanges: [] } : {}),
       chainName: chains[0]!,
       chains,
       walletIds: Array.from(new Set(wallets.map((wallet) => wallet.walletId))),

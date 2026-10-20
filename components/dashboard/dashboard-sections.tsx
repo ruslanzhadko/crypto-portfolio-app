@@ -174,6 +174,8 @@ export function DashboardSections({
       <div className="flex min-w-0 flex-col gap-3 sm:gap-5">
         {exchangesEnabled && (
           <CapitalDashboard
+            walletTokens={overview.tokens}
+            spamTokens={spamTokens}
             walletAssets={
               overview.tokens.length || spamTokens.length ? (
                 <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />

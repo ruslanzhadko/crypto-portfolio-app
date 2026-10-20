@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -21,15 +21,23 @@ import type {
 } from "@/lib/exchanges/portfolio";
 import { useExchangeData, exchangeAction } from "./use-exchange-data";
 import { Money, Updated, ExchangeErrorNotice } from "./shared";
-import { BalanceTable } from "./balance-table";
+import { BalanceTable, exchangeBalanceRows } from "./balance-table";
+import { TokenTable } from "@/components/dashboard/token-table";
+import type { AggregatedToken } from "@/lib/services/portfolio";
+import type { ExchangeHolding } from "@/lib/portfolio/unified-assets";
 import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
 import { useDisplayPreference } from "./display-preferences";
 
 export function CapitalDashboard({
   walletAssets,
+  walletTokens,
+  spamTokens,
 }: {
   walletAssets: React.ReactNode;
+  /** Wallet tokens for the combined wallets + exchanges list in "All". */
+  walletTokens?: AggregatedToken[];
+  spamTokens?: AggregatedToken[];
 }) {
   const [sourcesTarget, setSourcesTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
@@ -166,6 +174,25 @@ export function CapitalDashboard({
       </div>
     </section>
   ) : null;
+  // Priced coins of included accounts; unpriced ones are not part of totals.
+  const exchangeHoldings: ExchangeHolding[] = useMemo(
+    () =>
+      overview
+        ? exchangeBalanceRows(overview.accounts.filter((a) => a.included))
+            .filter((b) => b.usdValue !== null && Number(b.total) !== 0)
+            .map((b) => ({
+              key: `${b.account.id}:${b.assetId}`,
+              symbol: b.symbol,
+              label: b.account.label,
+              exchange: b.account.exchange,
+              kind: b.account.kind,
+              amount: Number(b.total),
+              usdValue: Number(b.usdValue),
+              priceUsd: b.priceUsd === null ? null : Number(b.priceUsd),
+            }))
+        : [],
+    [overview],
+  );
   return (
     <div className="min-w-0 space-y-5">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
@@ -440,9 +467,19 @@ export function CapitalDashboard({
           </div>
           <section id="assets" className="scroll-mt-6 space-y-5">
             <h2 className="text-lg font-semibold">{t("assets")}</h2>
-            {scope !== "exchanges" && walletAssets}
-            {scope !== "wallets" && (
-              <BalanceTable accounts={overview.accounts} />
+            {scope === "all" && walletTokens ? (
+              <TokenTable
+                tokens={walletTokens}
+                spamTokens={spamTokens ?? []}
+                exchangeHoldings={exchangeHoldings}
+              />
+            ) : (
+              <>
+                {scope !== "exchanges" && walletAssets}
+                {scope !== "wallets" && (
+                  <BalanceTable accounts={overview.accounts} />
+                )}
+              </>
             )}
           </section>
           {scope !== "wallets" && <PositionsPage compact />}

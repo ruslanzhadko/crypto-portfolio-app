@@ -19,31 +19,7 @@ export function BalanceTable({
     warningPreference,
     "true",
   );
-  const allBalances = accounts
-    .flatMap((a) =>
-      a.balances.map((b) => {
-        // Account equity can be assigned to a token only for single-collateral accounts.
-        const showsEquity =
-          a.exchange === "aster" &&
-          a.kind === "futures" &&
-          a.balances.length === 1 &&
-          b.symbol === "USDT" &&
-          a.equityUsd !== null &&
-          b.priceUsd !== null &&
-          Number(b.priceUsd) > 0;
-        return {
-          ...b,
-          account: a,
-          cashTotal: b.total,
-          showsEquity,
-          total: showsEquity
-            ? String(Number(a.equityUsd) / Number(b.priceUsd))
-            : b.total,
-          usdValue: showsEquity ? a.equityUsd : b.usdValue,
-        };
-      }),
-    )
-    .sort((a, b) => Number(b.usdValue ?? 0) - Number(a.usdValue ?? 0));
+  const allBalances = exchangeBalanceRows(accounts);
   const threshold = ["0", "0.10", "1", "10"].includes(minimum)
     ? Number(minimum)
     : 0.1;
@@ -190,4 +166,33 @@ export function BalanceTable({
       )}
     </section>
   );
+}
+
+/** Exchange coin rows; a single-collateral Aster futures account shows its equity. */
+export function exchangeBalanceRows(accounts: CapitalOverview["accounts"]) {
+  return accounts
+    .flatMap((a) =>
+      a.balances.map((b) => {
+        // Account equity can be assigned to a token only for single-collateral accounts.
+        const showsEquity =
+          a.exchange === "aster" &&
+          a.kind === "futures" &&
+          a.balances.length === 1 &&
+          b.symbol === "USDT" &&
+          a.equityUsd !== null &&
+          b.priceUsd !== null &&
+          Number(b.priceUsd) > 0;
+        return {
+          ...b,
+          account: a,
+          cashTotal: b.total,
+          showsEquity,
+          total: showsEquity
+            ? String(Number(a.equityUsd) / Number(b.priceUsd))
+            : b.total,
+          usdValue: showsEquity ? a.equityUsd : b.usdValue,
+        };
+      }),
+    )
+    .sort((a, b) => Number(b.usdValue ?? 0) - Number(a.usdValue ?? 0));
 }

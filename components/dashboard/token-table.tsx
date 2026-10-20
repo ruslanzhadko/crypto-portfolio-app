@@ -2,7 +2,7 @@
 
 import { useMemo, useState, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowUpDown, ChevronDown, ChevronRight, Eye, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
+import { ArrowUpDown, ChevronDown, ChevronRight, Eye, Landmark, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
 import { filterDashboardTokens } from '@/lib/utils/dashboard-token-filter';
 import type { AggregatedToken, WalletTokenBreakdown } from '@/lib/services/portfolio';
+import { mergeExchangeHoldings, type ExchangeHolding, type UnifiedToken } from '@/lib/portfolio/unified-assets';
+import { ExchangeTokenLogo } from '@/components/exchanges/token-logo';
 
 type SortKey = 'value' | 'balance' | 'change';
 
@@ -38,8 +40,25 @@ interface WalletGroup {
   chains: WalletTokenBreakdown[];
 }
 
-export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; spamTokens: AggregatedToken[] }) {
+export function TokenTable({
+  tokens: walletTokens,
+  spamTokens,
+  exchangeHoldings,
+}: {
+  tokens: AggregatedToken[];
+  spamTokens: AggregatedToken[];
+  /** When given, exchange balances join the list (dashboard "All"). */
+  exchangeHoldings?: ExchangeHolding[];
+}) {
   const t = useTranslations('TokenTable');
+  const tokens: UnifiedToken[] = useMemo(
+    () => mergeExchangeHoldings(walletTokens, exchangeHoldings ?? []),
+    [walletTokens, exchangeHoldings],
+  );
+  const spam: UnifiedToken[] = useMemo(
+    () => mergeExchangeHoldings(spamTokens, []),
+    [spamTokens],
+  );
   const [sortKey, setSortKey] = useState<SortKey>('value');
   const [desc, setDesc] = useState(true);
   const [search, setSearch] = useState('');
@@ -55,7 +74,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
   )).sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [tokens, spamTokens]);
 
   const sorted = useMemo(() => {
-    const arr = filterDashboardTokens(showSpam ? spamTokens : tokens, selectedChains, search)
+    const arr = filterDashboardTokens(showSpam ? spam : tokens, selectedChains, search)
       .filter((token) => !hideLowValue || token.totalUsd >= 1);
     arr.sort((a, b) => {
       let av: number;
@@ -77,7 +96,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
       return desc ? bv - av : av - bv;
     });
     return arr;
-  }, [tokens, spamTokens, showSpam, selectedChains, search, sortKey, desc, hideLowValue]);
+  }, [tokens, spam, showSpam, selectedChains, search, sortKey, desc, hideLowValue]);
 
   function toggleChain(chain: string) {
     setSelectedChains((current) => {
@@ -208,8 +227,9 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                 const visibleWallets = showSpam ? tok.wallets : tok.wallets.filter((w) => w.usdValue >= 0.01);
                 const hiddenCount = tok.wallets.length - visibleWallets.length;
                 const groups = groupByWallet(visibleWallets);
-                const hasBreakdown = groups.length > 0;
-                const isMulti = groups.length > 1;
+                const hasBreakdown = groups.length > 0 || tok.exchanges.length > 0;
+                const sourceCount = groups.length + tok.exchanges.length;
+                const isMulti = sourceCount > 1;
                 return (
                   <Fragment key={tok.key}>
                     <tr
@@ -233,13 +253,17 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                           ) : (
                             <span aria-hidden className="inline-block w-4" />
                           )}
-                          <TokenLogo
-                            src={tok.logoUrl}
-                            symbol={tok.symbol}
-                            size={28}
-                            chainName={tok.chainName}
-                            tokenAddress={tok.tokenAddress}
-                          />
+                          {tok.exchangeOnly ? (
+                            <ExchangeTokenLogo symbol={tok.symbol} />
+                          ) : (
+                            <TokenLogo
+                              src={tok.logoUrl}
+                              symbol={tok.symbol}
+                              size={28}
+                              chainName={tok.chainName}
+                              tokenAddress={tok.tokenAddress}
+                            />
+                          )}
                           <div className="min-w-0">
                             <p className="font-medium">{tok.symbol}</p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">
@@ -250,7 +274,7 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                                   title={t('countWallets')}
                                 >
                                   <WalletIcon className="h-2.5 w-2.5" aria-hidden />
-                                  {groups.length}
+                                  {sourceCount}
                                 </span>
                               )}
                             </p>
@@ -264,6 +288,9 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                         <div className="flex flex-wrap gap-1">
                           {tok.chains.map((chainName) => (
                             <ChainBadge key={chainName} chainName={chainName} />
+                          ))}
+                          {[...new Set(tok.exchanges.map((h) => h.exchange))].map((exchange) => (
+                            <ExchangeBadge key={exchange} exchange={exchange} />
                           ))}
                         </div>
                       </td>
@@ -309,6 +336,9 @@ export function TokenTable({ tokens, spamTokens }: { tokens: AggregatedToken[]; 
                               openWallets={openWallets}
                               onToggleWallet={(walletKey) => toggle(openWallets, setOpenWallets, walletKey)}
                             />
+                            {tok.exchanges.length > 0 && (
+                              <ExchangeBreakdown holdings={tok.exchanges} totalUsd={tok.totalUsd} />
+                            )}
                           </td>
                         ))}
                       </tr>
@@ -522,5 +552,62 @@ function SortButton({
       <ArrowUpDown className={`h-3 w-3 ${active ? 'text-primary' : 'opacity-50'}`} />
       {active && <span className="sr-only">{desc ? t('sortDescSr') : t('sortAscSr')}</span>}
     </Button>
+  );
+}
+
+const EXCHANGE_NAMES: Record<string, string> = {
+  binance: 'Binance',
+  bybit: 'Bybit',
+  gate: 'Gate',
+  okx: 'OKX',
+  bingx: 'BingX',
+  bitget: 'Bitget',
+  hyperliquid: 'Hyperliquid',
+  aster: 'Aster',
+};
+
+function ExchangeBadge({ exchange }: { exchange: string }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted">
+      <Landmark className="h-3 w-3" aria-hidden />
+      {EXCHANGE_NAMES[exchange] ?? exchange}
+    </span>
+  );
+}
+
+function ExchangeBreakdown({ holdings, totalUsd }: { holdings: ExchangeHolding[]; totalUsd: number }) {
+  const te = useTranslations('Exchanges');
+  return (
+    <div className="sm:ml-6 sm:space-y-1">
+      {holdings.map((h) => {
+        const share = totalUsd > 0 ? (h.usdValue / totalUsd) * 100 : 0;
+        return (
+          <div
+            key={h.key}
+            className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1.5 text-left text-xs md:grid md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2"
+          >
+            <span aria-hidden />
+            <div className="flex min-w-0 flex-1 items-center gap-1.5 md:gap-2">
+              <Landmark className="h-3.5 w-3.5 shrink-0 text-text-muted" aria-hidden />
+              <span className="truncate font-medium">{h.label}</span>
+              <span className="hidden shrink-0 text-[10px] text-text-muted md:inline">
+                {EXCHANGE_NAMES[h.exchange] ?? h.exchange} · {te.has(`kinds.${h.kind}`) ? te(`kinds.${h.kind}`) : h.kind}
+              </span>
+            </div>
+            <span className="hidden text-right font-mono text-[11px] tabular-nums md:inline">
+              {formatTokenBalance(h.amount)}
+            </span>
+            <span className="hidden text-right font-medium md:inline">{formatUsd(h.usdValue)}</span>
+            <div className="flex shrink-0 items-baseline justify-end gap-2 tabular-nums md:items-center">
+              <span className="font-mono text-[11px] text-text md:hidden">{formatTokenBalance(h.amount)}</span>
+              <div className="hidden h-1 w-12 overflow-hidden rounded-full bg-surface-2 md:block" aria-hidden>
+                <div className="h-full rounded-full bg-success" style={{ width: `${Math.min(share, 100).toFixed(1)}%` }} />
+              </div>
+              <span className="w-10 text-right text-text-muted md:w-12">{share.toFixed(1)}%</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
