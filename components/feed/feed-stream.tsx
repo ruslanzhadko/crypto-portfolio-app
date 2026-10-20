@@ -247,7 +247,14 @@ export function FeedStream() {
     historyRequest.current?.abort();
     setLoadingMore(false);
     setLoading(firstLoad.current);
-    if (!document.hidden) void load();
+    let catchUp: number | undefined;
+    if (!document.hidden) {
+      void load();
+      // Posts held back while nobody watched are written within seconds of this visit.
+      catchUp = window.setTimeout(() => {
+        if (!document.hidden) void load(true);
+      }, 12_000);
+    }
     const isActive = () =>
       !document.hidden &&
       document.hasFocus() &&
@@ -285,6 +292,7 @@ export function FeedStream() {
     window.addEventListener("touchstart", onActivity, { passive: true });
     return () => {
       window.clearInterval(timer);
+      window.clearTimeout(catchUp);
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("focus", resume);
       window.removeEventListener("pointermove", onActivity);

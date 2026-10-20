@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { apiError, handleUnknown, ok } from "@/lib/api/response";
+import { markFeedActivity } from "@/lib/feed/activity";
 import { groupTelegramAlbums, readTelegramAlbumId } from "@/lib/feed/albums";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,8 @@ export async function GET(req: NextRequest) {
       );
 
     const { type, source, search, before, limit } = parsed.data;
+    // Tells the listener that someone is reading, so new posts are written at once.
+    await markFeedActivity();
     const posts = await prisma.telegramFeedPost.findMany({
       where: {
         source: { isActive: true },

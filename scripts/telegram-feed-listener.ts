@@ -6,6 +6,8 @@ import { classifyFeedPost } from "../lib/feed/classify-post";
 import { extractTelegramLinks } from "../lib/feed/links";
 import { prepareFeedImage, type FeedImagePayload } from "../lib/feed/media";
 import { compatiblePhotoThumb } from "../lib/feed/telegram-photo";
+import { FeedWriteBuffer } from "../lib/feed/write-buffer";
+import { createFeedViewerSignal } from "../lib/feed/viewer-signal";
 
 const DEFAULT_CHANNELS = [
   "arbitrageaggregator",
@@ -41,10 +43,25 @@ const client = new TelegramClient(new StringSession(session), apiId, apiHash, {
 });
 
 const watchers = new Map<string, () => void>();
-let syncTimer: ReturnType<typeof setInterval> | undefined;
+let tickTimer: ReturnType<typeof setInterval> | undefined;
 let syncing = false;
 const MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES = 2 * 1024 * 1024;
-const SOURCE_SYNC_INTERVAL_MS = 30 * 60_000;
+const TICK_MS = 10_000;
+const SHUTDOWN_FLUSH_MS = 8_000;
+
+type LivePost = { username: string; sourceId: string; message?: Api.Message };
+// Live posts are written at once while the feed is open, otherwise in aligned 30-minute windows.
+const signal = createFeedViewerSignal();
+const buffer = new FeedWriteBuffer<LivePost>(
+  {
+    write: ({ username, sourceId, message }) =>
+      saveMessage(username, sourceId, message),
+    key: ({ sourceId, message }) => `${sourceId}:${message?.id}`,
+    onError: ({ username, message }, error) =>
+      console.error(`[feed] dropped @${username} #${message?.id}`, error),
+  },
+  signal === null,
+);
 
 function photoSizeBytes(size: Api.TypePhotoSize): number {
   if (size instanceof Api.PhotoSize) return size.size;
@@ -208,7 +225,7 @@ async function saveUpdate(
   rawUpdate: unknown,
 ) {
   const update = rawUpdate as ChannelUpdate;
-  await saveMessage(username, sourceId, update.message);
+  await buffer.submit({ username, sourceId, message: update.message });
 }
 
 // Previously saved photos did not retain Telegram's album ID. Restore it
@@ -384,20 +401,48 @@ async function main() {
 
   await bootstrapSources();
   await syncSources();
-  syncTimer = setInterval(() => void syncSources(), SOURCE_SYNC_INTERVAL_MS);
+  if (signal) {
+    let ticking = false;
+    tickTimer = setInterval(() => {
+      if (ticking) return;
+      ticking = true;
+      void (async () => {
+        try {
+          // Source list refresh shares the window flush, so the database wakes once per window.
+          const flushed = await buffer.tick(await signal.poll());
+          if (flushed) await syncSources();
+        } catch (error) {
+          console.error("[feed] flush failed", error);
+        } finally {
+          ticking = false;
+        }
+      })();
+    }, TICK_MS);
+  } else {
+    tickTimer = setInterval(() => void syncSources(), 30 * 60_000);
+  }
 
   console.log(`[feed] listener started for ${watchers.size} channels`);
   console.log(
-    "[feed] source list refreshes from the database every 30 minutes",
+    signal
+      ? "[feed] posts are written at once while the feed is open, otherwise every 30 minutes"
+      : "[feed] no viewer signal configured: every post is written at once",
   );
   await new Promise<void>(() => undefined);
 }
 
 async function shutdown(signal: string) {
   console.log(`[feed] ${signal}, shutting down`);
-  if (syncTimer) clearInterval(syncTimer);
+  if (tickTimer) clearInterval(tickTimer);
   for (const stop of watchers.values()) stop();
   watchers.clear();
+  if (buffer.size) {
+    console.log(`[feed] writing ${buffer.size} held posts before exit`);
+    await Promise.race([
+      buffer.flush(),
+      new Promise((resolve) => setTimeout(resolve, SHUTDOWN_FLUSH_MS)),
+    ]);
+  }
   await client.disconnect();
   await prisma.$disconnect();
   process.exit(0);

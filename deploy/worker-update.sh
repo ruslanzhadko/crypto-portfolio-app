@@ -23,6 +23,8 @@ test -s "$env_file"
 # Failures here never roll back the exchange worker.
 start_listener() {
   [[ -s "$listener_env_file" ]] || { echo 'Listener env file absent; listener skipped.'; return 0; }
+  # Graceful stop lets the listener write the posts it is still holding.
+  docker stop --time 20 "$listener_name" >/dev/null 2>&1 || true
   docker rm -f "$listener_name" >/dev/null 2>&1 || true
   docker run -d --name "$listener_name" --restart unless-stopped     --env-file "$listener_env_file" --no-healthcheck --log-driver json-file     --log-opt max-size=10m --log-opt max-file=3     --security-opt no-new-privileges:true --cap-drop ALL     "$1" node --import tsx scripts/telegram-feed-listener.ts || { echo 'WARNING: listener failed to start.'; return 0; }
   for _ in {1..18}; do
