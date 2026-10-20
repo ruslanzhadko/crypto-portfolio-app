@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FeedPhoto } from "@/components/feed/feed-photo";
+import { FEED_FAST_POLL_MS, feedPollDelay } from "@/lib/feed/poll-schedule";
 
 type PostType =
   | "NEWS"
@@ -89,8 +90,6 @@ const FILTERS: FilterType[] = [
   "ANALYSIS",
 ];
 const MACHINE_TYPES = new Set<PostType>(["PRICE_ANOMALY", "LIQUIDATION"]);
-const FEED_POLL_INTERVAL_MS = 10_000;
-const FEED_IDLE_TIMEOUT_MS = 5 * 60_000;
 
 function groupBurstPosts(posts: FeedPost[]): FeedGroup[] {
   const groups: FeedGroup[] = [];
@@ -259,33 +258,40 @@ export function FeedStream() {
         if (!document.hidden) void load(true);
       }, 12_000);
     }
-    const isActive = () =>
-      !document.hidden &&
-      document.hasFocus() &&
-      Date.now() - lastActivityAt.current < FEED_IDLE_TIMEOUT_MS;
-    const timer = window.setInterval(() => {
-      if (isActive()) void load(true);
-    }, FEED_POLL_INTERVAL_MS);
+    // The interval follows how recently the reader did something; a hidden tab never polls.
+    let pollTimer: number | undefined;
+    const schedule = () => {
+      window.clearTimeout(pollTimer);
+      if (document.hidden) return;
+      const delay = feedPollDelay(Date.now() - lastActivityAt.current);
+      if (delay === null) return;
+      pollTimer = window.setTimeout(() => {
+        void load(true);
+        schedule();
+      }, delay);
+    };
+    schedule();
     const resume = () => {
       if (document.hidden) {
+        window.clearTimeout(pollTimer);
         activeRequest.current?.abort();
       } else {
         lastActivityAt.current = Date.now();
-        if (Date.now() - lastFetchAt.current >= FEED_POLL_INTERVAL_MS) {
+        if (Date.now() - lastFetchAt.current >= FEED_FAST_POLL_MS) {
           void load(true);
         }
+        schedule();
       }
     };
     const onActivity = () => {
-      const wasIdle =
-        Date.now() - lastActivityAt.current >= FEED_IDLE_TIMEOUT_MS;
+      const wasSlowed =
+        feedPollDelay(Date.now() - lastActivityAt.current) !== FEED_FAST_POLL_MS;
       lastActivityAt.current = Date.now();
-      if (
-        wasIdle &&
-        isActive() &&
-        Date.now() - lastFetchAt.current >= FEED_POLL_INTERVAL_MS
-      ) {
-        void load(true);
+      if (wasSlowed && !document.hidden) {
+        if (Date.now() - lastFetchAt.current >= FEED_FAST_POLL_MS) {
+          void load(true);
+        }
+        schedule();
       }
     };
     document.addEventListener("visibilitychange", resume);
@@ -295,7 +301,7 @@ export function FeedStream() {
     window.addEventListener("scroll", onActivity, { passive: true });
     window.addEventListener("touchstart", onActivity, { passive: true });
     return () => {
-      window.clearInterval(timer);
+      window.clearTimeout(pollTimer);
       window.clearTimeout(catchUp);
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("focus", resume);

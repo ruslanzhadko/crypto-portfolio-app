@@ -25,7 +25,7 @@
   "Feed": {
     "pageTitle": "Crypto Feed",
     "pageDescription": "News, arbitrage opportunities, price anomalies and large liquidations from selected Telegram channels.",
-    "autoRefresh": "Refreshes every 10 seconds while active",
+    "autoRefresh": "Refreshes every few seconds while active",
     "openDashboard": "Dashboard",
     "filterByType": "Filter by post type",
     "searchPlaceholder": "Ticker, topic or channel…",
