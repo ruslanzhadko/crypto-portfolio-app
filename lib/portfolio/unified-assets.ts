@@ -10,6 +10,8 @@ export interface ExchangeHolding {
   amount: number;
   usdValue: number;
   priceUsd: number | null;
+  /** "equity": a single-collateral Aster futures account shown at equity. */
+  note?: "equity";
 }
 
 export interface UnifiedToken extends AggregatedToken {

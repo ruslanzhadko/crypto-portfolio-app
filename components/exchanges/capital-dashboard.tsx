@@ -20,7 +20,7 @@ import type {
   getCapitalHistory,
 } from "@/lib/exchanges/portfolio";
 import { useExchangeData, exchangeAction } from "./use-exchange-data";
-import { Money, Updated, ExchangeErrorNotice } from "./shared";
+import { Money, Quantity, Updated, ExchangeErrorNotice } from "./shared";
 import { BalanceTable, exchangeBalanceRows } from "./balance-table";
 import { TokenTable } from "@/components/dashboard/token-table";
 import type { AggregatedToken } from "@/lib/services/portfolio";
@@ -31,10 +31,13 @@ import { useDisplayPreference } from "./display-preferences";
 
 export function CapitalDashboard({
   walletAssets,
+  walletDetails,
   walletTokens,
   spamTokens,
 }: {
   walletAssets: React.ReactNode;
+  /** Wallet charts, movers and transactions for the "Wallets" tab. */
+  walletDetails?: React.ReactNode;
   /** Wallet tokens for the combined wallets + exchanges list in "All". */
   walletTokens?: AggregatedToken[];
   spamTokens?: AggregatedToken[];
@@ -174,12 +177,21 @@ export function CapitalDashboard({
       </div>
     </section>
   ) : null;
+  const exchangeRows = useMemo(
+    () =>
+      overview
+        ? exchangeBalanceRows(
+            overview.accounts.filter((a) => a.included),
+          ).filter((b) => Number(b.total) !== 0)
+        : [],
+    [overview],
+  );
   // Priced coins of included accounts; unpriced ones are not part of totals.
   const exchangeHoldings: ExchangeHolding[] = useMemo(
     () =>
       overview
-        ? exchangeBalanceRows(overview.accounts.filter((a) => a.included))
-            .filter((b) => b.usdValue !== null && Number(b.total) !== 0)
+        ? exchangeRows
+            .filter((b) => b.usdValue !== null)
             .map((b) => ({
               key: `${b.account.id}:${b.assetId}`,
               symbol: b.symbol,
@@ -189,10 +201,12 @@ export function CapitalDashboard({
               amount: Number(b.total),
               usdValue: Number(b.usdValue),
               priceUsd: b.priceUsd === null ? null : Number(b.priceUsd),
+              note: b.showsEquity ? ("equity" as const) : undefined,
             }))
         : [],
-    [overview],
+    [overview, exchangeRows],
   );
+  const unpricedRows = exchangeRows.filter((b) => b.usdValue === null);
   return (
     <div className="min-w-0 space-y-5">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
@@ -467,22 +481,56 @@ export function CapitalDashboard({
           </div>
           <section id="assets" className="scroll-mt-6 space-y-5">
             <h2 className="text-lg font-semibold">{t("assets")}</h2>
-            {scope === "all" && walletTokens ? (
+            {scope === "all" && walletTokens && (
               <TokenTable
                 tokens={walletTokens}
                 spamTokens={spamTokens ?? []}
                 exchangeHoldings={exchangeHoldings}
               />
-            ) : (
+            )}
+            {scope === "all" && !walletTokens && (
               <>
-                {scope !== "exchanges" && walletAssets}
-                {scope !== "wallets" && (
-                  <BalanceTable accounts={overview.accounts} />
+                {walletAssets}
+                <BalanceTable accounts={overview.accounts} />
+              </>
+            )}
+            {scope === "wallets" && walletAssets}
+            {scope === "exchanges" && (
+              <>
+                <TokenTable
+                  tokens={[]}
+                  spamTokens={[]}
+                  exchangeHoldings={exchangeHoldings}
+                  variant="exchanges"
+                />
+                {unpricedRows.length > 0 && (
+                  <details className="rounded-xl border border-border bg-surface px-4 py-3 text-sm">
+                    <summary className="cursor-pointer text-text-muted">
+                      {t("unpricedCoins", { count: unpricedRows.length })}
+                    </summary>
+                    <ul className="mt-2 divide-y divide-border">
+                      {unpricedRows.map((b) => (
+                        <li
+                          key={`${b.account.id}:${b.assetId}`}
+                          className="flex flex-wrap items-center justify-between gap-2 py-1.5"
+                        >
+                          <span className="font-medium">{b.symbol}</span>
+                          <span className="text-text-muted">
+                            {b.account.label}
+                          </span>
+                          <span className="font-mono text-xs">
+                            <Quantity value={b.total} />
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
                 )}
               </>
             )}
           </section>
           {scope !== "wallets" && <PositionsPage compact />}
+          {scope === "wallets" && walletDetails}
           {sources &&
             (sourcesTarget ? createPortal(sources, sourcesTarget) : sources)}
         </>

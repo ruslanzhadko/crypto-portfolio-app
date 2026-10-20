@@ -1010,6 +1010,7 @@
     "positionsIncomplete": "Some accounts have not synced completely. The list may be incomplete or stale.",
     "minimumBalance": "Balances from",
     "showAllBalances": "All balances",
+    "unpricedCoins": "Coins without a price: {count}",
     "hideValuationWarnings": "Hide coins without a price",
     "hiddenDust": "Assets hidden: {count}. Totals are unchanged.",
     "closedAfterFees": "PnL after fees",

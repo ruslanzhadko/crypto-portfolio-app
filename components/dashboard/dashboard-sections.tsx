@@ -75,7 +75,6 @@ export function DashboardSections({
     useState<Record<SectionKey, boolean>>(DEFAULTS);
   const [mounted, setMounted] = useState(false);
   const [chartVisible, setChartVisible] = useState<boolean | null>(null);
-  const [detailsVisible, setDetailsVisible] = useState(!exchangesEnabled);
   const t = useTranslations("Dashboard");
   const te = useTranslations("Exchanges");
   const ts = useTranslations("DashboardSections");
@@ -90,7 +89,6 @@ export function DashboardSections({
   }, []);
 
   function toggle(key: SectionKey) {
-    setDetailsVisible(true);
     setSections((prev) => {
       const next = { ...prev, [key]: !prev[key] };
       try {
@@ -107,6 +105,66 @@ export function DashboardSections({
     allocation: ts("allocation"),
     networkAllocation: ts("networkAllocation"),
   };
+
+  // Wallet-only blocks: shown in the "Wallets" tab when exchanges are on.
+  const walletDetails = (
+    <>
+      {!exchangesEnabled && (
+        <div className="grid min-w-0 items-stretch gap-2 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
+          <PortfolioChart
+            totalUsd={overview.totalUsd}
+            priceChange24h={overview.priceChange24h}
+            priceChange24hUsd={overview.priceChange24hUsd}
+            hiddenTokensCount={hiddenTokensCount}
+            onVisibilityChange={setChartVisible}
+          />
+          <div className="min-w-0 xl:w-64 xl:min-w-64 xl:shrink-0">
+            <PortfolioSummary
+              data={overview}
+              showLargestPositions={chartVisible === true}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
+        {show.topMovers && (
+          <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full">
+            <TopMovers tokens={overview.tokens} />
+          </div>
+        )}
+        <div
+          className={
+            show.topMovers ? "min-w-0 xl:h-full" : "min-w-0 xl:col-span-2"
+          }
+        >
+          <WalletList wallets={wallets} />
+        </div>
+      </div>
+
+      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] 2xl:grid-cols-[minmax(0,1fr)_29rem]">
+        <div className="min-w-0">
+          {!exchangesEnabled ? (
+            <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
+          ) : (
+            <PortfolioSummary data={overview} showLargestPositions={false} />
+          )}
+        </div>
+        <div className="min-w-0">
+          <RecentTransactions />
+        </div>
+      </div>
+
+      {(show.allocation || show.networkAllocation) && (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {show.allocation && <AllocationChart tokens={overview.tokens} />}
+          {show.networkAllocation && (
+            <NetworkAllocationChart chains={overview.chains} />
+          )}
+        </div>
+      )}
+    </>
+  );
 
   return (
     <div className="min-w-0 space-y-3 sm:space-y-5">
@@ -174,6 +232,7 @@ export function DashboardSections({
       <div className="flex min-w-0 flex-col gap-3 sm:gap-5">
         {exchangesEnabled && (
           <CapitalDashboard
+            walletDetails={walletDetails}
             walletTokens={overview.tokens}
             spamTokens={spamTokens}
             walletAssets={
@@ -190,82 +249,7 @@ export function DashboardSections({
             }
           />
         )}
-        {exchangesEnabled && (
-          <Button
-            variant="outline"
-            className="self-start"
-            aria-expanded={detailsVisible}
-            onClick={() => setDetailsVisible((v) => !v)}
-          >
-            {te("walletDetails")}
-          </Button>
-        )}
-        {(!exchangesEnabled || detailsVisible) && (
-          <>
-            {!exchangesEnabled && (
-              <div className="grid min-w-0 items-stretch gap-2 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_16rem]">
-                <PortfolioChart
-                  totalUsd={overview.totalUsd}
-                  priceChange24h={overview.priceChange24h}
-                  priceChange24hUsd={overview.priceChange24hUsd}
-                  hiddenTokensCount={hiddenTokensCount}
-                  onVisibilityChange={setChartVisible}
-                />
-                <div className="min-w-0 xl:w-64 xl:min-w-64 xl:shrink-0">
-                  <PortfolioSummary
-                    data={overview}
-                    showLargestPositions={chartVisible === true}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
-              {show.topMovers && (
-                <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full">
-                  <TopMovers tokens={overview.tokens} />
-                </div>
-              )}
-              <div
-                className={
-                  show.topMovers ? "min-w-0 xl:h-full" : "min-w-0 xl:col-span-2"
-                }
-              >
-                <WalletList wallets={wallets} />
-              </div>
-            </div>
-
-            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] 2xl:grid-cols-[minmax(0,1fr)_29rem]">
-              <div className="min-w-0">
-                {!exchangesEnabled ? (
-                  <TokenTable
-                    tokens={overview.tokens}
-                    spamTokens={spamTokens}
-                  />
-                ) : (
-                  <PortfolioSummary
-                    data={overview}
-                    showLargestPositions={false}
-                  />
-                )}
-              </div>
-              <div className="min-w-0">
-                <RecentTransactions />
-              </div>
-            </div>
-
-            {(show.allocation || show.networkAllocation) && (
-              <div className="grid gap-4 lg:grid-cols-2">
-                {show.allocation && (
-                  <AllocationChart tokens={overview.tokens} />
-                )}
-                {show.networkAllocation && (
-                  <NetworkAllocationChart chains={overview.chains} />
-                )}
-              </div>
-            )}
-          </>
-        )}
+        {!exchangesEnabled && <>{walletDetails}</>}
         {exchangesEnabled && <div id="capital-sources" />}
       </div>
     </div>

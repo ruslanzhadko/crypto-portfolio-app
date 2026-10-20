@@ -46,9 +46,12 @@ export function TokenTable({
   tokens: walletTokens,
   spamTokens,
   exchangeHoldings,
+  variant = 'default',
 }: {
   tokens: AggregatedToken[];
   spamTokens: AggregatedToken[];
+  /** "exchanges": exchange coins only — no spam or network controls. */
+  variant?: 'default' | 'exchanges';
   /** When given, exchange balances join the list (dashboard "All"). */
   exchangeHoldings?: ExchangeHolding[];
 }) {
@@ -162,7 +165,7 @@ export function TokenTable({
               </select>
             </label>
           )}
-          <Button
+          {variant !== 'exchanges' && <Button
             variant={showSpam ? 'default' : 'outline'}
             size="sm"
             className="h-11 shrink-0 gap-1.5 border px-3 tabular-nums"
@@ -172,7 +175,7 @@ export function TokenTable({
           >
             <Eye className="h-4 w-4" aria-hidden />
             {t('showSpam', { count: spamTokens.length })}
-          </Button>
+          </Button>}
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -186,7 +189,7 @@ export function TokenTable({
               className="pl-9"
             />
           </div>
-          <DropdownMenu>
+          {variant !== 'exchanges' && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -217,7 +220,7 @@ export function TokenTable({
                 </DropdownMenuCheckboxItem>
               ))}
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu>}
         </div>
         {spamTokens.length > 0 && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
       </CardHeader>
@@ -297,7 +300,11 @@ export function TokenTable({
                           <div className="min-w-0">
                             <p className="font-medium">{tok.symbol}</p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">
-                              <span className="truncate">{tok.name}</span>
+                              <span className="truncate">
+                                {tok.exchangeOnly
+                                  ? [...new Set(tok.exchanges.map((h) => exchangeName(h.exchange)))].join(' · ')
+                                  : tok.name}
+                              </span>
                               {isMulti && (
                                 <span
                                   className="inline-flex shrink-0 items-center gap-1 rounded-full bg-surface-2 px-1.5 py-px text-[10px] font-medium text-text-muted"
@@ -592,8 +599,8 @@ function SortButton({
 
 function ExchangeBadge({ exchange }: { exchange: string }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border px-2 py-0.5 text-[11px] text-text-muted">
-      <ExchangeLogo exchange={exchange} size={12} />
+    <span className="inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-text">
+      <ExchangeLogo exchange={exchange} size={14} />
       {exchangeName(exchange)}
     </span>
   );
@@ -616,6 +623,7 @@ function ExchangeBreakdown({ holdings, totalUsd }: { holdings: ExchangeHolding[]
               <span className="truncate font-medium">{h.label}</span>
               <span className="hidden shrink-0 text-[10px] text-text-muted md:inline">
                 {exchangeName(h.exchange)} · {te.has(`kinds.${h.kind}`) ? te(`kinds.${h.kind}`) : h.kind}
+                {h.note === 'equity' && ` · ${te('asterEquityBalance')}`}
               </span>
             </div>
             <span className="hidden text-right font-mono text-[11px] tabular-nums md:inline">

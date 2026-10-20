@@ -1010,6 +1010,7 @@
     "positionsIncomplete": "Частина акаунтів синхронізована не повністю. Список може бути неповним або застарілим.",
     "minimumBalance": "Залишки від",
     "showAllBalances": "Усі залишки",
+    "unpricedCoins": "Монети без оцінки: {count}",
     "hideValuationWarnings": "Приховати монети без оцінки",
     "hiddenDust": "Приховано активів: {count}. Підсумки не змінені.",
     "closedAfterFees": "PnL після комісій",

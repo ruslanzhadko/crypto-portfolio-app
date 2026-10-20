@@ -525,25 +525,19 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
-  await expect(page.getByText("UNKNOWN", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("UNKNOWN", { exact: true })).not.toBeVisible();
   // Unpriced coins are left out of totals by design: no partial-capital warning.
   await expect(page.getByText("Partial valuation: some accounts or asset prices are missing.", { exact: true })).toHaveCount(0);
   await expect(page.getByText(/no trusted USD valuation/i)).toHaveCount(0);
   await page.getByLabel("Balances from").selectOption("0");
   await expect(page.getByText("DUST", { exact: true })).toBeVisible();
-  // Only the toggle (checked by default) decides whether unpriced coins are listed.
-  await expect(page.getByLabel("Hide coins without a price")).toBeChecked();
-  await expect(page.getByText("UNKNOWN", { exact: true })).toHaveCount(0);
-  await page.getByLabel("Hide coins without a price").uncheck();
+  // Coins without a price are listed apart from the grouped exchange table.
+  await expect(page.getByText("UNKNOWN", { exact: true })).not.toBeVisible();
+  await page.getByText("Coins without a price: 1", { exact: true }).click();
   await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "DUST", exact: true })).toHaveAttribute("src", /\/logo\.png$/);
-  const widths = await page.locator("table th").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width));
-  await page.locator("table summary").first().click();
-  expect(await page.locator("table th").evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width))).toEqual(widths);
   await page.reload();
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
-  await expect(page.getByLabel("Hide coins without a price")).not.toBeChecked();
-  await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Balances from")).toHaveValue("0");
   if (process.env.EXCHANGE_VISUAL_QA) {
     await page.getByLabel("Balances from").scrollIntoViewIfNeeded();

@@ -1010,6 +1010,7 @@
     "positionsIncomplete": "Часть аккаунтов синхронизирована не полностью. Список может быть неполным или устаревшим.",
     "minimumBalance": "Остатки от",
     "showAllBalances": "Все остатки",
+    "unpricedCoins": "Монеты без оценки: {count}",
     "hideValuationWarnings": "Скрыть монеты без оценки",
     "hiddenDust": "Скрыто активов: {count}. Итоги не изменены.",
     "closedAfterFees": "PnL после комиссий",
