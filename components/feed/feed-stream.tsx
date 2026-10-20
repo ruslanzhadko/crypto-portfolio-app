@@ -89,7 +89,7 @@ const FILTERS: FilterType[] = [
   "ANALYSIS",
 ];
 const MACHINE_TYPES = new Set<PostType>(["PRICE_ANOMALY", "LIQUIDATION"]);
-const FEED_POLL_INTERVAL_MS = 30_000;
+const FEED_POLL_INTERVAL_MS = 10_000;
 const FEED_IDLE_TIMEOUT_MS = 5 * 60_000;
 
 function groupBurstPosts(posts: FeedPost[]): FeedGroup[] {
@@ -205,7 +205,11 @@ export function FeedStream() {
       const requestId = ++requestSequence.current;
       if (!quiet) setRefreshing(true);
       try {
-        const params = new URLSearchParams({ type, limit: "60" });
+        // Quiet refreshes only look for new posts, so a short page is enough.
+        const params = new URLSearchParams({
+          type,
+          limit: quiet ? "20" : "60",
+        });
         if (source !== "ALL") params.set("source", source);
         if (search) params.set("search", search);
         const response = await fetch(`/api/feed?${params}`, {
