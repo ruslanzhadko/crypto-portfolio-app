@@ -224,13 +224,22 @@ async function saveMessage(
   console.log(`[feed] @${username} #${message.id} ${classified.type}`);
 }
 
+// Every post goes through here so the in-memory position of the channel advances even while
+// the post is still held in the buffer; otherwise each poll would fetch the same posts again.
+async function submitPost(post: LivePost) {
+  const known = knownSources.get(post.username);
+  const id = post.message?.id;
+  if (known && id && (known.lastMessageId ?? 0) < id) known.lastMessageId = id;
+  await buffer.submit(post);
+}
+
 async function saveUpdate(
   username: string,
   sourceId: string,
   rawUpdate: unknown,
 ) {
   const update = rawUpdate as ChannelUpdate;
-  await buffer.submit({ username, sourceId, message: update.message });
+  await submitPost({ username, sourceId, message: update.message });
 }
 
 // Previously saved photos did not retain Telegram's album ID. Restore it
@@ -382,8 +391,9 @@ async function syncSources() {
   }
 }
 
-// Telegram does not guarantee that every channel update reaches a user client, so each window
-// (and each new viewer) asks the channels directly for anything newer than the last stored post.
+// Telegram does not reliably deliver every channel update to a user client (observed in production:
+// posts arrived only when asked for), so the channels are asked directly for anything newer than the
+// last known post: every tick while the feed is open, and once per window otherwise.
 async function catchUpMissedPosts() {
   for (const [username, source] of knownSources) {
     if (!source.lastMessageId || !watchers.has(username)) continue;
@@ -393,7 +403,7 @@ async function catchUpMissedPosts() {
         limit: 50,
       });
       for (const message of [...missed].reverse())
-        await buffer.submit({ username, sourceId: source.id, message });
+        await submitPost({ username, sourceId: source.id, message });
       if (missed.length)
         console.log(`[feed] caught up @${username}: ${missed.length} posts`);
     } catch (error) {
@@ -444,6 +454,8 @@ async function main() {
           // Source refresh and catch-up share the window, so the database wakes once per window.
           if (buffer.windowDue() || (live && !wasLive)) {
             await syncSources();
+            await catchUpMissedPosts();
+          } else if (live) {
             await catchUpMissedPosts();
           }
           wasLive = live;
