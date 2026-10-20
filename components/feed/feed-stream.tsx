@@ -150,6 +150,10 @@ export function FeedStream() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [controlsCollapsed, setControlsCollapsed] = useState(false);
+  // Set when polling stopped after a long idle period; cleared by the refresh button.
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  const resumePolling = useRef<() => void>(() => undefined);
   const firstLoad = useRef(true);
   const lastScrollY = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
@@ -264,14 +268,26 @@ export function FeedStream() {
       window.clearTimeout(pollTimer);
       if (document.hidden) return;
       const delay = feedPollDelay(Date.now() - lastActivityAt.current);
-      if (delay === null) return;
+      if (delay === null) {
+        pausedRef.current = true;
+        setPaused(true);
+        return;
+      }
       pollTimer = window.setTimeout(() => {
         void load(true);
         schedule();
       }, delay);
     };
     schedule();
+    resumePolling.current = () => {
+      pausedRef.current = false;
+      setPaused(false);
+      lastActivityAt.current = Date.now();
+      void load(true);
+      schedule();
+    };
     const resume = () => {
+      if (pausedRef.current) return;
       if (document.hidden) {
         window.clearTimeout(pollTimer);
         activeRequest.current?.abort();
@@ -284,6 +300,7 @@ export function FeedStream() {
       }
     };
     const onActivity = () => {
+      if (pausedRef.current) return;
       const wasSlowed =
         feedPollDelay(Date.now() - lastActivityAt.current) !== FEED_FAST_POLL_MS;
       lastActivityAt.current = Date.now();
@@ -454,6 +471,19 @@ export function FeedStream() {
           </Button>
         </div>
       </div>
+
+      {paused && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-warning/10 p-3 text-sm text-warning">
+          <span>{t("pausedNotice")}</span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => resumePolling.current()}
+          >
+            {t("pausedRefresh")}
+          </Button>
+        </div>
+      )}
 
       {lastUpdate && !error && (
         <p className="text-xs text-text-muted">

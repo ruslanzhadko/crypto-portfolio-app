@@ -25,6 +25,8 @@
   "Feed": {
     "pageTitle": "Crypto Feed",
     "pageDescription": "News, arbitrage opportunities, price anomalies and large liquidations from selected Telegram channels.",
+    "pausedNotice": "The feed paused because the page was idle. Refresh to see new posts.",
+    "pausedRefresh": "Refresh",
     "autoRefresh": "Refreshes every few seconds while active",
     "openDashboard": "Dashboard",
     "filterByType": "Filter by post type",
