@@ -881,6 +881,7 @@
     "bothSides": "Long і Short",
     "sort": "Сортування",
     "positionsSummary": "Статистика позицій",
+    "positionGroup": "{count, plural, one {# позиція} few {# позиції} other {# позицій}}",
     "positionVolume": "Обсяг позицій",
     "summaryCoverage": "Дані: {known} з {total}",
     "wallet": "Гаманець",

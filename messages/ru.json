@@ -881,6 +881,7 @@
     "bothSides": "Long и Short",
     "sort": "Сортировка",
     "positionsSummary": "Статистика позиций",
+    "positionGroup": "{count, plural, one {# позиция} few {# позиции} other {# позиций}}",
     "positionVolume": "Объём позиций",
     "summaryCoverage": "Данные: {known} из {total}",
     "wallet": "Кошелёк",

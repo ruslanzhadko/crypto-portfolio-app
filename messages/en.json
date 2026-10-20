@@ -881,6 +881,7 @@
     "bothSides": "Long and Short",
     "sort": "Sort",
     "positionsSummary": "Position statistics",
+    "positionGroup": "{count} positions",
     "positionVolume": "Position exposure",
     "summaryCoverage": "Available: {known} of {total}",
     "wallet": "Wallet",

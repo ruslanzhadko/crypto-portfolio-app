@@ -47,6 +47,15 @@ const catalogIds: Record<string, string> = {
 const resolved = new Map<string, string | null>();
 const pending = new Map<string, Promise<string | null>>();
 let lookupQueue: Promise<unknown> = Promise.resolve();
+// Perp contracts quote multiples of a coin (1000PEPE, kBONK, 1MBABYDOGE); the logo belongs to the base coin.
+export function logoTicker(symbol: string) {
+  const ticker = symbol.toUpperCase();
+  const stripped = ticker.replace(/^(?:10{3,6}|1M)(?=[A-Z])/, "");
+  if (stripped !== ticker) return stripped;
+  return /^K[A-Z]{2,}$/.test(ticker) && symbol.startsWith("k")
+    ? ticker.slice(1)
+    : ticker;
+}
 function findLogo(ticker: string) {
   const existing = pending.get(ticker);
   if (existing) return existing;
@@ -58,17 +67,23 @@ function findLogo(ticker: string) {
       );
       if (!response.ok) throw new Error("Logo metadata unavailable");
       const data = (await response.json()) as {
-        results?: { id: string; symbol: string; thumb: string | null }[];
+        results?: {
+          id: string;
+          symbol: string;
+          thumb: string | null;
+          marketCapRank: number | null;
+        }[];
       };
       const matches =
         data.results?.filter((coin) => coin.symbol.toUpperCase() === ticker) ??
         [];
-      // Ambiguous symbols retain the fallback rather than displaying another token's logo.
+      // Several coins can share a symbol: take the best-ranked one; unranked ambiguity keeps the fallback.
+      const ranked = matches
+        .filter((coin) => coin.marketCapRank != null)
+        .sort((a, b) => a.marketCapRank! - b.marketCapRank!);
       const selected = catalogIds[ticker]
         ? matches.find((coin) => coin.id === catalogIds[ticker])
-        : matches.length === 1
-          ? matches[0]
-          : undefined;
+        : (ranked[0] ?? (matches.length === 1 ? matches[0] : undefined));
       const logo = selected?.thumb ?? null;
       resolved.set(ticker, logo);
       return logo;
@@ -79,7 +94,7 @@ function findLogo(ticker: string) {
   return lookup;
 }
 export function ExchangeTokenLogo({ symbol }: { symbol: string }) {
-  const ticker = symbol.toUpperCase();
+  const ticker = logoTicker(symbol);
   const [metadataLogo, setMetadataLogo] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
