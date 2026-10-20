@@ -1,6 +1,6 @@
 # Переносы, настройка и экономия — инструкции
 
-Создано 20 октября 2026 года. Здесь собраны пошаговые инструкции для всех запланированных
+Создано 20 октября 2026 года, обновлено 21.10. Здесь собраны пошаговые инструкции для всех запланированных
 переносов и настроек: что делать, в каком порядке, как проверить и как откатить. Почему
 выбрана именно такая схема (причины расхода, архитектура, цены) — в
 [INFRASTRUCTURE.md](INFRASTRUCTURE.md). Выпуск бирж в production подробно — в
@@ -16,12 +16,12 @@
 
 ## 1. Текущая инфраструктура и стоимость
 
-| Компонент | Где сейчас (20.10.2026, вечер) | Стоимость сейчас | Цель |
+| Компонент | Где сейчас (21.10.2026) | Стоимость сейчас | Цель |
 | --- | --- | --- | --- |
 | Web + API | Vercel Hobby, функции в `fra1` (Франкфурт); деплой только из `main`, превью отключены | $0 | Без изменений |
-| БД | Neon, проект `cryptoportfolio` (`aws-eu-central-1`), ветка `production` (0,25 CU); `exchange-dev` ждёт удаления | Launch с 19.10.2026, $0,106/CU·ч, без жёсткого лимита трат | Free с 1.11 (если укладываемся) или Launch $3–8/мес |
+| БД | Neon, проект `cryptoportfolio` (`aws-eu-central-1`), ветка `production` (0,25 CU), других веток нет | Launch с 19.10.2026, $0,106/CU·ч, без жёсткого лимита трат | Free с 1.11 (если укладываемся) или Launch $3–8/мес |
 | Exchange worker | GCP VM `cryptoportfolio-worker`, `europe-central2-a`, контейнер `cryptoportfolio-worker-production` из `main` | Пробный период GCP (~до января 2027) | Платный VPS в декабре |
-| Telegram listener | Render, Background Worker `crypto-telegram-feed` (Starter), автодеплой из `main` | ~$7/мес (за октябрь ~$5) | На той же VM, Render отключить |
+| Telegram listener | GCP VM, контейнер `cryptoportfolio-listener-production` из того же образа, деплой из `main`. Render `crypto-telegram-feed` — **Suspended**, ждёт удаления | $0 (Render ~$5 за октябрь) | Удалить сервис на Render после наблюдения |
 | Ценовые триггеры | cron-job.org → Vercel `/api/cron/*` каждые 10/30 мин | $0, но будят БД | В worker на VM, в реальном времени |
 | Сигнал «пользователь смотрит» | Vercel Runtime Cache, `/api/worker/activity`, опрос worker каждые 10 с | $0 (вызовы функций в лимите Hobby) | Без изменений |
 | Резервные копии | Ручная: `C:/Users/rzhad/cryptoportfolio-backups/` (20.10, до миграции) | $0 | Ежедневно с VM в R2/B2 (§8) |
@@ -33,13 +33,11 @@
 
 | Место | Что там | Кто читает |
 | --- | --- | --- |
-| Vercel → Environment Variables | БД (`DATABASE_URL`, `DIRECT_URL`), авторизация, API-ключи провайдеров, бот Telegram, `CRON_SECRET`; для Preview `develop` — биржевые `EXCHANGE_*` и `EXCHANGE_WORKER_SIGNAL_SECRET`. Полная таблица — INFRASTRUCTURE.md §6a | Сайт и API |
-| Vercel → Deployment Protection | Protection Bypass for Automation (заметка «exchange worker activity signal (develop)») | Worker при опросе защищённого Preview |
+| Vercel → Environment Variables | БД (`DATABASE_URL`, `DIRECT_URL`), авторизация, API-ключи провайдеров, бот Telegram, `CRON_SECRET`, биржевые `EXCHANGE*`. Полная таблица — INFRASTRUCTURE.md §6a | Сайт и API |
 | VM: `/home/rzhadko/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko | Контейнер `cryptoportfolio-worker-production` |
 | VM: `/etc/cryptoportfolio-worker-deploy.conf` (root, 600) | `branch=main`, state `/var/lib/cryptoportfolio-worker-production-deploy`, env-файл, имя контейнера | Root-скрипт деплоя |
-| VM: `exchange-dev.env` и остановленный `cryptoportfolio-worker-dev` | Старый тестовый набор | Удалить при уборке |
+| VM: `~/.config/cryptoportfolio/telegram-feed.env` (600) | `DATABASE_URL`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET` (значения без кавычек) | Контейнер `cryptoportfolio-listener-production` |
 | GitHub → Environment `worker-preview` | SSH-ключ деплоя, known_hosts, `WORKER_HOST`, `WORKER_USER` для этой VM; с 20.10 используется для деплоя из `main` (`worker-production` не нужен, пока VM одна) | GitHub Actions |
-| Render → Environment | `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `DATABASE_URL` | Telegram listener |
 | Neon | Строки подключения веток | — |
 
 Правила: keyring шифрования (`EXCHANGE_ENCRYPTION_KEYS`) у сайта и worker одного окружения
@@ -86,39 +84,31 @@ General → Transfer project; строки подключения не меня�
   упавший коммит помечается в `<state>/failed` — удалить метку перед повтором деплоя.
 - Ключи бирж подключены заново в интерфейсе production (IP whitelist не менялся).
 
-Исходный план (для справки), подробности и откат — EXCHANGES_HANDOFF.md §8:
 
-1. Neon: создать ветку-копию от `production` (точка отката).
-2. Проверить хост в строке подключения (production), прочитать `prisma/exchanges.sql`,
-   выполнить `node --import tsx scripts/upgrade-exchanges.ts` с явно заданными
-   production `DATABASE_URL`/`DIRECT_URL` (не через `.env`). Проверить таблицы и индексы.
-3. Vercel Production: `EXCHANGES_ENABLED=true`, `EXCHANGES_PILOT_USER_IDS=<id владельца в
-   production>`, `EXCHANGE_ENCRYPTION_KEYS`, `EXCHANGE_ENCRYPTION_KEY_VERSION`,
-   `EXCHANGE_FINGERPRINT_KEY`, `EXCHANGE_WORKER_PUBLIC_IP`, `EXCHANGE_WORKER_SIGNAL_SECRET`.
-4. Merge `develop` → `main`. Дождаться и Vercel, и GitHub Actions.
-5. Worker: env с production-БД, `EXCHANGE_ACTIVITY_URL=https://crypto-portfolio-app-cyan.vercel.app/api/worker/activity`
-   (production без защиты — `EXCHANGE_ACTIVITY_BYPASS` не нужен), автодеплой из `main`.
-   Решить: отдельный production-контейнер на той же VM (нужна параметризация установщиков,
-   §6.2) или переключение текущего контейнера на `main` — второе проще, раз тестовой базы
-   больше не будет.
-6. Заново подключить ключи бирж в production-интерфейсе, дождаться свежей синхронизации и
-   сверить с биржами.
-7. Удалить `exchange-dev`, удалить переопределения Preview для `develop` и Protection Bypass
-   для preview (если не нужен). Отключить автоматические preview-деплои
-   (`git.deploymentEnabled` в `vercel.json`) или убрать переменные БД из Preview.
+## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 
-## 5. Telegram listener: Render → VM (этап E1)
+Как устроено: listener — второй контейнер того же образа (`Dockerfile.exchanges`); скрипт
+деплоя `deploy/worker-update.sh` после запуска worker пересоздаёт его из
+`telegram-feed.env` (нет файла — listener пропускается; ошибка listener не откатывает
+worker; остановка плавная, до 20 с, чтобы он записал удержанные посты). Скрипт на VM —
+root-овый, после изменений в репозитории его нужно переустановить вручную:
 
-1. На VM создать env-файл listener (права 600): `DATABASE_URL`, `TELEGRAM_API_ID`,
-   `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION` — значения из Render.
-2. Добавить образ/сервис listener (Dockerfile или общий Docker Compose с worker) и
-   автодеплой из `main`, по образцу `Dockerfile.exchanges` и `deploy/worker-update.sh`.
-3. **Одновременно может работать только один listener с этой сессией**: сначала остановить
-   сервис на Render (Suspend), затем запустить на VM. Проверить логи и что новые посты
-   появляются в ленте.
-4. Через несколько дней без проблем удалить сервис на Render, чтобы не начислялась оплата.
-5. Следующий шаг экономии: буферизовать посты и писать их в окна worker, а при открытой
-   ленте — сразу (INFRASTRUCTURE.md §3.2).
+```bash
+sudo bash -c 'source /etc/cryptoportfolio-worker-deploy.conf; git --git-dir="$state/repo.git" show <SHA>:deploy/worker-update.sh > /tmp/w.new && bash -n /tmp/w.new && install -m 0755 /tmp/w.new /usr/local/sbin/cryptoportfolio-worker-update && rm /tmp/w.new'
+```
+
+Запуск/перезапуск вручную: `sudo docker rm -f cryptoportfolio-listener-production && sudo /usr/local/sbin/cryptoportfolio-worker-update`.
+Логи: `sudo docker logs --tail 30 cryptoportfolio-listener-production`; строка «posts are
+written at once while the feed is open…» означает, что сигнал настроен.
+
+**Главное правило: одновременно может работать только один процесс с этой сессией.** Второй
+экземпляр (например, Render при возобновлении) даёт `AuthKeyDuplicatedError`, и Telegram
+аннулирует сессию. Лечение: остановить все копии, получить новую сессию на ПК
+(`npm run telegram:feed:auth -- --qr`, QR в Telegram → Устройства), подставить в
+`TELEGRAM_USER_SESSION` в `telegram-feed.env`, пересоздать контейнер.
+
+Осталось: через 2–3 дня без проблем удалить сервис `crypto-telegram-feed` на Render
+(Settings → Delete). Возобновлять его нельзя — нужна будет новая сессия.
 
 ## 6. Переезд VM: GCP → платный VPS (этап E2, декабрь)
 
@@ -217,7 +207,6 @@ IP остаётся в whitelist до конца проверки.
 | Что | Эффект | Сложность |
 | --- | --- | --- |
 | Триггеры и `update-prices` в worker, отключить cron-job.org (§3.2) | Neon будится реже; оповещения быстрее | Средняя |
-| Буфер постов listener + запись в окна (§3.2) | ~120 пробуждений в сутки меньше | Низкая |
 | `reserveRequest` (лимит запросов к биржам) хранить в памяти worker, а не писать в БД на каждый запрос | Меньше записей в активном режиме | Низкая |
 | `adapter.verify()` не на каждом цикле, а раз в N минут | Меньше запросов к биржам | Низкая |
 | `commitResult` писать балансы/позиции только при изменениях | Меньше записей и WAL | Средняя |
@@ -233,9 +222,9 @@ IP остаётся в whitelist до конца проверки.
 | Когда | Что |
 | --- | --- |
 | 20.10 | Этапы A–C выполнены: биржи в production, превью отключены |
-| Октябрь, до 1.11 | Уборка: `exchange-dev`, переопределения Preview, bypass, тестовый контейнер на VM |
+| 20–21.10 | Уборка тестового окружения выполнена; listener на VM |
 | 28–31 октября | Снять графики Neon, решить Free/Launch |
 | 1 ноября | Смена тарифа Neon (если решено) |
-| Ноябрь | Listener на VM, отключение Render; живой канал; триггеры на VM |
+| Октябрь–ноябрь | Удалить Render; триггеры на VM и отключение cron-job.org; живой канал |
 | Декабрь | Выбор провайдера, проба стран, переезд VM (§6), удаление ресурсов GCP |
 | Январь 2027 | Конец пробного периода GCP — к этому моменту на GCP ничего не должно работать |

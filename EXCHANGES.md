@@ -174,47 +174,18 @@ docker run -d --name cryptoportfolio-exchanges --restart unless-stopped --env-fi
 
 ### Развёртывание worker (с 20.10.2026)
 
-Production-worker `cryptoportfolio-worker-production` разворачивается GitHub Actions из `main`
-на ту же VM ([deploy/GITHUB_ACTIONS.md](deploy/GITHUB_ACTIONS.md)); конфигурация —
-`/etc/cryptoportfolio-worker-deploy.conf`, секреты — `exchange-production.env`. Push в
-`develop` только прогоняет проверки. Описание ниже — историческое (таймер для develop).
-
-### Автообновление develop на текущей VM (история)
-
-Для VM пользователя `rzhadko` подготовлен systemd timer. Однократно после pull:
-
-```bash
-sudo bash deploy/install-worker-update.sh
-sudo journalctl -u cryptoportfolio-worker-update -f
-```
-
-Каждые две минуты после окончания предыдущей проверки сервер читает публичную
-ветку `develop` из GitHub. Сборка происходит из чистого архива конкретного коммита
-до остановки работающего контейнера. После замены проверяется heartbeat именно
-нового worker через Docker healthcheck; при неудаче возвращается прежний контейнер.
-Секреты остаются в `/home/rzhadko/.config/cryptoportfolio/exchange-dev.env`.
-Ни SSH-ключи в GitHub, ни открытый порт webhook не нужны. Миграции БД не запускаются.
-Доступ на push в develop теперь фактически даёт возможность запускать код с
-секретами тестового worker: ограничьте его доверенными участниками.
-
-Коммит, проваливший сборку/healthcheck, записывается в
-`/var/lib/cryptoportfolio-worker-deploy/failed`: новая версия попробуется автоматически,
-повтор той же — после проверки журнала и удаления только этого файла.
-При аварийном выключении во время замены сохранённый контейнер
-`cryptoportfolio-worker-dev-previous` требует ручного восстановления; новые попытки
-остановятся, чтобы не затереть его. Старые Docker-образы сохраняются для отката:
-следите за свободным местом на диске. Сам deploy-скрипт устанавливается один раз
-и не заменяет себя из ветки; изменения deploy-файлов требуют повторной установки.
-
-Пауза автообновления:
-`sudo systemctl disable --now cryptoportfolio-worker-update.timer`.
-Это не останавливает уже выполняющуюся сборку и сам worker.
-Проверка статуса: `sudo systemctl status cryptoportfolio-worker-update.timer`.
-
-Перед production: сверить equity/позиции с биржей, проверить pause/resume,
-отзыв ключа, повторный запуск VM, устаревание данных, резервное восстановление БД
-и сохранность ключа шифрования. Production требует отдельной конфигурации:
-этот timer намеренно обслуживает только тестовый develop.
+Production-worker `cryptoportfolio-worker-production` и listener `cryptoportfolio-listener-production`
+разворачиваются GitHub Actions из `main` на GCP VM ([deploy/GITHUB_ACTIONS.md](deploy/GITHUB_ACTIONS.md));
+конфигурация — `/etc/cryptoportfolio-worker-deploy.conf`, секреты — `exchange-production.env` и
+`telegram-feed.env` (MIGRATIONS.md §2, §5). Push в `develop` только прогоняет проверки. Сборка идёт из
+чистого архива конкретного коммита до остановки работающего контейнера; после замены проверяется
+heartbeat (локальный файл) нового worker, при неудаче возвращается прежний контейнер. Миграции БД не
+запускаются. Коммит, проваливший сборку или проверку, записывается в `<state>/failed`: новая версия
+попробуется автоматически, повтор той же — после удаления этого файла. После аварийного выключения во
+время замены остаётся `<name>-previous` — его нужно восстановить вручную. Сам скрипт деплоя
+устанавливается на VM вручную и не обновляет себя (MIGRATIONS.md §5). Перед ростом пилота — сверка
+equity с биржей, pause/resume, отзыв ключа, повтор запуска VM, устаревание данных и сохранность ключа
+шифрования.
 
 Для ротации шифрования добавьте новую версию в keyring обоих процессов, затем
 переключите активную версию. Worker перешифрует ключи при следующем создании
@@ -229,9 +200,7 @@ sudo journalctl -u cryptoportfolio-worker-update -f
   UI считает worker недоступным после 90 секунд.
 - Задержку `ExchangeSyncJob.dueAt`, последние успешные времена отдельных разделов,
   частоту safe error codes и рост нагрузки Neon. История запусков хранится 7 дней.
-- **Внимание:** текущий worker опрашивает БД каждые 2 секунды и не даёт Neon заснуть
-  (~6 CU·ч/сутки, исчерпание Free за ~16 дней). До выпуска в production нужны режимы
-  «активный / простой» — [INFRASTRUCTURE.md](INFRASTRUCTURE.md) §3.
+- Расход Neon: в простое worker обращается к БД раз в 30 минут — [INFRASTRUCTURE.md](INFRASTRUCTURE.md) §3.1.
 - Сверку equity с биржей, учёт всех страниц, отключение ключа, восстановление
   процесса и работу при временном отсутствии цен.
 
