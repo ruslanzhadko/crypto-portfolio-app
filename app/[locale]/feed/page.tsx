@@ -27,13 +27,13 @@ export default async function FeedPage({
   ]);
 
   const feedContent = (
-    <div className="mx-auto max-w-5xl">
-      <div className="flex flex-col gap-3 border-b border-border pb-6 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mx-auto max-w-6xl">
+      <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
             {t("pageTitle")}
           </h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-text-muted md:text-base">
+          <p className="mt-1.5 max-w-3xl text-xs leading-5 text-text-muted md:text-sm">
             {t("pageDescription")}
           </p>
         </div>
@@ -42,7 +42,7 @@ export default async function FeedPage({
           {t("autoRefresh")}
         </div>
       </div>
-      <div className="pt-5">
+      <div className="pt-4">
         <FeedStream />
       </div>
     </div>

@@ -362,7 +362,7 @@ export function FeedStream() {
                 onClick={() => setType(filter)}
                 aria-pressed={type === filter}
                 className={cn(
-                  "min-h-10 shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-11 sm:px-4 sm:text-xs",
+                  "min-h-10 shrink-0 rounded-full px-3 py-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9 sm:px-4 sm:py-1.5 sm:text-xs",
                   type === filter
                     ? "bg-text text-background"
                     : "bg-surface-2 text-text-muted hover:text-text",
@@ -381,7 +381,7 @@ export function FeedStream() {
                 onChange={(event) => setSearchInput(event.target.value)}
                 placeholder={t("searchPlaceholder")}
                 aria-label={t("searchLabel")}
-                className="h-10 pl-9 text-sm"
+                className="h-10 pl-9 text-sm sm:h-9"
               />
             </label>
             <label className="relative block">
@@ -390,7 +390,7 @@ export function FeedStream() {
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
                 aria-label={t("sourceLabel")}
-                className="h-10 w-full appearance-none rounded-lg border border-border bg-surface-2 pl-9 pr-8 text-sm text-text ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                className="h-10 w-full sm:h-9 appearance-none rounded-lg border border-border bg-surface-2 pl-9 pr-8 text-sm text-text ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <option value="ALL">{t("allSources")}</option>
                 {sources.map((item) => (
@@ -403,7 +403,7 @@ export function FeedStream() {
             <Button
               variant="outline"
               size="icon"
-              className="h-10 w-10"
+              className="h-10 w-10 sm:h-9 sm:w-9"
               onClick={() => void load()}
               disabled={refreshing}
               aria-label={t("refresh")}

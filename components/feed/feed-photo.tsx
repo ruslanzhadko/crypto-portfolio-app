@@ -54,7 +54,7 @@ export function FeedPhoto({
 
   return (
     <Dialog.Root>
-      <div className="mt-3 w-full max-w-2xl">
+      <div className="mt-3 w-full max-w-md">
         <div className="relative overflow-hidden rounded-xl bg-surface-2">
           <Dialog.Trigger asChild>
             <button
@@ -69,7 +69,7 @@ export function FeedPhoto({
                 loading="lazy"
                 decoding="async"
                 onError={() => markFailed(currentImage)}
-                className="max-h-[32rem] w-full object-contain"
+                className="max-h-72 w-full object-contain sm:max-h-80"
               />
             </button>
           </Dialog.Trigger>
