@@ -47,7 +47,7 @@ export function ProfileForm({ initialName }: ProfileFormProps) {
   return (
     <form
       onSubmit={onSave}
-      className="grid max-w-xl grid-cols-[minmax(0,1fr)_auto] items-end gap-3"
+      className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3 self-start"
     >
       <div className="min-w-0 space-y-2">
         <Label htmlFor="name">{t('nameLabel')}</Label>

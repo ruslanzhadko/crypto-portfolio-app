@@ -46,7 +46,7 @@ export default async function SettingsPage({
   const authMessages = await getTranslations('Auth');
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-5xl space-y-6">
       <div>
         <h1 className="text-xl font-bold tracking-tight md:text-3xl">
           {t('pageTitle')}
@@ -66,8 +66,23 @@ export default async function SettingsPage({
               : t('telegramProfileDescription', { role: user.role })}
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-8 md:grid-cols-2 md:gap-10">
           <ProfileForm initialName={user.name} />
+          <section className="space-y-3 border-t border-border pt-6 md:border-l md:border-t-0 md:pl-10 md:pt-0">
+            <div>
+              <h3 className="font-semibold leading-none">
+                {t('securityCardTitle')}
+              </h3>
+              <p className="mt-1.5 text-sm text-text-muted">
+                {t('loginMethodsDescription')}
+              </p>
+            </div>
+            {user.passwordHash ? (
+              <PasswordForm />
+            ) : (
+              <p className="text-sm text-text-muted">{t('socialNoPassword')}</p>
+            )}
+          </section>
         </CardContent>
       </Card>
 
@@ -95,19 +110,6 @@ export default async function SettingsPage({
             notificationsEnabled={user.telegramNotificationsEnabled}
             botReady={telegramBotReady()}
           />
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('securityCardTitle')}</CardTitle>
-          <CardDescription>{t('loginMethodsDescription')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {user.passwordHash ? (
-            <PasswordForm />
-          ) : (
-            <p className="text-sm text-text-muted">{t('socialNoPassword')}</p>
-          )}
         </CardContent>
       </Card>
     </div>
