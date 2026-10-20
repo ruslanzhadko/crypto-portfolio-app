@@ -22,6 +22,7 @@ case "$1" in
   inspect)
     if [[ -e /tmp/mock/unhealthy ]]; then echo unhealthy; else echo healthy; fi ;;
   stop|start) test -e "/tmp/mock/containers/${@: -1}" ;;
+  logs) echo '[feed] listener started for 7 channels' ;;
   rename) mv "/tmp/mock/containers/$2" "/tmp/mock/containers/$3" ;;
   rm) rm -f "/tmp/mock/containers/${@: -1}" ;;
   run)
@@ -39,6 +40,11 @@ test "$(cat /var/lib/cryptoportfolio-worker-deploy/deployed)" = first
 before=$(wc -l < /tmp/mock/calls)
 bash /source/deploy/worker-update.sh
 test "$(wc -l < /tmp/mock/calls)" = "$before"
+# The listener starts only once its secrets exist; an unchanged commit starts a missing listener.
+test ! -e /tmp/mock/containers/cryptoportfolio-listener-production
+echo test-only > /home/rzhadko/.config/cryptoportfolio/telegram-feed.env
+bash /source/deploy/worker-update.sh
+test "$(cat /tmp/mock/containers/cryptoportfolio-listener-production)" = new
 echo retained > /tmp/mock/containers/cryptoportfolio-worker-dev
 echo second > /tmp/mock/sha
 touch /tmp/mock/unhealthy
@@ -58,4 +64,4 @@ if SSH_ORIGINAL_COMMAND='arbitrary command' bash /source/deploy/worker-update.sh
   echo 'Expected invalid SSH command rejection'; exit 1
 fi
 test "$(wc -l < /tmp/mock/calls)" = "$before"
-echo 'PASS: deployment, unchanged commit, rollback, failed build, stale push, invalid command'
+echo 'PASS: deployment, listener, unchanged commit, rollback, failed build, stale push, invalid command'

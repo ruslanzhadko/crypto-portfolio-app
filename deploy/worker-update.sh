@@ -5,6 +5,9 @@ umask 077
 state=/var/lib/cryptoportfolio-worker-deploy
 env_file=/home/rzhadko/.config/cryptoportfolio/exchange-dev.env
 name=cryptoportfolio-worker-dev
+# Telegram feed listener: same image, own container and secrets. Skipped while the env file is absent.
+listener_env_file=/home/rzhadko/.config/cryptoportfolio/telegram-feed.env
+listener_name=cryptoportfolio-listener-production
 repo=https://github.com/ruslanzhadko/crypto-portfolio-app.git
 branch=develop
 # Optional root-owned configuration for a separately installed production worker.
@@ -16,6 +19,18 @@ mkdir -p "$state"
 exec 9>"$state/lock"
 flock -w 1200 9 || exit 1
 test -s "$env_file"
+# Only one process may use the Telegram session: the old container is removed before the new one starts.
+# Failures here never roll back the exchange worker.
+start_listener() {
+  [[ -s "$listener_env_file" ]] || { echo 'Listener env file absent; listener skipped.'; return 0; }
+  docker rm -f "$listener_name" >/dev/null 2>&1 || true
+  docker run -d --name "$listener_name" --restart unless-stopped     --env-file "$listener_env_file" --no-healthcheck --log-driver json-file     --log-opt max-size=10m --log-opt max-file=3     --security-opt no-new-privileges:true --cap-drop ALL     "$1" node --import tsx scripts/telegram-feed-listener.ts || { echo 'WARNING: listener failed to start.'; return 0; }
+  for _ in {1..18}; do
+    if docker logs "$listener_name" 2>&1 | grep -q 'listener started'; then echo 'Listener started.'; return 0; fi
+    sleep 5
+  done
+  echo 'WARNING: listener has not reported readiness; inspect docker logs.'
+}
 if [[ ! -d "$state/repo.git" ]]; then git init --bare "$state/repo.git"; fi
 git --git-dir="$state/repo.git" fetch --depth=1 "$repo" "refs/heads/$branch"
 sha=$(git --git-dir="$state/repo.git" rev-parse FETCH_HEAD)
@@ -26,7 +41,13 @@ if [[ -n ${SSH_ORIGINAL_COMMAND:-} ]]; then
     echo 'Superseded push; deployment skipped.'; exit 0
   fi
 fi
-if [[ -f "$state/deployed" ]] && [[ $(cat "$state/deployed") == "$sha" ]]; then exit 0; fi
+if [[ -f "$state/deployed" ]] && [[ $(cat "$state/deployed") == "$sha" ]]; then
+  # Same commit: only start a listener that is missing (for example after its env file was created).
+  if [[ -s "$listener_env_file" ]] && ! docker container inspect "$listener_name" >/dev/null 2>&1; then
+    start_listener "cryptoportfolio-worker:git-$sha"
+  fi
+  exit 0
+fi
 # Do not endlessly rebuild an unhealthy commit; a new push retries automatically.
 if [[ -f "$state/failed" ]] && [[ $(cat "$state/failed") == "$sha" ]]; then
   echo "Commit $sha previously failed. Inspect journal; remove $state/failed to retry."; exit 1
@@ -83,3 +104,4 @@ trap - ERR INT TERM
 # Keep the previous image for rollback, but remove the superseded stopped container.
 if $had_old; then docker rm "$old"; fi
 echo "Worker deployed and heartbeat verified: $sha"
+start_listener "$image"
