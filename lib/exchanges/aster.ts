@@ -260,6 +260,12 @@ export class AsterAdapter implements ExchangeAdapter {
           since: Number(p.createTime) || null,
           updatedAt: Date.now(),
           status: "unavailable",
+          shield: {
+            takeProfit: decimal(p.tp),
+            stopLoss: decimal(p.sl),
+            feeMode: typeof p.feeMode === "string" ? p.feeMode : null,
+            openedAt: Number(p.createTime) || null,
+          },
         },
       });
     }

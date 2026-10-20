@@ -9,7 +9,7 @@ type Row = {
   funding: unknown;
 };
 export function summarizePositions(rows: Row[], prices: Map<string, string>) {
-  const metric = () => ({ value: new D(0), known: 0 });
+  const metric = () => ({ value: new D(0), known: 0, applicable: 0 });
   const volume = metric(),
     realized = metric(),
     unrealized = metric();
@@ -23,6 +23,8 @@ export function summarizePositions(rows: Row[], prices: Map<string, string>) {
       unrealized.known++;
     }
     const f = row.funding as FundingSummary | null;
+    // Shield positions close only as a whole: no realized PnL while open.
+    if (!f?.shield) realized.applicable++;
     const price = prices.get(row.settle);
     if (
       price &&
@@ -37,16 +39,17 @@ export function summarizePositions(rows: Row[], prices: Map<string, string>) {
       realized.known++;
     }
   }
-  const serialize = (m: ReturnType<typeof metric>) => ({
-    value: rows.length === 0 || m.known > 0 ? m.value.toFixed() : null,
+  const serialize = (m: ReturnType<typeof metric>, total = rows.length) => ({
+    value: total === 0 || m.known > 0 ? m.value.toFixed() : null,
     known: m.known,
+    total,
   });
   return {
     count: rows.length,
     long: rows.filter((p) => p.side === "long").length,
     short: rows.filter((p) => p.side === "short").length,
     volume: serialize(volume),
-    realized: serialize(realized),
+    realized: serialize(realized, realized.applicable),
     unrealized: serialize(unrealized),
   };
 }

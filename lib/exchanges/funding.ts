@@ -17,6 +17,16 @@ export type FundingSummary = {
   since: number | null;
   updatedAt: number;
   status: "complete" | "unavailable" | "pending";
+  /**
+   * Aster Shield Mode: an isolated position that is closed only as a whole, so
+   * realized PnL from partial closes does not apply to it.
+   */
+  shield?: {
+    takeProfit: string | null;
+    stopLoss: string | null;
+    feeMode: string | null;
+    openedAt: number | null;
+  };
 };
 type Row = Record<string, unknown>;
 const HOUR = 3600_000;
