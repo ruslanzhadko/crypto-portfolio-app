@@ -172,7 +172,7 @@ export function CapitalDashboard({
       {!overview && !data.error && <Skeleton className="h-64 w-full" />}
       {overview && (
         <>
-          <div className="rounded-xl border border-border bg-surface p-4 sm:p-6">
+          <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div
                 className="flex gap-1"
@@ -200,10 +200,53 @@ export function CapitalDashboard({
                 {t(busy ? "saving" : "refreshExchanges")}
               </Button>
             </div>
-            <p className="mt-5 text-sm text-text-muted">{t("totalCapital")}</p>
-            <p className="mt-1 text-3xl font-semibold tracking-tight">
-              <Money value={value} />
-            </p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">
+              <div className="min-w-0">
+                <p className="text-sm text-text-muted">{t("totalCapital")}</p>
+                <p className="mt-1 text-3xl font-semibold tracking-tight">
+                  <Money value={value} />
+                </p>
+                <p className="mt-1 text-xs text-text-muted">
+                  {t("counts", {
+                    wallets: overview.walletCount,
+                    exchanges: overview.exchangeCount,
+                    accounts: overview.connectionCount,
+                  })}
+                </p>
+              </div>
+              <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+                <div>
+                  <dt className="text-xs text-text-muted">
+                    {t("walletCapital")}
+                  </dt>
+                  <dd className="mt-1 font-medium">
+                    <Money value={overview.walletsUsd} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-muted">
+                    {t("exchangeCapital")}
+                  </dt>
+                  <dd className="mt-1 font-medium">
+                    <Money value={overview.exchangesUsd} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-muted">
+                    {t("unrealizedPnl")}
+                  </dt>
+                  <dd className="mt-1 font-medium">
+                    <Money value={overview.unrealizedPnlUsd} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-text-muted">
+                    {t("openPositions")}
+                  </dt>
+                  <dd className="mt-1 font-medium">{overview.positionCount}</dd>
+                </div>
+              </dl>
+            </div>
             {!overview.complete && (
               <p className="mt-2 text-sm text-warning">{t("partialCapital")}</p>
             )}
@@ -215,58 +258,20 @@ export function CapitalDashboard({
                 <ExchangeErrorNotice code="WORKER_OFFLINE" />
               </div>
             )}
-            <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-border pt-4 lg:grid-cols-4">
-              <div>
-                <dt className="text-xs text-text-muted">
-                  {t("walletCapital")}
-                </dt>
-                <dd className="mt-1 font-medium">
-                  <Money value={overview.walletsUsd} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-text-muted">
-                  {t("exchangeCapital")}
-                </dt>
-                <dd className="mt-1 font-medium">
-                  <Money value={overview.exchangesUsd} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-text-muted">
-                  {t("unrealizedPnl")}
-                </dt>
-                <dd className="mt-1 font-medium">
-                  <Money value={overview.unrealizedPnlUsd} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-text-muted">
-                  {t("openPositions")}
-                </dt>
-                <dd className="mt-1 font-medium">{overview.positionCount}</dd>
-              </div>
-            </dl>
-            <p className="mt-3 text-xs text-text-muted">
-              {t("counts", {
-                wallets: overview.walletCount,
-                exchanges: overview.exchangeCount,
-                accounts: overview.connectionCount,
-              })}
-            </p>
             <details
-              className="mt-5"
+              className="mt-4 border-t border-border pt-3"
               open={historyOpen === "true"}
               onToggle={(e) => setHistoryOpen(String(e.currentTarget.open))}
             >
-              <summary className="inline-flex cursor-pointer items-center gap-2 font-medium">
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${historyOpen === "true" ? "" : "-rotate-90"}`}
-                />
-                {t("capitalHistory")}
-              </summary>
-              <div className="mt-2 flex justify-end">
-                <div className="flex gap-1">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 font-medium">
+                <span className="inline-flex items-center gap-2">
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${historyOpen === "true" ? "" : "-rotate-90"}`}
+                  />
+                  {t("capitalHistory")}
+                </span>
+                {/* Period buttons sit on the toggle row; clicks must not fold it. */}
+                <div className="flex gap-1" onClick={(e) => e.preventDefault()}>
                   {[1, 7, 30].map((d) => (
                     <Button
                       key={d}
@@ -280,9 +285,9 @@ export function CapitalDashboard({
                     </Button>
                   ))}
                 </div>
-              </div>
+              </summary>
               {chart.length > 0 ? (
-                <div className="mt-4 h-60 min-w-0">
+                <div className="mt-3 h-44 min-w-0 sm:h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
                       <XAxis
@@ -386,7 +391,12 @@ export function CapitalDashboard({
                           isAnimationActive={false}
                         />
                       )}
-                      {scope === "all" && <Legend />}
+                      {scope === "all" && (
+                        <Legend
+                          iconSize={10}
+                          wrapperStyle={{ fontSize: 12, paddingTop: 4 }}
+                        />
+                      )}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -395,7 +405,7 @@ export function CapitalDashboard({
                   {t("historyEmpty")}
                 </p>
               )}
-              <p className="text-xs text-text-muted">{t("historyNote")}</p>
+              <p className="mt-1 text-xs text-text-muted">{t("historyNote")}</p>
               {scope === "all" &&
                 history?.changeUsd !== null &&
                 history?.changeUsd !== undefined && (
@@ -404,7 +414,7 @@ export function CapitalDashboard({
                   </p>
                 )}
               {history && history.events.length > 0 && (
-                <details className="mt-3 text-sm">
+                <details className="mt-2 text-sm">
                   <summary className="cursor-pointer text-text-muted">
                     {t("sourceChanges")}
                   </summary>
@@ -422,7 +432,7 @@ export function CapitalDashboard({
               )}
             </details>
             <Link
-              className="mt-3 inline-block text-xs text-primary"
+              className="mt-2 inline-block text-xs text-primary"
               href="/dashboard/history"
             >
               {t("legacyHistory")}

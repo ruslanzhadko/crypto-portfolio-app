@@ -248,6 +248,16 @@ export async function saveCapitalSnapshot(
         .map((a) => ({ id: a.id, kind: "exchange", valueUsd: a.equityUsd })),
     ],
   };
+  // An included account with unknown equity would count as zero and draw a
+  // false dip; skip the point while recent history exists (the next
+  // successful sync fills the bucket). A lasting gap is still recorded.
+  if (overview.accounts.some((a) => a.included && a.equityUsd === null)) {
+    const recent = await prisma.portfolioCapitalSnapshot.findFirst({
+      where: { userId, bucket: { gte: new Date(Date.now() - 2 * 3600_000) } },
+      select: { id: true },
+    });
+    if (recent) return;
+  }
   await prisma.portfolioCapitalSnapshot.upsert({
     where: { userId_bucket: { userId, bucket } },
     create: { userId, bucket, ...data },
