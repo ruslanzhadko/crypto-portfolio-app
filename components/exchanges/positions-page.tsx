@@ -599,9 +599,6 @@ export function PositionsPage({
                       <dt className="text-text-muted">{t("nextFunding")}</dt>
                       <NextFunding p={p} />
                     </div>
-                    <p className="col-span-2 text-xs text-text-muted lg:col-span-6">
-                      {t("shieldDescription")}
-                    </p>
                   </dl>
                 ) : (
                   <dl className="grid grid-cols-2 gap-x-6 gap-y-4 text-[15px] lg:grid-cols-6 [&>div]:min-w-0 [&_dd]:mt-2 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-xs">
