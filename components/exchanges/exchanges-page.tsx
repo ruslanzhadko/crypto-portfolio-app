@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ExchangeLogo, exchangeName } from "./exchange-logo";
 import { useTranslations } from "next-intl";
 import { Plus, ArrowRight } from "lucide-react";
 import { Link } from "@/i18n/navigation";
@@ -95,8 +96,9 @@ export function ExchangesPage() {
                     <span className="truncate">{connection.label}</span>
                     <ArrowRight className="h-4 w-4 shrink-0" />
                   </Link>
-                  <p className="mt-1 text-sm capitalize text-text-muted">
-                    {connection.exchange}{" "}
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-text-muted">
+                    <ExchangeLogo exchange={connection.exchange} />
+                    {exchangeName(connection.exchange)}{" "}
                     {connection.keyMask && (
                       <span className="ml-2 font-mono">
                         {connection.keyMask}

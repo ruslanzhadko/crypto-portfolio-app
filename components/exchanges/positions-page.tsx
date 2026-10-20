@@ -1,5 +1,6 @@
 "use client";
 import { ExchangeTokenLogo } from "./token-logo";
+import { ExchangeLogo, exchangeName } from "./exchange-logo";
 import { useEffect, useState, type SelectHTMLAttributes } from "react";
 import { ChevronDown, Info } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -499,18 +500,9 @@ export function PositionsPage({
                   <p className="text-[15px] font-medium break-words">
                     {p.connection.label}
                   </p>
-                  <p className="text-xs text-text-muted">
-                    {(
-                      {
-                        binance: "Binance",
-                        bybit: "Bybit",
-                        gate: "Gate",
-                        okx: "OKX",
-                        bitget: "Bitget",
-                        hyperliquid: "Hyperliquid",
-                        aster: "Aster",
-                      } as Record<string, string>
-                    )[p.connection.exchange] ?? p.connection.exchange}
+                  <p className="flex items-center gap-1.5 text-xs text-text-muted">
+                    <ExchangeLogo exchange={p.connection.exchange} size={14} />
+                    {exchangeName(p.connection.exchange)}
                   </p>
                 </div>
                 <div className="text-right">

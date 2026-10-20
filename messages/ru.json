@@ -177,6 +177,7 @@
     "hideSpam": "Обычные токены",
     "spamNotice": "Спам-токены не входят в стоимость портфеля и аналитику.",
     "walletFallback": "Кошелёк",
+    "hiddenBelow": "+ {count} запис(ей) скрыто (< ${minimum})",
     "hiddenDust": "+ {count} запис(ей) скрыто (< $0.01)",
     "sortAscSr": "по возрастанию",
     "sortDescSr": "по убыванию",

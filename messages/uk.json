@@ -177,6 +177,7 @@
     "hideSpam": "Звичайні токени",
     "spamNotice": "Спам-токени не входять у вартість портфеля та аналітику.",
     "walletFallback": "Гаманець",
+    "hiddenBelow": "+ {count} запис(ів) приховано (< ${minimum})",
     "hiddenDust": "+ {count} запис(ів) приховано (< $0.01)",
     "sortAscSr": "зростання",
     "sortDescSr": "спадання",

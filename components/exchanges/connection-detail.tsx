@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { ExchangeLogo, exchangeName } from "./exchange-logo";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
@@ -71,8 +72,9 @@ export function ConnectionDetail({ id }: { id: string }) {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold">{c.label}</h1>
-              <p className="mt-1 capitalize text-text-muted">
-                {c.exchange} {c.keyMask}
+              <p className="mt-1 flex items-center gap-2 text-text-muted">
+                <ExchangeLogo exchange={c.exchange} size={18} />
+                {exchangeName(c.exchange)} {c.keyMask}
               </p>
             </div>
             <ConnectionStatus status={c.status} errorCode={c.errorCode} />

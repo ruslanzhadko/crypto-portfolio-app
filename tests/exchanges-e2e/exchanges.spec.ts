@@ -520,7 +520,9 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   // "All" shows one list: exchange coins join the wallet token table.
   const unified = page.locator("table").filter({ has: page.getByText("Main Bybit").or(page.getByText("USDT", { exact: true })) }).first();
   await expect(unified.getByText("USDT", { exact: true }).first()).toBeVisible();
-  await expect(page.getByLabel("Balances from")).toHaveCount(0);
+  // The combined list uses the same "Balances from" minimum ($0.10 by default).
+  await expect(page.getByLabel("Balances from")).toHaveValue("0.10");
+  await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Exchanges", exact: true }).click();
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
   await expect(page.getByText("UNKNOWN", { exact: true })).toHaveCount(0);
