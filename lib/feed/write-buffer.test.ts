@@ -79,6 +79,51 @@ describe("FeedWriteBuffer", () => {
     expect(dropped).toEqual([1]);
   });
 
+  it("retries failed posts on the next tick, not the next window", async () => {
+    let fail = true;
+    const written: number[] = [];
+    const buffer = new FeedWriteBuffer<Post>(
+      {
+        write: async (post) => {
+          if (fail) throw new Error("connection closed");
+          written.push(post.id);
+        },
+        key: (post) => String(post.id),
+      },
+      false,
+    );
+    await buffer.submit({ id: 1, text: "a" });
+    await buffer.flush();
+    expect(buffer.size).toBe(1);
+    fail = false;
+    expect(await buffer.tick(false)).toBe(true);
+    expect(written).toEqual([1]);
+    expect(await buffer.tick(false)).toBe(false);
+  });
+
+  it("does not wedge when a write hangs", async () => {
+    let calls = 0;
+    const buffer = new FeedWriteBuffer<Post>(
+      {
+        write: (post) => {
+          calls++;
+          return post.id === 1
+            ? new Promise<void>(() => undefined)
+            : Promise.resolve();
+        },
+        key: (post) => String(post.id),
+        writeTimeoutMs: 20,
+        maxAttempts: 1,
+      },
+      false,
+    );
+    await buffer.submit({ id: 1, text: "hang" });
+    await buffer.submit({ id: 2, text: "ok" });
+    await buffer.flush();
+    expect(calls).toBe(2);
+    expect(buffer.size).toBe(0);
+  });
+
   it("flushes early when the buffer is full", async () => {
     const written: number[] = [];
     const buffer = new FeedWriteBuffer<Post>(

@@ -43,6 +43,11 @@ const client = new TelegramClient(new StringSession(session), apiId, apiHash, {
 });
 
 const watchers = new Map<string, () => void>();
+// Last stored message per channel, read from the database when sources are refreshed.
+const knownSources = new Map<
+  string,
+  { id: string; lastMessageId: number | null }
+>();
 let tickTimer: ReturnType<typeof setInterval> | undefined;
 let syncing = false;
 const MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES = 2 * 1024 * 1024;
@@ -346,8 +351,14 @@ async function syncSources() {
   try {
     const activeSources = await prisma.telegramFeedSource.findMany({
       where: { isActive: true },
-      select: { username: true },
+      select: { id: true, username: true, lastMessageId: true },
     });
+    knownSources.clear();
+    for (const source of activeSources)
+      knownSources.set(source.username, {
+        id: source.id,
+        lastMessageId: source.lastMessageId,
+      });
     const desired = new Set(activeSources.map((source) => source.username));
 
     for (const [username, stop] of watchers) {
@@ -368,6 +379,26 @@ async function syncSources() {
     }
   } finally {
     syncing = false;
+  }
+}
+
+// Telegram does not guarantee that every channel update reaches a user client, so each window
+// (and each new viewer) asks the channels directly for anything newer than the last stored post.
+async function catchUpMissedPosts() {
+  for (const [username, source] of knownSources) {
+    if (!source.lastMessageId || !watchers.has(username)) continue;
+    try {
+      const missed = await client.getMessages(username, {
+        minId: source.lastMessageId,
+        limit: 50,
+      });
+      for (const message of [...missed].reverse())
+        await buffer.submit({ username, sourceId: source.id, message });
+      if (missed.length)
+        console.log(`[feed] caught up @${username}: ${missed.length} posts`);
+    } catch (error) {
+      console.warn(`[feed] catch-up failed for @${username}`, error);
+    }
   }
 }
 
@@ -403,14 +434,22 @@ async function main() {
   await syncSources();
   if (signal) {
     let ticking = false;
+    let wasLive = false;
     tickTimer = setInterval(() => {
       if (ticking) return;
       ticking = true;
       void (async () => {
         try {
-          // Source list refresh shares the window flush, so the database wakes once per window.
-          const flushed = await buffer.tick(await signal.poll());
-          if (flushed) await syncSources();
+          const live = await signal.poll();
+          // Source refresh and catch-up share the window, so the database wakes once per window.
+          if (buffer.windowDue() || (live && !wasLive)) {
+            await syncSources();
+            await catchUpMissedPosts();
+          }
+          wasLive = live;
+          if (buffer.windowDue())
+            console.log(`[feed] window flush: ${buffer.size} held posts`);
+          await buffer.tick(live);
         } catch (error) {
           console.error("[feed] flush failed", error);
         } finally {
