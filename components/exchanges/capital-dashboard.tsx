@@ -310,7 +310,7 @@ export function CapitalDashboard({
               </div>
             )}
             <details
-              className="mt-3 border-t border-border pt-2"
+              className="smooth-details mt-3 border-t border-border pt-2"
               open={historyOpen === "true"}
               onToggle={(e) => setHistoryOpen(String(e.currentTarget.open))}
             >

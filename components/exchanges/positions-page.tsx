@@ -376,7 +376,7 @@ export function PositionsPage({
               </Button>
             )}
             <div
-              className={`${filtersOpen ? "grid" : "hidden"} col-span-full grid-cols-2 gap-2 sm:contents`}
+              className={`${filtersOpen ? "grid animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none" : "hidden"} col-span-full grid-cols-2 gap-2 sm:contents`}
             >
             {!connectionId && (
               <>
@@ -506,7 +506,7 @@ export function PositionsPage({
               node: (
                 <details
                   key={key}
-                  className="group"
+                  className="smooth-details group"
                   open={
                     expanded[`${p.connection.id}:${p.positionKey}`] ?? false
                   }

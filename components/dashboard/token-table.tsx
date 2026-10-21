@@ -213,8 +213,7 @@ export function TokenTable({
               className="h-9 pl-9 text-[13px] sm:h-10 sm:text-sm"
             />
           </div>
-          {/* Not modal: on phones a swipe outside closes the menu instead of being swallowed. */}
-          {variant !== 'exchanges' && <DropdownMenu modal={false}>
+          {variant !== 'exchanges' && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -483,7 +482,7 @@ function WalletBreakdown({
 }) {
   const t = useTranslations('TokenTable');
   return (
-    <div className="sm:ml-6 sm:space-y-1">
+    <div className={cn('sm:ml-6 sm:space-y-1', UNFOLD)}>
       {groups.map((g) => {
         const walletKey = `${tokenKey}::${g.walletId}`;
         const isOpen = openWallets.has(walletKey);
@@ -575,6 +574,9 @@ function WalletBreakdown({
   );
 }
 
+// A short fade and slide for content that appears when a row is unfolded.
+const UNFOLD = 'animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none';
+
 function ChainBreakdown({
   chains,
   walletTotalUsd,
@@ -583,7 +585,7 @@ function ChainBreakdown({
   walletTotalUsd: number;
 }) {
   return (
-    <div className="ml-5 md:ml-7 md:mt-0.5 md:space-y-0.5 md:border-l md:border-border/60 md:pl-3">
+    <div className={cn('ml-5 md:ml-7 md:mt-0.5 md:space-y-0.5 md:border-l md:border-border/60 md:pl-3', UNFOLD)}>
       {chains.map((c, idx) => {
         const chainShare = walletTotalUsd > 0 ? (c.usdValue / walletTotalUsd) * 100 : 0;
         return (
@@ -645,7 +647,7 @@ function ExchangeBadge({ exchange }: { exchange: string }) {
 function ExchangeBreakdown({ holdings, totalUsd }: { holdings: ExchangeHolding[]; totalUsd: number }) {
   const te = useTranslations('Exchanges');
   return (
-    <div className="sm:ml-6 sm:space-y-1">
+    <div className={cn('sm:ml-6 sm:space-y-1', UNFOLD)}>
       {holdings.map((h) => {
         const share = totalUsd > 0 ? (h.usdValue / totalUsd) * 100 : 0;
         return (
