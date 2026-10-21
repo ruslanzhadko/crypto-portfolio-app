@@ -5,14 +5,68 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { Check, ChevronRight, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
+const MenuState = React.createContext<{
+  open: boolean;
+  setOpen: (open: boolean) => void;
+} | null>(null);
+
 // Not modal by default: the page keeps scrolling and a touch outside (a swipe) closes the menu.
 function DropdownMenu({
   modal = false,
+  open: openProp,
+  defaultOpen = false,
+  onOpenChange,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root modal={modal} {...props} />;
+  const [innerOpen, setInnerOpen] = React.useState(defaultOpen);
+  const open = openProp ?? innerOpen;
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      if (openProp === undefined) setInnerOpen(next);
+      onOpenChange?.(next);
+    },
+    [openProp, onOpenChange],
+  );
+  return (
+    <MenuState.Provider value={{ open, setOpen }}>
+      <DropdownMenuPrimitive.Root
+        modal={modal}
+        open={open}
+        onOpenChange={setOpen}
+        {...props}
+      />
+    </MenuState.Provider>
+  );
 }
-const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+
+// Radix opens a menu on pointerdown, so a finger that starts a scroll on the trigger opened it.
+// On touch the menu opens on a tap (click) instead; mouse and keyboard keep the usual behaviour.
+const DropdownMenuTrigger = React.forwardRef<
+  React.ElementRef<typeof DropdownMenuPrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
+>(({ onPointerDown, onClick, ...props }, ref) => {
+  const menu = React.useContext(MenuState);
+  // State at touch start: a tap on the trigger of an open menu also counts as a touch outside it.
+  const touchStart = React.useRef<{ wasOpen: boolean } | null>(null);
+  return (
+    <DropdownMenuPrimitive.Trigger
+      ref={ref}
+      onPointerDown={(event) => {
+        onPointerDown?.(event);
+        touchStart.current =
+          event.pointerType === 'mouse' ? null : { wasOpen: menu?.open ?? false };
+        if (touchStart.current) event.preventDefault();
+      }}
+      onClick={(event) => {
+        onClick?.(event);
+        if (touchStart.current && menu) menu.setOpen(!touchStart.current.wasOpen);
+        touchStart.current = null;
+      }}
+      {...props}
+    />
+  );
+});
+DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName;
 const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal;
 const DropdownMenuSub = DropdownMenuPrimitive.Sub;

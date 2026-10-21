@@ -222,11 +222,11 @@ export function TokenTable({
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="h-9 w-32 shrink-0 justify-between gap-1 px-2.5 text-[13px] sm:h-10 sm:w-44 sm:gap-2 sm:px-4 sm:text-sm"
+                className="group h-9 w-32 shrink-0 justify-between gap-1 px-2.5 text-[13px] sm:h-10 sm:w-44 sm:gap-2 sm:px-4 sm:text-sm"
                 aria-label={t('networkFilter')}
               >
                 <span className="truncate">{networkLabel}</span>
-                <ChevronDown className="h-4 w-4 shrink-0 opacity-60" aria-hidden />
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]:rotate-180 motion-reduce:transition-none" aria-hidden />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="max-h-72 w-56 overflow-y-auto">
