@@ -86,26 +86,28 @@ export class FeedWriteBuffer<T> {
 
   /** Writes queued posts in arrival order; a failed post is retried a few times, then dropped. */
   flush(): Promise<void> {
-    this.flushing ??= (async () => {
-      try {
-        this.retryDue = false;
-        for (const [key, entry] of [...this.pending]) {
-          try {
-            await this.writeWithTimeout(entry.item);
-            this.pending.delete(key);
-          } catch (error) {
-            this.retryDue = true;
-            if (++entry.attempts >= this.maxAttempts) {
-              this.pending.delete(key);
-              this.options.onError?.(entry.item, error);
-            }
-          }
-        }
-        if (!this.pending.size) this.retryDue = false;
-      } finally {
-        this.flushing = null;
-      }
-    })();
+    // The reset must run after the assignment: with nothing queued the drain finishes synchronously,
+    // and a reset inside it would be overwritten, leaving a settled promise that blocks every later flush.
+    this.flushing ??= this.drain().finally(() => {
+      this.flushing = null;
+    });
     return this.flushing;
+  }
+
+  private async drain(): Promise<void> {
+    this.retryDue = false;
+    for (const [key, entry] of [...this.pending]) {
+      try {
+        await this.writeWithTimeout(entry.item);
+        this.pending.delete(key);
+      } catch (error) {
+        this.retryDue = true;
+        if (++entry.attempts >= this.maxAttempts) {
+          this.pending.delete(key);
+          this.options.onError?.(entry.item, error);
+        }
+      }
+    }
+    if (!this.pending.size) this.retryDue = false;
   }
 }

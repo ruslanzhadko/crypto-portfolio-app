@@ -138,4 +138,17 @@ describe("FeedWriteBuffer", () => {
     await buffer.submit({ id: 2, text: "b" });
     expect(written).toEqual([1, 2]);
   });
+
+  // Regression: a window with nothing held used to leave a settled promise behind, and every later
+  // flush returned it without writing (posts were held until a viewer appeared, 21.10.2026).
+  it("keeps flushing after a window with nothing to write", async () => {
+    const { buffer, written, advance } = setup(false);
+    advance(FEED_FLUSH_WINDOW_MS);
+    expect(await buffer.tick(false)).toBe(true);
+    await buffer.submit({ id: 1, text: "a" });
+    advance(FEED_FLUSH_WINDOW_MS);
+    expect(await buffer.tick(false)).toBe(true);
+    expect(written).toEqual(["1:a"]);
+    expect(buffer.size).toBe(0);
+  });
 });
