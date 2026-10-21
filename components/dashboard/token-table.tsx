@@ -168,22 +168,24 @@ export function TokenTable({
   return (
     <Card className="[overflow-anchor:none]">
       <CardHeader className="space-y-2 p-3 pb-2 sm:space-y-3 sm:p-6 sm:pb-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base sm:text-lg">{t('cardTitle')}</CardTitle>
-          <div className="flex items-center gap-2 sm:gap-3">
+        {/* Title with the list settings on one row; search and networks below. */}
+        <div className="flex items-center gap-2">
+          <CardTitle className="mr-auto text-base sm:text-lg">{t('cardTitle')}</CardTitle>
           {threshold === null ? (
             <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
           ) : (
-            <label className="flex items-center gap-1.5 text-xs text-text-muted sm:gap-2 sm:text-sm">
-              {te('minimumBalance')}
+            <label className="flex items-center gap-2 text-sm text-text-muted">
+              <span className="sr-only sm:not-sr-only">{te('minimumBalance')}</span>
               <select
-                className="h-8 rounded-md border border-border bg-surface px-1.5 text-text sm:h-11 sm:px-2"
+                aria-label={te('minimumBalance')}
+                title={te('minimumBalance')}
+                className="h-8 rounded-md border border-border bg-surface px-1.5 text-xs text-text sm:h-9 sm:px-2 sm:text-sm"
                 value={minimum}
                 onChange={(event) => setMinimum(event.target.value)}
               >
                 {['0', '0.10', '1', '10'].map((value) => (
                   <option key={value} value={value}>
-                    {value === '0' ? te('showAllBalances') : `$${value}`}
+                    {value === '0' ? te('showAllBalances') : `≥ $${value}`}
                   </option>
                 ))}
               </select>
@@ -192,15 +194,17 @@ export function TokenTable({
           {variant !== 'exchanges' && <Button
             variant={showSpam ? 'default' : 'outline'}
             size="sm"
-            className="h-8 shrink-0 gap-1.5 border px-2 text-xs tabular-nums sm:h-11 sm:px-3 sm:text-sm"
+            className="h-8 shrink-0 gap-1.5 border px-2 text-xs tabular-nums sm:h-9 sm:px-3 sm:text-sm"
             disabled={spamTokens.length === 0}
             aria-pressed={showSpam}
+            aria-label={t('showSpam', { count: spamTokens.length })}
+            title={t('showSpam', { count: spamTokens.length })}
             onClick={() => setShowSpam((value) => !value)}
           >
             <Eye className="h-4 w-4" aria-hidden />
-            {t('showSpam', { count: spamTokens.length })}
+            <span className="sm:hidden">{spamTokens.length}</span>
+            <span className="hidden sm:inline">{t('showSpam', { count: spamTokens.length })}</span>
           </Button>}
-          </div>
         </div>
         <div className="flex gap-2">
           <div className="relative min-w-0 flex-1">

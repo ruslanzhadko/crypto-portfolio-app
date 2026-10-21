@@ -265,7 +265,7 @@ export function CapitalDashboard({
                   })}
                 </p>
               </div>
-              <dl className="grid grid-cols-4 gap-2 border-t border-border pt-2.5 sm:gap-3 sm:pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0 [&_dd]:text-[13px] sm:[&_dd]:mt-1 sm:[&_dd]:text-base [&_dt]:text-[11px] [&_dt]:leading-tight sm:[&_dt]:text-xs [&>div]:flex [&>div]:flex-col [&>div]:justify-between sm:[&>div]:block">
+              <dl className="grid grid-cols-2 gap-x-3 gap-y-2 border-t border-border pt-2.5 sm:grid-cols-4 sm:gap-3 sm:pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0 [&>div]:min-w-0 [&_dd]:break-words [&_dd]:text-sm sm:[&_dd]:mt-1 sm:[&_dd]:text-base [&_dt]:truncate [&_dt]:text-[11px] sm:[&_dt]:whitespace-normal sm:[&_dt]:text-xs">
                 <div>
                   <dt className="text-text-muted">
                     {t("walletCapital")}
