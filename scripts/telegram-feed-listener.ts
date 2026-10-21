@@ -478,11 +478,17 @@ async function main() {
       void (async () => {
         try {
           const live = await signal.poll();
+          if (live !== wasLive)
+            console.log(`[feed] feed ${live ? "opened" : "closed"} by a viewer`);
           // Source refresh and catch-up share the window, so the database wakes once per window.
           if (buffer.windowDue() || (live && !wasLive)) {
+            console.log(
+              `[feed] ${buffer.windowDue() ? "window" : "viewer"} refresh: ${buffer.size} held posts`,
+            );
             await syncSources();
             sourcesSyncedAt = Date.now();
             await catchUpMissedPosts();
+            console.log(`[feed] refresh done: ${knownSources.size} sources`);
           } else if (live) {
             // A channel added in the admin panel starts being watched within a minute while the feed is open.
             if (Date.now() - sourcesSyncedAt >= 60_000) {
