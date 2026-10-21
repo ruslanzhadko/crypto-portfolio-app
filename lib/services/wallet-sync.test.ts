@@ -177,6 +177,26 @@ describe("Robinhood wallet synchronization", () => {
     expect(result.spamFiltered).toBe(1);
     expect(mocks.createMany.mock.calls[0]?.[0].data[0].isSpam).toBe(true);
   });
+  it("keeps dust of a CoinGecko-listed contract out of Spam", async () => {
+    const usdc = "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    mocks.ankr.mockResolvedValue([
+      {
+        ...native,
+        symbol: "USDC",
+        name: "USD Coin",
+        address: usdc,
+        isNative: false,
+        balance: 0.02,
+        priceUsd: 1,
+        usdValue: 0.02,
+      },
+    ]);
+    mocks.robinhood.mockResolvedValue([]);
+    mocks.contractIds.mockResolvedValue(new Map([[`ethereum:${usdc}`, "usd-coin"]]));
+    const result = await syncWallet("wallet");
+    expect(result.spamFiltered).toBe(0);
+    expect(mocks.createMany.mock.calls[0]?.[0].data[0].isSpam).toBe(false);
+  });
   it("persists Robinhood together with Ankr chains for the same wallet", async () => {
     const result = await syncWallet("wallet");
     expect(result.tokensSynced).toBe(2);

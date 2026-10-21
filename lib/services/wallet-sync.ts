@@ -43,9 +43,14 @@ function tokenKey(
 }
 
 function shouldMarkSpam(token: NormalizedToken): boolean {
+  if (token.isSpam) return true;
+  if (token.isNative) return false;
   // Keep unpriced ERC-20/SPL tokens in Spam until a trusted source supplies a
   // usable valuation; otherwise zero-priced airdrops overwhelm the main list.
-  return token.isSpam || (!token.isNative && token.usdValue < MIN_TOKEN_USD);
+  if (token.priceUsd <= 0 || token.usdValue <= 0) return true;
+  // Dust is spam only for coins CoinGecko does not list by this contract (no market cap):
+  // a few cents of real USDC stay USDC and are hidden by the balance filter instead.
+  return !token.coingeckoId && token.usdValue < MIN_TOKEN_USD;
 }
 
 function upstreamFailure(error: unknown): string {
