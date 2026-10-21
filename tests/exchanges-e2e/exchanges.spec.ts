@@ -287,7 +287,8 @@ test("BingX connects with encrypted read-only credentials on desktop and mobile"
   expect(response.status()).toBe(200);
   expect((await response.json()).positions[0].symbol).toBe("BTC-USDT");
   await openLink(page, "Main BingX", `/en/exchanges/${c.id}`);
-  await expect(page.getByText("BTC-USDT", { exact: true })).toBeVisible();
+  // The API keeps the exchange spelling; the page shows one format for every exchange.
+  await expect(page.getByText("BTCUSDT", { exact: true })).toBeVisible();
 });
 test("Gate and OKX connection forms, encrypted passphrase and OKX replacement", async ({ page }) => {
   await page.goto("/en/exchanges");
