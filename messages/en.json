@@ -169,6 +169,7 @@
     "colShare": "%",
     "emptyText": "No tokens. Add a wallet and sync.",
     "emptySpam": "No spam tokens.",
+    "spamBadge": "spam",
     "noFilterResults": "No tokens match these filters.",
     "searchPlaceholder": "Search token or contract…",
     "searchLabel": "Search tokens",

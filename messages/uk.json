@@ -169,6 +169,7 @@
     "colShare": "%",
     "emptyText": "Немає токенів. Додайте гаманець та зробіть Sync.",
     "emptySpam": "Спам-токенів немає.",
+    "spamBadge": "спам",
     "noFilterResults": "За цим фільтром токенів немає.",
     "searchPlaceholder": "Пошук токена або контракту…",
     "searchLabel": "Пошук токенів",

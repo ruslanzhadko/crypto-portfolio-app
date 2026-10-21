@@ -109,10 +109,9 @@ export function TokenTable({
         ? tok.priceChange24h
         : null;
 
+  const spamKeys = useMemo(() => new Set(spam.map((token) => token.key)), [spam]);
   const sorted = useMemo(() => {
-    const arr = filterDashboardTokens(showSpam ? spam : tokens, selectedChains, search)
-      .filter((token) => (threshold === null ? !hideLowValue || token.totalUsd >= 1 : token.totalUsd >= threshold));
-    arr.sort((a, b) => {
+    const order = (arr: UnifiedToken[]) => arr.sort((a, b) => {
       let av: number;
       let bv: number;
       switch (sortKey) {
@@ -131,7 +130,11 @@ export function TokenTable({
       }
       return desc ? bv - av : av - bv;
     });
-    return arr;
+    const regular = filterDashboardTokens(tokens, selectedChains, search)
+      .filter((token) => (threshold === null ? !hideLowValue || token.totalUsd >= 1 : token.totalUsd >= threshold));
+    // Spam asked for explicitly is shown whatever its value, after the regular tokens.
+    const shownSpam = showSpam ? filterDashboardTokens(spam, selectedChains, search) : [];
+    return [...order(regular), ...order(shownSpam)];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- changeOf reads tickerChanges
   }, [tokens, spam, showSpam, selectedChains, search, sortKey, desc, hideLowValue, threshold, tickerChanges]);
 
@@ -197,13 +200,11 @@ export function TokenTable({
             className="h-8 shrink-0 gap-1.5 border px-2 text-xs tabular-nums sm:h-9 sm:px-3 sm:text-sm"
             disabled={spamTokens.length === 0}
             aria-pressed={showSpam}
-            aria-label={t('showSpam', { count: spamTokens.length })}
-            title={t('showSpam', { count: spamTokens.length })}
+            title={t('spamNotice')}
             onClick={() => setShowSpam((value) => !value)}
           >
             <Eye className="h-4 w-4" aria-hidden />
-            <span className="sm:hidden">{spamTokens.length}</span>
-            <span className="hidden sm:inline">{t('showSpam', { count: spamTokens.length })}</span>
+            {t('showSpam', { count: spamTokens.length })}
           </Button>}
         </div>
         <div className="flex gap-2">
@@ -283,7 +284,8 @@ export function TokenTable({
                 const isOpen = openTokens.has(tok.key);
                 // Приховуємо dust (< $0.01) у розгорнутому вигляді
                 const lineMinimum = Math.max(0.01, threshold ?? 0);
-                const visibleWallets = showSpam ? tok.wallets : tok.wallets.filter((w) => w.usdValue >= lineMinimum);
+                const isSpam = spamKeys.has(tok.key);
+                const visibleWallets = isSpam ? tok.wallets : tok.wallets.filter((w) => w.usdValue >= lineMinimum);
                 const visibleExchanges = tok.exchanges.filter((h) => Math.abs(h.usdValue) >= (threshold ?? 0));
                 const hiddenCount =
                   tok.wallets.length - visibleWallets.length + tok.exchanges.length - visibleExchanges.length;
@@ -322,21 +324,30 @@ export function TokenTable({
                               aria-hidden
                             />
                           ) : (
-                            <span aria-hidden className="inline-block w-4" />
+                            <span aria-hidden className="inline-block w-4 shrink-0" />
                           )}
-                          {tok.exchangeOnly ? (
-                            <ExchangeTokenLogo symbol={tok.symbol} />
-                          ) : (
-                            <TokenLogo
-                              src={tok.logoUrl}
-                              symbol={tok.symbol}
-                              size={28}
-                              chainName={tok.chainName}
-                              tokenAddress={tok.tokenAddress}
-                            />
-                          )}
+                          <span className="shrink-0">
+                            {tok.exchangeOnly ? (
+                              <ExchangeTokenLogo symbol={tok.symbol} />
+                            ) : (
+                              <TokenLogo
+                                src={tok.logoUrl}
+                                symbol={tok.symbol}
+                                size={28}
+                                chainName={tok.chainName}
+                                tokenAddress={tok.tokenAddress}
+                              />
+                            )}
+                          </span>
                           <div className="min-w-0">
-                            <p className="text-sm font-medium sm:text-base">{tok.symbol}</p>
+                            <p className="flex items-center gap-1.5 text-sm font-medium sm:text-base">
+                              {tok.symbol}
+                              {isSpam && (
+                                <span className="rounded-full bg-warning/15 px-1.5 text-[10px] font-medium uppercase text-warning">
+                                  {t('spamBadge')}
+                                </span>
+                              )}
+                            </p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">
                               <span className="truncate" title={subtitle}>
                                 {subtitle}
@@ -387,7 +398,7 @@ export function TokenTable({
                         )}
                       </td>
                       <td className="hidden px-4 py-3 text-right text-text-muted 2xl:table-cell">
-                        {showSpam ? '—' : `${tok.share.toFixed(1)}%`}
+                        {isSpam ? '—' : `${tok.share.toFixed(1)}%`}
                       </td>
                     </tr>
 
@@ -432,7 +443,7 @@ export function TokenTable({
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
                     {search.trim() || selectedChains.size > 0 || hideLowValue
                       ? t('noFilterResults')
-                      : showSpam ? t('emptySpam') : t('emptyText')}
+                      : t('emptyText')}
                   </td>
                 </tr>
               )}
