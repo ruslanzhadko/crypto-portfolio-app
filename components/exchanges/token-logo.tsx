@@ -93,7 +93,13 @@ function findLogo(ticker: string) {
   pending.set(ticker, lookup);
   return lookup;
 }
-export function ExchangeTokenLogo({ symbol }: { symbol: string }) {
+export function ExchangeTokenLogo({
+  symbol,
+  size = 28,
+}: {
+  symbol: string;
+  size?: number;
+}) {
   const ticker = logoTicker(symbol);
   const [metadataLogo, setMetadataLogo] = useState<string | null>(null);
   useEffect(() => {
@@ -115,7 +121,7 @@ export function ExchangeTokenLogo({ symbol }: { symbol: string }) {
   return (
     <TokenLogo
       symbol={symbol}
-      size={28}
+      size={size}
       src={
         icons.has(ticker)
           ? `https://assets.coincap.io/assets/icons/${ticker.toLowerCase()}@2x.png`
