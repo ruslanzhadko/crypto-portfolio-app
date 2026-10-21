@@ -339,7 +339,7 @@ export function CapitalDashboard({
                 </div>
               </summary>
               {chart.length > 0 ? (
-                <div className="mt-2 h-36 min-w-0 overflow-hidden sm:h-44">
+                <div className="mt-2 h-36 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none min-w-0 overflow-hidden sm:h-44">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
                       <XAxis
@@ -487,7 +487,8 @@ export function CapitalDashboard({
             </details>
           </div>
           <section id="assets" className="scroll-mt-20 space-y-3 sm:space-y-4">
-            <h2 className="text-base font-semibold sm:text-lg">{t("assets")}</h2>
+            {/* Phones go straight to the token card, which carries its own title. */}
+            <h2 className="hidden text-lg font-semibold sm:block">{t("assets")}</h2>
             {scope === "all" && walletTokens && (
               <TokenTable
                 tokens={walletTokens}

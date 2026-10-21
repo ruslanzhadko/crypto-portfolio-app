@@ -667,7 +667,7 @@ export function PositionsPage({
                       )}
                     </div>
                   </summary>
-                  <div className="border-t border-border bg-background/40 px-3 py-3 sm:px-4 lg:px-5 lg:py-3">
+                  <div className="border-t border-border bg-background/40 px-3 py-3 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none sm:px-4 lg:px-5 lg:py-3">
                     {shield ? (
                       <dl className={DETAILS_GRID}>
                         <div>

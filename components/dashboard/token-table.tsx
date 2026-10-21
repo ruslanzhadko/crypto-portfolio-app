@@ -213,7 +213,8 @@ export function TokenTable({
               className="h-9 pl-9 text-[13px] sm:h-10 sm:text-sm"
             />
           </div>
-          {variant !== 'exchanges' && <DropdownMenu>
+          {/* Not modal: on phones a swipe outside closes the menu instead of being swallowed. */}
+          {variant !== 'exchanges' && <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
@@ -246,7 +247,7 @@ export function TokenTable({
             </DropdownMenuContent>
           </DropdownMenu>}
         </div>
-        {spamTokens.length > 0 && <p className="text-xs text-text-muted">{t('spamNotice')}</p>}
+        {spamTokens.length > 0 && <p className="hidden text-xs text-text-muted sm:block">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
         <div className="overflow-x-auto">
@@ -332,7 +333,7 @@ export function TokenTable({
                             />
                           )}
                           <div className="min-w-0">
-                            <p className="font-medium">{tok.symbol}</p>
+                            <p className="text-sm font-medium sm:text-base">{tok.symbol}</p>
                             <p className="flex items-center gap-1.5 text-xs text-text-muted">
                               <span className="truncate" title={subtitle}>
                                 {subtitle}
@@ -347,7 +348,7 @@ export function TokenTable({
                                 </span>
                               )}
                             </p>
-                            <p className="mt-0.5 font-mono text-xs text-text-muted xl:hidden">
+                            <p className="mt-0.5 hidden font-mono text-xs text-text-muted sm:block xl:hidden">
                               {formatTokenBalance(tok.totalBalance)} {tok.symbol}
                             </p>
                           </div>
@@ -371,6 +372,9 @@ export function TokenTable({
                       </td>
                       <td className="px-3 py-2 text-right font-semibold tabular-nums sm:px-4 sm:py-3">
                         {formatUsd(tok.totalUsd)}
+                        <p className="truncate font-mono text-[11px] font-normal text-text-muted sm:hidden">
+                          {formatTokenBalance(tok.totalBalance)} {tok.symbol}
+                        </p>
                       </td>
                       <td className="hidden px-4 py-3 text-right lg:table-cell">
                         {changeOf(tok) !== null ? (
