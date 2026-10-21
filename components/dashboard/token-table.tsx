@@ -167,17 +167,17 @@ export function TokenTable({
 
   return (
     <Card className="[overflow-anchor:none]">
-      <CardHeader className="space-y-3 pb-3">
+      <CardHeader className="space-y-2 p-3 pb-2 sm:space-y-3 sm:p-6 sm:pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle>{t('cardTitle')}</CardTitle>
-          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:w-auto sm:justify-end">
+          <CardTitle className="text-base sm:text-lg">{t('cardTitle')}</CardTitle>
+          <div className="flex items-center gap-2 sm:gap-3">
           {threshold === null ? (
             <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
           ) : (
-            <label className="flex items-center gap-2 text-sm text-text-muted">
+            <label className="flex items-center gap-1.5 text-xs text-text-muted sm:gap-2 sm:text-sm">
               {te('minimumBalance')}
               <select
-                className="h-11 rounded-md border border-border bg-surface px-2 text-text"
+                className="h-8 rounded-md border border-border bg-surface px-1.5 text-text sm:h-11 sm:px-2"
                 value={minimum}
                 onChange={(event) => setMinimum(event.target.value)}
               >
@@ -192,7 +192,7 @@ export function TokenTable({
           {variant !== 'exchanges' && <Button
             variant={showSpam ? 'default' : 'outline'}
             size="sm"
-            className="h-11 shrink-0 gap-1.5 border px-3 tabular-nums"
+            className="h-8 shrink-0 gap-1.5 border px-2 text-xs tabular-nums sm:h-11 sm:px-3 sm:text-sm"
             disabled={spamTokens.length === 0}
             aria-pressed={showSpam}
             onClick={() => setShowSpam((value) => !value)}
@@ -202,7 +202,7 @@ export function TokenTable({
           </Button>}
           </div>
         </div>
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex gap-2">
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" aria-hidden />
             <Input
@@ -210,14 +210,14 @@ export function TokenTable({
               onChange={(event) => setSearch(event.target.value)}
               placeholder={t('searchPlaceholder')}
               aria-label={t('searchLabel')}
-              className="pl-9"
+              className="h-9 pl-9 text-[13px] sm:h-10 sm:text-sm"
             />
           </div>
           {variant !== 'exchanges' && <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="outline"
-                className="w-full justify-between gap-2 sm:w-44"
+                className="h-9 w-32 shrink-0 justify-between gap-1 px-2.5 text-[13px] sm:h-10 sm:w-44 sm:gap-2 sm:px-4 sm:text-sm"
                 aria-label={t('networkFilter')}
               >
                 <span className="truncate">{networkLabel}</span>
@@ -253,7 +253,7 @@ export function TokenTable({
           <table className="w-full table-fixed text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>
-                <th className="w-3/5 px-3 py-3 text-left sm:px-4 lg:w-1/2 2xl:w-[22%]">{t('colToken')}</th>
+                <th className="w-3/5 px-3 py-2 text-left sm:px-4 sm:py-3 lg:w-1/2 2xl:w-[22%]">{t('colToken')}</th>
                 <th className="hidden px-4 py-3 text-left 2xl:table-cell 2xl:w-[30%]">{t('colNetworks')}</th>
                 <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[11%]">
                   <SortButton active={sortKey === 'balance'} desc={desc} onClick={() => toggleSort('balance')}>
@@ -261,7 +261,7 @@ export function TokenTable({
                   </SortButton>
                 </th>
                 <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[10%]">{t('colPrice')}</th>
-                <th className="px-3 py-3 text-right sm:px-4 2xl:w-[11%]">
+                <th className="px-3 py-2 text-right sm:px-4 sm:py-3 2xl:w-[11%]">
                   <SortButton active={sortKey === 'value'} desc={desc} onClick={() => toggleSort('value')}>
                     {t('colUsd')}
                   </SortButton>
@@ -307,7 +307,7 @@ export function TokenTable({
                       )}
                       onClick={() => hasBreakdown && toggle(openTokens, setOpenTokens, tok.key)}
                     >
-                      <td className="overflow-hidden px-3 py-3 sm:px-4">
+                      <td className="overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
                         <div className="min-w-0 flex items-center gap-2 sm:gap-3">
                           {hasBreakdown ? (
                             <ChevronRight
@@ -369,7 +369,7 @@ export function TokenTable({
                       <td className="hidden px-4 py-3 text-right 2xl:table-cell">
                         {tok.currentPrice ? formatUsd(tok.currentPrice) : '—'}
                       </td>
-                      <td className="px-3 py-3 text-right font-semibold tabular-nums sm:px-4">
+                      <td className="px-3 py-2 text-right font-semibold tabular-nums sm:px-4 sm:py-3">
                         {formatUsd(tok.totalUsd)}
                       </td>
                       <td className="hidden px-4 py-3 text-right lg:table-cell">

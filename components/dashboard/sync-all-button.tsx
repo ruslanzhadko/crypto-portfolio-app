@@ -116,7 +116,7 @@ export function SyncAllButton({
     <Button
       variant="outline"
       size="sm"
-      className={cn(compactOnMobile && 'h-11 w-11 px-0 sm:h-9 sm:w-auto sm:px-3')}
+      className={cn(compactOnMobile && 'h-9 w-9 px-0 sm:w-auto sm:px-3')}
       onClick={() => runSync()}
       disabled={isPending}
       title={t('title')}

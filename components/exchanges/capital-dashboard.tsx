@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AreaChart,
@@ -208,13 +208,13 @@ export function CapitalDashboard({
   );
   const unpricedRows = exchangeRows.filter((b) => b.usdValue === null);
   return (
-    <div className="min-w-0 space-y-5">
+    <div className="min-w-0 space-y-3 sm:space-y-5">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
       {!overview && !data.error && <Skeleton className="h-64 w-full" />}
       {overview && (
         <>
-          <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="rounded-xl border border-border bg-surface p-3 sm:p-5">
+            <div className="flex items-center justify-between gap-2 sm:flex-wrap sm:gap-3">
               <div
                 className="flex gap-1"
                 role="group"
@@ -225,6 +225,7 @@ export function CapitalDashboard({
                     key={s}
                     variant={scope === s ? "secondary" : "ghost"}
                     size="sm"
+                    className="h-8 px-2.5 text-xs sm:h-9 sm:px-3 sm:text-sm"
                     aria-pressed={scope === s}
                     onClick={() => setScope(s)}
                   >
@@ -235,19 +236,28 @@ export function CapitalDashboard({
               <Button
                 variant="outline"
                 size="sm"
+                className="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-auto sm:px-3"
                 disabled={busy}
+                aria-label={t("refreshExchanges")}
+                title={t("refreshExchanges")}
                 onClick={() => void refresh()}
               >
-                {t(busy ? "saving" : "refreshExchanges")}
+                <RefreshCw
+                  aria-hidden="true"
+                  className={`h-4 w-4 sm:hidden ${busy ? "animate-spin" : ""}`}
+                />
+                <span className="hidden sm:inline">
+                  {t(busy ? "saving" : "refreshExchanges")}
+                </span>
               </Button>
             </div>
-            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">
+            <div className="mt-2.5 grid gap-2.5 sm:mt-4 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">
               <div className="min-w-0">
-                <p className="text-sm text-text-muted">{t("totalCapital")}</p>
-                <p className="mt-1 text-3xl font-semibold tracking-tight">
+                <p className="text-xs text-text-muted sm:text-sm">{t("totalCapital")}</p>
+                <p className="text-2xl font-semibold tracking-tight sm:mt-1 sm:text-3xl">
                   <Money value={value} />
                 </p>
-                <p className="mt-1 text-xs text-text-muted">
+                <p className="text-[11px] text-text-muted sm:mt-1 sm:text-xs">
                   {t("counts", {
                     wallets: overview.walletCount,
                     exchanges: overview.exchangeCount,
@@ -255,36 +265,36 @@ export function CapitalDashboard({
                   })}
                 </p>
               </div>
-              <dl className="grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+              <dl className="grid grid-cols-4 gap-2 border-t border-border pt-2.5 sm:gap-3 sm:pt-3 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0 [&_dd]:text-[13px] sm:[&_dd]:mt-1 sm:[&_dd]:text-base [&_dt]:text-[11px] [&_dt]:leading-tight sm:[&_dt]:text-xs [&>div]:flex [&>div]:flex-col [&>div]:justify-between sm:[&>div]:block">
                 <div>
-                  <dt className="text-xs text-text-muted">
+                  <dt className="text-text-muted">
                     {t("walletCapital")}
                   </dt>
-                  <dd className="mt-1 font-medium">
+                  <dd className="font-medium tabular-nums">
                     <Money value={overview.walletsUsd} />
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-muted">
+                  <dt className="text-text-muted">
                     {t("exchangeCapital")}
                   </dt>
-                  <dd className="mt-1 font-medium">
+                  <dd className="font-medium tabular-nums">
                     <Money value={overview.exchangesUsd} />
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-muted">
+                  <dt className="text-text-muted">
                     {t("unrealizedPnl")}
                   </dt>
-                  <dd className="mt-1 font-medium">
+                  <dd className="font-medium tabular-nums">
                     <Money value={overview.unrealizedPnlUsd} />
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-text-muted">
+                  <dt className="text-text-muted">
                     {t("openPositions")}
                   </dt>
-                  <dd className="mt-1 font-medium">{overview.positionCount}</dd>
+                  <dd className="font-medium tabular-nums">{overview.positionCount}</dd>
                 </div>
               </dl>
             </div>
@@ -300,11 +310,11 @@ export function CapitalDashboard({
               </div>
             )}
             <details
-              className="mt-4 border-t border-border pt-3"
+              className="mt-3 border-t border-border pt-2 sm:mt-4 sm:pt-3"
               open={historyOpen === "true"}
               onToggle={(e) => setHistoryOpen(String(e.currentTarget.open))}
             >
-              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 font-medium">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-2 text-sm font-medium sm:text-base">
                 <span className="inline-flex items-center gap-2">
                   <ChevronDown
                     className={`h-4 w-4 transition-transform ${historyOpen === "true" ? "" : "-rotate-90"}`}
@@ -317,6 +327,7 @@ export function CapitalDashboard({
                     <Button
                       key={d}
                       size="sm"
+                      className="h-7 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                       variant={d === days ? "secondary" : "ghost"}
                       onClick={() => setDays(d)}
                       aria-pressed={days === d}
@@ -328,7 +339,7 @@ export function CapitalDashboard({
                 </div>
               </summary>
               {chart.length > 0 ? (
-                <div className="mt-3 h-44 min-w-0 overflow-hidden sm:h-48">
+                <div className="mt-2 h-36 min-w-0 overflow-hidden sm:mt-3 sm:h-48">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
                       <XAxis
@@ -350,7 +361,7 @@ export function CapitalDashboard({
                         minTickGap={45}
                       />
                       <YAxis
-                        width={60}
+                        width={44}
                         tick={{ fontSize: 11, fill: "#94a3b8" }}
                         tickFormatter={(v) =>
                           new Intl.NumberFormat(locale, {
@@ -435,7 +446,7 @@ export function CapitalDashboard({
                       {scope === "all" && (
                         <Legend
                           iconSize={10}
-                          wrapperStyle={{ fontSize: 12, paddingTop: 4 }}
+                          wrapperStyle={{ fontSize: 11, paddingTop: 2 }}
                         />
                       )}
                     </AreaChart>
@@ -446,11 +457,13 @@ export function CapitalDashboard({
                   {t("historyEmpty")}
                 </p>
               )}
-              <p className="mt-1 text-xs text-text-muted">{t("historyNote")}</p>
+              <p className="mt-1 hidden text-xs text-text-muted sm:block">
+                {t("historyNote")}
+              </p>
               {scope === "all" &&
                 history?.changeUsd !== null &&
                 history?.changeUsd !== undefined && (
-                  <p className="mt-2 text-sm">
+                  <p className="mt-1 text-xs sm:mt-2 sm:text-sm">
                     {t("valueChange")}: <Money value={history.changeUsd} />
                   </p>
                 )}
@@ -473,8 +486,8 @@ export function CapitalDashboard({
               )}
             </details>
           </div>
-          <section id="assets" className="scroll-mt-6 space-y-5">
-            <h2 className="text-lg font-semibold">{t("assets")}</h2>
+          <section id="assets" className="scroll-mt-20 space-y-3 sm:space-y-5">
+            <h2 className="text-base font-semibold sm:text-lg">{t("assets")}</h2>
             {scope === "all" && walletTokens && (
               <TokenTable
                 tokens={walletTokens}

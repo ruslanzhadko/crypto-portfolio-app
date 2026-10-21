@@ -200,7 +200,7 @@ export function DashboardSections({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-11 w-11 gap-1.5 px-0 sm:h-9 sm:w-auto sm:px-3"
+                  className="h-9 w-9 gap-1.5 px-0 sm:w-auto sm:px-3"
                 >
                   <SlidersHorizontal className="h-4 w-4" />
                   <span className="hidden sm:inline">

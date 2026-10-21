@@ -32,14 +32,15 @@ export function MobileNav({
       (!i.adminOnly || userRole === "ADMIN") &&
       (!i.exchangesOnly || exchangesEnabled),
   );
+  const primary = ["/dashboard", "/wallets", "/exchanges", "/positions"];
   const items = exchangesEnabled
-    ? [
-        available.find((i) => i.href === "/dashboard")!,
-        { href: "/dashboard#assets", labelKey: "assets", icon: Coins },
-        available.find((i) => i.href === "/exchanges")!,
-        available.find((i) => i.href === "/positions")!,
-      ]
+    ? primary.map((href) => available.find((i) => i.href === href)!)
     : available.slice(0, 5);
+  // The assets list lives on the dashboard, so it is a shortcut in "More" rather than a tab.
+  const moreItems = [
+    { href: "/dashboard#assets", labelKey: "assets", icon: Coins },
+    ...available.filter((i) => !primary.includes(i.href)),
+  ];
 
   useEffect(() => {
     setMounted(true);
@@ -97,24 +98,17 @@ export function MobileNav({
           <DialogContent>
             <DialogTitle>{t("more")}</DialogTitle>
             <div className="grid gap-1">
-              {available
-                .filter(
-                  (i) =>
-                    !["/dashboard", "/exchanges", "/positions"].includes(
-                      i.href,
-                    ),
-                )
-                .map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 rounded-lg p-3 hover:bg-surface-2"
-                  >
-                    <item.icon className="h-5 w-5" />
-                    {t(item.labelKey)}
-                  </Link>
-                ))}
+              {moreItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 rounded-lg p-3 hover:bg-surface-2"
+                >
+                  <item.icon className="h-5 w-5" />
+                  {t(item.labelKey)}
+                </Link>
+              ))}
             </div>
           </DialogContent>
         </Dialog>
