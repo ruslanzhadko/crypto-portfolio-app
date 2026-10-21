@@ -890,6 +890,7 @@
     "realizedPnlShort": "Реализ. PnL",
     "unrealizedPnlShort": "Нереализ. PnL",
     "positionFilters": "Фильтры",
+    "resetFilters": "Сбросить фильтры",
     "entryMarkShort": "Вход / марк.",
     "wallet": "Кошелёк",
     "selectWallet": "Выберите добавленный EVM-кошелёк",

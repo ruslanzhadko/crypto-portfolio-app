@@ -208,12 +208,12 @@ export function CapitalDashboard({
   );
   const unpricedRows = exchangeRows.filter((b) => b.usdValue === null);
   return (
-    <div className="min-w-0 space-y-3 sm:space-y-5">
+    <div className="min-w-0 space-y-3 sm:space-y-4">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
       {!overview && !data.error && <Skeleton className="h-64 w-full" />}
       {overview && (
         <>
-          <div className="rounded-xl border border-border bg-surface p-3 sm:p-5">
+          <div className="rounded-xl border border-border bg-surface p-3 sm:p-4">
             <div className="flex items-center justify-between gap-2 sm:flex-wrap sm:gap-3">
               <div
                 className="flex gap-1"
@@ -251,7 +251,7 @@ export function CapitalDashboard({
                 </span>
               </Button>
             </div>
-            <div className="mt-2.5 grid gap-2.5 sm:mt-4 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">
+            <div className="mt-2.5 grid gap-2.5 sm:mt-3 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">
               <div className="min-w-0">
                 <p className="text-xs text-text-muted sm:text-sm">{t("totalCapital")}</p>
                 <p className="text-2xl font-semibold tracking-tight sm:mt-1 sm:text-3xl">
@@ -310,7 +310,7 @@ export function CapitalDashboard({
               </div>
             )}
             <details
-              className="mt-3 border-t border-border pt-2 sm:mt-4 sm:pt-3"
+              className="mt-3 border-t border-border pt-2"
               open={historyOpen === "true"}
               onToggle={(e) => setHistoryOpen(String(e.currentTarget.open))}
             >
@@ -339,7 +339,7 @@ export function CapitalDashboard({
                 </div>
               </summary>
               {chart.length > 0 ? (
-                <div className="mt-2 h-36 min-w-0 overflow-hidden sm:mt-3 sm:h-48">
+                <div className="mt-2 h-36 min-w-0 overflow-hidden sm:h-44">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
                       <XAxis
@@ -486,7 +486,7 @@ export function CapitalDashboard({
               )}
             </details>
           </div>
-          <section id="assets" className="scroll-mt-20 space-y-3 sm:space-y-5">
+          <section id="assets" className="scroll-mt-20 space-y-3 sm:space-y-4">
             <h2 className="text-base font-semibold sm:text-lg">{t("assets")}</h2>
             {scope === "all" && walletTokens && (
               <TokenTable

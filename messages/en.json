@@ -890,6 +890,7 @@
     "realizedPnlShort": "Realized",
     "unrealizedPnlShort": "Unrealized",
     "positionFilters": "Filters",
+    "resetFilters": "Reset filters",
     "entryMarkShort": "Entry / mark",
     "wallet": "Wallet",
     "selectWallet": "Select an existing EVM wallet",

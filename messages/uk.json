@@ -890,6 +890,7 @@
     "realizedPnlShort": "Реаліз. PnL",
     "unrealizedPnlShort": "Нереаліз. PnL",
     "positionFilters": "Фільтри",
+    "resetFilters": "Скинути фільтри",
     "entryMarkShort": "Вхід / марк.",
     "wallet": "Гаманець",
     "selectWallet": "Виберіть доданий EVM-гаманець",
