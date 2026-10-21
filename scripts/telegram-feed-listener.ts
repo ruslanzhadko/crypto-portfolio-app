@@ -52,6 +52,19 @@ let tickTimer: ReturnType<typeof setInterval> | undefined;
 let syncing = false;
 const MAX_TELEGRAM_PHOTO_DOWNLOAD_BYTES = 2 * 1024 * 1024;
 const TICK_MS = 10_000;
+// A network call to Telegram must never hang the whole loop; the process restarts itself if it does.
+const TELEGRAM_CALL_TIMEOUT_MS = 30_000;
+const STUCK_TICK_MS = 5 * 60_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, what: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${what} timed out`)), ms);
+    }),
+  ]).finally(() => clearTimeout(timer));
+}
 const SHUTDOWN_FLUSH_MS = 8_000;
 
 type LivePost = { username: string; sourceId: string; message?: Api.Message };
@@ -398,10 +411,14 @@ async function catchUpMissedPosts() {
   for (const [username, source] of knownSources) {
     if (!source.lastMessageId || !watchers.has(username)) continue;
     try {
-      const missed = await client.getMessages(username, {
-        minId: source.lastMessageId,
-        limit: 50,
-      });
+      const missed = await withTimeout(
+        client.getMessages(username, {
+          minId: source.lastMessageId,
+          limit: 50,
+        }),
+        TELEGRAM_CALL_TIMEOUT_MS,
+        `getMessages @${username}`,
+      );
       for (const message of [...missed].reverse())
         await submitPost({ username, sourceId: source.id, message });
       if (missed.length)
@@ -444,11 +461,20 @@ async function main() {
   await syncSources();
   if (signal) {
     let ticking = false;
+    let tickStartedAt = 0;
     let wasLive = false;
+    // Docker restarts the container (restart policy) if the loop ever stops making progress.
+    setInterval(() => {
+      if (ticking && Date.now() - tickStartedAt > STUCK_TICK_MS) {
+        console.error("[feed] tick has been stuck for 5 minutes, restarting");
+        process.exit(1);
+      }
+    }, 30_000).unref();
     let sourcesSyncedAt = Date.now();
     tickTimer = setInterval(() => {
       if (ticking) return;
       ticking = true;
+      tickStartedAt = Date.now();
       void (async () => {
         try {
           const live = await signal.poll();
