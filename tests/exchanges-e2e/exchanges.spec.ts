@@ -558,7 +558,8 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
     await page.getByLabel("Balances from").scrollIntoViewIfNeeded();
     await page.screenshot({ path: "test-results/exchange-balances-mobile.png" });
   }
-  await expect(page.getByRole("cell", { name: "$12,661.00", exact: true })).toBeInViewport();
+  // On phones the value cell also carries the coin amount below the USD value.
+  await expect(page.getByRole("cell", { name: /^\$12,661\.00/ })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto("/en/positions");
