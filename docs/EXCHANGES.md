@@ -17,8 +17,8 @@ Hyperliquid, worker, сводный капитал, дашборд и истор
 | OKX global  | Единый trading account, включая spot | Linear USDT/USDC SWAP, net/long/short | Read-only + IP whitelist + API Passphrase; режимы 1/2/3, без portfolio margin, открытых inverse/options/delivery/spot-margin позиций |
 | Hyperliquid | HyperCore spot и classic perp equity / unified | Основной perp DEX                 | По существующему EVM-адресу; portfolio margin и HIP-3 не поддержаны                                                      |
 | BingX       | Spot и USDT perpetual                          | USDT perpetuals                   | Funding/PnL/комиссии текущего цикла из истории; неполная история → «—»                                                   |
-| Bitget      | Classic v2 (spot + USDT/USDC futures) или Unified v3, режим определяется автоматически | Linear USDT/USDC | Funding wallet, Earn, COIN-M не поддержаны; см. [docs/bitget.md](docs/bitget.md) |
-| Aster       | Фьючерсный счёт (по адресу кошелька или через API Wallet) | USDT perpetuals, Shield Mode (по адресу) | Spot не поддержан; полные funding/комиссии/безубыточность только через API Wallet; приватный аккаунт подключается с подсказкой; см. [docs/ASTER.md](docs/ASTER.md) |
+| Bitget      | Classic v2 (spot + USDT/USDC futures) или Unified v3, режим определяется автоматически | Linear USDT/USDC | Funding wallet, Earn, COIN-M не поддержаны; см. [docs/bitget.md](bitget.md) |
+| Aster       | Фьючерсный счёт (по адресу кошелька или через API Wallet) | USDT perpetuals, Shield Mode (по адресу) | Spot не поддержан; полные funding/комиссии/безубыточность только через API Wallet; приватный аккаунт подключается с подсказкой; см. [docs/ASTER.md](ASTER.md) |
 
 Funding-счета, Earn, займы как отдельные продукты, история сделок и инвестиционная
 доходность не входят в релиз. Долги в поддерживаемом счёте сохраняются и учитываются
@@ -175,7 +175,7 @@ docker run -d --name cryptoportfolio-exchanges --restart unless-stopped --env-fi
 ### Развёртывание worker (с 20.10.2026)
 
 Production-worker `cryptoportfolio-worker-production` и listener `cryptoportfolio-listener-production`
-разворачиваются GitHub Actions из `main` на GCP VM ([deploy/GITHUB_ACTIONS.md](deploy/GITHUB_ACTIONS.md));
+разворачиваются GitHub Actions из `main` на GCP VM ([GITHUB_ACTIONS.md](GITHUB_ACTIONS.md));
 конфигурация — `/etc/cryptoportfolio-worker-deploy.conf`, секреты — `exchange-production.env` и
 `telegram-feed.env` (MIGRATIONS.md §2, §5). Push в `develop` только прогоняет проверки. Сборка идёт из
 чистого архива конкретного коммита до остановки работающего контейнера; после замены проверяется

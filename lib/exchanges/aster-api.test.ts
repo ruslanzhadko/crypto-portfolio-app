@@ -69,11 +69,11 @@ function fixture() {
 afterEach(() => vi.restoreAllMocks());
 describe("Aster authenticated API Wallet", () => {
   it.each([
-    "34.118.101.48",
-    ["34.118.101.48"],
-    '["34.118.101.48"]',
-    "34.118.101.48,203.0.113.10",
-    "34.118.101.48/32",
+    "198.51.100.7",
+    ["198.51.100.7"],
+    '["198.51.100.7"]',
+    "198.51.100.7,203.0.113.10",
+    "198.51.100.7/32",
   ])("accepts saved restricted IP lists: %j", (value) => {
     expect(() => assertAsterIpWhitelist(value)).not.toThrow();
   });
@@ -84,9 +84,9 @@ describe("Aster authenticated API Wallet", () => {
     undefined,
     "*",
     '["0.0.0.0/0"]',
-    ["34.118.101.48", "::/0"],
+    ["198.51.100.7", "::/0"],
     "unknown",
-    "34.118.101.48/0",
+    "198.51.100.7/0",
   ])("rejects missing, malformed and unrestricted IP lists: %j", (value) => {
     expect(() => assertAsterIpWhitelist(value)).toThrow("IP_RESTRICTED");
   });

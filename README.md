@@ -4,8 +4,8 @@
 сповіщення. Next.js 15 (App Router), TypeScript, Prisma, PostgreSQL (Neon), NextAuth.js
 (Auth.js v5), Tailwind.
 
-Інфраструктура, ліміти Neon, бюджет і план переїзду worker: [INFRASTRUCTURE.md](INFRASTRUCTURE.md).
-Покрокові інструкції переносів (Neon, production, VM, БД, бекапи): [MIGRATIONS.md](MIGRATIONS.md).
+Інфраструктура, ліміти Neon, бюджет і план переїзду worker: [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md).
+Покрокові інструкції переносів (Neon, production, VM, БД, бекапи): [MIGRATIONS.md](docs/MIGRATIONS.md).
 
 ## Біржові баланси та позиції
 
@@ -13,8 +13,8 @@ Binance, Bybit, Gate, OKX, BingX, Bitget, Aster і Hyperliquid: read-only під
 спотові активи, equity, відкриті позиції з funding/комісіями, окремий worker і загальна
 історія капіталу. Функція вимкнена до
 налаштування міграції, секретів і пілотної перевірки. Інструкції, матриця підтримки,
-обмеження та перевірки перед production: [EXCHANGES.md](EXCHANGES.md),
-передача контексту: [EXCHANGES_HANDOFF.md](EXCHANGES_HANDOFF.md).
+обмеження та перевірки перед production: [EXCHANGES.md](docs/EXCHANGES.md),
+передача контексту: [EXCHANGES_HANDOFF.md](docs/EXCHANGES_HANDOFF.md).
 
 ## Криптострічка з Telegram
 

@@ -25,7 +25,7 @@
 | Ценовые триггеры | GCP VM, контейнер `cryptoportfolio-triggers-production` (§5a) с 22.10; `Check triggers` в cron-job.org выключен | $0 | Без изменений |
 | `update-prices` | Код вызова с VM готов (§5b); до переключения — cron-job.org → `/api/cron/update-prices` каждые 30 мин (синхронизация кошельков, цены, снимки) | $0, будит БД раз в 30 мин | Вызов с VM в окне :00/:30, cron-job.org отключить |
 | Сигнал «пользователь смотрит» | Vercel Runtime Cache, `/api/worker/activity`, опрос worker каждые 10 с | $0 (вызовы функций в лимите Hobby) | Без изменений |
-| Резервные копии | Ручная: `C:/Users/rzhad/cryptoportfolio-backups/` (20.10, до миграции) | $0 | Ежедневно с VM в R2/B2 (§8) |
+| Резервные копии | Ручная, на компьютере владельца (путь — в `docs/private/`) (20.10, до миграции) | $0 | Ежедневно с VM в R2/B2 (§8) |
 
 Бюджет: ориентир $10–15/мес, потолок ~$20. Ожидаемо после всех шагов: VPS ~$5–12 +
 резервный VPS ~€4–5 (по желанию) + Neon $0–8.
@@ -35,7 +35,7 @@
 | Место | Что там | Кто читает |
 | --- | --- | --- |
 | Vercel → Environment Variables | БД (`DATABASE_URL`, `DIRECT_URL`), авторизация, API-ключи провайдеров, бот Telegram, `CRON_SECRET`, биржевые `EXCHANGE*`. Полная таблица — INFRASTRUCTURE.md §6a | Сайт и API |
-| VM: `/home/rzhadko/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko | Контейнер `cryptoportfolio-worker-production` |
+| VM: `~/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko | Контейнер `cryptoportfolio-worker-production` |
 | VM: `/etc/cryptoportfolio-worker-deploy.conf` (root, 600) | `branch=main`, state `/var/lib/cryptoportfolio-worker-production-deploy`, env-файл, имя контейнера | Root-скрипт деплоя |
 | VM: `~/.config/cryptoportfolio/telegram-feed.env` (600) | `DATABASE_URL`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET` (значения без кавычек) | Контейнер `cryptoportfolio-listener-production` |
 | VM: `~/.config/cryptoportfolio/price-triggers.env` (600) | `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `COINGECKO_API_KEY` (и `COINGECKO_BASE_URL`, если есть), `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET`, `CRON_SECRET` (как в Vercel) | Контейнер `cryptoportfolio-triggers-production` |
@@ -89,7 +89,7 @@ General → Transfer project; строки подключения не меня�
 
 ## 4a. Депозиты и выводы бирж (Т1): миграция `ExchangeTransfer` — применена 22.10.2026
 
-Резервная копия перед ней: `C:/Users/rzhad/cryptoportfolio-backups/prod-before-transfers-20261022-1824.dump`
+Резервная копия перед ней: `<локальная папка бэкапов>/prod-before-transfers-20261022-1824.dump`
 (восстановлена во временный PostgreSQL, число строк всех 26 таблиц совпало).
 
 

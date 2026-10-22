@@ -37,7 +37,7 @@ Open repository Settings → Environments → New environment and create
 
 | Variable | Value |
 | --- | --- |
-| `WORKER_HOST` | `34.118.101.48` |
+| `WORKER_HOST` | external IP of the VM (GCP console → VM instances) |
 | `WORKER_USER` | `worker-deploy` |
 
 Add environment secrets:
@@ -48,7 +48,7 @@ Add environment secrets:
   through your existing trusted SSH console:
 
 ```bash
-printf '34.118.101.48 '
+printf '<WORKER_HOST> '
 sudo cat /etc/ssh/ssh_host_ed25519_key.pub
 ```
 
@@ -80,7 +80,7 @@ host and pinned host key. On that VM install root-owned mode-0600
 ```bash
 branch=main
 state=/var/lib/cryptoportfolio-worker-production-deploy
-env_file=/home/rzhadko/.config/cryptoportfolio/exchange-production.env
+env_file=/home/<vm-user>/.config/cryptoportfolio/exchange-production.env
 name=cryptoportfolio-worker-production
 ```
 
