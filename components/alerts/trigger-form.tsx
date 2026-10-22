@@ -44,6 +44,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
   const t = useTranslations('TriggerForm');
 
   const intervals = [
+    { label: t('interval5m'), value: 5 },
     { label: t('interval15m'), value: 15 },
     { label: t('interval1h'), value: 60 },
     { label: t('interval4h'), value: 240 },
@@ -290,9 +291,10 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
             <Input
               id="threshold"
               type="number"
-              min={1}
+              min={0.1}
               max={100}
-              step={1}
+              step={0.1}
+              inputMode="decimal"
               value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
             />

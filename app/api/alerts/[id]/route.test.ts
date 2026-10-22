@@ -178,8 +178,8 @@ describe('PUT /api/alerts/[id]', () => {
   });
 
   describe('validation', () => {
-    it('invalid interval (14, min=15) → 400, update and tokenPrice NOT called', async () => {
-      const res = await PUT(putReq({ interval: 14 }) as never, PARAMS);
+    it('invalid interval (4, min=5) → 400, update and tokenPrice NOT called', async () => {
+      const res = await PUT(putReq({ interval: 4 }) as never, PARAMS);
       expect(res.status).toBe(400);
       expect(mockUpdate).not.toHaveBeenCalled();
       expect(mockTokenPrice).not.toHaveBeenCalled();

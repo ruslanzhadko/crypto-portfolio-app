@@ -4,7 +4,10 @@ import { TriggerEngine } from "../lib/triggers/engine";
 import {
   combinePrices,
   fetchBinanceTickers,
-  mapToBinance,
+  fetchGateTickers,
+  mapToVenues,
+  pairsByVenue,
+  type Venue,
 } from "../lib/triggers/prices";
 import { createTriggersVersionClient } from "../lib/triggers/signal";
 import {
@@ -15,8 +18,8 @@ import {
 
 /**
  * Price alerts on the VM. Rules live in memory and are read from PostgreSQL once per :00/:30
- * window (or within a minute after a user edits them); prices come from Binance every tick and
- * from CoinGecko for coins Binance does not list. The database is touched only in windows and
+ * window (or within a minute after a user edits them); prices come from Binance or Gate every tick
+ * and from CoinGecko for coins neither lists. The database is touched only in windows and
  * when an alert fires, so Neon can sleep in between.
  */
 const TICK_MS = 20_000;
@@ -31,7 +34,7 @@ if (!process.env.DATABASE_URL || !process.env.TELEGRAM_BOT_TOKEN)
 
 const engine = new TriggerEngine();
 const versions = createTriggersVersionClient();
-let mapping = new Map<string, string>();
+let mapping = new Map<string, { venue: Venue; pair: string }>();
 let coingecko = new Map<string, number>();
 let coingeckoAt = 0;
 let slot = -1;
@@ -53,20 +56,25 @@ async function reload(reason: string, now: number) {
   coingecko = new Map([...coingecko].filter(([id]) => tokenIds.includes(id)));
   try {
     await refreshCoinGecko(tokenIds, now);
-    const tickers = await fetchBinanceTickers();
-    mapping = mapToBinance(
+    const [binance, gate] = await Promise.all([
+      fetchBinanceTickers().catch(() => new Map<string, number>()),
+      fetchGateTickers().catch(() => new Map<string, number>()),
+    ]);
+    mapping = mapToVenues(
       tokenIds.map((tokenId) => ({
         tokenId,
         symbol: engine.symbolOf(tokenId) ?? "",
         price: coingecko.get(tokenId) ?? 0,
       })),
-      tickers,
+      binance,
+      gate,
     );
   } catch {
     console.warn("[triggers] price source unavailable while reloading; keeping the old mapping");
   }
+  const pairs = pairsByVenue(mapping);
   console.log(
-    `[triggers] ${reason}: ${engine.size} active, ${tokenIds.length} coins, ${mapping.size} on Binance`,
+    `[triggers] ${reason}: ${engine.size} active, ${tokenIds.length} coins, ${pairs.binance.length} on Binance, ${pairs.gate.length} on Gate`,
   );
 }
 
@@ -96,14 +104,22 @@ async function tick() {
     await refreshCoinGecko(unmapped, now).catch(() =>
       console.warn("[triggers] CoinGecko unavailable; retrying next round"),
     );
-  const tickers = mapping.size
-    ? await fetchBinanceTickers().catch(() => {
-        console.warn("[triggers] Binance ticker unavailable; using CoinGecko prices");
-        return new Map<string, number>();
-      })
-    : new Map<string, number>();
+  const pairs = pairsByVenue(mapping);
+  const [binance, gate] = await Promise.all([
+    fetchBinanceTickers(fetch, pairs.binance).catch(() => {
+      console.warn("[triggers] Binance ticker unavailable; using CoinGecko prices");
+      return new Map<string, number>();
+    }),
+    fetchGateTickers(fetch, pairs.gate).catch(() => {
+      console.warn("[triggers] Gate ticker unavailable; using CoinGecko prices");
+      return new Map<string, number>();
+    }),
+  ]);
 
-  const firings = engine.check(combinePrices(tokenIds, mapping, tickers, coingecko), now);
+  const firings = engine.check(
+    combinePrices(tokenIds, mapping, { binance, gate }, coingecko),
+    now,
+  );
   for (const firing of firings) {
     const result = await deliverFiring(firing, new Date(now));
     console.log(

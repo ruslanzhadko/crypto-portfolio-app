@@ -186,8 +186,8 @@ describe('POST /api/alerts', () => {
     it.each([
       ['threshold=0 (min=1)', { ...PERCENT_PAYLOAD, threshold: 0 }],
       ['threshold=101 (max=100)', { ...PERCENT_PAYLOAD, threshold: 101 }],
-      ['threshold=50.5 (must be int)', { ...PERCENT_PAYLOAD, threshold: 50.5 }],
-      ['interval=14 (min=15)', { ...PERCENT_PAYLOAD, interval: 14 }],
+      ['threshold=0.05 (min=0.1)', { ...PERCENT_PAYLOAD, threshold: 0.05 }],
+      ['interval=4 (min=5)', { ...PERCENT_PAYLOAD, interval: 4 }],
       ['interval=1441 (max=1440)', { ...PERCENT_PAYLOAD, interval: 1441 }],
     ])('%s → 400, create not called', async (_label, payload) => {
       const res = await POST(postReq(payload) as never);

@@ -94,10 +94,11 @@ const triggerBase = z.object({
 
 const percentTriggerSchema = triggerBase.extend({
   triggerType: z.literal('PERCENT'),
-  threshold: z.number().int().min(1).max(100),
+  // Percent of change; tenths are allowed (0.1% is the smallest move worth an alert).
+  threshold: z.number().min(0.1).max(100),
   direction: z.nativeEnum(TriggerDirection).default('BOTH'),
-  // Мінімум 15 хв — збігається з частотою cron на проді.
-  interval: z.number().int().min(15).max(1440),
+  // Window the change is measured over; prices are checked every 20 s on the VM regardless.
+  interval: z.number().int().min(5).max(1440),
 });
 
 const priceTargetTriggerSchema = triggerBase.extend({
@@ -115,9 +116,9 @@ export type TriggerCreateInput = z.infer<typeof triggerCreateSchema>;
 
 export const triggerUpdateSchema = z.object({
   isActive: z.boolean().optional(),
-  threshold: z.number().int().min(1).max(100).optional(),
+  threshold: z.number().min(0.1).max(100).optional(),
   direction: z.nativeEnum(TriggerDirection).optional(),
-  interval: z.number().int().min(15).max(1440).optional(),
+  interval: z.number().int().min(5).max(1440).optional(),
   targetPrice: z.number().positive().optional(),
 });
 export type TriggerUpdateInput = z.infer<typeof triggerUpdateSchema>;
