@@ -87,7 +87,11 @@ General → Transfer project; строки подключения не меня�
 - Ключи бирж подключены заново в интерфейсе production (IP whitelist не менялся).
 
 
-## 4a. Депозиты и выводы бирж (Т1): миграция `ExchangeTransfer`
+## 4a. Депозиты и выводы бирж (Т1): миграция `ExchangeTransfer` — применена 22.10.2026
+
+Резервная копия перед ней: `C:/Users/rzhad/cryptoportfolio-backups/prod-before-transfers-20261022-1824.dump`
+(восстановлена во временный PostgreSQL, число строк всех 26 таблиц совпало).
+
 
 Что меняется в БД (только добавление, `prisma/exchange-transfers.sql`):
 таблица `ExchangeTransfer` и две nullable-колонки `ExchangeConnection.transfersAt`,
