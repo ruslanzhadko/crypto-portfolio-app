@@ -152,7 +152,7 @@ export function AddWalletDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button>
+        <Button size="sm" className="h-8 gap-1.5 px-3 text-xs sm:h-9 sm:text-sm">
           <Plus className="h-4 w-4" />
           {t('triggerButton')}
         </Button>

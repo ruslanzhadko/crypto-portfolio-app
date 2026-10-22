@@ -1,20 +1,29 @@
 "use client";
 import { useState } from "react";
 import { ExchangeLogo, exchangeName } from "./exchange-logo";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Plus, ArrowRight } from "lucide-react";
+import { PageTitle } from "@/components/common/page-title";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { CapitalOverview } from "@/lib/exchanges/portfolio";
 import { useExchangeData } from "./use-exchange-data";
 import { ConnectionForm } from "./connection-form";
-import {
-  ConnectionStatus,
-  ExchangeErrorNotice,
-  Money,
-  Updated,
-} from "./shared";
+import { ConnectionStatus, ExchangeErrorNotice, Money } from "./shared";
+
+/** Time only for today, otherwise a short date: the full timestamp is in the tooltip. */
+function shortTime(value: string | null, locale: string): string {
+  if (!value) return "—";
+  const date = new Date(value);
+  const today = new Date().toDateString() === date.toDateString();
+  return new Intl.DateTimeFormat(
+    locale,
+    today
+      ? { hour: "2-digit", minute: "2-digit" }
+      : { day: "numeric", month: "short" },
+  ).format(date);
+}
 
 export interface ConnectionDto {
   id: string;
@@ -30,6 +39,7 @@ export interface ConnectionDto {
 }
 export function ExchangesPage() {
   const t = useTranslations("Exchanges"),
+    locale = useLocale(),
     [adding, setAdding] = useState(false);
   const connections = useExchangeData<{
     connections: ConnectionDto[];
@@ -39,17 +49,24 @@ export function ExchangesPage() {
     "/api/portfolio/capital?view=overview",
   );
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="mt-1 text-sm text-text-muted">{t("subtitle")}</p>
-        </div>
-        <Button onClick={() => setAdding(true)} disabled={adding}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t("connectExchange")}
+    <div className="space-y-3 sm:space-y-4">
+      <PageTitle
+        title={t("title")}
+        info={t("subtitle")}
+        details={`${t("supported")} ${t("hyperAuto")}`}
+      >
+        <Button
+          size="sm"
+          className="h-8 gap-1.5 px-3 text-xs sm:h-9 sm:text-sm"
+          onClick={() => setAdding(true)}
+          disabled={adding}
+          aria-label={t("connectExchange")}
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          <span className="sm:hidden">{t("connectShort")}</span>
+          <span className="hidden sm:inline">{t("connectExchange")}</span>
         </Button>
-      </div>
+      </PageTitle>
       <ExchangeErrorNotice code={connections.error ?? capital.error} />
       {capital.data && !capital.data.overview.workerOnline && (
         <ExchangeErrorNotice code="WORKER_OFFLINE" />
@@ -76,7 +93,7 @@ export function ExchangesPage() {
           </p>
         </div>
       )}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-2.5 sm:gap-3 lg:grid-cols-2">
         {connections.data?.connections.map((connection) => {
           const accounts =
             capital.data?.overview.accounts.filter(
@@ -85,22 +102,22 @@ export function ExchangesPage() {
           return (
             <div
               key={connection.id}
-              className="rounded-xl border border-border bg-surface p-4 sm:p-5"
+              className="rounded-xl border border-border bg-surface p-3 sm:p-4"
             >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <ExchangeLogo exchange={connection.exchange} />
+                <div className="min-w-0 flex-1">
                   <Link
-                    className="flex items-center gap-2 font-semibold hover:text-primary"
+                    className="flex items-center gap-1.5 text-sm font-semibold hover:text-primary"
                     href={`/exchanges/${connection.id}`}
                   >
                     <span className="truncate">{connection.label}</span>
-                    <ArrowRight className="h-4 w-4 shrink-0" />
+                    <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                   </Link>
-                  <p className="mt-1 flex items-center gap-1.5 text-sm text-text-muted">
-                    <ExchangeLogo exchange={connection.exchange} />
-                    {exchangeName(connection.exchange)}{" "}
+                  <p className="truncate text-[11px] text-text-muted">
+                    {exchangeName(connection.exchange)}
                     {connection.keyMask && (
-                      <span className="ml-2 font-mono">
+                      <span className="ml-1.5 font-mono">
                         {connection.keyMask}
                       </span>
                     )}
@@ -111,23 +128,35 @@ export function ExchangesPage() {
                   errorCode={connection.errorCode}
                 />
               </div>
-              <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* One line per account: kind and freshness on the left, equity on the right. */}
+              <div className="mt-2 divide-y divide-border/60">
                 {accounts.map((a) => (
-                  <div key={a.id}>
-                    <p className="text-xs text-text-muted">
+                  <div
+                    key={a.id}
+                    className="flex items-baseline justify-between gap-3 py-1.5 last:pb-0"
+                  >
+                    <p className="min-w-0 truncate text-xs text-text-muted">
                       {t(`kinds.${a.kind}`)}
+                      <span
+                        className={a.stale ? "text-warning" : undefined}
+                        title={
+                          a.balancesAt
+                            ? new Date(a.balancesAt).toLocaleString(locale)
+                            : t("neverUpdated")
+                        }
+                        suppressHydrationWarning
+                      >
+                        {" · "}
+                        {a.stale ? t("stale") : shortTime(a.balancesAt, locale)}
+                      </span>
                     </p>
-                    <p className="mt-1 text-3xl font-semibold tracking-tight tabular-nums">
+                    <p className="shrink-0 text-base font-semibold tabular-nums sm:text-lg">
                       <Money value={a.equityUsd} />
                     </p>
-                    <Updated value={a.balancesAt} />
-                    {a.stale && (
-                      <p className="text-xs text-warning">{t("stale")}</p>
-                    )}
                   </div>
                 ))}
                 {!accounts.length && (
-                  <p className="text-sm text-text-muted">
+                  <p className="py-1.5 text-xs text-text-muted">
                     {t("waitingForWorker")}
                   </p>
                 )}
@@ -141,9 +170,6 @@ export function ExchangesPage() {
           );
         })}
       </div>
-      <p className="text-xs text-text-muted">
-        {t("supported")} {t("hyperAuto")}
-      </p>
     </div>
   );
 }

@@ -852,6 +852,7 @@
     "title": "Exchanges",
     "subtitle": "Read-only accounts, balances and connection health.",
     "connectExchange": "Connect exchange",
+    "connectShort": "Connect",
     "replaceKey": "Replace API key",
     "keyInstructions": "Create a dedicated read-only key. Disable trading, withdrawals and transfers. Restrict it to the worker IP below. The key is encrypted and cannot be displayed again.",
     "workerIp": "Worker IP for allowlist",

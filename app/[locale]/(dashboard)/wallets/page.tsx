@@ -9,6 +9,7 @@ import {
   isMigratedHypercore,
 } from "@/lib/exchanges/portfolio";
 import { EmptyState } from "@/components/common/empty-state";
+import { PageTitle } from "@/components/common/page-title";
 
 export const dynamic = "force-dynamic";
 
@@ -64,18 +65,10 @@ export default async function WalletsPage() {
   });
 
   return (
-    <div className="space-y-5 md:space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold leading-tight tracking-tight md:text-3xl">
-            {t("pageTitle")}
-          </h1>
-          <p className="mt-1 text-sm leading-6 text-text-muted sm:text-[15px]">
-            {t("pageDescription")}
-          </p>
-        </div>
+    <div className="space-y-3 sm:space-y-4">
+      <PageTitle title={t("pageTitle")} info={t("pageDescription")}>
         <AddWalletDialog />
-      </div>
+      </PageTitle>
 
       {migrated.length > 0 && (
         <p className="text-xs text-text-muted">{t("exchangeManagedNote")}</p>
