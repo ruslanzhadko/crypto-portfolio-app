@@ -1,7 +1,4 @@
 {
-  "LowValueFilter": {
-    "label": "Скрывать суммы меньше $1"
-  },
   "Nav": {
     "dashboard": "Обзор",
     "wallets": "Кошельки",
@@ -102,7 +99,9 @@
   "DashboardSections": {
     "topMovers": "Лидеры роста / Падения",
     "allocation": "Распределение активов",
-    "networkAllocation": "Распределение по сетям"
+    "networkAllocation": "Распределение по сетям",
+    "jumpTo": "Перейти к разделу",
+    "jumpTop": "Наверх"
   },
   "PortfolioSummary": {
     "largestPositions": "Крупнейшие активы",
@@ -170,6 +169,8 @@
     "emptyText": "Нет токенов. Добавьте кошелёк и выполните Sync.",
     "emptySpam": "Спам-токенов нет.",
     "spamBadge": "спам",
+    "showAll": "Показать все ({count})",
+    "showLess": "Свернуть",
     "noFilterResults": "По этому фильтру токенов нет.",
     "searchPlaceholder": "Поиск токена или контракта…",
     "searchLabel": "Поиск токенов",

@@ -12,6 +12,7 @@ import { WalletList } from "@/components/dashboard/wallet-list";
 import { TopMovers } from "@/components/dashboard/top-movers";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import { SyncAllButton } from "@/components/dashboard/sync-all-button";
+import { SectionJump } from "@/components/dashboard/section-jump";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -78,6 +79,8 @@ export function DashboardSections({
   const t = useTranslations("Dashboard");
   const te = useTranslations("Exchanges");
   const ts = useTranslations("DashboardSections");
+  const tr = useTranslations("RecentTransactions");
+  const tm = useTranslations("TopMovers");
   const locale = useLocale();
 
   useEffect(() => {
@@ -129,7 +132,10 @@ export function DashboardSections({
 
       <div className="grid min-w-0 items-stretch gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]">
         {show.topMovers && (
-          <div className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full">
+          <div
+            data-jump={tm("gainersTitle")}
+            className="min-w-0 scroll-mt-20 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full"
+          >
             <TopMovers tokens={overview.tokens} />
           </div>
         )}
@@ -150,7 +156,7 @@ export function DashboardSections({
             <PortfolioSummary data={overview} showLargestPositions={false} />
           )}
         </div>
-        <div className="min-w-0">
+        <div data-jump={tr("title")} className="min-w-0 scroll-mt-20">
           <RecentTransactions />
         </div>
       </div>
@@ -253,6 +259,7 @@ export function DashboardSections({
         {!exchangesEnabled && <>{walletDetails}</>}
         {exchangesEnabled && <div id="capital-sources" />}
       </div>
+      <SectionJump />
     </div>
   );
 }

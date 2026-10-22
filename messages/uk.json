@@ -1,7 +1,4 @@
 {
-  "LowValueFilter": {
-    "label": "Приховувати суми менше $1"
-  },
   "Nav": {
     "dashboard": "Огляд",
     "wallets": "Гаманці",
@@ -102,7 +99,9 @@
   "DashboardSections": {
     "topMovers": "Лідери зростання / Падіння",
     "allocation": "Розподіл активів",
-    "networkAllocation": "Розподіл по мережах"
+    "networkAllocation": "Розподіл по мережах",
+    "jumpTo": "Перейти до розділу",
+    "jumpTop": "Вгору"
   },
   "PortfolioSummary": {
     "largestPositions": "Найбільші активи",
@@ -170,6 +169,8 @@
     "emptyText": "Немає токенів. Додайте гаманець та зробіть Sync.",
     "emptySpam": "Спам-токенів немає.",
     "spamBadge": "спам",
+    "showAll": "Показати всі ({count})",
+    "showLess": "Згорнути",
     "noFilterResults": "За цим фільтром токенів немає.",
     "searchPlaceholder": "Пошук токена або контракту…",
     "searchLabel": "Пошук токенів",

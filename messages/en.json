@@ -1,7 +1,4 @@
 {
-  "LowValueFilter": {
-    "label": "Hide balances below $1"
-  },
   "Nav": {
     "dashboard": "Dashboard",
     "wallets": "Wallets",
@@ -102,7 +99,9 @@
   "DashboardSections": {
     "topMovers": "Top Movers",
     "allocation": "Asset Allocation",
-    "networkAllocation": "Network Allocation"
+    "networkAllocation": "Network Allocation",
+    "jumpTo": "Jump to section",
+    "jumpTop": "Top"
   },
   "PortfolioSummary": {
     "largestPositions": "Largest assets",
@@ -170,6 +169,8 @@
     "emptyText": "No tokens. Add a wallet and sync.",
     "emptySpam": "No spam tokens.",
     "spamBadge": "spam",
+    "showAll": "Show all ({count})",
+    "showLess": "Show less",
     "noFilterResults": "No tokens match these filters.",
     "searchPlaceholder": "Search token or contract…",
     "searchLabel": "Search tokens",

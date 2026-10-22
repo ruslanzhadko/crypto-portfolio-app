@@ -24,7 +24,15 @@ import { Money, Quantity, Updated, ExchangeErrorNotice } from "./shared";
 import { BalanceTable, exchangeBalanceRows } from "./balance-table";
 import { TokenTable } from "@/components/dashboard/token-table";
 import type { AggregatedToken } from "@/lib/services/portfolio";
-import type { ExchangeHolding } from "@/lib/portfolio/unified-assets";
+import {
+  mergeExchangeHoldings,
+  type ExchangeHolding,
+} from "@/lib/portfolio/unified-assets";
+import { TopMovers } from "@/components/dashboard/top-movers";
+import {
+  tokenChange,
+  useTickerChanges,
+} from "@/components/dashboard/use-ticker-changes";
 import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
 import { useDisplayPreference } from "./display-preferences";
@@ -48,6 +56,7 @@ export function CapitalDashboard({
     setSourcesTarget(document.getElementById("capital-sources"));
   }, []);
   const t = useTranslations("Exchanges"),
+    tm = useTranslations("TopMovers"),
     locale = useLocale();
   const [scope, setScope] = useState<"all" | "wallets" | "exchanges">("all"),
     [days, setDays] = useState(30),
@@ -117,7 +126,7 @@ export function CapitalDashboard({
         ? overview?.exchangesUsd
         : overview?.totalUsd;
   const sources = overview ? (
-    <section className="space-y-3">
+    <section data-jump={t("sources")} className="scroll-mt-20 space-y-3">
       <h2 className="text-lg font-semibold">{t("sources")}</h2>
       <div className="divide-y divide-border rounded-xl border border-border">
         {scope !== "exchanges" &&
@@ -222,6 +231,21 @@ export function CapitalDashboard({
     [overview, exchangeRows],
   );
   const unpricedRows = exchangeRows.filter((b) => b.usdValue === null);
+  // "All": gainers and losers across wallets and exchanges; exchange-only coins take the 24h change
+  // of the public exchange ticker.
+  const unified = useMemo(
+    () => mergeExchangeHoldings(walletTokens ?? [], exchangeHoldings),
+    [walletTokens, exchangeHoldings],
+  );
+  const tickerChanges = useTickerChanges(unified);
+  const movers = useMemo(
+    () =>
+      unified.map((tok) => ({
+        ...tok,
+        priceChange24h: tokenChange(tok, tickerChanges) ?? 0,
+      })),
+    [unified, tickerChanges],
+  );
   return (
     <div className="min-w-0 space-y-3 sm:space-y-4">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
@@ -499,7 +523,11 @@ export function CapitalDashboard({
               )}
             </details>
           </div>
-          <section id="assets" className="scroll-mt-20 space-y-3 sm:space-y-4">
+          <section
+            id="assets"
+            data-jump={t("assets")}
+            className="scroll-mt-20 space-y-3 sm:space-y-4"
+          >
             {/* Phones go straight to the token card, which carries its own title. */}
             <h2 className="hidden text-lg font-semibold sm:block">{t("assets")}</h2>
             {scope === "all" && walletTokens && (
@@ -550,7 +578,16 @@ export function CapitalDashboard({
               </>
             )}
           </section>
-          {scope !== "wallets" && <PositionsPage compact />}
+          {scope === "all" && (
+            <div data-jump={tm("gainersTitle")} className="scroll-mt-20">
+              <TopMovers tokens={movers} />
+            </div>
+          )}
+          {scope !== "wallets" && (
+            <div data-jump={t("positions")} className="scroll-mt-20">
+              <PositionsPage compact />
+            </div>
+          )}
           {scope === "wallets" && walletDetails}
           {sources &&
             (sourcesTarget ? createPortal(sources, sourcesTarget) : sources)}

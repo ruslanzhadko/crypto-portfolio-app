@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, Fragment } from 'react';
+import { useMemo, useState, Fragment } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowUpDown, ChevronDown, ChevronRight, Eye, Search, Wallet as WalletIcon, Network as NetworkIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +21,6 @@ import {
   shortAddress,
 } from '@/lib/utils/format';
 import { ChainBadge } from '@/components/common/network-badge';
-import { LowValueFilter, useLowValueFilter } from '@/components/common/low-value-filter';
 import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
 import { filterDashboardTokens } from '@/lib/utils/dashboard-token-filter';
@@ -30,6 +29,7 @@ import { mergeExchangeHoldings, type ExchangeHolding, type UnifiedToken } from '
 import { ExchangeTokenLogo } from '@/components/exchanges/token-logo';
 import { ExchangeLogo, exchangeName } from '@/components/exchanges/exchange-logo';
 import { useDisplayPreference } from '@/components/exchanges/display-preferences';
+import { tokenChange, useTickerChanges } from './use-ticker-changes';
 
 type SortKey = 'value' | 'balance' | 'change';
 
@@ -41,6 +41,9 @@ interface WalletGroup {
   totalUsd: number;
   chains: WalletTokenBreakdown[];
 }
+
+/** Rows shown before "Show all" on long lists. */
+const COLLAPSED_ROWS = 10;
 
 export function TokenTable({
   tokens: walletTokens,
@@ -69,14 +72,12 @@ export function TokenTable({
   const [search, setSearch] = useState('');
   const [selectedChains, setSelectedChains] = useState<Set<string>>(() => new Set());
   const [showSpam, setShowSpam] = useState(false);
-  const [hideLowValue, setHideLowValue] = useLowValueFilter('tokens');
-  // The combined list uses the exchange "Balances from" minimum for rows and
-  // for every wallet/exchange line in the breakdown (totals are unchanged).
-  const combined = exchangeHoldings !== undefined;
+  // Long lists start folded so the sections below stay within reach; a search shows every match.
+  const [showAll, setShowAll] = useState(false);
+  // Every token list uses one "Balances from" minimum (shared with exchanges) for rows and for each
+  // wallet/exchange line in the breakdown; totals are unchanged.
   const [minimum, setMinimum] = useDisplayPreference('exchange-dust-minimum', '0.10');
-  const threshold = combined
-    ? (['0', '0.10', '1', '10'].includes(minimum) ? Number(minimum) : 0.1)
-    : null;
+  const threshold = ['0', '0.10', '1', '10'].includes(minimum) ? Number(minimum) : 0.1;
   const te = useTranslations('Exchanges');
   // Окремі множини для розгорнутих токенів і розгорнутих гаманців (ключі: tokenKey та tokenKey::walletId)
   const [openTokens, setOpenTokens] = useState<Set<string>>(new Set());
@@ -86,28 +87,8 @@ export function TokenTable({
     [...tokens, ...spamTokens].flatMap((token) => token.chains),
   )).sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [tokens, spamTokens]);
 
-  const tickerSymbols = useMemo(
-    () => [...new Set(tokens.filter((tok) => tok.exchangeOnly).map((tok) => tok.symbol.toUpperCase()))].sort().join(','),
-    [tokens],
-  );
-  const [tickerChanges, setTickerChanges] = useState<Record<string, number>>({});
-  useEffect(() => {
-    if (!tickerSymbols) return;
-    const controller = new AbortController();
-    fetch(`/api/market/changes?symbols=${encodeURIComponent(tickerSymbols)}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body: { changes?: Record<string, number> } | null) => {
-        if (body?.changes) setTickerChanges(body.changes);
-      })
-      .catch(() => {});
-    return () => controller.abort();
-  }, [tickerSymbols]);
-  const changeOf = (tok: UnifiedToken): number | null =>
-    tok.exchangeOnly
-      ? (tickerChanges[tok.symbol.toUpperCase()] ?? null)
-      : tok.priceChange24h !== 0
-        ? tok.priceChange24h
-        : null;
+  const tickerChanges = useTickerChanges(tokens);
+  const changeOf = (tok: UnifiedToken): number | null => tokenChange(tok, tickerChanges);
 
   const spamKeys = useMemo(() => new Set(spam.map((token) => token.key)), [spam]);
   const sorted = useMemo(() => {
@@ -131,12 +112,12 @@ export function TokenTable({
       return desc ? bv - av : av - bv;
     });
     const regular = filterDashboardTokens(tokens, selectedChains, search)
-      .filter((token) => (threshold === null ? !hideLowValue || token.totalUsd >= 1 : token.totalUsd >= threshold));
+      .filter((token) => token.totalUsd >= threshold);
     // Spam asked for explicitly is shown whatever its value, after the regular tokens.
     const shownSpam = showSpam ? filterDashboardTokens(spam, selectedChains, search) : [];
     return [...order(regular), ...order(shownSpam)];
     // eslint-disable-next-line react-hooks/exhaustive-deps -- changeOf reads tickerChanges
-  }, [tokens, spam, showSpam, selectedChains, search, sortKey, desc, hideLowValue, threshold, tickerChanges]);
+  }, [tokens, spam, showSpam, selectedChains, search, sortKey, desc, threshold, tickerChanges]);
 
   function toggleChain(chain: string) {
     setSelectedChains((current) => {
@@ -174,26 +155,22 @@ export function TokenTable({
         {/* Title with the list settings on one row; search and networks below. */}
         <div className="flex items-center gap-2">
           <CardTitle className="mr-auto text-base sm:text-lg">{t('cardTitle')}</CardTitle>
-          {threshold === null ? (
-            <LowValueFilter checked={hideLowValue} onCheckedChange={setHideLowValue} />
-          ) : (
-            <label className="flex items-center gap-2 text-sm text-text-muted">
-              <span className="sr-only sm:not-sr-only">{te('minimumBalance')}</span>
-              <select
-                aria-label={te('minimumBalance')}
-                title={te('minimumBalance')}
-                className="h-8 rounded-md border border-border bg-surface px-1.5 text-xs text-text sm:h-9 sm:px-2 sm:text-sm"
-                value={minimum}
-                onChange={(event) => setMinimum(event.target.value)}
-              >
-                {['0', '0.10', '1', '10'].map((value) => (
-                  <option key={value} value={value}>
-                    {value === '0' ? te('showAllBalances') : `≥ $${value}`}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
+          <label className="flex items-center gap-2 text-sm text-text-muted">
+            <span className="sr-only sm:not-sr-only">{te('minimumBalance')}</span>
+            <select
+              aria-label={te('minimumBalance')}
+              title={te('minimumBalance')}
+              className="h-8 rounded-md border border-border bg-surface px-1.5 text-xs text-text sm:h-9 sm:px-2 sm:text-sm"
+              value={minimum}
+              onChange={(event) => setMinimum(event.target.value)}
+            >
+              {['0', '0.10', '1', '10'].map((value) => (
+                <option key={value} value={value}>
+                  {value === '0' ? te('showAllBalances') : `≥ $${value}`}
+                </option>
+              ))}
+            </select>
+          </label>
           {variant !== 'exchanges' && <Button
             variant={showSpam ? 'default' : 'outline'}
             size="sm"
@@ -280,13 +257,13 @@ export function TokenTable({
               </tr>
             </thead>
             <tbody>
-              {sorted.map((tok) => {
+              {(showAll || search.trim() ? sorted : sorted.slice(0, COLLAPSED_ROWS)).map((tok) => {
                 const isOpen = openTokens.has(tok.key);
                 // Приховуємо dust (< $0.01) у розгорнутому вигляді
-                const lineMinimum = Math.max(0.01, threshold ?? 0);
+                const lineMinimum = Math.max(0.01, threshold);
                 const isSpam = spamKeys.has(tok.key);
                 const visibleWallets = isSpam ? tok.wallets : tok.wallets.filter((w) => w.usdValue >= lineMinimum);
-                const visibleExchanges = tok.exchanges.filter((h) => Math.abs(h.usdValue) >= (threshold ?? 0));
+                const visibleExchanges = tok.exchanges.filter((h) => Math.abs(h.usdValue) >= threshold);
                 const hiddenCount =
                   tok.wallets.length - visibleWallets.length + tok.exchanges.length - visibleExchanges.length;
                 const groups = groupByWallet(visibleWallets);
@@ -419,14 +396,14 @@ export function TokenTable({
                               tokenKey={tok.key}
                               groups={groups}
                               totalUsd={tok.totalUsd}
-                              hiddenCount={threshold === null ? hiddenCount : 0}
+                              hiddenCount={0}
                               openWallets={openWallets}
                               onToggleWallet={(walletKey) => toggle(openWallets, setOpenWallets, walletKey)}
                             />
                             {visibleExchanges.length > 0 && (
                               <ExchangeBreakdown holdings={visibleExchanges} totalUsd={tok.totalUsd} />
                             )}
-                            {threshold !== null && hiddenCount > 0 && (
+                            {hiddenCount > 0 && (
                               <div className="pl-2 pt-1 text-[11px] text-text-muted sm:ml-6">
                                 {t('hiddenBelow', { count: hiddenCount, minimum: threshold > 0 ? minimum : '0.01' })}
                               </div>
@@ -438,10 +415,24 @@ export function TokenTable({
                   </Fragment>
                 );
               })}
+              {sorted.length > COLLAPSED_ROWS && !search.trim() && (
+                <tr>
+                  <td colSpan={7} className="p-0">
+                    <button
+                      type="button"
+                      className="w-full py-2.5 text-center text-xs font-medium text-primary transition-colors hover:bg-surface-2/50 sm:text-sm"
+                      aria-expanded={showAll}
+                      onClick={() => setShowAll((value) => !value)}
+                    >
+                      {showAll ? t('showLess') : t('showAll', { count: sorted.length })}
+                    </button>
+                  </td>
+                </tr>
+              )}
               {sorted.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
-                    {search.trim() || selectedChains.size > 0 || hideLowValue
+                    {search.trim() || selectedChains.size > 0 || threshold > 0
                       ? t('noFilterResults')
                       : t('emptyText')}
                   </td>
