@@ -86,6 +86,8 @@ export interface SyncResult {
 export interface ExchangeAdapter {
   verify(): Promise<{ externalAccountId?: string }>;
   fetch(includeSpot: boolean): Promise<SyncResult>;
+  /** Deposits and withdrawals since `since` (ms); absent where the exchange is not supported yet. */
+  transfers?(since: number): Promise<import("./transfers").Transfer[]>;
   close(): Promise<void>;
 }
 

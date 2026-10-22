@@ -15,6 +15,7 @@ import { BinanceAdapter, BybitAdapter } from "./adapters";
 import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
 import { BingxAdapter } from "./bingx";
+import { syncTransfers } from "./transfer-store";
 import { BitgetAdapter } from "./bitget";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
@@ -461,6 +462,8 @@ export async function runOneJob(
         },
       });
       dirtySnapshots.add(c.userId);
+      // Deposit/withdrawal history rides on a successful sync; it never fails the sync itself.
+      await syncTransfers(c, cached.adapter).catch(() => "failed");
     }
   } catch (error) {
     const code =

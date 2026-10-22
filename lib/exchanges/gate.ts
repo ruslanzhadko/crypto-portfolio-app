@@ -19,6 +19,7 @@ import {
   type SyncResult,
 } from "./types";
 import type { Request } from "./transport";
+import { gateTransfers } from "./transfers";
 
 /** Gate classic spot + USDT perpetuals. Separate wallets must not be merged with Unified equity. */
 export class GateAdapter implements ExchangeAdapter {
@@ -31,6 +32,9 @@ export class GateAdapter implements ExchangeAdapter {
     private apiKey: string,
     public close = async () => {},
   ) {}
+  transfers(since: number) {
+    return gateTransfers(this.request, since);
+  }
   async verify() {
     const detail = record(await this.request("detail", "private:account"));
     assertIpWhitelist(detail.ip_whitelist);

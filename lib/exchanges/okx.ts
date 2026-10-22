@@ -19,6 +19,7 @@ import {
   type SyncResult,
 } from "./types";
 import type { Request } from "./transport";
+import { okxTransfers } from "./transfers";
 
 /** Global OKX trading account: spot holdings and linear perpetuals; one equity pool. */
 export class OkxAdapter implements ExchangeAdapter {
@@ -34,6 +35,9 @@ export class OkxAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  transfers(since: number) {
+    return okxTransfers(this.request, since);
+  }
   async verify() {
     const r = one(okxRows(await this.request("account/config", "private")));
     assertOkxReadOnly(r);

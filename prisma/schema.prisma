@@ -382,6 +382,9 @@ model ExchangeConnection {
   positionsAt DateTime?
   lastAttemptAt DateTime?
   lastSuccessAt DateTime?
+  // Deposit/withdrawal history: last successful read and why it is unavailable (e.g. key permission).
+  transfersAt DateTime?
+  transfersError String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -389,6 +392,7 @@ model ExchangeConnection {
   accounts ExchangeAccount[]
   job ExchangeSyncJob?
   runs ExchangeSyncRun[]
+  transfers ExchangeTransfer[]
   @@unique([userId, exchange, keyFingerprint])
   @@unique([userId, exchange, externalAccountId])
   @@unique([walletId, exchange])
@@ -510,4 +514,30 @@ model CapitalEvent {
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt])
+}
+
+/// Deposits to and withdrawals from an exchange account, read from the exchange's history.
+model ExchangeTransfer {
+  id String @id @default(cuid())
+  connectionId String
+  /// "deposit" or "withdrawal"
+  direction String
+  asset String
+  network String?
+  amount Decimal @db.Decimal(38, 18)
+  fee Decimal? @db.Decimal(38, 18)
+  address String?
+  /// On-chain transaction hash; links a transfer to a wallet transaction.
+  txHash String?
+  /// "pending", "completed" or "failed"
+  status String
+  /// The exchange's own id for the operation.
+  externalId String
+  occurredAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  connection ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  @@unique([connectionId, direction, externalId])
+  @@index([connectionId, occurredAt])
+  @@index([txHash])
 }

@@ -12,6 +12,7 @@ import {
 } from "./types";
 import { assertBinanceReadOnly, assertBybitReadOnly } from "./permissions";
 import type { Request } from "./transport";
+import { binanceTransfers, bybitTransfers } from "./transfers";
 
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
@@ -52,6 +53,9 @@ export class BybitAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  transfers(since: number) {
+    return bybitTransfers(this.request, since);
+  }
   async verify() {
     const key = bybitResult(await this.request("v5/user/query-api", "private"));
     assertBybitReadOnly(key);
@@ -247,6 +251,9 @@ export class BinanceAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  transfers(since: number) {
+    return binanceTransfers(this.request, since);
+  }
   async verify() {
     assertBinanceReadOnly(
       record(await this.request("account/apiRestrictions", "sapi", {}, 1)),

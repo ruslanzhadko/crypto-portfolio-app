@@ -87,6 +87,26 @@ General → Transfer project; строки подключения не меня�
 - Ключи бирж подключены заново в интерфейсе production (IP whitelist не менялся).
 
 
+## 4a. Депозиты и выводы бирж (Т1): миграция `ExchangeTransfer`
+
+Что меняется в БД (только добавление, `prisma/exchange-transfers.sql`):
+таблица `ExchangeTransfer` и две nullable-колонки `ExchangeConnection.transfersAt`,
+`transfersError`. Новый код читает эти колонки, поэтому **миграция идёт до пуша в `main`**,
+иначе сайт и worker упадут на запросах к подключениям. Порядок:
+
+1. Резервная копия production и проверка восстановления (как в §4).
+2. Проверить, что diff только добавляет: `npx prisma migrate diff --from-url <DIRECT_URL>
+   --to-schema-datamodel prisma/schema.prisma --script` — ровно SQL из `prisma/exchange-transfers.sql`.
+3. Применить в транзакции: `BEGIN; <prisma/exchange-transfers.sql> COMMIT;` через `prisma db execute --url <DIRECT_URL>`.
+4. Повторный diff с `--exit-code` = 0.
+5. Пуш в `main` (перед ним снять логи listener и триггеров).
+
+Как работает: worker после успешной синхронизации подключения читает историю не чаще раза в
+30 минут (первый раз за 90 дней, потом с отступом в сутки), пишет только новые или изменившиеся
+операции. Поддержаны Binance, Bybit, OKX, Gate, Hyperliquid; Aster, BingX, Bitget — позже. Если
+у ключа нет права на историю, код ошибки пишется в `transfersError`, синхронизация балансов не
+страдает. Откат: вернуть предыдущий коммит; таблицу и колонки не удалять (аддитивные).
+
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 
 Как устроено: listener — второй контейнер того же образа (`Dockerfile.exchanges`); скрипт

@@ -1,4 +1,5 @@
 import { NextFundingReader } from "./next-funding";
+import { hyperliquidTransfers } from "./transfers";
 import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import { record, records } from "./adapters";
@@ -41,6 +42,9 @@ export class HyperliquidAdapter implements ExchangeAdapter {
     },
   ) {}
   async close() {}
+  transfers(since: number) {
+    return hyperliquidTransfers(this.info, this.address, since);
+  }
   async verify() {
     if (!/^0x[0-9a-f]{40}$/i.test(this.address))
       throw new ExchangeError("INVALID_RESPONSE");
