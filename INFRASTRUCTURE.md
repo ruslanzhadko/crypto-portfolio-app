@@ -1,6 +1,6 @@
 # Инфраструктура, бюджет и план развития
 
-Обновлено 21 октября 2026 года. Заменяет `docs/NEON_OPTIMIZATION_PLAN.md`
+Обновлено 22 октября 2026 года. Заменяет `docs/NEON_OPTIMIZATION_PLAN.md`
 (его полезные части перенесены сюда). Биржевая часть описана в
 [EXCHANGES.md](EXCHANGES.md) и [EXCHANGES_HANDOFF.md](EXCHANGES_HANDOFF.md).
 Пошаговые инструкции переносов (Neon Free/Launch, выпуск в production, listener, VM, БД,
@@ -32,15 +32,23 @@
 | D | Решение Free / Launch по замерам за 3–7 дней | Начало ноября |
 | E | Telegram listener на GCP VM, Render отключить. Платный VPS (Варшава/Украина) — перед концом пробного периода GCP (~январь 2027): образы те же, новый IP заранее в whitelist ключей | E1: **listener на VM с 20.10**, Render ждёт удаления; E2: декабрь |
 | F | Живой канал на странице (§3.4) на текущей GCP VM. Для ленты уже есть опрос раз в 3 с и запись постов сразу, пока она открыта | После C |
-| G | Триггеры в реальном времени на VM, отключение cron-job.org (§3.2, §3.4) | После C |
+| G | Триггеры в реальном времени на VM, отключение cron-job.org (§3.2, §3.4) | Триггеры: **на VM с 22.10**; `update-prices` с VM — следующий шаг |
 
 ### Состояние на 22.10.2026
 
-- Production (`main`): биржи видны только владельцу (`EXCHANGES_PILOT_USER_IDS`). Worker
-  `cryptoportfolio-worker-production` и listener `cryptoportfolio-listener-production` — на
-  GCP VM, оба разворачиваются из `main` через GitHub Actions одним образом
-  (`Dockerfile.exchanges`, `deploy/worker-update.sh`; listener стартует, если на VM есть
-  `~/.config/cryptoportfolio/telegram-feed.env`).
+- Production (`main`): биржи видны только владельцу (`EXCHANGES_PILOT_USER_IDS`). На GCP VM три
+  контейнера одного образа (`Dockerfile.exchanges`, `deploy/worker-update.sh`), все разворачиваются
+  из `main` через GitHub Actions: worker `cryptoportfolio-worker-production`, listener
+  `cryptoportfolio-listener-production` (если есть `telegram-feed.env`) и триггеры
+  `cryptoportfolio-triggers-production` (если есть `price-triggers.env`). Каждый деплой пересоздаёт
+  все три — перед ним снимать логи listener и триггеров.
+- Ценовые триггеры (с 22.10): на VM, правила в памяти, цены Binance → Gate каждые 20 с, иначе
+  CoinGecko раз в 10 мин; порог от 0,1%, период 1 мин – 24 ч (MIGRATIONS.md §5a). Задача
+  `Check triggers` в cron-job.org выключена; `update-prices` по-прежнему из cron-job.org раз в 30 мин.
+- Интерфейс (21–22.10): компактные мобильные экраны позиций, обзора и токенов; символы бирж в одном
+  формате (`LYNUSDT`); лёгкие анимации (отключаются при «уменьшении движения»); меню открываются
+  по тапу, а не при касании во время прокрутки. Спам: пыль известного CoinGecko контракта спамом
+  не считается.
 - Подключены: Binance, Bybit, Gate, OKX, Hyperliquid, Aster (Main EVM и Binance Wallet,
   включая Shield Mode). Binance и Gate в статусе PARTIAL из-за монет без цены (пыль).
 - Neon: ветка `production` 0,25–0,5 CU, Launch до конца октября. Тестовая ветка, переопределения
@@ -66,9 +74,8 @@
    listener на VM работает, Render не возобновлять** — Telegram сбросит общую сессию (лечение —
    MIGRATIONS.md §5).
 2. 28–31 октября — графики Neon (CU·ч и network transfer) и решение Free/Launch (MIGRATIONS.md §3).
-3. Триггеры цен на VM — **работают с 22.10** (контейнер `cryptoportfolio-triggers-production`,
-   MIGRATIONS.md §5a), `Check triggers` в cron-job.org выключен (удалить через несколько дней).
-   Дальше: `update-prices` вызывать с VM в окне и отключить cron-job.org.
+3. `update-prices` вызывать с VM (контейнер триггеров уже просыпается в окна :00/:30) и отключить
+   cron-job.org полностью; через несколько дней удалить выключенную задачу `Check triggers`.
 4. Живой канал (§3.4, SSE с VM): позиции/PnL и лента за 1–2 с вместо ~5 с; декабрь — E2 (платный VPS);
    потом оповещения по позициям.
 5. Идея на потом: на графике капитала показывать, из-за каких монет был скачок (например, ночью
@@ -135,10 +142,9 @@ VPS: background service ── REST/WebSocket ──► биржи, Telegram, ц
 
 ### 3.2 Остальные фоновые задачи — в те же окна
 
-- **Ценовые триггеры:** перенести проверку из `check-triggers` (Vercel + cron-job.org каждые
-  10 минут) в фоновый сервис. Правила в памяти (перечитываются в окне и по сигналу при
-  изменении), цены — каждые 1–5 минут без БД; в БД писать только срабатывания. Оповещения
-  станут **быстрее**, а не медленнее.
+- **Ценовые триггеры (сделано 22.10):** контейнер на VM, правила в памяти (перечитываются в окне
+  и в течение минуты после правки), цены каждые 20 с без БД; в БД — только срабатывания и раз в
+  окно последняя цена. Подробно — MIGRATIONS.md §5a.
 - **`update-prices` / синхронизация кошельков:** запускать в том же 30-минутном окне.
 - **Telegram listener (сделано 21.10):** посты копятся в памяти и пишутся пачкой в окне
   :00/:30; пока кто-то читает ленту (`feedUntil` из `/api/worker/activity`, опрос раз в 10 с) —

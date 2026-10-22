@@ -16,13 +16,14 @@
 
 ## 1. Текущая инфраструктура и стоимость
 
-| Компонент | Где сейчас (21.10.2026) | Стоимость сейчас | Цель |
+| Компонент | Где сейчас (22.10.2026) | Стоимость сейчас | Цель |
 | --- | --- | --- | --- |
 | Web + API | Vercel Hobby, функции в `fra1` (Франкфурт); деплой только из `main`, превью отключены | $0 | Без изменений |
 | БД | Neon, проект `cryptoportfolio` (`aws-eu-central-1`), ветка `production` (0,25 CU), других веток нет | Launch с 19.10.2026, $0,106/CU·ч, без жёсткого лимита трат | Free с 1.11 (если укладываемся) или Launch $3–8/мес |
 | Exchange worker | GCP VM `cryptoportfolio-worker`, `europe-central2-a`, контейнер `cryptoportfolio-worker-production` из `main` | Пробный период GCP (~до января 2027) | Платный VPS в декабре |
 | Telegram listener | GCP VM, контейнер `cryptoportfolio-listener-production` из того же образа, деплой из `main`. Render `crypto-telegram-feed` — **Suspended**, ждёт удаления | $0 (Render ~$5 за октябрь) | Удалить сервис на Render после наблюдения |
-| Ценовые триггеры | Код на VM готов (§5a), до переключения — cron-job.org → `/api/cron/check-triggers` каждые 10 мин; `update-prices` — cron-job.org каждые 30 мин | $0, но будят БД | Контейнер триггеров на VM; `update-prices` — вызов с VM в окне |
+| Ценовые триггеры | GCP VM, контейнер `cryptoportfolio-triggers-production` (§5a) с 22.10; `Check triggers` в cron-job.org выключен | $0 | Без изменений |
+| `update-prices` | cron-job.org → Vercel `/api/cron/update-prices` каждые 30 мин (синхронизация кошельков, цены, снимки) | $0, будит БД раз в 30 мин | Вызов с VM в окне :00/:30, cron-job.org отключить |
 | Сигнал «пользователь смотрит» | Vercel Runtime Cache, `/api/worker/activity`, опрос worker каждые 10 с | $0 (вызовы функций в лимите Hobby) | Без изменений |
 | Резервные копии | Ручная: `C:/Users/rzhad/cryptoportfolio-backups/` (20.10, до миграции) | $0 | Ежедневно с VM в R2/B2 (§8) |
 
@@ -114,7 +115,7 @@ written at once while the feed is open…» означает, что сигна�
 Осталось: через 2–3 дня без проблем удалить сервис `crypto-telegram-feed` на Render
 (Settings → Delete). Возобновлять его нельзя — нужна будет новая сессия.
 
-## 5a. Ценовые триггеры: cron-job.org → VM (этап G)
+## 5a. Ценовые триггеры: cron-job.org → VM (этап G) — выполнен 22.10.2026
 
 Как устроено: третий контейнер того же образа, `scripts/price-trigger-worker.ts`. Правила в памяти,
 читаются из БД в окна :00/:30 и в течение минуты после правки на сайте (метка в Runtime Cache,
@@ -125,7 +126,7 @@ CoinGecko раз в 10 минут. Процентный триггер сраб�
 заново. В БД пишутся только срабатывания и раз в окно последняя цена. Контейнер стартует, только
 если есть `price-triggers.env`; ошибка контейнера не откатывает worker.
 
-Переключение (после деплоя кода из `main`):
+Переключение (выполнено 22.10; так же — на новом VPS):
 
 1. Переустановить root-скрипт деплоя (команда в §5, `<SHA>` — коммит в `main`): в нём появился
    запуск контейнера триггеров.
@@ -136,9 +137,9 @@ CoinGecko раз в 10 минут. Процентный триггер сраб�
 3. В cron-job.org **отключить** задачу `Check triggers` (иначе оповещения придут дважды).
 4. Запустить: `sudo /usr/local/sbin/cryptoportfolio-worker-update` (тот же коммит — стартует
    только недостающий контейнер). Лог: `sudo docker logs --tail 20 cryptoportfolio-triggers-production`,
-   ожидается `started: N active, M coins, K on Binance`.
-5. Проверка: на сайте создать ценовую цель чуть выше/ниже текущей цены — оповещение в Telegram
-   за ~20 с, строка `[triggers] target ... sent` в логе.
+   ожидается `started: N active, M coins, X on Binance, Y on Gate`.
+5. Проверка: процентный триггер с порогом 0,1% и периодом 1–5 мин на монету с Binance/Gate —
+   оповещение в Telegram, строка `[triggers] percent ... sent` в логе. Тестовый триггер удалить.
 
 Откат: `sudo docker rm -f cryptoportfolio-triggers-production`, удалить `price-triggers.env`,
 включить задачу в cron-job.org. Эндпоинт `/api/cron/check-triggers` остаётся рабочим.
@@ -261,6 +262,7 @@ IP остаётся в whitelist до конца проверки.
 | 20–21.10 | Уборка тестового окружения выполнена; listener на VM |
 | 28–31 октября | Снять графики Neon, решить Free/Launch |
 | 1 ноября | Смена тарифа Neon (если решено) |
-| Октябрь–ноябрь | Удалить Render; триггеры на VM и отключение cron-job.org; живой канал |
+| 22.10 | Ценовые триггеры на VM, `Check triggers` в cron-job.org выключен |
+| Октябрь–ноябрь | Удалить Render; `update-prices` с VM и отключение cron-job.org; живой канал |
 | Декабрь | Выбор провайдера, проба стран, переезд VM (§6), удаление ресурсов GCP |
 | Январь 2027 | Конец пробного периода GCP — к этому моменту на GCP ничего не должно работать |
