@@ -124,6 +124,10 @@ sudo bash -c 'source /etc/cryptoportfolio-worker-deploy.conf; git --git-dir="$st
 ```
 
 Запуск/перезапуск вручную: `sudo docker rm -f cryptoportfolio-listener-production && sudo /usr/local/sbin/cryptoportfolio-worker-update`.
+Диск VM — 19 ГБ: скрипт после успешного деплоя оставляет текущий и предыдущий образ и чистит кэш
+сборки старше суток (22.10 диск заполнился и деплой упал с `ENOSPC`). Вручную:
+`sudo docker image prune -a -f && sudo docker builder prune -a -f`, затем удалить `<state>/failed`
+и запустить скрипт деплоя.
 Логи: `sudo docker logs --tail 30 cryptoportfolio-listener-production`; строка «posts are
 written at once while the feed is open…» означает, что сигнал настроен.
 

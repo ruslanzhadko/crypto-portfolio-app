@@ -126,3 +126,7 @@ if $had_old; then docker rm "$old"; fi
 echo "Worker deployed and heartbeat verified: $sha"
 start_listener "$image"
 start_triggers "$image"
+# Keep the running image and the previous one for rollback; drop older images and stale build cache
+# (the npm layer is ~1.3 GB per build and filled the 19 GB disk on 22.10).
+docker images cryptoportfolio-worker --format '{{.CreatedAt}}	{{.Repository}}:{{.Tag}}'   | sort -r | tail -n +3 | cut -f2 | xargs -r docker rmi >/dev/null 2>&1 || true
+docker builder prune -f --filter until=24h >/dev/null 2>&1 || true
