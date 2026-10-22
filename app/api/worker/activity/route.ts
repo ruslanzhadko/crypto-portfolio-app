@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { readFeedActivityUntil } from "@/lib/feed/activity";
+import { readTriggersVersion } from "@/lib/triggers/signal";
 import {
   readExchangeActivity,
   workerSignalAuthorized,
@@ -17,12 +18,13 @@ export async function GET(req: NextRequest) {
     );
   try {
     const now = Date.now();
-    const [activity, feedUntil] = await Promise.all([
+    const [activity, feedUntil, triggersVersion] = await Promise.all([
       readExchangeActivity(now),
       readFeedActivityUntil(now).catch(() => null),
+      readTriggersVersion().catch(() => null),
     ]);
     return NextResponse.json(
-      { users: Object.keys(activity), feedUntil, serverTime: now },
+      { users: Object.keys(activity), feedUntil, triggersVersion, serverTime: now },
       { headers },
     );
   } catch {

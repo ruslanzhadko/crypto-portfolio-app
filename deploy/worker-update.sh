@@ -8,6 +8,9 @@ name=cryptoportfolio-worker-dev
 # Telegram feed listener: same image, own container and secrets. Skipped while the env file is absent.
 listener_env_file=/home/rzhadko/.config/cryptoportfolio/telegram-feed.env
 listener_name=cryptoportfolio-listener-production
+# Price alert worker: same image, own secrets. Skipped while its env file is absent.
+triggers_env_file=/home/rzhadko/.config/cryptoportfolio/price-triggers.env
+triggers_name=cryptoportfolio-triggers-production
 repo=https://github.com/ruslanzhadko/crypto-portfolio-app.git
 branch=develop
 # Optional root-owned configuration for a separately installed production worker.
@@ -33,6 +36,18 @@ start_listener() {
   done
   echo 'WARNING: listener has not reported readiness; inspect docker logs.'
 }
+# Failures here never roll back the exchange worker either.
+start_triggers() {
+  [[ -s "$triggers_env_file" ]] || { echo 'Trigger worker env file absent; trigger worker skipped.'; return 0; }
+  docker stop --time 15 "$triggers_name" >/dev/null 2>&1 || true
+  docker rm -f "$triggers_name" >/dev/null 2>&1 || true
+  docker run -d --name "$triggers_name" --restart unless-stopped     --env-file "$triggers_env_file" --no-healthcheck --log-driver json-file     --log-opt max-size=10m --log-opt max-file=3     --security-opt no-new-privileges:true --cap-drop ALL     "$1" node --import tsx scripts/price-trigger-worker.ts || { echo 'WARNING: trigger worker failed to start.'; return 0; }
+  for _ in {1..18}; do
+    if docker logs "$triggers_name" 2>&1 | grep -q 'trigger worker started'; then echo 'Trigger worker started.'; return 0; fi
+    sleep 5
+  done
+  echo 'WARNING: trigger worker has not reported readiness; inspect docker logs.'
+}
 if [[ ! -d "$state/repo.git" ]]; then git init --bare "$state/repo.git"; fi
 git --git-dir="$state/repo.git" fetch --depth=1 "$repo" "refs/heads/$branch"
 sha=$(git --git-dir="$state/repo.git" rev-parse FETCH_HEAD)
@@ -44,9 +59,12 @@ if [[ -n ${SSH_ORIGINAL_COMMAND:-} ]]; then
   fi
 fi
 if [[ -f "$state/deployed" ]] && [[ $(cat "$state/deployed") == "$sha" ]]; then
-  # Same commit: only start a listener that is missing (for example after its env file was created).
+  # Same commit: only start side containers that are missing (for example after an env file was created).
   if [[ -s "$listener_env_file" ]] && ! docker container inspect "$listener_name" >/dev/null 2>&1; then
     start_listener "cryptoportfolio-worker:git-$sha"
+  fi
+  if [[ -s "$triggers_env_file" ]] && ! docker container inspect "$triggers_name" >/dev/null 2>&1; then
+    start_triggers "cryptoportfolio-worker:git-$sha"
   fi
   exit 0
 fi
@@ -107,3 +125,4 @@ trap - ERR INT TERM
 if $had_old; then docker rm "$old"; fi
 echo "Worker deployed and heartbeat verified: $sha"
 start_listener "$image"
+start_triggers "$image"

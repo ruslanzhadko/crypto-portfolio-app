@@ -10,6 +10,7 @@ COPY lib ./lib
 COPY scripts/exchange-worker.ts ./scripts/exchange-worker.ts
 COPY scripts/exchange-worker-health.mjs ./scripts/exchange-worker-health.mjs
 COPY scripts/telegram-feed-listener.ts ./scripts/telegram-feed-listener.ts
+COPY scripts/price-trigger-worker.ts ./scripts/price-trigger-worker.ts
 USER node
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 CMD ["node", "scripts/exchange-worker-health.mjs"]
 CMD ["node", "--import", "tsx", "scripts/exchange-worker.ts"]

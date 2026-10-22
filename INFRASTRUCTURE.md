@@ -66,8 +66,8 @@
    listener на VM работает, Render не возобновлять** — Telegram сбросит общую сессию (лечение —
    MIGRATIONS.md §5).
 2. 28–31 октября — графики Neon (CU·ч и network transfer) и решение Free/Launch (MIGRATIONS.md §3).
-3. Триггеры цен и `update-prices` на VM, отключить cron-job.org (§3.2). До этого можно перевести
-   `Check triggers` в cron-job.org на :00/:30 (оповещения с задержкой до 30 минут).
+3. Триггеры цен на VM: код готов 22.10, переключение — MIGRATIONS.md §5a (env-файл, отключить
+   `Check triggers` в cron-job.org). Затем `update-prices` вызывать с VM в окне и отключить cron-job.org.
 4. Живой канал (§3.4, SSE с VM): позиции/PnL и лента за 1–2 с вместо ~5 с; декабрь — E2 (платный VPS);
    потом оповещения по позициям.
 5. Мелочи: редкая (~1 из 15 загрузок) ошибка гидратации React #418 на `/en/exchanges` — вероятная

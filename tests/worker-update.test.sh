@@ -22,7 +22,8 @@ case "$1" in
   inspect)
     if [[ -e /tmp/mock/unhealthy ]]; then echo unhealthy; else echo healthy; fi ;;
   stop|start) test -e "/tmp/mock/containers/${@: -1}" ;;
-  logs) echo '[feed] listener started for 7 channels' ;;
+  logs) printf '%s
+' '[feed] listener started for 7 channels' '[triggers] trigger worker started' ;;
   rename) mv "/tmp/mock/containers/$2" "/tmp/mock/containers/$3" ;;
   rm) rm -f "/tmp/mock/containers/${@: -1}" ;;
   run)
@@ -45,6 +46,11 @@ test ! -e /tmp/mock/containers/cryptoportfolio-listener-production
 echo test-only > /home/rzhadko/.config/cryptoportfolio/telegram-feed.env
 bash /source/deploy/worker-update.sh
 test "$(cat /tmp/mock/containers/cryptoportfolio-listener-production)" = new
+# The trigger worker follows the same rule: absent env file, no container; created later, started.
+test ! -e /tmp/mock/containers/cryptoportfolio-triggers-production
+echo test-only > /home/rzhadko/.config/cryptoportfolio/price-triggers.env
+bash /source/deploy/worker-update.sh
+test "$(cat /tmp/mock/containers/cryptoportfolio-triggers-production)" = new
 echo retained > /tmp/mock/containers/cryptoportfolio-worker-dev
 echo second > /tmp/mock/sha
 touch /tmp/mock/unhealthy
@@ -64,4 +70,4 @@ if SSH_ORIGINAL_COMMAND='arbitrary command' bash /source/deploy/worker-update.sh
   echo 'Expected invalid SSH command rejection'; exit 1
 fi
 test "$(wc -l < /tmp/mock/calls)" = "$before"
-echo 'PASS: deployment, listener, unchanged commit, rollback, failed build, stale push, invalid command'
+echo 'PASS: deployment, listener, trigger worker, unchanged commit, rollback, failed build, stale push, invalid command'

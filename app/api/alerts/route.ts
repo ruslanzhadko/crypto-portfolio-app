@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, created, handleUnknown, ok } from '@/lib/api/response';
 import { triggerCreateSchema } from '@/lib/utils/validators';
+import { markTriggersChanged } from '@/lib/triggers/signal';
 
 export const dynamic = 'force-dynamic';
 
@@ -55,6 +56,7 @@ export async function POST(req: NextRequest) {
         lastCheckedAt: cached ? new Date() : null,
       },
     });
+    await markTriggersChanged();
 
     return created({ trigger });
   } catch (err) {

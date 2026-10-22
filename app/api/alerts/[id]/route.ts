@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, noContent, ok } from '@/lib/api/response';
 import { triggerUpdateSchema } from '@/lib/utils/validators';
+import { markTriggersChanged } from '@/lib/triggers/signal';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +57,7 @@ export async function PUT(
       where: { id: trigger.id },
       data: { ...parsed.data, ...extraData },
     });
+    await markTriggersChanged();
     return ok({ trigger: updated });
   } catch (err) {
     return handleUnknown(err);
@@ -77,6 +79,7 @@ export async function DELETE(
     if (!trigger) return apiError('NOT_FOUND', 'Тригер не знайдено');
 
     await prisma.priceTrigger.delete({ where: { id: trigger.id } });
+    await markTriggersChanged();
     return noContent();
   } catch (err) {
     return handleUnknown(err);

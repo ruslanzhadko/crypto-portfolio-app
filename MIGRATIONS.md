@@ -22,7 +22,7 @@
 | БД | Neon, проект `cryptoportfolio` (`aws-eu-central-1`), ветка `production` (0,25 CU), других веток нет | Launch с 19.10.2026, $0,106/CU·ч, без жёсткого лимита трат | Free с 1.11 (если укладываемся) или Launch $3–8/мес |
 | Exchange worker | GCP VM `cryptoportfolio-worker`, `europe-central2-a`, контейнер `cryptoportfolio-worker-production` из `main` | Пробный период GCP (~до января 2027) | Платный VPS в декабре |
 | Telegram listener | GCP VM, контейнер `cryptoportfolio-listener-production` из того же образа, деплой из `main`. Render `crypto-telegram-feed` — **Suspended**, ждёт удаления | $0 (Render ~$5 за октябрь) | Удалить сервис на Render после наблюдения |
-| Ценовые триггеры | cron-job.org → Vercel `/api/cron/*` каждые 10/30 мин | $0, но будят БД | В worker на VM, в реальном времени |
+| Ценовые триггеры | Код на VM готов (§5a), до переключения — cron-job.org → `/api/cron/check-triggers` каждые 10 мин; `update-prices` — cron-job.org каждые 30 мин | $0, но будят БД | Контейнер триггеров на VM; `update-prices` — вызов с VM в окне |
 | Сигнал «пользователь смотрит» | Vercel Runtime Cache, `/api/worker/activity`, опрос worker каждые 10 с | $0 (вызовы функций в лимите Hobby) | Без изменений |
 | Резервные копии | Ручная: `C:/Users/rzhad/cryptoportfolio-backups/` (20.10, до миграции) | $0 | Ежедневно с VM в R2/B2 (§8) |
 
@@ -37,6 +37,7 @@
 | VM: `/home/rzhadko/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko | Контейнер `cryptoportfolio-worker-production` |
 | VM: `/etc/cryptoportfolio-worker-deploy.conf` (root, 600) | `branch=main`, state `/var/lib/cryptoportfolio-worker-production-deploy`, env-файл, имя контейнера | Root-скрипт деплоя |
 | VM: `~/.config/cryptoportfolio/telegram-feed.env` (600) | `DATABASE_URL`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET` (значения без кавычек) | Контейнер `cryptoportfolio-listener-production` |
+| VM: `~/.config/cryptoportfolio/price-triggers.env` (600) | `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `COINGECKO_API_KEY` (и `COINGECKO_BASE_URL`, если есть), `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET` | Контейнер `cryptoportfolio-triggers-production` |
 | GitHub → Environment `worker-preview` | SSH-ключ деплоя, known_hosts, `WORKER_HOST`, `WORKER_USER` для этой VM; с 20.10 используется для деплоя из `main` (`worker-production` не нужен, пока VM одна) | GitHub Actions |
 | Neon | Строки подключения веток | — |
 
@@ -112,6 +113,37 @@ written at once while the feed is open…» означает, что сигна�
 
 Осталось: через 2–3 дня без проблем удалить сервис `crypto-telegram-feed` на Render
 (Settings → Delete). Возобновлять его нельзя — нужна будет новая сессия.
+
+## 5a. Ценовые триггеры: cron-job.org → VM (этап G)
+
+Как устроено: третий контейнер того же образа, `scripts/price-trigger-worker.ts`. Правила в памяти,
+читаются из БД в окна :00/:30 и в течение минуты после правки на сайте (метка в Runtime Cache,
+поле `triggersVersion` в `/api/worker/activity`). Цены: Binance (пары USDT, сверка с CoinGecko ±3%)
+каждые 20 с, остальные — CoinGecko раз в 10 минут. Процентный триггер срабатывает сразу, как
+только изменение за свой интервал достигло порога (скользящее окно), и после срабатывания меряет
+заново. В БД пишутся только срабатывания и раз в окно последняя цена. Контейнер стартует, только
+если есть `price-triggers.env`; ошибка контейнера не откатывает worker.
+
+Переключение (после деплоя кода из `main`):
+
+1. Переустановить root-скрипт деплоя (команда в §5, `<SHA>` — коммит в `main`): в нём появился
+   запуск контейнера триггеров.
+2. Создать env-файл, не печатая значений (токен бота — из Vercel, вводится скрыто):
+   ```bash
+   cd ~/.config/cryptoportfolio && umask 077 && grep -E '^(DATABASE_URL|COINGECKO_API_KEY|COINGECKO_BASE_URL|EXCHANGE_ACTIVITY_URL|EXCHANGE_WORKER_SIGNAL_SECRET)=' exchange-production.env > price-triggers.env && read -rsp 'TELEGRAM_BOT_TOKEN: ' t && echo "TELEGRAM_BOT_TOKEN=$t" >> price-triggers.env && unset t && echo && cut -d= -f1 price-triggers.env
+   ```
+3. В cron-job.org **отключить** задачу `Check triggers` (иначе оповещения придут дважды).
+4. Запустить: `sudo /usr/local/sbin/cryptoportfolio-worker-update` (тот же коммит — стартует
+   только недостающий контейнер). Лог: `sudo docker logs --tail 20 cryptoportfolio-triggers-production`,
+   ожидается `started: N active, M coins, K on Binance`.
+5. Проверка: на сайте создать ценовую цель чуть выше/ниже текущей цены — оповещение в Telegram
+   за ~20 с, строка `[triggers] target ... sent` в логе.
+
+Откат: `sudo docker rm -f cryptoportfolio-triggers-production`, удалить `price-triggers.env`,
+включить задачу в cron-job.org. Эндпоинт `/api/cron/check-triggers` остаётся рабочим.
+
+Дальше (этап 2): VM сама вызывает `/api/cron/update-prices` в своём окне, после этого cron-job.org
+отключается полностью.
 
 ## 6. Переезд VM: GCP → платный VPS (этап E2, декабрь)
 
