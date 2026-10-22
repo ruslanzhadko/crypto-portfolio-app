@@ -49,7 +49,7 @@ export function ExchangesPage() {
     "/api/portfolio/capital?view=overview",
   );
   return (
-    <div className="space-y-3 sm:space-y-4">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-5">
       <PageTitle
         title={t("title")}
         info={t("subtitle")}
@@ -93,7 +93,7 @@ export function ExchangesPage() {
           </p>
         </div>
       )}
-      <div className="grid gap-2.5 sm:gap-3 lg:grid-cols-2">
+      <div className="grid gap-2.5 sm:gap-3 lg:grid-cols-2 lg:gap-4">
         {connections.data?.connections.map((connection) => {
           const accounts =
             capital.data?.overview.accounts.filter(
@@ -102,19 +102,19 @@ export function ExchangesPage() {
           return (
             <div
               key={connection.id}
-              className="rounded-xl border border-border bg-surface p-3 sm:p-4"
+              className="rounded-xl border border-border bg-surface p-3 sm:p-4 lg:p-5"
             >
-              <div className="flex items-center gap-2">
-                <ExchangeLogo exchange={connection.exchange} />
+              <div className="flex items-center gap-2 lg:gap-3">
+                <ExchangeLogo exchange={connection.exchange} size={24} />
                 <div className="min-w-0 flex-1">
                   <Link
-                    className="flex items-center gap-1.5 text-sm font-semibold hover:text-primary"
+                    className="flex items-center gap-1.5 text-sm font-semibold hover:text-primary lg:text-base"
                     href={`/exchanges/${connection.id}`}
                   >
                     <span className="truncate">{connection.label}</span>
                     <ArrowRight className="h-3.5 w-3.5 shrink-0" />
                   </Link>
-                  <p className="truncate text-[11px] text-text-muted">
+                  <p className="truncate text-[11px] text-text-muted lg:text-xs">
                     {exchangeName(connection.exchange)}
                     {connection.keyMask && (
                       <span className="ml-1.5 font-mono">
@@ -129,13 +129,13 @@ export function ExchangesPage() {
                 />
               </div>
               {/* One line per account: kind and freshness on the left, equity on the right. */}
-              <div className="mt-2 divide-y divide-border/60">
+              <div className="mt-2 divide-y divide-border/60 lg:mt-3">
                 {accounts.map((a) => (
                   <div
                     key={a.id}
-                    className="flex items-baseline justify-between gap-3 py-1.5 last:pb-0"
+                    className="flex items-baseline justify-between gap-3 py-1.5 last:pb-0 lg:py-2.5"
                   >
-                    <p className="min-w-0 truncate text-xs text-text-muted">
+                    <p className="min-w-0 truncate text-xs text-text-muted lg:text-sm">
                       {t(`kinds.${a.kind}`)}
                       <span
                         className={a.stale ? "text-warning" : undefined}
@@ -150,7 +150,7 @@ export function ExchangesPage() {
                         {a.stale ? t("stale") : shortTime(a.balancesAt, locale)}
                       </span>
                     </p>
-                    <p className="shrink-0 text-base font-semibold tabular-nums sm:text-lg">
+                    <p className="shrink-0 text-base font-semibold tabular-nums sm:text-lg lg:text-2xl">
                       <Money value={a.equityUsd} />
                     </p>
                   </div>

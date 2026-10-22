@@ -23,7 +23,7 @@ export function PageTitle({
   return (
     <div>
       <div className="flex items-center gap-2">
-        <h1 className="text-xl font-bold leading-tight tracking-tight sm:text-2xl">{title}</h1>
+        <h1 className="text-xl font-bold leading-tight tracking-tight sm:text-2xl lg:text-3xl">{title}</h1>
         <button
           type="button"
           className="rounded-full p-1 text-text-muted transition-colors hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
@@ -32,12 +32,12 @@ export function PageTitle({
           title={info}
           onClick={() => setShowInfo((value) => !value)}
         >
-          <Info className="h-4 w-4" aria-hidden />
+          <Info className="h-4 w-4 lg:h-5 lg:w-5" aria-hidden />
         </button>
         <div className="ml-auto shrink-0">{children}</div>
       </div>
       {showInfo && (
-        <div className="mt-1 space-y-1 text-xs text-text-muted duration-200 animate-in fade-in-0 motion-reduce:animate-none">
+        <div className="mt-1 space-y-1 text-xs text-text-muted lg:text-sm duration-200 animate-in fade-in-0 motion-reduce:animate-none">
           <p>{info}</p>
           {details && <p>{details}</p>}
         </div>
