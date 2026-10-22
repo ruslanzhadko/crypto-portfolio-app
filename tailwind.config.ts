@@ -99,6 +99,10 @@ const config: Config = {
           from: { gridTemplateRows: '0fr', opacity: '0' },
           to: { gridTemplateRows: '1fr', opacity: '1' },
         },
+        fold: {
+          from: { gridTemplateRows: '1fr', opacity: '1' },
+          to: { gridTemplateRows: '0fr', opacity: '0' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -107,6 +111,7 @@ const config: Config = {
         shimmer: 'shimmer 2s linear infinite',
         sweep: 'sweep 1.4s ease-in-out infinite',
         expand: 'expand 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)',
+        fold: 'fold 0.22s cubic-bezier(0.4, 0, 0.6, 1) forwards',
       },
     },
   },

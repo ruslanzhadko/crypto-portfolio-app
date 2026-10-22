@@ -15,6 +15,8 @@ import type { OpenPosition } from "@/lib/exchanges/types";
 import { displaySymbol } from "@/lib/exchanges/display-symbol";
 
 // Position details: three tight columns on phones (the third right-aligned), six roomy ones from lg.
+/** Matches the `fold` animation in tailwind.config.ts. */
+const COLLAPSE_MS = 220;
 const DETAILS_GRID =
   "grid grid-cols-3 gap-x-3 gap-y-3 text-[13px] [&>div]:min-w-0 [&>div:nth-child(3n)]:text-right [&_dd]:mt-0.5 [&_dd]:font-medium [&_dd]:tabular-nums [&_dd>span]:text-inherit [&_dt]:text-[11px] [&_dt]:leading-tight lg:grid-cols-6 lg:gap-x-6 lg:gap-y-3 lg:text-sm lg:[&>div:nth-child(3n):not(:last-child)]:text-left lg:[&_dd]:mt-1 lg:[&_dt]:text-xs lg:[&_dt]:leading-normal";
 
@@ -179,6 +181,21 @@ export function PositionsPage({
     return () => clearTimeout(timer);
   }, [coin]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // Positions playing the collapse animation; the details element closes when it ends.
+  const [closing, setClosing] = useState<Record<string, boolean>>({});
+  function collapse(key: string) {
+    setClosing((previous) => ({ ...previous, [key]: true }));
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    window.setTimeout(
+      () => {
+        setExpanded((previous) => ({ ...previous, [key]: false }));
+        setClosing(({ [key]: _done, ...rest }) => rest);
+      },
+      reduceMotion ? 0 : COLLAPSE_MS,
+    );
+  }
   const [filtersOpen, setFiltersOpen] = useState(false);
   const activeFilters = [
     exchange,
@@ -521,7 +538,15 @@ export function PositionsPage({
                     );
                   }}
                 >
-                  <summary className="grid cursor-pointer list-none grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 [&>div>p+p]:mt-0.5 sm:px-4 lg:grid-cols-6 lg:items-center lg:gap-x-6 lg:gap-y-2 lg:px-5 lg:py-3 lg:[&>div>p+p]:mt-1 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [&>div]:min-w-0">
+                  <summary
+                    onClick={(event) => {
+                      // Closing is animated: keep the element open until the content has folded away.
+                      if (!(expanded[key] ?? false)) return;
+                      event.preventDefault();
+                      if (!closing[key]) collapse(key);
+                    }}
+                    className="grid cursor-pointer list-none grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 [&>div>p+p]:mt-0.5 sm:px-4 lg:grid-cols-6 lg:items-center lg:gap-x-6 lg:gap-y-2 lg:px-5 lg:py-3 lg:[&>div>p+p]:mt-1 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [&>div]:min-w-0"
+                  >
                     {/* Phones: coin and account on the left with PnL beside them, then size, prices and realized PnL in one row. */}
                     <div className="order-1 col-span-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 lg:order-none lg:col-span-1 lg:block">
                       {/* A div: the logo fallback is a div, which a paragraph may not contain (hydration error). */}
@@ -690,7 +715,9 @@ export function PositionsPage({
                   </summary>
                   {/* Mounted only while open so the reveal plays every time; rows below slide down instead of jumping. */}
                   {(expanded[key] ?? false) && (
-                    <div className="grid animate-expand motion-reduce:animate-none">
+                    <div
+                      className={`grid motion-reduce:animate-none ${closing[key] ? "animate-fold" : "animate-expand"}`}
+                    >
                       <div className="min-h-0 overflow-hidden">
                         <div className="border-t border-border bg-background/40 px-3 py-3 duration-300 animate-in slide-in-from-top-2 motion-reduce:animate-none sm:px-4 lg:px-5 lg:py-3">
                           {shield ? (
