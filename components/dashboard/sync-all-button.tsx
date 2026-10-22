@@ -27,15 +27,11 @@ interface SyncAllButtonProps {
   oldestSyncAt?: string | Date | null;
 }
 
-export function SyncAllButton({
-  compactOnMobile = false,
-  autoSyncStaleMinutes = 10,
-  oldestSyncAt = null,
-}: SyncAllButtonProps) {
+/** Wallet sync with the usual toasts and dashboard refresh; shared by the sync buttons. */
+export function useWalletSync() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
-  const autoTriggeredRef = useRef(false);
   const t = useTranslations('SyncAllButton');
 
   function runSync(opts: { force?: boolean; silent?: boolean } = {}) {
@@ -95,6 +91,18 @@ export function SyncAllButton({
       router.refresh();
     });
   }
+
+  return { runSync, isPending };
+}
+
+export function SyncAllButton({
+  compactOnMobile = false,
+  autoSyncStaleMinutes = 10,
+  oldestSyncAt = null,
+}: SyncAllButtonProps) {
+  const { runSync, isPending } = useWalletSync();
+  const autoTriggeredRef = useRef(false);
+  const t = useTranslations('SyncAllButton');
 
   // Авто-sync у фоні якщо найстаріший гаманець давно не оновлювався
   useEffect(() => {

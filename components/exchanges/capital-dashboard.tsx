@@ -28,6 +28,7 @@ import type { ExchangeHolding } from "@/lib/portfolio/unified-assets";
 import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
 import { useDisplayPreference } from "./display-preferences";
+import { useWalletSync } from "@/components/dashboard/sync-all-button";
 
 export function CapitalDashboard({
   walletAssets,
@@ -52,6 +53,7 @@ export function CapitalDashboard({
     [days, setDays] = useState(30),
     [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const wallets = useWalletSync();
   const [historyOpen, setHistoryOpen] = useDisplayPreference(
     "exchange-capital-history-open",
     "true",
@@ -65,6 +67,19 @@ export function CapitalDashboard({
   }>(`/api/portfolio/capital?view=history&days=${days}`, 300_000);
   const overview = data.data?.overview,
     history = chartData.data?.history;
+  /** The refresh button follows the selected tab: everything, wallets only or exchanges only. */
+  function refreshScope() {
+    if (scope !== "exchanges") wallets.runSync();
+    if (scope !== "wallets") void refresh();
+  }
+  const refreshing = busy || wallets.isPending;
+  const refreshLabel = t(
+    scope === "all"
+      ? "refreshAll"
+      : scope === "wallets"
+        ? "refreshWallets"
+        : "refreshExchanges",
+  );
   async function refresh() {
     setBusy(true);
     setError(null);
@@ -237,18 +252,16 @@ export function CapitalDashboard({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-auto sm:px-3"
-                disabled={busy}
-                aria-label={t("refreshExchanges")}
-                title={t("refreshExchanges")}
-                onClick={() => void refresh()}
+                disabled={refreshing}
+                aria-label={refreshLabel}
+                title={refreshLabel}
+                onClick={refreshScope}
               >
                 <RefreshCw
                   aria-hidden="true"
-                  className={`h-4 w-4 sm:hidden ${busy ? "animate-spin" : ""}`}
+                  className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
                 />
-                <span className="hidden sm:inline">
-                  {t(busy ? "saving" : "refreshExchanges")}
-                </span>
+                <span className="hidden sm:inline">{refreshLabel}</span>
               </Button>
             </div>
             <div className="mt-2.5 grid gap-2.5 sm:mt-3 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] lg:items-end">

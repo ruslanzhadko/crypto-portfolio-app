@@ -955,6 +955,8 @@
     "wallets": "Wallets",
     "exchanges": "Exchanges",
     "totalCapital": "Total capital",
+    "refreshAll": "Refresh all",
+    "refreshWallets": "Refresh wallets",
     "refreshExchanges": "Refresh exchanges",
     "partialCapital": "Partial valuation: some accounts or asset prices are missing.",
     "staleCapital": "Some sources are stale. The last known values are retained.",

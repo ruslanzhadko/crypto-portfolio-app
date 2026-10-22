@@ -10,6 +10,7 @@ import {
   type Venue,
 } from "../lib/triggers/prices";
 import { createTriggersVersionClient } from "../lib/triggers/signal";
+import { createUpdatePricesCaller } from "../lib/triggers/update-prices";
 import {
   deliverFiring,
   loadActiveTriggers,
@@ -20,7 +21,8 @@ import {
  * Price alerts on the VM. Rules live in memory and are read from PostgreSQL once per :00/:30
  * window (or within a minute after a user edits them); prices come from Binance or Gate every tick
  * and from CoinGecko for coins neither lists. The database is touched only in windows and
- * when an alert fires, so Neon can sleep in between.
+ * when an alert fires, so Neon can sleep in between. In the same window it also runs the wallet
+ * price update on Vercel (formerly a cron-job.org call), so the database wakes once.
  */
 const TICK_MS = 20_000;
 /** Same cadence as the old Vercel cron, keeping CoinGecko inside its monthly budget. */
@@ -34,6 +36,7 @@ if (!process.env.DATABASE_URL || !process.env.TELEGRAM_BOT_TOKEN)
 
 const engine = new TriggerEngine();
 const versions = createTriggersVersionClient();
+const walletPrices = createUpdatePricesCaller();
 let mapping = new Map<string, { venue: Venue; pair: string }>();
 let coingecko = new Map<string, number>();
 let coingeckoAt = 0;
@@ -82,9 +85,18 @@ async function tick() {
   const now = Date.now();
   const currentWindow = Math.floor(now / WINDOW_MS);
   if (currentWindow !== slot) {
+    // Runs on Vercel alongside the trigger work below; skipped at startup so a deploy adds no run.
+    const updating =
+      walletPrices && slot !== -1
+        ? walletPrices
+            .run()
+            .then((summary) => console.log(`[triggers] wallet prices: ${summary}`))
+            .catch(() => console.warn("[triggers] wallet price update failed; next window retries"))
+        : null;
     if (slot !== -1) await persistLatestPrices(engine.latestPrices(), new Date(now));
     await reload(slot === -1 ? "started" : "window", now);
     slot = currentWindow;
+    await updating;
     // Close pooled connections so they cannot keep the database awake.
     await prisma.$disconnect();
   } else if (versions && now - versionPolledAt >= VERSION_POLL_MS) {
@@ -144,6 +156,11 @@ async function main() {
     versions
       ? "[triggers] trigger worker started; rule changes are picked up within a minute"
       : "[triggers] trigger worker started; no change signal, rules reload every 30 minutes",
+  );
+  console.log(
+    walletPrices
+      ? "[triggers] wallet prices are updated in every :00/:30 window"
+      : "[triggers] CRON_SECRET not set: wallet prices stay with the external cron",
   );
   while (!stopping) {
     ticking = true;

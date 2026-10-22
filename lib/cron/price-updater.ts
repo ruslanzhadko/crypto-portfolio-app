@@ -1,4 +1,4 @@
-import { TriggerDirection, TriggerType } from '@prisma/client';
+import { Prisma, TriggerDirection, TriggerType } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
@@ -16,8 +16,10 @@ const WALLET_SYNC_INTERVAL_MS = 4 * 60 * 60 * 1000;
 const MAX_WALLETS_PER_RUN = 10;
 /** Два гаманці одночасно зменшують wall time без великого сплеску API/DB. */
 const WALLET_SYNC_CONCURRENCY = 2;
-/** Лишаємо час для цін та снапшотів до 30-секундного ліміту cron-job.org. */
-const WALLET_SYNC_TIME_BUDGET_MS = 16_000;
+/** Leaves time for prices and snapshots within the 60-second function limit (the VM waits for it). */
+const WALLET_SYNC_TIME_BUDGET_MS = 30_000;
+/** Writes go out in a few transactions instead of one round trip per row. */
+const WRITE_BATCH = 50;
 
 // ─────────────────────────────────────────
 // Public types
@@ -26,6 +28,8 @@ const WALLET_SYNC_TIME_BUDGET_MS = 16_000;
 export interface PriceUpdaterResult {
   walletsSynced: number;
   pricesUpdated: number;
+  /** Cached prices that actually changed and were written. */
+  pricesWritten: number;
   balancesRecalculated: number;
   snapshotsCreated: number;
   errors: number;
@@ -171,28 +175,22 @@ export function resolveBalancePrice(
 // ─────────────────────────────────────────
 
 async function collectTokenIds(): Promise<string[]> {
-  const [triggers, balances, topCached] = await Promise.all([
+  const [triggers, balances] = await Promise.all([
     prisma.priceTrigger.findMany({
       where: { isActive: true },
       select: { tokenId: true },
       distinct: ['tokenId'],
     }),
     prisma.tokenBalance.findMany({
-      where: { coingeckoId: { not: null } },
+      where: { coingeckoId: { not: null }, isSpam: false },
       select: { coingeckoId: true },
       distinct: ['coingeckoId'],
-    }),
-    prisma.tokenPrice.findMany({
-      orderBy: { marketCap: 'desc' },
-      take: 100,
-      select: { tokenId: true },
     }),
   ]);
 
   const ids = new Set<string>();
   for (const t of triggers) if (t.tokenId) ids.add(t.tokenId);
   for (const b of balances) if (b.coingeckoId) ids.add(b.coingeckoId);
-  for (const p of topCached) ids.add(p.tokenId);
   return Array.from(ids);
 }
 
@@ -200,38 +198,65 @@ async function collectTokenIds(): Promise<string[]> {
 // Step 2 — Fetch & persist prices
 // ─────────────────────────────────────────
 
-async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<void> {
-  // Sequential to avoid overwhelming the DB with concurrent upserts
+/** Runs writes in a few transactions instead of one round trip per row. */
+async function writeInBatches(writes: Prisma.PrismaPromise<unknown>[]): Promise<void> {
+  for (let i = 0; i < writes.length; i += WRITE_BATCH)
+    await prisma.$transaction(writes.slice(i, i + WRITE_BATCH));
+}
+
+/** Writes only prices that changed; returns how many rows were written. */
+async function persistPrices(prices: Map<string, SimplePriceItem>): Promise<number> {
+  const stored = new Map(
+    (
+      await prisma.tokenPrice.findMany({
+        where: { tokenId: { in: [...prices.keys()] } },
+        select: { tokenId: true, currentPrice: true, priceChange24h: true, logoUrl: true },
+      })
+    ).map((row) => [row.tokenId, row]),
+  );
+  const writes: Prisma.PrismaPromise<unknown>[] = [];
   for (const p of prices.values()) {
-    await prisma.tokenPrice.upsert({
-      where: { tokenId: p.id },
-      create: {
-        tokenId: p.id,
-        symbol: p.symbol ?? p.id,
-        name: p.name ?? p.id,
-        currentPrice: p.price,
-        priceChange24h: p.change24h,
-        marketCap: p.marketCap ?? null,
-        volume24h: p.volume24h ?? null,
-        logoUrl: p.image ?? null,
-      },
-      update: {
-        currentPrice: p.price,
-        priceChange24h: p.change24h,
-        marketCap: p.marketCap ?? null,
-        volume24h: p.volume24h ?? null,
-        ...(p.image ? { logoUrl: p.image } : {}),
-      },
-    });
+    const row = stored.get(p.id);
+    if (
+      row &&
+      row.currentPrice === p.price &&
+      Math.abs(row.priceChange24h - p.change24h) < 1e-6 &&
+      (!p.image || row.logoUrl === p.image)
+    )
+      continue;
+    writes.push(
+      prisma.tokenPrice.upsert({
+        where: { tokenId: p.id },
+        create: {
+          tokenId: p.id,
+          symbol: p.symbol ?? p.id,
+          name: p.name ?? p.id,
+          currentPrice: p.price,
+          priceChange24h: p.change24h,
+          marketCap: p.marketCap ?? null,
+          volume24h: p.volume24h ?? null,
+          logoUrl: p.image ?? null,
+        },
+        update: {
+          currentPrice: p.price,
+          priceChange24h: p.change24h,
+          marketCap: p.marketCap ?? null,
+          volume24h: p.volume24h ?? null,
+          ...(p.image ? { logoUrl: p.image } : {}),
+        },
+      }),
+    );
   }
+  await writeInBatches(writes);
+  return writes.length;
 }
 
 async function fetchAndPersistPrices(
   tokenIds: string[],
-): Promise<Map<string, SimplePriceItem>> {
+): Promise<{ prices: Map<string, SimplePriceItem>; written: number }> {
   const prices = await fetchPricesByIds(tokenIds);
-  if (prices.size > 0) await persistPrices(prices);
-  return prices;
+  const written = prices.size > 0 ? await persistPrices(prices) : 0;
+  return { prices, written };
 }
 
 // ─────────────────────────────────────────
@@ -279,7 +304,7 @@ async function recalculateBalances(): Promise<number> {
     cgRows.map((c) => [c.tokenId, { price: c.currentPrice, change24h: c.priceChange24h }]),
   );
 
-  let updated = 0;
+  const writes: Prisma.PrismaPromise<unknown>[] = [];
   for (const b of balances) {
     const resolved = resolveBalancePrice(b, feedPrices, cgPriceMap);
     if (!resolved || resolved.price <= 0 || !Number.isFinite(resolved.price)) continue;
@@ -293,13 +318,15 @@ async function recalculateBalances(): Promise<number> {
       Math.abs(newChange - b.priceChange24h) < 1e-6;
     if (unchanged) continue;
 
-    await prisma.tokenBalance.update({
-      where: { id: b.id },
-      data: { usdValue: newUsd, priceUsd: resolved.price, priceChange24h: newChange },
-    });
-    updated++;
+    writes.push(
+      prisma.tokenBalance.update({
+        where: { id: b.id },
+        data: { usdValue: newUsd, priceUsd: resolved.price, priceChange24h: newChange },
+      }),
+    );
   }
-  return updated;
+  await writeInBatches(writes);
+  return writes.length;
 }
 
 // ─────────────────────────────────────────
@@ -557,6 +584,7 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   const result: PriceUpdaterResult = {
     walletsSynced: 0,
     pricesUpdated: 0,
+    pricesWritten: 0,
     balancesRecalculated: 0,
     snapshotsCreated: 0,
     errors: 0,
@@ -579,8 +607,10 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   try {
     const tokenIds = await collectTokenIds();
     if (tokenIds.length > 0) {
-      prices = await fetchAndPersistPrices(tokenIds);
+      const fetched = await fetchAndPersistPrices(tokenIds);
+      prices = fetched.prices;
       result.pricesUpdated = prices.size;
+      result.pricesWritten = fetched.written;
     }
   } catch (err) {
     result.errors++;

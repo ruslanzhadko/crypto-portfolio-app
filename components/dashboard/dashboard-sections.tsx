@@ -194,7 +194,8 @@ export function DashboardSections({
             )}
           </div>
           <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2">
-            <SyncAllButton compactOnMobile />
+            {/* With exchanges, the capital card's button refreshes the selected tab instead. */}
+            {!exchangesEnabled && <SyncAllButton compactOnMobile />}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
