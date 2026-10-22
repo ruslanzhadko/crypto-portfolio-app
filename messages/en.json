@@ -351,6 +351,7 @@
     "directionUp": "↑ Up only",
     "directionDown": "↓ Down only",
     "intervalLabel": "Within",
+    "interval1m": "1 minute",
     "interval5m": "5 minutes",
     "interval15m": "15 minutes",
     "interval1h": "1 hour",

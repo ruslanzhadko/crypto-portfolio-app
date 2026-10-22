@@ -351,6 +351,7 @@
     "directionUp": "↑ Лише зростання",
     "directionDown": "↓ Лише падіння",
     "intervalLabel": "За який період",
+    "interval1m": "1 хвилина",
     "interval5m": "5 хвилин",
     "interval15m": "15 хвилин",
     "interval1h": "1 година",

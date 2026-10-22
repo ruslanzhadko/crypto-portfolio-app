@@ -98,7 +98,7 @@ const percentTriggerSchema = triggerBase.extend({
   threshold: z.number().min(0.1).max(100),
   direction: z.nativeEnum(TriggerDirection).default('BOTH'),
   // Window the change is measured over; prices are checked every 20 s on the VM regardless.
-  interval: z.number().int().min(5).max(1440),
+  interval: z.number().int().min(1).max(1440),
 });
 
 const priceTargetTriggerSchema = triggerBase.extend({
@@ -118,7 +118,7 @@ export const triggerUpdateSchema = z.object({
   isActive: z.boolean().optional(),
   threshold: z.number().min(0.1).max(100).optional(),
   direction: z.nativeEnum(TriggerDirection).optional(),
-  interval: z.number().int().min(5).max(1440).optional(),
+  interval: z.number().int().min(1).max(1440).optional(),
   targetPrice: z.number().positive().optional(),
 });
 export type TriggerUpdateInput = z.infer<typeof triggerUpdateSchema>;

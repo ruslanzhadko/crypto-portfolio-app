@@ -59,6 +59,16 @@ describe("TriggerEngine percent triggers", () => {
     expect(engine.check(prices(112), 3 * MIN)).toHaveLength(1);
   });
 
+  it("supports a one-minute period with checks every 20 seconds", () => {
+    const engine = new TriggerEngine();
+    engine.load([percent({ interval: 1, threshold: 1 })]);
+    engine.check(prices(100), 0);
+    engine.check(prices(100.5), 20_000);
+    // +1.5% against two minutes ago, but only +0.5% within the last minute.
+    expect(engine.check(prices(101.5), 120_000)).toEqual([]);
+    expect(engine.check(prices(102.6), 140_000)).toHaveLength(1);
+  });
+
   it("respects the direction", () => {
     const engine = new TriggerEngine();
     engine.load([percent({ direction: TriggerDirection.UP })]);

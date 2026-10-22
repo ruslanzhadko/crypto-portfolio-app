@@ -351,6 +351,7 @@
     "directionUp": "↑ Только рост",
     "directionDown": "↓ Только падение",
     "intervalLabel": "За какой период",
+    "interval1m": "1 минута",
     "interval5m": "5 минут",
     "interval15m": "15 минут",
     "interval1h": "1 час",

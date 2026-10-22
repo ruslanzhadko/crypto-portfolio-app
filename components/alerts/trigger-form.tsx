@@ -44,6 +44,7 @@ export function TriggerForm({ initial = null }: TriggerFormProps) {
   const t = useTranslations('TriggerForm');
 
   const intervals = [
+    { label: t('interval1m'), value: 1 },
     { label: t('interval5m'), value: 5 },
     { label: t('interval15m'), value: 15 },
     { label: t('interval1h'), value: 60 },
