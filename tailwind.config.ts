@@ -93,6 +93,12 @@ const config: Config = {
         sweep: {
           '100%': { transform: 'translateX(100%)' },
         },
+        // Height reveal without content-visibility or ::details-content (both glitch on iOS Safari):
+        // a one-row grid whose row grows from 0fr to 1fr when the element first renders.
+        expand: {
+          from: { gridTemplateRows: '0fr', opacity: '0' },
+          to: { gridTemplateRows: '1fr', opacity: '1' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
@@ -100,6 +106,7 @@ const config: Config = {
         'fade-in': 'fade-in 0.2s ease-out',
         shimmer: 'shimmer 2s linear infinite',
         sweep: 'sweep 1.4s ease-in-out infinite',
+        expand: 'expand 0.28s cubic-bezier(0.2, 0.8, 0.2, 1)',
       },
     },
   },

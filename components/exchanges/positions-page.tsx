@@ -250,7 +250,8 @@ export function PositionsPage({
     setSort("size");
     setPage(1);
   }
-  const updating = !!result.data && (result.loading || coin.trim() !== searchCoin);
+  const updating =
+    !!result.data && (result.loading || coin.trim() !== searchCoin);
   return (
     <section className="min-w-0 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between gap-3">
@@ -378,81 +379,81 @@ export function PositionsPage({
             <div
               className={`${filtersOpen ? "grid animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none" : "hidden"} col-span-full grid-cols-2 gap-2 sm:contents`}
             >
-            {!connectionId && (
-              <>
-                <PositionSelect
-                  lead
-                  aria-label={t("exchange")}
-                  value={exchange}
-                  onChange={(e) => chooseExchange(e.target.value)}
-                >
-                  <option value="">{t("allExchanges")}</option>
-                  <option value="binance">Binance</option>
-                  <option value="bybit">Bybit</option>
-                  <option value="gate">Gate</option>
-                  <option value="okx">OKX</option>
-                  <option value="bitget">Bitget</option>
-                  <option value="hyperliquid">Hyperliquid</option>
-                  <option value="aster">Aster</option>
-                </PositionSelect>
-                <PositionSelect
-                  lead
-                  aria-label={t("account")}
-                  value={account}
-                  disabled={!!connectionId}
-                  onChange={(e) => filter(setAccount, e.target.value)}
-                >
-                  <option value="">{t("allAccounts")}</option>
-                  {accountOptions.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.label}
-                    </option>
-                  ))}
-                </PositionSelect>
-              </>
-            )}
-            <PositionSelect
-              aria-label={t("side")}
-              value={side}
-              onChange={(e) => filter(setSide, e.target.value)}
-            >
-              <option value="">{t("bothSides")}</option>
-              <option value="long">Long</option>
-              <option value="short">Short</option>
-            </PositionSelect>
-            <PositionSelect
-              aria-label={t("sort")}
-              value={sort}
-              onChange={(e) => filter(setSort, e.target.value)}
-            >
-              <option value="size">{t("sortSize")}</option>
-              <option value="pnl">{t("sortPnl")}</option>
-              <option value="pnlAsc">{t("sortPnlAsc")}</option>
-              <option value="roe">{t("sortRoe")}</option>
-              <option value="roeAsc">{t("sortRoeAsc")}</option>
-              <option value="symbol">{t("coin")}</option>
-            </PositionSelect>
-            <PositionSelect
-              aria-label={t("resultFilter")}
-              value={pnlResult}
-              onChange={(e) => filter(setPnlResult, e.target.value)}
-            >
-              <option value="">{t("allResults")}</option>
-              <option value="profit">{t("profitablePositions")}</option>
-              <option value="loss">{t("losingPositions")}</option>
-            </PositionSelect>
-            {filtered && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-9 text-[13px] text-text-muted sm:order-4 sm:col-span-full sm:h-7 sm:justify-self-end sm:px-2 sm:text-xs"
-                onClick={resetFilters}
+              {!connectionId && (
+                <>
+                  <PositionSelect
+                    lead
+                    aria-label={t("exchange")}
+                    value={exchange}
+                    onChange={(e) => chooseExchange(e.target.value)}
+                  >
+                    <option value="">{t("allExchanges")}</option>
+                    <option value="binance">Binance</option>
+                    <option value="bybit">Bybit</option>
+                    <option value="gate">Gate</option>
+                    <option value="okx">OKX</option>
+                    <option value="bitget">Bitget</option>
+                    <option value="hyperliquid">Hyperliquid</option>
+                    <option value="aster">Aster</option>
+                  </PositionSelect>
+                  <PositionSelect
+                    lead
+                    aria-label={t("account")}
+                    value={account}
+                    disabled={!!connectionId}
+                    onChange={(e) => filter(setAccount, e.target.value)}
+                  >
+                    <option value="">{t("allAccounts")}</option>
+                    {accountOptions.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </PositionSelect>
+                </>
+              )}
+              <PositionSelect
+                aria-label={t("side")}
+                value={side}
+                onChange={(e) => filter(setSide, e.target.value)}
               >
-                <X aria-hidden="true" className="h-3.5 w-3.5" />
-                {t("resetFilters")}
-              </Button>
-            )}
+                <option value="">{t("bothSides")}</option>
+                <option value="long">Long</option>
+                <option value="short">Short</option>
+              </PositionSelect>
+              <PositionSelect
+                aria-label={t("sort")}
+                value={sort}
+                onChange={(e) => filter(setSort, e.target.value)}
+              >
+                <option value="size">{t("sortSize")}</option>
+                <option value="pnl">{t("sortPnl")}</option>
+                <option value="pnlAsc">{t("sortPnlAsc")}</option>
+                <option value="roe">{t("sortRoe")}</option>
+                <option value="roeAsc">{t("sortRoeAsc")}</option>
+                <option value="symbol">{t("coin")}</option>
+              </PositionSelect>
+              <PositionSelect
+                aria-label={t("resultFilter")}
+                value={pnlResult}
+                onChange={(e) => filter(setPnlResult, e.target.value)}
+              >
+                <option value="">{t("allResults")}</option>
+                <option value="profit">{t("profitablePositions")}</option>
+                <option value="loss">{t("losingPositions")}</option>
+              </PositionSelect>
+              {filtered && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 text-[13px] text-text-muted sm:order-4 sm:col-span-full sm:h-7 sm:justify-self-end sm:px-2 sm:text-xs"
+                  onClick={resetFilters}
+                >
+                  <X aria-hidden="true" className="h-3.5 w-3.5" />
+                  {t("resetFilters")}
+                </Button>
+              )}
             </div>
           </div>
         )}
@@ -526,7 +527,9 @@ export function PositionsPage({
                       {/* A div: the logo fallback is a div, which a paragraph may not contain (hydration error). */}
                       <div className="flex min-w-0 items-center gap-2 text-sm font-semibold lg:gap-3 lg:text-base">
                         <ExchangeTokenLogo symbol={p.base} size={24} />
-                        <span className="truncate">{displaySymbol(p.symbol)}</span>
+                        <span className="truncate">
+                          {displaySymbol(p.symbol)}
+                        </span>
                       </div>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:mt-1">
                         <span
@@ -555,7 +558,9 @@ export function PositionsPage({
                       </div>
                     </div>
                     <div className="order-4 flex flex-col lg:order-none lg:block">
-                      <p className="truncate text-[11px] text-text-muted lg:text-xs">{t("size")}</p>
+                      <p className="truncate text-[11px] text-text-muted lg:text-xs">
+                        {t("size")}
+                      </p>
                       <p className="order-2 break-words text-[11px] tabular-nums text-text-muted lg:text-sm lg:font-medium lg:text-text">
                         <Quantity
                           value={p.baseSize}
@@ -570,7 +575,9 @@ export function PositionsPage({
                     <div className="order-5 lg:order-none">
                       <p className="truncate text-[11px] text-text-muted lg:text-xs">
                         <span className="lg:hidden">{t("entryMarkShort")}</span>
-                        <span className="hidden lg:inline">{t("entryMark")}</span>
+                        <span className="hidden lg:inline">
+                          {t("entryMark")}
+                        </span>
                       </p>
                       <p className="break-words text-[13px] font-medium tabular-nums lg:text-sm">
                         <Quantity
@@ -585,11 +592,15 @@ export function PositionsPage({
                           />
                         </span>
                       </p>
-                      <p className="hidden text-xs text-text-muted lg:block">{p.settle}</p>
+                      <p className="hidden text-xs text-text-muted lg:block">
+                        {p.settle}
+                      </p>
                     </div>
                     {shield ? (
                       <div className="order-6 text-right lg:order-none lg:text-left">
-                        <p className="truncate text-[11px] text-text-muted lg:text-xs">{t("margin")}</p>
+                        <p className="truncate text-[11px] text-text-muted lg:text-xs">
+                          {t("margin")}
+                        </p>
                         <p className="break-words text-[13px] font-medium tabular-nums lg:text-sm">
                           <Quantity
                             value={p.margin}
@@ -616,8 +627,12 @@ export function PositionsPage({
                           className="truncate text-[11px] text-text-muted lg:text-xs"
                           title={t("realizedPnlDescription")}
                         >
-                          <span className="lg:hidden">{t("realizedPnlShort")}</span>
-                          <span className="hidden lg:inline">{t("realizedPnl")}</span>
+                          <span className="lg:hidden">
+                            {t("realizedPnlShort")}
+                          </span>
+                          <span className="hidden lg:inline">
+                            {t("realizedPnl")}
+                          </span>
                         </p>
                         <p
                           className={`break-words text-[13px] font-medium tabular-nums lg:text-sm ${displayedRealized == null ? "text-text-muted" : Number(displayedRealized) > 0 ? "text-success" : Number(displayedRealized) < 0 ? "text-danger" : ""}`}
@@ -648,8 +663,12 @@ export function PositionsPage({
                     </div>
                     <div className="order-2 row-span-2 text-right lg:order-none lg:row-span-1">
                       <p className="truncate text-[11px] text-text-muted lg:text-xs">
-                        <span className="lg:hidden">{t("unrealizedPnlShort")}</span>
-                        <span className="hidden lg:inline">{t("unrealizedPnl")}</span>
+                        <span className="lg:hidden">
+                          {t("unrealizedPnlShort")}
+                        </span>
+                        <span className="hidden lg:inline">
+                          {t("unrealizedPnl")}
+                        </span>
                       </p>
                       <p
                         className={`text-base font-semibold lg:text-lg ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
@@ -663,231 +682,244 @@ export function PositionsPage({
                         {marginReturn(p)}
                       </p>
                       {p.stale && (
-                        <p className="text-[11px] text-warning lg:text-xs">{t("stale")}</p>
+                        <p className="text-[11px] text-warning lg:text-xs">
+                          {t("stale")}
+                        </p>
                       )}
                     </div>
                   </summary>
-                  <div className="border-t border-border bg-background/40 px-3 py-3 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none sm:px-4 lg:px-5 lg:py-3">
-                    {shield ? (
-                      <dl className={DETAILS_GRID}>
-                        <div>
-                          <dt className="text-text-muted">
-                            {t("liquidation")}
-                          </dt>
-                          <dd>
-                            <Quantity
-                              value={p.liquidationPrice}
-                              maximumFractionDigits={4}
-                            />{" "}
-                            {p.settle}
-                          </dd>
-                          <p
-                            className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
-                            title={t("liquidationDistanceDescription")}
-                          >
-                            {t("liquidationDistance")}:{" "}
-                            {distance == null
-                              ? "—"
-                              : new Intl.NumberFormat(locale, {
-                                  style: "percent",
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                }).format(distance)}
-                          </p>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">TP / SL</dt>
-                          <dd>
-                            <Quantity
-                              value={shield.takeProfit}
-                              maximumFractionDigits={4}
-                            />{" "}
-                            /{" "}
-                            <Quantity
-                              value={shield.stopLoss}
-                              maximumFractionDigits={4}
-                            />
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">
-                            {t("shieldFeeMode")}
-                          </dt>
-                          <dd>
-                            {shield.feeMode === "PROFIT"
-                              ? t("shieldFeeFromProfit")
-                              : (shield.feeMode ?? "—")}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">
-                            {t("shieldOpenedAt")}
-                          </dt>
-                          <dd>
-                            {shield.openedAt
-                              ? new Intl.DateTimeFormat(locale, {
-                                  dateStyle: "short",
-                                  timeStyle: "short",
-                                }).format(shield.openedAt)
-                              : "—"}
-                          </dd>
-                          <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
-                            {t("updated")}{" "}
-                            <PositionUpdated value={p.updatedAt} />
-                          </p>
-                        </div>
-                        <div className="lg:col-start-6 lg:text-right">
-                          <dt className="text-text-muted">
-                            {t("nextFunding")}
-                          </dt>
-                          <NextFunding p={p} />
-                        </div>
-                      </dl>
-                    ) : (
-                      <dl className={DETAILS_GRID}>
-                        <div>
-                          <dt
-                            className="text-text-muted"
-                            title={t("breakEvenDescription")}
-                          >
-                            {t("breakEven")}
-                          </dt>
-                          <dd>
-                            <Quantity
-                              value={breakEven}
-                              maximumFractionDigits={4}
-                            />{" "}
-                            {p.settle}
-                          </dd>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">{t("margin")}</dt>
-                          <dd>
-                            <Quantity
-                              value={p.margin}
-                              maximumFractionDigits={4}
-                            />{" "}
-                            {p.settle}
-                          </dd>
-                          <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
-                            {t("updated")}{" "}
-                            <PositionUpdated value={p.updatedAt} />
-                          </p>
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">
-                            {t("liquidation")}
-                          </dt>
-                          <dd>
-                            <Quantity
-                              value={p.liquidationPrice}
-                              maximumFractionDigits={4}
-                            />{" "}
-                            {p.settle}
-                          </dd>
-                          <p
-                            className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
-                            title={t("liquidationDistanceDescription")}
-                          >
-                            {t("liquidationDistance")}:{" "}
-                            {distance == null
-                              ? "—"
-                              : new Intl.NumberFormat(locale, {
-                                  style: "percent",
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                }).format(distance)}
-                          </p>
-                        </div>
-                        <div>
-                          <dt
-                            className="text-text-muted"
-                            title={
-                              closedAfterFees == null
-                                ? undefined
-                                : t("closedAfterFeesDescription")
-                            }
-                          >
-                            {t(
-                              closedAfterFees == null
-                                ? "closedPnl"
-                                : "closedAfterFees",
-                            )}
-                          </dt>
-                          <dd
-                            className={
-                              displayedClosed == null
-                                ? "text-text-muted"
-                                : Number(displayedClosed) > 0
-                                  ? "text-success"
-                                  : Number(displayedClosed) < 0
-                                    ? "text-danger"
-                                    : undefined
-                            }
-                          >
-                            <Quantity
-                              value={displayedClosed}
-                              maximumFractionDigits={4}
-                            />{" "}
-                            {p.settle}
-                          </dd>
-                          {closedAfterFees == null &&
-                            p.funding?.tradingFeesByAsset && (
-                              <div className="mt-1 text-[11px] text-text-muted lg:mt-2 lg:text-xs">
-                                <p>{t("tradingFees")}</p>
-                                {Object.entries(
-                                  p.funding.tradingFeesByAsset,
-                                ).map(([asset, fee]) => (
-                                  <p key={asset}>
-                                    <Quantity
-                                      value={fee}
-                                      maximumFractionDigits={8}
-                                    />{" "}
-                                    {asset}
-                                  </p>
-                                ))}
+                  {/* Mounted only while open so the reveal plays every time; rows below slide down instead of jumping. */}
+                  {(expanded[key] ?? false) && (
+                    <div className="grid animate-expand motion-reduce:animate-none">
+                      <div className="min-h-0 overflow-hidden">
+                        <div className="border-t border-border bg-background/40 px-3 py-3 duration-300 animate-in slide-in-from-top-2 motion-reduce:animate-none sm:px-4 lg:px-5 lg:py-3">
+                          {shield ? (
+                            <dl className={DETAILS_GRID}>
+                              <div>
+                                <dt className="text-text-muted">
+                                  {t("liquidation")}
+                                </dt>
+                                <dd>
+                                  <Quantity
+                                    value={p.liquidationPrice}
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  {p.settle}
+                                </dd>
+                                <p
+                                  className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
+                                  title={t("liquidationDistanceDescription")}
+                                >
+                                  {t("liquidationDistance")}:{" "}
+                                  {distance == null
+                                    ? "—"
+                                    : new Intl.NumberFormat(locale, {
+                                        style: "percent",
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      }).format(distance)}
+                                </p>
                               </div>
-                            )}
-                        </div>
-                        <div>
-                          <dt className="text-text-muted">{t("funding")}</dt>
-                          <dd
-                            className={
-                              p.funding?.amount == null
-                                ? "text-text-muted"
-                                : Number(p.funding.amount) > 0
-                                  ? "text-success"
-                                  : Number(p.funding.amount) < 0
-                                    ? "text-danger"
-                                    : undefined
-                            }
-                          >
-                            <Quantity
-                              value={
-                                p.funding?.status === "complete"
-                                  ? p.funding.amount
-                                  : null
-                              }
-                              maximumFractionDigits={4}
-                            />{" "}
-                            {p.settle}
-                          </dd>
-                        </div>
-                        <div className="lg:col-start-6 lg:text-right">
-                          <dt className="text-text-muted">
-                            {t("nextFunding")}
-                          </dt>
-                          <NextFunding p={p} />
-                        </div>
-                      </dl>
-                    )}
+                              <div>
+                                <dt className="text-text-muted">TP / SL</dt>
+                                <dd>
+                                  <Quantity
+                                    value={shield.takeProfit}
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  /{" "}
+                                  <Quantity
+                                    value={shield.stopLoss}
+                                    maximumFractionDigits={4}
+                                  />
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-text-muted">
+                                  {t("shieldFeeMode")}
+                                </dt>
+                                <dd>
+                                  {shield.feeMode === "PROFIT"
+                                    ? t("shieldFeeFromProfit")
+                                    : (shield.feeMode ?? "—")}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-text-muted">
+                                  {t("shieldOpenedAt")}
+                                </dt>
+                                <dd>
+                                  {shield.openedAt
+                                    ? new Intl.DateTimeFormat(locale, {
+                                        dateStyle: "short",
+                                        timeStyle: "short",
+                                      }).format(shield.openedAt)
+                                    : "—"}
+                                </dd>
+                                <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
+                                  {t("updated")}{" "}
+                                  <PositionUpdated value={p.updatedAt} />
+                                </p>
+                              </div>
+                              <div className="lg:col-start-6 lg:text-right">
+                                <dt className="text-text-muted">
+                                  {t("nextFunding")}
+                                </dt>
+                                <NextFunding p={p} />
+                              </div>
+                            </dl>
+                          ) : (
+                            <dl className={DETAILS_GRID}>
+                              <div>
+                                <dt
+                                  className="text-text-muted"
+                                  title={t("breakEvenDescription")}
+                                >
+                                  {t("breakEven")}
+                                </dt>
+                                <dd>
+                                  <Quantity
+                                    value={breakEven}
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  {p.settle}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt className="text-text-muted">
+                                  {t("margin")}
+                                </dt>
+                                <dd>
+                                  <Quantity
+                                    value={p.margin}
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  {p.settle}
+                                </dd>
+                                <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
+                                  {t("updated")}{" "}
+                                  <PositionUpdated value={p.updatedAt} />
+                                </p>
+                              </div>
+                              <div>
+                                <dt className="text-text-muted">
+                                  {t("liquidation")}
+                                </dt>
+                                <dd>
+                                  <Quantity
+                                    value={p.liquidationPrice}
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  {p.settle}
+                                </dd>
+                                <p
+                                  className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
+                                  title={t("liquidationDistanceDescription")}
+                                >
+                                  {t("liquidationDistance")}:{" "}
+                                  {distance == null
+                                    ? "—"
+                                    : new Intl.NumberFormat(locale, {
+                                        style: "percent",
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      }).format(distance)}
+                                </p>
+                              </div>
+                              <div>
+                                <dt
+                                  className="text-text-muted"
+                                  title={
+                                    closedAfterFees == null
+                                      ? undefined
+                                      : t("closedAfterFeesDescription")
+                                  }
+                                >
+                                  {t(
+                                    closedAfterFees == null
+                                      ? "closedPnl"
+                                      : "closedAfterFees",
+                                  )}
+                                </dt>
+                                <dd
+                                  className={
+                                    displayedClosed == null
+                                      ? "text-text-muted"
+                                      : Number(displayedClosed) > 0
+                                        ? "text-success"
+                                        : Number(displayedClosed) < 0
+                                          ? "text-danger"
+                                          : undefined
+                                  }
+                                >
+                                  <Quantity
+                                    value={displayedClosed}
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  {p.settle}
+                                </dd>
+                                {closedAfterFees == null &&
+                                  p.funding?.tradingFeesByAsset && (
+                                    <div className="mt-1 text-[11px] text-text-muted lg:mt-2 lg:text-xs">
+                                      <p>{t("tradingFees")}</p>
+                                      {Object.entries(
+                                        p.funding.tradingFeesByAsset,
+                                      ).map(([asset, fee]) => (
+                                        <p key={asset}>
+                                          <Quantity
+                                            value={fee}
+                                            maximumFractionDigits={8}
+                                          />{" "}
+                                          {asset}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  )}
+                              </div>
+                              <div>
+                                <dt className="text-text-muted">
+                                  {t("funding")}
+                                </dt>
+                                <dd
+                                  className={
+                                    p.funding?.amount == null
+                                      ? "text-text-muted"
+                                      : Number(p.funding.amount) > 0
+                                        ? "text-success"
+                                        : Number(p.funding.amount) < 0
+                                          ? "text-danger"
+                                          : undefined
+                                  }
+                                >
+                                  <Quantity
+                                    value={
+                                      p.funding?.status === "complete"
+                                        ? p.funding.amount
+                                        : null
+                                    }
+                                    maximumFractionDigits={4}
+                                  />{" "}
+                                  {p.settle}
+                                </dd>
+                              </div>
+                              <div className="lg:col-start-6 lg:text-right">
+                                <dt className="text-text-muted">
+                                  {t("nextFunding")}
+                                </dt>
+                                <NextFunding p={p} />
+                              </div>
+                            </dl>
+                          )}
 
-                    {p.errorCode && (
-                      <div className="mt-3">
-                        <ExchangeErrorNotice code={p.errorCode} />
+                          {p.errorCode && (
+                            <div className="mt-3">
+                              <ExchangeErrorNotice code={p.errorCode} />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </details>
               ),
             };
@@ -920,7 +952,9 @@ export function PositionsPage({
                 </span>
                 <span className="flex gap-x-3 text-text-muted lg:gap-x-5">
                   <span>
-                    <span className="lg:hidden">{t("positionVolumeShort")}</span>
+                    <span className="lg:hidden">
+                      {t("positionVolumeShort")}
+                    </span>
                     <span className="hidden lg:inline">{t("size")}</span>:{" "}
                     <Money value={notional == null ? null : String(notional)} />
                   </span>
@@ -934,8 +968,10 @@ export function PositionsPage({
                     }
                   >
                     <span className="lg:hidden">{t("unrealizedPnlShort")}</span>
-                    <span className="hidden lg:inline">{t("unrealizedPnl")}</span>:{" "}
-                    <Money value={pnl == null ? null : String(pnl)} signed />
+                    <span className="hidden lg:inline">
+                      {t("unrealizedPnl")}
+                    </span>
+                    : <Money value={pnl == null ? null : String(pnl)} signed />
                   </span>
                 </span>
               </div>

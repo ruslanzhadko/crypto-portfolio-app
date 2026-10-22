@@ -619,11 +619,11 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
       () => document.documentElement.scrollWidth > innerWidth,
     ),
   ).toBe(false);
-  // Wallets is a bottom tab; the assets shortcut moved into "More".
+  // Wallets is a bottom tab; "More" holds the remaining sections (assets live on the dashboard).
   await page.getByRole("button", { name: "More", exact: true }).click();
-  await expect(
-    page.getByRole("dialog").getByRole("link", { name: "Assets", exact: true }),
-  ).toBeVisible();
+  const more = page.getByRole("dialog");
+  await expect(more.getByRole("link", { name: "Market", exact: true })).toBeVisible();
+  await expect(more.getByRole("link", { name: "Assets", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "Wallets", exact: true }).click();
   await expect(page).toHaveURL(/\/wallets$/);

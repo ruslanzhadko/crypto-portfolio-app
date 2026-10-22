@@ -8,7 +8,7 @@ import type { Role } from "@prisma/client";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils/cn";
 import { NAV_ITEMS } from "./nav-items";
-import { Coins, MoreHorizontal } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,11 +36,7 @@ export function MobileNav({
   const items = exchangesEnabled
     ? primary.map((href) => available.find((i) => i.href === href)!)
     : available.slice(0, 5);
-  // The assets list lives on the dashboard, so it is a shortcut in "More" rather than a tab.
-  const moreItems = [
-    { href: "/dashboard#assets", labelKey: "assets", icon: Coins },
-    ...available.filter((i) => !primary.includes(i.href)),
-  ];
+  const moreItems = available.filter((i) => !primary.includes(i.href));
 
   useEffect(() => {
     setMounted(true);
@@ -96,17 +92,26 @@ export function MobileNav({
             <MoreHorizontal className="h-5 w-5" />
             <span>{t("more")}</span>
           </DialogTrigger>
-          <DialogContent>
-            <DialogTitle>{t("more")}</DialogTitle>
+          {/* A rounded sheet that grows out of the "More" tab, just above the bottom bar. */}
+          {/* No auto-focus on open: a focus ring around the close button looks like a stray box on phones. */}
+          <DialogContent
+            onOpenAutoFocus={(event) => event.preventDefault()}
+            className="bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] left-3 right-3 top-auto w-auto max-w-none translate-x-0 translate-y-0 gap-3 rounded-3xl p-4 pt-5 origin-bottom-right duration-300 ease-out data-[state=closed]:duration-150 data-[state=open]:slide-in-from-bottom-6 data-[state=closed]:slide-out-to-bottom-4 data-[state=open]:zoom-in-90"
+          >
+            <DialogTitle className="px-2 text-base">{t("more")}</DialogTitle>
             <div className="grid gap-1">
-              {moreItems.map((item) => (
+              {moreItems.map((item, index) => (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={() => setMoreOpen(false)}
-                  className="flex items-center gap-3 rounded-lg p-3 hover:bg-surface-2"
+                  // Items follow the sheet one after another.
+                  style={{ animationDelay: `${60 + index * 35}ms` }}
+                  className="flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-colors fill-mode-both animate-in fade-in-0 slide-in-from-bottom-2 duration-300 hover:bg-surface-2 active:bg-surface-2 motion-reduce:animate-none"
                 >
-                  <item.icon className="h-5 w-5" />
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-2 text-text-muted">
+                    <item.icon className="h-[18px] w-[18px]" />
+                  </span>
                   {t(item.labelKey)}
                 </Link>
               ))}
