@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useTouchTooltip } from '@/components/common/use-touch-tooltip';
 import { useTranslations } from 'next-intl';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,6 +35,7 @@ export function PortfolioChart({
   onVisibilityChange,
 }: PortfolioChartProps) {
   const t = useTranslations('PortfolioChart');
+  const tooltip = useTouchTooltip();
   const [mounted, setMounted] = useState(false);
   const [preferenceLoaded, setPreferenceLoaded] = useState(false);
   const [showChart, setShowChart] = useState(true);
@@ -204,7 +206,7 @@ export function PortfolioChart({
             </div>
           )}
           {points && points.length > 0 && mounted && (!anomalousEstimate || showAnomalousEstimate) && (
-            <div className="h-[130px] sm:h-[190px]">
+            <div className="h-[130px] sm:h-[190px]" {...tooltip.handlers}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={points} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                 <defs>
@@ -228,7 +230,7 @@ export function PortfolioChart({
                   stroke="#2a2a3a"
                   width={64}
                 />
-                <Tooltip content={<PortfolioTooltip />} />
+                <Tooltip content={<PortfolioTooltip />} active={tooltip.active} />
                 <Area
                   type="monotone"
                   dataKey="totalUsd"

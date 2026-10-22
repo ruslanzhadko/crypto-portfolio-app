@@ -37,6 +37,7 @@ import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
 import { useDisplayPreference } from "./display-preferences";
 import { useWalletSync } from "@/components/dashboard/sync-all-button";
+import { useTouchTooltip } from "@/components/common/use-touch-tooltip";
 import {
   runInBackground,
   useBackgroundTask,
@@ -55,6 +56,7 @@ export function CapitalDashboard({
   walletTokens?: AggregatedToken[];
   spamTokens?: AggregatedToken[];
 }) {
+  const tooltip = useTouchTooltip();
   const [sourcesTarget, setSourcesTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setSourcesTarget(document.getElementById("capital-sources"));
@@ -377,7 +379,9 @@ export function CapitalDashboard({
                 </div>
               </summary>
               {chart.length > 0 ? (
-                <div className="mt-2 h-36 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none min-w-0 overflow-hidden sm:h-44">
+                <div className="mt-2 h-36 animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none min-w-0 overflow-hidden sm:h-44"
+                  {...tooltip.handlers}
+                >
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chart}>
                       <XAxis
@@ -408,6 +412,7 @@ export function CapitalDashboard({
                         }
                       />
                       <Tooltip
+                        active={tooltip.active}
                         labelFormatter={(v) =>
                           new Date(Number(v)).toLocaleString(locale)
                         }

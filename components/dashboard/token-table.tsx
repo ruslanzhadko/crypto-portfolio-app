@@ -231,12 +231,13 @@ export function TokenTable({
         {spamTokens.length > 0 && <p className="hidden text-xs text-text-muted sm:block">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
-        {/* Phones fit the fixed-layout table; a scroll container there is an extra layer iOS may leave half-painted. */}
+        {/* Phones lay rows out as flex boxes: iOS Safari leaves table cells half-repainted while scrolling
+            (row borders cut at the first column, values shifted). A real table from the sm breakpoint up. */}
         <div className="sm:overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
-            <thead className="border-b border-border text-xs uppercase text-text-muted">
-              <tr>
-                <th className="w-3/5 px-3 py-2 text-left sm:px-4 sm:py-3 lg:w-1/2 2xl:w-[22%]">{t('colToken')}</th>
+          <table className="w-full text-sm max-sm:block sm:table-fixed">
+            <thead className="border-b border-border text-xs uppercase text-text-muted max-sm:block">
+              <tr className="max-sm:flex max-sm:items-center">
+                <th className="w-3/5 px-3 py-2 text-left max-sm:min-w-0 max-sm:flex-1 sm:px-4 sm:py-3 lg:w-1/2 2xl:w-[22%]">{t('colToken')}</th>
                 <th className="hidden px-4 py-3 text-left 2xl:table-cell 2xl:w-[30%]">{t('colNetworks')}</th>
                 <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[11%]">
                   <SortButton active={sortKey === 'balance'} desc={desc} onClick={() => toggleSort('balance')}>
@@ -244,7 +245,7 @@ export function TokenTable({
                   </SortButton>
                 </th>
                 <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[10%]">{t('colPrice')}</th>
-                <th className="px-3 py-2 text-right sm:px-4 sm:py-3 2xl:w-[11%]">
+                <th className="px-3 py-2 text-right max-sm:shrink-0 sm:px-4 sm:py-3 2xl:w-[11%]">
                   <SortButton active={sortKey === 'value'} desc={desc} onClick={() => toggleSort('value')}>
                     {t('colUsd')}
                   </SortButton>
@@ -257,7 +258,7 @@ export function TokenTable({
                 <th className="hidden px-4 py-3 text-right 2xl:table-cell 2xl:w-[6%]">{t('colShare')}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="max-sm:block">
               {(showAll || search.trim() ? sorted : sorted.slice(0, COLLAPSED_ROWS)).map((tok) => {
                 const isOpen = openTokens.has(tok.key);
                 // Приховуємо dust (< $0.01) у розгорнутому вигляді
@@ -285,13 +286,13 @@ export function TokenTable({
                   <Fragment key={tok.key}>
                     <tr
                       className={cn(
-                        'border-b border-border/60 transition-colors',
+                        'border-b border-border/60 transition-colors max-sm:flex max-sm:items-start',
                         hasBreakdown && 'cursor-pointer hover:bg-surface-2/50',
                         isOpen && 'bg-surface-2/40',
                       )}
                       onClick={() => hasBreakdown && toggle(openTokens, setOpenTokens, tok.key)}
                     >
-                      <td className="overflow-hidden px-3 py-2 sm:px-4 sm:py-3">
+                      <td className="overflow-hidden px-3 py-2 max-sm:min-w-0 max-sm:flex-1 sm:px-4 sm:py-3">
                         <div className="min-w-0 flex items-center gap-2 sm:gap-3">
                           {hasBreakdown ? (
                             <ChevronRight
@@ -362,7 +363,7 @@ export function TokenTable({
                       <td className="hidden px-4 py-3 text-right 2xl:table-cell">
                         {tok.currentPrice ? formatUsd(tok.currentPrice) : '—'}
                       </td>
-                      <td className="px-3 py-2 text-right font-semibold tabular-nums sm:px-4 sm:py-3">
+                      <td className="px-3 py-2 text-right font-semibold tabular-nums max-sm:max-w-[45%] max-sm:shrink-0 sm:px-4 sm:py-3">
                         {formatUsd(tok.totalUsd)}
                         <p className="truncate font-mono text-[11px] font-normal text-text-muted sm:hidden">
                           {formatTokenBalance(tok.totalBalance)} {tok.symbol}
@@ -381,14 +382,14 @@ export function TokenTable({
                     </tr>
 
                     {isOpen && hasBreakdown && (
-                      <tr className="border-b border-border/60 bg-surface-2/20">
+                      <tr className="border-b border-border/60 bg-surface-2/20 max-sm:block">
                         {([2, 3, 7] as const).map((span, index) => (
                           <td
                             key={span}
                             colSpan={span}
                             className={cn(
                               'min-w-0 px-2 py-1.5 md:px-4 md:py-3',
-                              index === 0 && 'lg:hidden',
+                              index === 0 && 'max-sm:block lg:hidden',
                               index === 1 && 'hidden lg:table-cell 2xl:hidden',
                               index === 2 && 'hidden 2xl:table-cell',
                             )}
@@ -417,8 +418,8 @@ export function TokenTable({
                 );
               })}
               {sorted.length > COLLAPSED_ROWS && !search.trim() && (
-                <tr>
-                  <td colSpan={7} className="p-0">
+                <tr className="max-sm:block">
+                  <td colSpan={7} className="p-0 max-sm:block">
                     <button
                       type="button"
                       className="w-full py-2.5 text-center text-xs font-medium text-primary transition-colors hover:bg-surface-2/50 sm:text-sm"
@@ -431,8 +432,8 @@ export function TokenTable({
                 </tr>
               )}
               {sorted.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-sm text-text-muted">
+                <tr className="max-sm:block">
+                  <td colSpan={7} className="px-4 py-8 max-sm:block text-center text-sm text-text-muted">
                     {search.trim() || selectedChains.size > 0 || threshold > 0
                       ? t('noFilterResults')
                       : t('emptyText')}
