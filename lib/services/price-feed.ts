@@ -195,6 +195,20 @@ interface DexPair {
   info?: { imageUrl?: string }; // логотип токена (є не у всіх пар)
 }
 
+/** Median of the pool prices, each pool weighted by its USD liquidity. */
+export function weightedMedianPrice(
+  candidates: ReadonlyArray<{ pair: { liquidity?: { usd?: number } }; price: number }>,
+): number {
+  const sorted = [...candidates].sort((a, b) => a.price - b.price);
+  const total = sorted.reduce((sum, c) => sum + (c.pair.liquidity?.usd ?? 0), 0);
+  let seen = 0;
+  for (const c of sorted) {
+    seen += c.pair.liquidity?.usd ?? 0;
+    if (seen >= total / 2) return c.price;
+  }
+  return sorted[sorted.length - 1]!.price;
+}
+
 /**
  * Запитує chain-specific endpoint DexScreener — `/token-pairs/v1/{chain}/{address}`.
  * Повертає до 30 пар саме на цьому ланцюгу (на відміну від `/latest/dex/tokens/`,
@@ -230,12 +244,12 @@ async function fetchDexScreenerToken(
         p.quoteToken?.address.toLowerCase() === lowerAddr,
     );
 
-    const candidates: Array<{ pair: DexPair; price: number }> = [];
-
+    const direct: Array<{ pair: DexPair; price: number }> = [];
     for (const p of baseCandidates) {
       const price = Number.parseFloat(p.priceUsd ?? '0');
-      if (Number.isFinite(price) && price > 0) candidates.push({ pair: p, price });
+      if (Number.isFinite(price) && price > 0) direct.push({ pair: p, price });
     }
+    const inverted: Array<{ pair: DexPair; price: number }> = [];
     for (const p of quoteCandidates) {
       const baseUsd = Number.parseFloat(p.priceUsd ?? '0');
       const baseInQuote = Number.parseFloat(p.priceNative ?? '0');
@@ -244,17 +258,22 @@ async function fetchDexScreenerToken(
         Number.isFinite(baseInQuote) && baseInQuote > 0
       ) {
         // priceUsd / priceNative = USD-ціна quote-токена (1 USDC = $1 у пари ETH/USDC)
-        candidates.push({ pair: p, price: baseUsd / baseInQuote });
+        inverted.push({ pair: p, price: baseUsd / baseInQuote });
       }
     }
 
+    // Pools quoted in the token itself (dozens of MEME/USDG pools) are only a fallback: one pool
+    // with an inconsistent priceUsd/priceNative once turned 700 USDG into $2,700. The price is the
+    // liquidity-weighted median, so a single odd pool cannot move it.
+    const candidates = direct.length > 0 ? direct : inverted;
     if (candidates.length === 0) return null;
 
-    // Пара з найбільшою ліквідністю серед валідних
+    // The most liquid pool still supplies the 24h change and the logo.
     const best = candidates.reduce(
       (a, b) => ((b.pair.liquidity?.usd ?? 0) > (a.pair.liquidity?.usd ?? 0) ? b : a),
       candidates[0]!,
     );
+    const price = weightedMedianPrice(candidates);
 
     // 24h change показуємо лише для base-пар — для quote-пар change стосується іншого токена
     const isBase = best.pair.baseToken.address.toLowerCase() === lowerAddr;
@@ -267,7 +286,7 @@ async function fetchDexScreenerToken(
       candidates.find((c) => c.pair.info?.imageUrl)?.pair.info?.imageUrl ?? undefined;
 
     return {
-      price: best.price,
+      price,
       change24h: change,
       source: 'dexscreener',
       ...(logoUrl ? { logoUrl } : {}),

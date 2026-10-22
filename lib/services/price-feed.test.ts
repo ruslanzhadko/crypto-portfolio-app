@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchPrice } from './price-feed';
+import { fetchPrice, weightedMedianPrice } from './price-feed';
 
 const mocks = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('axios', () => ({
@@ -35,5 +35,25 @@ describe('Robinhood contract pricing', () => {
     await fetchPrice(query);
     await fetchPrice(query);
     expect(mocks.get).toHaveBeenCalledTimes(1);
+  });
+  it('prices a stablecoin from its own pools, not from a bigger pool quoted in it', async () => {
+    const usdg = '0x5fc5360d0400a0fd4f2af552add042d716f1d168';
+    mocks.get.mockResolvedValueOnce({ data: [
+      { chainId: 'robinhood', baseToken: { address: usdg, symbol: 'USDG' }, quoteToken: { address: '0xweth', symbol: 'WETH' },
+        priceUsd: '1.0007', priceNative: '0.00042', liquidity: { usd: 2_177_000 } },
+      // A larger CRCL/USDG pool whose priceUsd and priceNative are momentarily out of step (inverted: ~3.18).
+      { chainId: 'robinhood', baseToken: { address: '0xcrcl', symbol: 'CRCL' }, quoteToken: { address: usdg, symbol: 'USDG' },
+        priceUsd: '272.7', priceNative: '85.75', liquidity: { usd: 2_815_000 } },
+    ] });
+    const price = await fetchPrice({ key: 'usdg-own-pools', isNative: false, chainName: 'robinhood', contractAddress: usdg });
+    expect(price?.price).toBeCloseTo(1.0007, 4);
+  });
+});
+
+describe('weightedMedianPrice', () => {
+  it('ignores a single outlier pool', () => {
+    const pool = (price: number, usd: number) => ({ price, pair: { liquidity: { usd } } });
+    expect(weightedMedianPrice([pool(1.0, 900_000), pool(3.2, 400_000), pool(1.01, 600_000)])).toBe(1.01);
+    expect(weightedMedianPrice([pool(2, 10_000)])).toBe(2);
   });
 });
