@@ -39,16 +39,19 @@ export function exchangeName(exchange: string) {
 export function ExchangeLogo({
   exchange,
   size = 16,
+  className = "",
 }: {
   exchange: string;
   size?: number;
+  /** Extra classes, e.g. a larger responsive size (use `!h-* !w-*` to beat the inline size). */
+  className?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const src = LOGOS[exchange];
   if (!src || failed)
     return (
       <Landmark
-        className="shrink-0 text-text-muted"
+        className={`shrink-0 text-text-muted ${className}`}
         style={{ width: size, height: size }}
         aria-hidden
       />
@@ -61,7 +64,7 @@ export function ExchangeLogo({
       width={size}
       height={size}
       loading="lazy"
-      className="shrink-0 rounded-full bg-surface-2 object-cover"
+      className={`shrink-0 rounded-full bg-surface-2 object-cover ${className}`}
       onError={() => setFailed(true)}
     />
   );

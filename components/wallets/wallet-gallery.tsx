@@ -49,11 +49,11 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
   return (
     <div className="space-y-2.5 sm:space-y-3">
       {/* Total on the first line, network filter and sort on the second (one line on wide screens). */}
-      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3 sm:px-4 lg:flex-row lg:px-5 lg:py-4 lg:items-center lg:justify-between lg:gap-6">
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface p-3 sm:px-4 lg:flex-row lg:px-6 lg:py-5 lg:items-center lg:justify-between lg:gap-6">
         <div className="flex min-w-0 items-baseline justify-between gap-3 lg:block">
           <p className="text-xs text-text-muted lg:text-sm">{t('portfolioValue')}</p>
           <div className="flex items-baseline gap-2">
-            <p className="text-lg font-semibold leading-tight tabular-nums sm:text-xl lg:text-2xl">
+            <p className="text-lg font-semibold leading-tight tabular-nums sm:text-xl lg:text-3xl">
               {formatUsd(portfolioTotalUsd, { minimumFractionDigits: 2 })}
             </p>
             <p className="text-[11px] text-text-muted lg:text-sm">{t('walletCount', { count: wallets.length })}</p>
@@ -95,7 +95,7 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
       </div>
 
       {visible.length > 0 ? (
-        <div className="grid gap-2.5 sm:gap-3 lg:gap-4 xl:grid-cols-2 min-[1700px]:grid-cols-3">
+        <div className="grid gap-2.5 sm:gap-3 lg:gap-5 xl:grid-cols-2 min-[1700px]:grid-cols-3">
           {visible.map((wallet) => (
             <WalletCard key={wallet.id} wallet={wallet} portfolioTotalUsd={portfolioTotalUsd} />
           ))}

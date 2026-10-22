@@ -145,7 +145,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
       className="card-gradient min-w-0 shadow-none transition-colors hover:border-primary/50 focus-within:border-primary/60"
       data-testid="wallet-card"
     >
-      <CardContent className="flex flex-col gap-2.5 p-3 sm:p-4 lg:gap-4 lg:p-5">
+      <CardContent className="flex flex-col gap-2.5 p-3 sm:p-4 lg:gap-5 lg:p-6">
         <div className="flex items-start gap-2.5 lg:gap-3">
           <Link
             href={`/wallets/${wallet.id}`}
@@ -153,7 +153,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           >
             <div
               className={cn(
-                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg lg:h-10 lg:w-10',
+                'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg lg:h-11 lg:w-11',
                 wallet.network === Network.SOLANA
                   ? 'bg-success/10 text-success'
                   : 'bg-primary/10 text-primary',
@@ -162,19 +162,19 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
               <WalletIcon className="h-4 w-4 lg:h-5 lg:w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold leading-tight lg:text-base">
+              <p className="truncate text-sm font-semibold leading-tight lg:text-lg">
                 {wallet.label ?? t('noLabel')}
               </p>
-              <p className="truncate font-mono text-[11px] leading-4 text-text-muted lg:mt-0.5 lg:text-xs">
+              <p className="truncate font-mono text-[11px] leading-4 text-text-muted lg:mt-0.5 lg:text-sm">
                 {shortAddress(wallet.address)}
               </p>
             </div>
           </Link>
           <div className="shrink-0 text-right">
-            <p className="text-base font-semibold leading-tight tabular-nums sm:text-lg lg:text-xl">
+            <p className="text-base font-semibold leading-tight tabular-nums sm:text-lg lg:text-2xl">
               {formatUsd(wallet.totalUsd, { minimumFractionDigits: 2 })}
             </p>
-            <div className="flex items-center justify-end gap-1.5 text-[11px] leading-4 lg:mt-0.5 lg:text-xs">
+            <div className="flex items-center justify-end gap-1.5 text-[11px] leading-4 lg:mt-1 lg:text-sm">
               <PriceChange value={wallet.change24hPct} size="sm" />
               <span className="text-text-muted tabular-nums">
                 {wallet.change24hUsd >= 0 ? '+' : ''}
@@ -184,9 +184,9 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           </div>
         </div>
 
-        <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-text-muted lg:gap-2 lg:text-xs">
+        <div className="flex min-w-0 items-center gap-1.5 text-[11px] text-text-muted lg:gap-2.5 lg:text-sm">
           <NetworkBadge network={wallet.network} className="shrink-0 whitespace-nowrap" />
-          <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px] font-normal lg:px-2 lg:text-xs">
+          <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[11px] font-normal lg:px-2 lg:text-sm">
             {wallet.tokenCount} {tokenLabel(t, wallet.tokenCount)}
           </Badge>
           <span
@@ -212,7 +212,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
           <Button
             variant="outline"
             size="icon"
-            className="h-7 w-7 shrink-0 lg:h-8 lg:w-8"
+            className="h-7 w-7 shrink-0 lg:h-9 lg:w-9"
             onClick={onSync}
             disabled={isSyncing}
             aria-label={t('menuSync')}
@@ -225,7 +225,7 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-7 w-7 shrink-0 lg:h-8 lg:w-8"
+                className="h-7 w-7 shrink-0 lg:h-9 lg:w-9"
                 aria-label={t('moreActions')}
               >
                 {isPending ? (

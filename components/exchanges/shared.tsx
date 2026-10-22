@@ -88,7 +88,7 @@ export function ConnectionStatus({
     raw === "PARTIAL" && errorCode === "UNPRICED_ASSETS" ? "ACTIVE" : raw;
   return (
     <span
-      className={`rounded-md px-2 py-1 text-xs ${status === "ACTIVE" ? "bg-success/10 text-success" : "bg-surface-2 text-text-muted"}`}
+      className={`rounded-md px-2 py-1 text-xs lg:px-3 lg:text-sm ${status === "ACTIVE" ? "bg-success/10 text-success" : "bg-surface-2 text-text-muted"}`}
     >
       {t.has(`statuses.${status}`) ? t(`statuses.${status}`) : status}
     </span>
