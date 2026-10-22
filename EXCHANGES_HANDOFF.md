@@ -10,7 +10,7 @@
 
 ### Состояние на 20 октября (вечер)
 
-- **Биржи в production** (`main`), видны только владельцу через `EXCHANGES_PILOT_USER_IDS`.
+- **Биржи в production** (`main`), видны пользователям из `EXCHANGES_PILOT_USER_IDS`.
   Одна база — production; превью Vercel отключены; worker `cryptoportfolio-worker-production`
   на GCP VM, деплой из `main`. Как выпускали — MIGRATIONS.md §4.
 - Подключены: Binance, Bybit, Gate, OKX, Hyperliquid (авто по кошельку), Aster на Main EVM и Binance Wallet.
@@ -223,8 +223,8 @@ SignedSize = baseSize для Long, −baseSize для Short
 
 ## 8. Окружения и выпуск (выполнен 20.10.2026)
 
-С 20.10.2026 одно окружение — production (`main`); биржи видны только владельцу через
-`EXCHANGES_PILOT_USER_IDS`. Превью Vercel отключены, тестовая ветка Neon удалена. Рискованные
+С 20.10.2026 одно окружение — production (`main`); биржи видны пользователям из
+`EXCHANGES_PILOT_USER_IDS` (Vercel и env воркера на VM). Превью Vercel отключены, тестовая ветка Neon удалена. Рискованные
 проверки — на одноразовом PostgreSQL в Docker (CI делает так же: `playwright.exchanges.config.ts`
 принимает только `127.0.0.1/exchange_test`) или во временной ветке Neon от production. Локальная
 `.env` указывает на production: не запускать с ней тесты и worker. Как выпускали — MIGRATIONS.md §4.
