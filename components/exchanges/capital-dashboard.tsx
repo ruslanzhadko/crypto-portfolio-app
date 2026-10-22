@@ -37,6 +37,10 @@ import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
 import { useDisplayPreference } from "./display-preferences";
 import { useWalletSync } from "@/components/dashboard/sync-all-button";
+import {
+  runInBackground,
+  useBackgroundTask,
+} from "@/components/dashboard/background-tasks";
 
 export function CapitalDashboard({
   walletAssets,
@@ -59,8 +63,7 @@ export function CapitalDashboard({
     tm = useTranslations("TopMovers"),
     locale = useLocale();
   const [scope, setScope] = useState<"all" | "wallets" | "exchanges">("all"),
-    [days, setDays] = useState(30),
-    [busy, setBusy] = useState(false);
+    [days, setDays] = useState(30);
   const [error, setError] = useState<string | null>(null);
   const wallets = useWalletSync();
   const [historyOpen, setHistoryOpen] = useDisplayPreference(
@@ -79,9 +82,9 @@ export function CapitalDashboard({
   /** The refresh button follows the selected tab: everything, wallets only or exchanges only. */
   function refreshScope() {
     if (scope !== "exchanges") wallets.runSync();
-    if (scope !== "wallets") void refresh();
+    if (scope !== "wallets") runInBackground("exchange-sync", refresh);
   }
-  const refreshing = busy || wallets.isPending;
+  const refreshing = useBackgroundTask("exchange-sync") || wallets.isPending;
   const refreshLabel = t(
     scope === "all"
       ? "refreshAll"
@@ -90,7 +93,6 @@ export function CapitalDashboard({
         : "refreshExchanges",
   );
   async function refresh() {
-    setBusy(true);
     setError(null);
     const ids = [
       ...new Set(
@@ -107,7 +109,6 @@ export function CapitalDashboard({
     if (results.some((r) => r.status === "rejected"))
       setError("REFRESH_PARTIAL");
     data.refresh();
-    setBusy(false);
   }
   const chart = capitalChartData(history?.points ?? []).map((point) => ({
     ...point,
@@ -347,7 +348,7 @@ export function CapitalDashboard({
               </div>
             )}
             <details
-              className="smooth-details mt-3 border-t border-border pt-2"
+              className="mt-3 border-t border-border pt-2"
               open={historyOpen === "true"}
               onToggle={(e) => setHistoryOpen(String(e.currentTarget.open))}
             >

@@ -187,29 +187,3 @@
     opacity: 1 !important;
   }
 }
-
-/* Disclosures that unfold by height where the browser supports it (Chrome, Safari 18.4+);
-   elsewhere their content still fades in through its own animation classes. */
-:root {
-  interpolate-size: allow-keywords;
-}
-
-@supports selector(::details-content) {
-  details.smooth-details::details-content {
-    block-size: 0;
-    overflow-y: clip;
-    transition:
-      block-size 220ms ease-out,
-      content-visibility 220ms allow-discrete;
-  }
-
-  details.smooth-details[open]::details-content {
-    block-size: auto;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  details.smooth-details::details-content {
-    transition: none;
-  }
-}

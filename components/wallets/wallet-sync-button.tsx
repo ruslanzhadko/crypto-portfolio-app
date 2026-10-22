@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { startTransition } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { RefreshCw } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
+import { runInBackground, useBackgroundTask } from '@/components/dashboard/background-tasks';
 
 export function WalletSyncButton({
   walletId,
@@ -18,11 +19,12 @@ export function WalletSyncButton({
 }) {
   const router = useRouter();
   const t = useTranslations('WalletCard');
-  const [isPending, startTransition] = useTransition();
+  // A background task, not a transition: the user can leave the page while the wallet syncs.
+  const isPending = useBackgroundTask(`wallet-sync:${walletId}`);
   const { toast } = useToast();
 
   function onSync() {
-    startTransition(async () => {
+    runInBackground(`wallet-sync:${walletId}`, async () => {
       const res = await fetch(`/api/wallets/${walletId}/sync`, { method: 'POST' });
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as
@@ -44,7 +46,7 @@ export function WalletSyncButton({
       });
       // Сигналізуємо клієнтським компонентам (TransactionList тощо) про оновлення
       window.dispatchEvent(new CustomEvent('wallet-synced', { detail: { walletId } }));
-      router.refresh();
+      startTransition(() => router.refresh());
     });
   }
 

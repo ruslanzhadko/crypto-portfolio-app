@@ -52,7 +52,8 @@ export function MobileNav({
   // during Safari's browser-toolbar/viewport changes while scrolling.
   return createPortal(
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 grid border-t border-border bg-surface md:hidden"
+      // Own GPU layer: iOS Safari otherwise sometimes paints the bar mid-screen during momentum scrolling.
+      className="fixed bottom-0 left-0 right-0 z-40 grid transform-gpu border-t border-border bg-surface [backface-visibility:hidden] md:hidden"
       style={{
         gridTemplateColumns: `repeat(${exchangesEnabled ? 5 : items.length}, minmax(0,1fr))`,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",

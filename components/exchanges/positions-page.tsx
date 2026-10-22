@@ -506,7 +506,7 @@ export function PositionsPage({
               node: (
                 <details
                   key={key}
-                  className="smooth-details group"
+                  className="group"
                   open={
                     expanded[`${p.connection.id}:${p.positionKey}`] ?? false
                   }

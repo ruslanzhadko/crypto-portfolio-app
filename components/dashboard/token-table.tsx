@@ -231,7 +231,8 @@ export function TokenTable({
         {spamTokens.length > 0 && <p className="hidden text-xs text-text-muted sm:block">{t('spamNotice')}</p>}
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        {/* Phones fit the fixed-layout table; a scroll container there is an extra layer iOS may leave half-painted. */}
+        <div className="sm:overflow-x-auto">
           <table className="w-full table-fixed text-sm">
             <thead className="border-b border-border text-xs uppercase text-text-muted">
               <tr>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useTransition } from 'react';
+import { startTransition, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { RefreshCw } from 'lucide-react';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
+import { runInBackground, useBackgroundTask } from './background-tasks';
 
 interface SyncResponse {
   data?: {
@@ -30,13 +31,14 @@ interface SyncAllButtonProps {
 /** Wallet sync with the usual toasts and dashboard refresh; shared by the sync buttons. */
 export function useWalletSync() {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  // A background task, not a transition: navigation stays free while wallets sync.
+  const isPending = useBackgroundTask('wallet-sync');
   const { toast } = useToast();
   const t = useTranslations('SyncAllButton');
 
   function runSync(opts: { force?: boolean; silent?: boolean } = {}) {
     const { force = false, silent = false } = opts;
-    startTransition(async () => {
+    runInBackground('wallet-sync', async () => {
       const res = await fetch(`/api/portfolio/sync${force ? '?force=true' : ''}`, {
         method: 'POST',
       });
@@ -88,7 +90,7 @@ export function useWalletSync() {
 
       // Завжди оновлюємо дашборд — навіть якщо synced.length = 0 (помилки чи throttle)
       window.dispatchEvent(new Event('portfolio-synced'));
-      router.refresh();
+      startTransition(() => router.refresh());
     });
   }
 

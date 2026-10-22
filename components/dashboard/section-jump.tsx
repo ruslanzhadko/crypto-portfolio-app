@@ -46,7 +46,8 @@ export function SectionJump() {
   return (
     <div
       className={cn(
-        'fixed right-3 z-30 transition-all duration-200 motion-reduce:transition-none',
+        // No backdrop blur: a blurred fixed layer is repainted on every scroll frame on iOS.
+        'fixed right-3 z-30 transform-gpu transition-[opacity,transform] duration-200 motion-reduce:transition-none',
         // Above the mobile bottom bar and the iPhone home indicator.
         'bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] md:bottom-6 md:right-6',
         visible ? 'translate-y-0 opacity-100' : 'pointer-events-none translate-y-2 opacity-0',
@@ -56,7 +57,7 @@ export function SectionJump() {
         <DropdownMenuTrigger
           aria-label={t('jumpTo')}
           title={t('jumpTo')}
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface/80 text-text shadow-card backdrop-blur transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-surface/95 text-text shadow-card transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <ListTree className="h-4 w-4" aria-hidden />
         </DropdownMenuTrigger>
