@@ -19,6 +19,7 @@ import {
   type SimplePriceItem,
 } from "@/lib/services/coingecko";
 import { fetchPrices, type PriceQuery } from "@/lib/services/price-feed";
+import { checkedPrice, verifiedCoingeckoId } from "@/lib/services/reference-price";
 import { getChainInfo } from "@/lib/utils/networks";
 import { exchangesEnabled, HYPERCORE_CHAINS } from "@/lib/exchanges/config";
 import { syncWalletExchanges } from "@/lib/exchanges/wallet-discovery";
@@ -138,6 +139,7 @@ async function saveBalances(
 ): Promise<SyncResult> {
   const enriched = await applyCachedPrices(tokens);
   await enrichMissingPrices(enriched);
+  await applyReferencePrices(enriched);
 
   const spamCount = enriched.filter(shouldMarkSpam).length;
 
@@ -455,6 +457,35 @@ function applyPriceToToken(
   if (t.usdValue === 0) t.usdValue = t.balance * price;
 }
 
+/**
+ * Replaces provider or DexScreener prices that disagree with CoinGecko by more than 10%
+ * (reference-price.ts): a single bad pool must not move wallet capital.
+ */
+async function applyReferencePrices(tokens: EnrichedToken[]): Promise<void> {
+  const ids = Array.from(
+    new Set(tokens.filter((t) => t.coingeckoId).map((t) => t.coingeckoId!)),
+  );
+  if (ids.length === 0) return;
+  const rows = await prisma.tokenPrice.findMany({
+    where: { tokenId: { in: ids } },
+    select: { tokenId: true, currentPrice: true },
+  });
+  const reference = new Map(rows.map((r) => [r.tokenId, r.currentPrice]));
+  const missing = ids.filter((id) => !reference.has(id));
+  if (missing.length > 0) {
+    const fresh = await fetchPricesByIds(missing).catch(() => new Map());
+    for (const [id, p] of fresh) reference.set(id, p.price);
+    if (fresh.size > 0) await saveCoinGeckoPricesToCache(fresh);
+  }
+  for (const t of tokens) {
+    if (!t.coingeckoId) continue;
+    const price = checkedPrice(t.priceUsd, reference.get(t.coingeckoId));
+    if (price === t.priceUsd) continue;
+    t.priceUsd = price;
+    t.usdValue = t.balance * price;
+  }
+}
+
 // ─────────────────────────────────────────
 // Збагачення кешованими цінами
 // ─────────────────────────────────────────
@@ -513,6 +544,7 @@ async function applyCachedPrices(
       (t.address
         ? contractIds.get(`${t.chainName}:${t.address.toLowerCase()}`)
         : undefined) ??
+      verifiedCoingeckoId(t.chainName, t.address) ??
       null;
     const fromCache = verifiedId
       ? priceById.get(verifiedId)

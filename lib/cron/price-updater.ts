@@ -5,6 +5,7 @@ import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { sendPriceAlert, sendPriceTargetAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 import { syncWallet } from '@/lib/services/wallet-sync';
+import { checkedPrice } from '@/lib/services/reference-price';
 
 // ─────────────────────────────────────────
 // Wallet sync tuning
@@ -157,7 +158,8 @@ export function buildPriceQueries(balances: BalanceRow[]): Map<string, PriceQuer
 
 /**
  * Returns the best available price for a balance row.
- * Priority: price-feed (Binance/DexScreener) → CoinGecko cache.
+ * Priority: price-feed (Binance/DexScreener) → CoinGecko cache; a feed price more than 10% away
+ * from CoinGecko is a bad pool reading and CoinGecko wins (reference-price.ts).
  * Pure — no side effects, safe to unit-test without mocking.
  */
 export function resolveBalancePrice(
@@ -166,8 +168,9 @@ export function resolveBalancePrice(
   cgPriceMap: Map<string, PriceInfo>,
 ): PriceInfo | null {
   const feed = feedPrices.get(priceKey(b.chainName, b.tokenAddress));
-  if (feed) return feed;
-  return b.coingeckoId ? (cgPriceMap.get(b.coingeckoId) ?? null) : null;
+  const reference = b.coingeckoId ? cgPriceMap.get(b.coingeckoId) : undefined;
+  if (feed && reference && checkedPrice(feed.price, reference.price) !== feed.price) return reference;
+  return feed ?? reference ?? null;
 }
 
 // ─────────────────────────────────────────
@@ -285,13 +288,9 @@ async function recalculateBalances(): Promise<number> {
     () => new Map<string, PriceInfo>(),
   );
 
-  // CoinGecko cache as fallback for tokens the price-feed doesn't cover
+  // CoinGecko cache (refreshed earlier in this run): fallback, and reference for feed prices
   const cgIds = Array.from(
-    new Set(
-      balances
-        .filter((b) => b.coingeckoId && !feedPrices.has(priceKey(b.chainName, b.tokenAddress)))
-        .map((b) => b.coingeckoId!),
-    ),
+    new Set(balances.filter((b) => b.coingeckoId).map((b) => b.coingeckoId!)),
   );
   const cgRows =
     cgIds.length > 0

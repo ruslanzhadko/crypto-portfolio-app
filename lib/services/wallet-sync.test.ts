@@ -23,7 +23,7 @@ vi.mock("./hyperliquid", () => ({
 }));
 vi.mock("./coingecko", () => ({
   fetchCoinGeckoContractIds: mocks.contractIds,
-  fetchPricesByIds: vi.fn(),
+  fetchPricesByIds: vi.fn(async () => new Map()),
   searchCoins: vi.fn(),
 }));
 vi.mock("./price-feed", () => ({ fetchPrices: mocks.fetchPrices }));

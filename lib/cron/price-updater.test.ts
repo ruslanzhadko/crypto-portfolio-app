@@ -328,8 +328,15 @@ describe('resolveBalancePrice', () => {
   it('price-feed має ціну → повертає її (пріоритет)', () => {
     const b = makeBalance({ chainName: 'ethereum', tokenAddress: '0xabc', coingeckoId: 'tkn' });
     const feed = new Map([['ethereum::0xabc', { price: 2, change24h: 10 }]]);
-    const cg = new Map([['tkn', { price: 999, change24h: -50 }]]);
+    const cg = new Map([['tkn', { price: 2.1, change24h: -50 }]]);
     expect(resolveBalancePrice(b, feed, cg)).toEqual({ price: 2, change24h: 10 });
+  });
+
+  it('a feed price more than 10% from CoinGecko is a bad pool reading: CoinGecko wins', () => {
+    const b = makeBalance({ chainName: 'robinhood', tokenAddress: '0xusdg', coingeckoId: 'global-dollar' });
+    const feed = new Map([['robinhood::0xusdg', { price: 3.71, change24h: 0 }]]);
+    const cg = new Map([['global-dollar', { price: 0.9999, change24h: 0.01 }]]);
+    expect(resolveBalancePrice(b, feed, cg)).toEqual({ price: 0.9999, change24h: 0.01 });
   });
 
   it('price-feed порожній, але є coingeckoId у кеші → бере з CoinGecko', () => {
