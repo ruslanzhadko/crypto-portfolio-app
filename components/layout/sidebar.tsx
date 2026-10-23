@@ -64,18 +64,16 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
         })}
       </nav>
 
-      <div className="border-t border-border p-4 text-xs text-text-muted">
-        <p>
-          © {new Date().getFullYear()} CryptoPortfolio ·{" "}
-          {/* The dot stays glued to the link when the line wraps. */}
-          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-            <Link href="/changelog" className="hover:text-text hover:underline">
-              {t("changelog")}
-            </Link>
-            <ChangelogNewDot />
-          </span>
+      {/* One item per line, evenly spaced, so nothing wraps differently by language. */}
+      <div className="space-y-1 border-t border-border p-4 text-xs text-text-muted">
+        <p>© {new Date().getFullYear()} CryptoPortfolio</p>
+        <p className="flex items-center gap-1.5">
+          <Link href="/changelog" className="hover:text-text hover:underline">
+            {t("changelog")}
+          </Link>
+          <ChangelogNewDot />
         </p>
-        <p className="mt-0.5">
+        <p>
           {t("footerBy")}{" "}
           <a
             href="https://t.me/ludoslan"
