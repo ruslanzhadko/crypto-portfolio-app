@@ -5,7 +5,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  actions: read
 concurrency:
   group: exchange-worker-${{ github.ref_name }}
   # A newer develop push makes the older check pointless; main runs are never cancelled mid-deploy.
@@ -13,6 +12,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    # Reading workflow runs lets main reuse the develop check of the same commit.
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 20
     env:
       DATABASE_URL: postgresql://exchange_test:ci-test-only@127.0.0.1:5432/exchange_test
