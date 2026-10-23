@@ -18,6 +18,13 @@ import { moverChange, type MoverChange } from '@/lib/portfolio/holding-returns';
 import { useHoldingReturns } from './use-holding-returns';
 
 const MIN_USD = 1;
+
+/** Short dollars for a mover row: cents at most, so tiny amounts never widen the row. */
+function moverUsd(value: number): string {
+  const abs = Math.abs(value);
+  if (abs > 0 && abs < 0.01) return '<$0.01';
+  return formatUsd(abs, { compact: true, minimumFractionDigits: 2 });
+}
 const DEFAULT_VISIBLE_COUNT = 5;
 
 type MoverToken = AggregatedToken & { exchanges?: ExchangeHolding[] };
@@ -32,7 +39,7 @@ function MoverRow({ tk }: { tk: MoverRowToken }) {
   const hours = tk.change.hours !== null && tk.change.hours < 23.5 ? Math.max(1, Math.round(tk.change.hours)) : null;
 
   const inner = (
-    <div className="flex h-full min-h-12 w-full items-center gap-3 px-3 py-1.5 sm:px-4">
+    <div className="flex h-full min-h-12 w-full min-w-0 items-center gap-3 px-3 py-1.5 sm:px-4">
       {tk.logoUrl || tk.tokenAddress ? (
         <TokenLogo
           src={tk.logoUrl}
@@ -51,11 +58,11 @@ function MoverRow({ tk }: { tk: MoverRowToken }) {
           {location || tk.name}
         </p>
       </div>
-      <div className="text-right">
+      <div className="shrink-0 text-right">
         <PriceChange value={tk.priceChange24h} />
-        <p className="flex items-center justify-end gap-1 text-[11px] tabular-nums">
+        <p className="flex items-center justify-end gap-1 whitespace-nowrap text-[11px] tabular-nums">
           <span className={changeUsd > 0 ? 'text-success' : changeUsd < 0 ? 'text-danger' : 'text-text-muted'}>
-            {changeUsd > 0 ? '+' : changeUsd < 0 ? '−' : ''}{formatUsd(Math.abs(changeUsd), { compact: true })}
+            {changeUsd > 0 ? '+' : changeUsd < 0 ? '−' : ''}{moverUsd(changeUsd)}
           </span>
           {hours !== null && (
             <>
@@ -71,7 +78,7 @@ function MoverRow({ tk }: { tk: MoverRowToken }) {
             title={`${t('positionValue')}: ${formatUsd(tk.totalUsd)}`}
             aria-label={`${t('positionValue')}: ${formatUsd(tk.totalUsd)}`}
           >
-            {formatUsd(tk.totalUsd, { compact: true })}
+            {moverUsd(tk.totalUsd)}
           </span>
         </p>
       </div>
@@ -80,20 +87,20 @@ function MoverRow({ tk }: { tk: MoverRowToken }) {
 
   if (tokenPage?.external) {
     return (
-      <a href={tokenPage.href} target="_blank" rel="noreferrer" className="flex min-h-12 flex-1 transition-colors hover:bg-muted/40">
+      <a href={tokenPage.href} target="_blank" rel="noreferrer" className="flex min-h-12 min-w-0 flex-1 transition-colors hover:bg-muted/40">
         {inner}
       </a>
     );
   }
   if (tokenPage) {
     return (
-      <Link href={`${tokenPage.href}?from=dashboard`} className="flex min-h-12 flex-1 transition-colors hover:bg-muted/40">
+      <Link href={`${tokenPage.href}?from=dashboard`} className="flex min-h-12 min-w-0 flex-1 transition-colors hover:bg-muted/40">
         {inner}
       </Link>
     );
   }
   return (
-    <div className="flex min-h-12 flex-1 w-full text-left">
+    <div className="flex min-h-12 w-full min-w-0 flex-1 text-left">
       {inner}
     </div>
   );
@@ -104,9 +111,9 @@ function MoversList({ tokens, emptyText }: { tokens: MoverRowToken[]; emptyText:
     return <p className="px-4 pb-4 text-sm text-text-muted">{emptyText}</p>;
   }
   return (
-    <div className="flex flex-1 flex-col divide-y divide-border">
+    <div className="flex min-w-0 flex-1 flex-col divide-y divide-border">
       {tokens.map((tk) => (
-        <div key={tk.key} className="flex flex-1">
+        <div key={tk.key} className="flex min-w-0 flex-1">
           <MoverRow tk={tk} />
         </div>
       ))}
@@ -204,19 +211,21 @@ export function TopMovers({
                   type="button"
                   aria-pressed={isMobileGainers}
                   onClick={() => setMobileView('gainers')}
-                  className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors ${isMobileGainers ? 'bg-background text-success shadow-sm' : 'text-text-muted'}`}
+                  aria-label={gainersTitle}
+                  className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 text-sm font-medium transition-colors ${isMobileGainers ? 'bg-background text-success shadow-sm' : 'text-text-muted'}`}
                 >
                   <TrendingUp className="h-4 w-4" aria-hidden />
-                  {gainersTitle}
+                  {t('gainersTab')}
                 </button>
                 <button
                   type="button"
                   aria-pressed={!isMobileGainers}
                   onClick={() => setMobileView('losers')}
-                  className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors ${!isMobileGainers ? 'bg-background text-danger shadow-sm' : 'text-text-muted'}`}
+                  aria-label={t('losersTitle')}
+                  className={`flex min-h-9 flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 text-sm font-medium transition-colors ${!isMobileGainers ? 'bg-background text-danger shadow-sm' : 'text-text-muted'}`}
                 >
                   <TrendingDown className="h-4 w-4" aria-hidden />
-                  {t('losersTitle')}
+                  {t('losersTab')}
                 </button>
               </div>
               {mobileTotal > DEFAULT_VISIBLE_COUNT && (
