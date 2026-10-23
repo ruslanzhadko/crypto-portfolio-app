@@ -18,7 +18,11 @@
     "exchanges": "Exchanges",
     "positions": "Positions",
     "assets": "Assets",
-    "more": "More"
+    "more": "More",
+    "pillCapital": "Capital",
+    "pillPnl": "PnL of {count, plural, one {# open position} other {# open positions}}",
+    "pillPositions": "{count, plural, one {# position} other {# positions}}",
+    "pillStale": "Exchange data is updating"
   },
   "Feed": {
     "pageTitle": "Crypto Feed",

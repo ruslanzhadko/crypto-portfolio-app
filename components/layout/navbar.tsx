@@ -17,6 +17,7 @@ import type { Role } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { Link } from '@/i18n/navigation';
 import { LocaleSwitcher } from '@/components/common/locale-switcher';
+import { CapitalPill } from './capital-pill';
 
 interface NavbarProps {
   email: string;
@@ -39,11 +40,13 @@ export function Navbar({ email, name, role }: NavbarProps) {
           height={34}
           className="rounded-lg object-cover"
         />
-        <span className="text-lg font-semibold tracking-tight">
+        {/* The narrowest phones keep only the logo so the capital pill fits. */}
+        <span className="hidden text-lg font-semibold tracking-tight min-[480px]:inline">
           Crypto<span className="gradient-text">Portfolio</span>
         </span>
       </div>
-      <div className="ml-auto flex items-center gap-3">
+      <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+        <CapitalPill />
         <LocaleSwitcher />
         {role === 'ADMIN' && <Badge variant="outline">{t('adminBadge')}</Badge>}
         <DropdownMenu>

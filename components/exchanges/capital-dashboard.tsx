@@ -20,6 +20,8 @@ import type {
   getCapitalHistory,
 } from "@/lib/exchanges/portfolio";
 import { useExchangeData, exchangeAction } from "./use-exchange-data";
+import { publishCapitalSummary } from "@/components/layout/use-capital-summary";
+import { summarizeOverview } from "@/lib/portfolio/capital-summary";
 import { Money, Quantity, Updated, ExchangeErrorNotice } from "./shared";
 import { BalanceTable } from "./balance-table";
 import { exchangeBalanceRows } from "@/lib/exchanges/balance-rows";
@@ -82,6 +84,10 @@ export function CapitalDashboard({
   }>(`/api/portfolio/capital?view=history&days=${days}`, 300_000);
   const overview = data.data?.overview,
     history = chartData.data?.history;
+  // The header pill shows the same capital as this page, without a request of its own.
+  useEffect(() => {
+    if (overview) publishCapitalSummary(summarizeOverview(overview));
+  }, [overview]);
   /** The refresh button follows the selected tab: everything, wallets only or exchanges only. */
   function refreshScope() {
     if (scope !== "exchanges") wallets.runSync();

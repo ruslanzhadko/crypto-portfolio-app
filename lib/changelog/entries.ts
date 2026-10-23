@@ -15,6 +15,19 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-23",
     title: {
+      ru: "Капитал в шапке на любой странице",
+      uk: "Капітал у шапці на будь-якій сторінці",
+      en: "Capital in the header on every page",
+    },
+    items: {
+      ru: ["Справа вверху — общий капитал и PnL открытых позиций; нажатие открывает обзор."],
+      uk: ["Праворуч угорі — загальний капітал і PnL відкритих позицій; натискання відкриває огляд."],
+      en: ["Top right shows your total capital and the PnL of open positions; tap it to open the overview."],
+    },
+  },
+  {
+    date: "2026-10-23",
+    title: {
       ru: "Новые уведомления видно на сайте",
       uk: "Нові сповіщення видно на сайті",
       en: "New alerts are visible on the site",

@@ -11,6 +11,8 @@ import {
   getCapitalHistory,
 } from "@/lib/exchanges/portfolio";
 import { withinActivityGrace } from "@/lib/exchanges/activity";
+import { summarizeOverview } from "@/lib/portfolio/capital-summary";
+import { cacheCapitalSummary } from "@/lib/portfolio/capital-summary-cache";
 export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
@@ -24,10 +26,12 @@ export async function GET(req: NextRequest) {
       .safeParse(req.nextUrl.searchParams.get("days") ?? 30);
     if (!days.success) return failure("BAD_REQUEST");
     const options = { relaxed: withinActivityGrace(guard.activeSince) };
-    if (req.nextUrl.searchParams.get("view") === "overview")
-      return exchangeJson({
-        overview: await getCapitalOverview(guard.user.id, options),
-      });
+    if (req.nextUrl.searchParams.get("view") === "overview") {
+      const overview = await getCapitalOverview(guard.user.id, options);
+      // The header pill on other pages shows the same numbers without its own database read.
+      await cacheCapitalSummary(guard.user.id, summarizeOverview(overview));
+      return exchangeJson({ overview });
+    }
     if (req.nextUrl.searchParams.get("view") === "history")
       return exchangeJson({
         history: await getCapitalHistory(guard.user.id, days.data),

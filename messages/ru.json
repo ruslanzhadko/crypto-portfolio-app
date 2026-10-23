@@ -18,7 +18,11 @@
     "exchanges": "Биржи",
     "positions": "Позиции",
     "assets": "Активы",
-    "more": "Ещё"
+    "more": "Ещё",
+    "pillCapital": "Капитал",
+    "pillPnl": "PnL {count, plural, one {# открытой позиции} other {# открытых позиций}}",
+    "pillPositions": "{count, plural, one {# позиция} few {# позиции} many {# позиций} other {# позиции}}",
+    "pillStale": "Данные бирж обновляются"
   },
   "Feed": {
     "pageTitle": "Криптолента",

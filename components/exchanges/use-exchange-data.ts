@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 const IDLE_AFTER_MS = 30 * 60_000;
 let lastInteraction = Date.now();
 let listening = false;
-function trackInteraction() {
+export function trackInteraction() {
   if (listening || typeof window === "undefined") return;
   listening = true;
   const touch = () => {
@@ -21,7 +21,7 @@ function trackInteraction() {
     if (document.visibilityState === "visible") touch();
   });
 }
-const userIdle = () => Date.now() - lastInteraction >= IDLE_AFTER_MS;
+export const userIdle = () => Date.now() - lastInteraction >= IDLE_AFTER_MS;
 
 /** Poll persisted data only; no request to exchanges originates in a browser. */
 export function useExchangeData<T>(
