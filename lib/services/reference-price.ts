@@ -14,6 +14,9 @@ export function verifiedCoingeckoId(chainName: string, address: string | null | 
   return address ? VERIFIED_CONTRACTS[`${chainName}:${address.toLowerCase()}`] : undefined;
 }
 
+/** CoinGecko ids of the verified contracts, so their reference prices are always fetched. */
+export const VERIFIED_COINGECKO_IDS: readonly string[] = [...new Set(Object.values(VERIFIED_CONTRACTS))];
+
 /** A price further than this from the reference is treated as a bad reading. */
 export const MAX_REFERENCE_DEVIATION = 0.1;
 

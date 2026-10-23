@@ -5,7 +5,11 @@ import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { sendPriceAlert, sendPriceTargetAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 import { syncWallet } from '@/lib/services/wallet-sync';
-import { checkedPrice } from '@/lib/services/reference-price';
+import {
+  checkedPrice,
+  VERIFIED_COINGECKO_IDS,
+  verifiedCoingeckoId,
+} from '@/lib/services/reference-price';
 
 // ─────────────────────────────────────────
 // Wallet sync tuning
@@ -194,6 +198,8 @@ async function collectTokenIds(): Promise<string[]> {
   const ids = new Set<string>();
   for (const t of triggers) if (t.tokenId) ids.add(t.tokenId);
   for (const b of balances) if (b.coingeckoId) ids.add(b.coingeckoId);
+  // Reference prices for verified contracts even before a wallet sync stores their id.
+  for (const id of VERIFIED_COINGECKO_IDS) ids.add(id);
   return Array.from(ids);
 }
 
@@ -267,7 +273,7 @@ async function fetchAndPersistPrices(
 // ─────────────────────────────────────────
 
 async function recalculateBalances(): Promise<number> {
-  const balances = await prisma.tokenBalance.findMany({
+  const rows = await prisma.tokenBalance.findMany({
     where: { isSpam: false, balance: { gt: 0 } },
     select: {
       id: true,
@@ -281,6 +287,11 @@ async function recalculateBalances(): Promise<number> {
       coingeckoId: true,
     },
   });
+  // A balance row gets its CoinGecko id at the next wallet sync; verified contracts use it right away.
+  const balances = rows.map((b) => ({
+    ...b,
+    coingeckoId: b.coingeckoId ?? verifiedCoingeckoId(b.chainName, b.tokenAddress) ?? null,
+  }));
   if (balances.length === 0) return 0;
 
   const queries = buildPriceQueries(balances);
