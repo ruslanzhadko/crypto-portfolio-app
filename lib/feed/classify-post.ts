@@ -87,14 +87,19 @@ export function classifyFeedPost(text: string): ClassifiedPost {
   } satisfies Omit<ClassifiedPost, "type">;
 
   const liquidation = compact.match(
-    /#?([A-Z][A-Z0-9]{1,11})\s+Liquidated\s+(Long|Short):\s*\$([\d.,]+)([KMB])?\s+at\s+\$([\d.,]+)[^[]*\[([^\]]+)\]/i,
+    /#?([A-Z][A-Z0-9]{1,11})\s+Liquidated\s+(Long|Short):\s*\$([\d.,]+)([KMB])?\s+at\s+\$([\d.,]+)/i,
   );
+  // The exchange tag "[Binance]" follows later; found separately so the pattern cannot backtrack.
+  const tagStart =
+    liquidation?.index === undefined ? -1 : compact.indexOf("[", liquidation.index + liquidation[0].length);
+  const tagEnd = tagStart === -1 ? -1 : compact.indexOf("]", tagStart + 1);
+  const exchange = tagEnd > tagStart + 1 ? compact.slice(tagStart + 1, tagEnd) : null;
   if (
     liquidation?.[1] &&
     liquidation[2] &&
     liquidation[3] &&
     liquidation[5] &&
-    liquidation[6]
+    exchange
   ) {
     return {
       ...base,
@@ -103,7 +108,7 @@ export function classifyFeedPost(text: string): ClassifiedPost {
       direction: liquidation[2].toUpperCase(),
       amountUsd: money(liquidation[3], liquidation[4]),
       priceUsd: money(liquidation[5]),
-      exchange: liquidation[6],
+      exchange,
     };
   }
 
