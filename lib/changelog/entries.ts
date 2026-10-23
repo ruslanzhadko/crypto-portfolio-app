@@ -1,0 +1,281 @@
+export type ChangelogLocale = "ru" | "uk" | "en";
+
+export interface ChangelogEntry {
+  /** ISO date of the release. Newest entry first. */
+  date: string;
+  title: Record<ChangelogLocale, string>;
+  items: Record<ChangelogLocale, string[]>;
+}
+
+/**
+ * Product changelog: only noticeable features and important fixes, a few short lines each.
+ * Not for styling tweaks, refactors, infrastructure or small bug fixes (see CLAUDE.md).
+ */
+export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: "2026-10-23",
+    title: {
+      ru: "Мобильное меню и точные цены",
+      uk: "Мобільне меню та точні ціни",
+      en: "Mobile menu and accurate prices",
+    },
+    items: {
+      ru: [
+        "Новое меню «Ещё» на телефоне: закруглённая панель с анимацией. Внизу снова «Кошельки».",
+        "Детали позиции плавно раскрываются и сворачиваются.",
+        "Исправлены скачки капитала кошельков: цены токенов сверяются с CoinGecko, ошибочные точки в истории исправлены.",
+      ],
+      uk: [
+        "Нове меню «Ще» на телефоні: заокруглена панель з анімацією. Унизу знову «Гаманці».",
+        "Деталі позиції плавно розкриваються та згортаються.",
+        "Виправлено стрибки капіталу гаманців: ціни токенів звіряються з CoinGecko, помилкові точки в історії виправлено.",
+      ],
+      en: [
+        "New “More” menu on phones: a rounded animated sheet. “Wallets” is back in the bottom bar.",
+        "Position details unfold and fold smoothly.",
+        "Fixed jumps in wallet capital: token prices are now cross-checked with CoinGecko and wrong history points are corrected.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-22",
+    title: {
+      ru: "Обновлённый дашборд",
+      uk: "Оновлений дашборд",
+      en: "Redesigned dashboard",
+    },
+    items: {
+      ru: [
+        "Блок капитала компактнее. Одна кнопка обновления обновляет выбранную вкладку: всё, кошельки или биржи.",
+        "Во вкладке «Всё» появились лидеры роста и падения сразу по кошелькам и биржам.",
+        "В длинном списке токенов показаны первые 10 строк, остальные по кнопке «Показать все». Плавающая кнопка быстро ведёт к нужному разделу.",
+        "Спам-токены идут в конце списка с пометкой «Спам». Остатки известных монет (например, USDC) спамом не считаются.",
+        "Синхронизация идёт в фоне: во время обновления можно переходить на другие страницы.",
+      ],
+      uk: [
+        "Блок капіталу компактніший. Одна кнопка оновлення оновлює вибрану вкладку: все, гаманці або біржі.",
+        "У вкладці «Все» з’явилися лідери зростання та падіння одразу по гаманцях і біржах.",
+        "У довгому списку токенів показано перші 10 рядків, решта за кнопкою «Показати все». Плаваюча кнопка швидко веде до потрібного розділу.",
+        "Спам-токени йдуть наприкінці списку з позначкою «Спам». Залишки відомих монет (наприклад, USDC) спамом не вважаються.",
+        "Синхронізація йде у фоні: під час оновлення можна переходити на інші сторінки.",
+      ],
+      en: [
+        "A more compact capital block. One refresh button updates the selected tab: All, Wallets or Exchanges.",
+        "The All tab now shows top gainers and losers across wallets and exchanges together.",
+        "Long token lists show the first 10 rows, the rest behind “Show all”. A floating button jumps to the section you need.",
+        "Spam tokens go to the end of the list with a “Spam” badge. Balances of well-known coins (such as USDC) are no longer treated as spam.",
+        "Syncing runs in the background: you can open other pages while it works.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-22",
+    title: {
+      ru: "Депозиты и выводы бирж, компактные страницы",
+      uk: "Депозити та виводи бірж, компактні сторінки",
+      en: "Exchange deposits and withdrawals, compact pages",
+    },
+    items: {
+      ru: [
+        "Появилась история депозитов и выводов бирж: Binance, Bybit, OKX, Hyperliquid.",
+        "Страницы кошельков и бирж стали компактнее. Описание спрятано за значком «i», кнопка добавления справа от заголовка.",
+        "На компьютере крупнее шрифты, блоки и логотипы бирж. Отдельный кошелёк обновляется в фоне.",
+        "Позиции на телефоне: карточки компактнее (около трёх на экран), фильтры собраны в одну панель со сбросом.",
+      ],
+      uk: [
+        "З’явилася історія депозитів та виводів бірж: Binance, Bybit, OKX, Hyperliquid.",
+        "Сторінки гаманців і бірж стали компактнішими. Опис сховано за значком «i», кнопка додавання праворуч від заголовка.",
+        "На комп’ютері більші шрифти, блоки та логотипи бірж. Окремий гаманець оновлюється у фоні.",
+        "Позиції на телефоні: картки компактніші (близько трьох на екран), фільтри зібрано в одну панель зі скиданням.",
+      ],
+      en: [
+        "Added deposit and withdrawal history for exchanges: Binance, Bybit, OKX, Hyperliquid.",
+        "Wallets and Exchanges pages are more compact. The description sits behind an “i” icon, the add button is next to the title.",
+        "Larger type, blocks and exchange logos on desktop. A single wallet refreshes in the background.",
+        "Positions on phones: denser cards (about three per screen), filters in one panel with a reset button.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-22",
+    title: {
+      ru: "Ценовые оповещения в реальном времени",
+      uk: "Цінові сповіщення в реальному часі",
+      en: "Real-time price alerts",
+    },
+    items: {
+      ru: [
+        "Оповещения проверяются на сервере постоянно: цены Binance и Gate обновляются каждые 20 секунд.",
+        "Порог можно задать от 0,1%, период — от 1 минуты.",
+      ],
+      uk: [
+        "Сповіщення перевіряються на сервері постійно: ціни Binance і Gate оновлюються кожні 20 секунд.",
+        "Поріг можна задати від 0,1%, період — від 1 хвилини.",
+      ],
+      en: [
+        "Alerts are checked on the server all the time: Binance and Gate prices refresh every 20 seconds.",
+        "The threshold can be as low as 0.1% and the period as short as 1 minute.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-21",
+    title: {
+      ru: "Криптолента: быстрее и надёжнее",
+      uk: "Криптострічка: швидше та надійніше",
+      en: "Crypto feed: faster and more reliable",
+    },
+    items: {
+      ru: [
+        "Новые посты появляются за несколько секунд, пока лента открыта. Если вы не на странице, она догоняет пропущенное сразу при открытии.",
+        "Если долго ничего не делать на странице, обновление замедляется, а затем останавливается с кнопкой «Обновить».",
+        "Картинки в постах ограничены по размеру и подгоняются под рамку. Шапка и фильтры компактнее, лента шире.",
+        "Telegram-лента работает на собственном сервере и сама восстанавливается после сбоев.",
+      ],
+      uk: [
+        "Нові пости з’являються за кілька секунд, поки стрічка відкрита. Якщо вас немає на сторінці, вона наздоганяє пропущене одразу при відкритті.",
+        "Якщо довго нічого не робити на сторінці, оновлення сповільнюється, а потім зупиняється з кнопкою «Оновити».",
+        "Картинки в постах обмежені за розміром і підганяються під рамку. Шапка й фільтри компактніші, стрічка ширша.",
+        "Telegram-стрічка працює на власному сервері та сама відновлюється після збоїв.",
+      ],
+      en: [
+        "New posts appear within seconds while the feed is open. If you were away, it catches up the moment you open it.",
+        "If you leave the page idle, refreshing slows down and then stops with an “Update” button.",
+        "Post pictures are size-limited and fit their frame. The header and filters are more compact and the feed is wider.",
+        "The Telegram feed runs on our own server and recovers by itself after failures.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-20",
+    title: {
+      ru: "Биржи в приложении",
+      uk: "Біржі в застосунку",
+      en: "Exchanges in the app",
+    },
+    items: {
+      ru: [
+        "Подключение бирж Binance, Bybit, Gate, OKX и Hyperliquid, а также Aster (включая Shield Mode). Доступ открыт по списку.",
+        "На обзоре монеты кошельков и бирж объединены в один список, с логотипами и изменением цены за сутки.",
+        "Позиции одной монеты на разных биржах показываются рядом, с общим размером и общим нереализованным PnL. Логотипы монет подтягиваются надёжнее.",
+        "Без зрителя данные бирж обновляются раз в 30 минут, при открытой странице — быстро.",
+      ],
+      uk: [
+        "Підключення бірж Binance, Bybit, Gate, OKX і Hyperliquid, а також Aster (зокрема Shield Mode). Доступ відкрито за списком.",
+        "На огляді монети гаманців і бірж об’єднано в один список, з логотипами та зміною ціни за добу.",
+        "Позиції однієї монети на різних біржах показуються поруч, із загальним розміром і загальним нереалізованим PnL. Логотипи монет підтягуються надійніше.",
+        "Без глядача дані бірж оновлюються раз на 30 хвилин, при відкритій сторінці — швидко.",
+      ],
+      en: [
+        "Connect Binance, Bybit, Gate, OKX and Hyperliquid, plus Aster (including Shield Mode). Access is by invitation.",
+        "The overview merges wallet and exchange coins into one list, with logos and 24-hour change.",
+        "Positions in the same coin on different exchanges are shown side by side with a combined size and unrealized PnL. Coin logos load more reliably.",
+        "With nobody watching, exchange data refreshes every 30 minutes; with the page open it is fast.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-09",
+    title: {
+      ru: "Позиции: PnL, funding и комиссии",
+      uk: "Позиції: PnL, funding і комісії",
+      en: "Positions: PnL, funding and fees",
+    },
+    items: {
+      ru: [
+        "У позиции видны вход, маркировка, безубыточность, расстояние до ликвидации и следующий funding.",
+        "Реализованный PnL считается с учётом funding и комиссий. Появились статистика позиций, поиск и фильтры.",
+        "Добавлены Gate, OKX, BingX, Bitget (Classic и Unified) и Aster.",
+      ],
+      uk: [
+        "У позиції видно вхід, маркування, беззбитковість, відстань до ліквідації та наступний funding.",
+        "Реалізований PnL рахується з урахуванням funding і комісій. З’явилися статистика позицій, пошук і фільтри.",
+        "Додано Gate, OKX, BingX, Bitget (Classic та Unified) і Aster.",
+      ],
+      en: [
+        "A position shows entry, mark, break-even, distance to liquidation and next funding.",
+        "Realized PnL accounts for funding and fees. Added position statistics, search and filters.",
+        "Added Gate, OKX, BingX, Bitget (Classic and Unified) and Aster.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-06",
+    title: {
+      ru: "Первые биржи: балансы и позиции",
+      uk: "Перші біржі: баланси та позиції",
+      en: "First exchanges: balances and positions",
+    },
+    items: {
+      ru: [
+        "Подключение биржевых аккаунтов только для чтения (ключи шифруются): балансы и открытые позиции.",
+        "График капитала по кошелькам и биржам и фоновое обновление данных.",
+      ],
+      uk: [
+        "Підключення біржових акаунтів лише для читання (ключі шифруються): баланси та відкриті позиції.",
+        "Графік капіталу по гаманцях і біржах та фонове оновлення даних.",
+      ],
+      en: [
+        "Connect exchange accounts in read-only mode (keys are encrypted): balances and open positions.",
+        "A capital chart across wallets and exchanges, with background data refresh.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-03",
+    title: {
+      ru: "Вход через Google и Telegram",
+      uk: "Вхід через Google і Telegram",
+      en: "Sign in with Google and Telegram",
+    },
+    items: {
+      ru: [
+        "Можно входить через Google или Telegram, а Telegram — привязать к существующему аккаунту.",
+        "Вход и уведомления через Telegram объединены в одно подключение.",
+      ],
+      uk: [
+        "Можна входити через Google або Telegram, а Telegram — прив’язати до наявного акаунта.",
+        "Вхід і сповіщення через Telegram об’єднано в одне підключення.",
+      ],
+      en: [
+        "You can sign in with Google or Telegram, and link Telegram to an existing account.",
+        "Telegram sign-in and notifications now use a single connection.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-02",
+    title: {
+      ru: "Малые остатки и альбомы в ленте",
+      uk: "Малі залишки та альбоми в стрічці",
+      en: "Small balances and feed albums",
+    },
+    items: {
+      ru: [
+        "Фильтр скрывает кошельки и токены с остатком меньше доллара.",
+        "Фотоальбомы Telegram в ленте показываются одной каруселью.",
+      ],
+      uk: [
+        "Фільтр ховає гаманці та токени із залишком менше долара.",
+        "Фотоальбоми Telegram у стрічці показуються однією каруселлю.",
+      ],
+      en: [
+        "A filter hides wallets and tokens with a balance under one dollar.",
+        "Telegram photo albums appear in the feed as a single carousel.",
+      ],
+    },
+  },
+  {
+    date: "2026-09-29",
+    title: {
+      ru: "Hyperliquid",
+      uk: "Hyperliquid",
+      en: "Hyperliquid",
+    },
+    items: {
+      ru: ["Балансы и история транзакций кошельков Hyperliquid (HyperCore и HyperEVM)."],
+      uk: ["Баланси та історія транзакцій гаманців Hyperliquid (HyperCore і HyperEVM)."],
+      en: ["Balances and transaction history for Hyperliquid wallets (HyperCore and HyperEVM)."],
+    },
+  },
+];

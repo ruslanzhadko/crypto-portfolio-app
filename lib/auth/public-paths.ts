@@ -2,6 +2,7 @@ export function isPublicPath(path: string): boolean {
   return (
     path === '/' ||
     path === '/feed' ||
+    path === '/changelog' ||
     path === '/api/feed' ||
     path.startsWith('/api/feed/media/') ||
     path === '/api/public/market' ||

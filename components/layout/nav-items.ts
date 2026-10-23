@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Building2,
   Activity,
+  Sparkles,
   type LucideIcon,
 } from "lucide-react";
 
@@ -17,6 +18,8 @@ export interface NavItem {
   icon: LucideIcon;
   adminOnly?: boolean;
   exchangesOnly?: boolean;
+  /** Left out of the desktop sidebar (reachable from its footer instead). */
+  hideInSidebar?: boolean;
 }
 
 export const NAV_ITEMS: NavItem[] = [
@@ -38,5 +41,11 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/feed", labelKey: "feed", icon: Radio },
   { href: "/alerts", labelKey: "alerts", icon: Bell },
   { href: "/settings", labelKey: "settings", icon: Settings },
+  {
+    href: "/changelog",
+    labelKey: "changelog",
+    icon: Sparkles,
+    hideInSidebar: true,
+  },
   { href: "/admin", labelKey: "admin", icon: ShieldCheck, adminOnly: true },
 ];

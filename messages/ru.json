@@ -13,6 +13,7 @@
     "signOut": "Выйти",
     "defaultUser": "Пользователь",
     "adminBadge": "Admin",
+    "changelog": "Что нового",
     "footerBy": "Автор",
     "exchanges": "Биржи",
     "positions": "Позиции",
@@ -781,6 +782,10 @@
     "evm": "EVM (9 сетей)",
     "solana": "Solana"
   },
+  "Changelog": {
+    "pageTitle": "Что нового",
+    "pageDescription": "Основные изменения: новые функции и важные исправления."
+  },
   "Landing": {
     "navSignIn": "Войти",
     "navGetStarted": "Начать",
@@ -841,6 +846,7 @@
     "faq3a": "Перейдите в Настройки, введите ваш Telegram Chat ID, затем создайте триггер с нужным порогом. Вы получите сообщение когда условие выполнится.",
     "faq4q": "Как часто обновляются цены?",
     "faq4a": "Цены обновляются автоматически каждые 15 минут через CoinGecko. Балансы кошельков обновляются при ручном sync или через кнопку Sync All.",
+    "footerChangelog": "Что нового",
     "footerAuthor": "Автор: <link>@ludoslan</link>",
     "footerRights": "Все права защищены.",
     "marketRefresh": "CoinGecko · обновление каждую минуту",

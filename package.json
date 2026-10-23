@@ -25,6 +25,7 @@
     "telegram:feed:auth": "tsx --env-file=.env scripts/telegram-feed-auth.ts",
     "telegram:feed": "tsx scripts/telegram-feed-listener.ts",
     "telegram:feed:local": "tsx --env-file=.env scripts/telegram-feed-listener.ts",
+    "changelog:check": "node scripts/changelog-check.mjs",
     "exchanges:worker": "tsx --env-file=.env scripts/exchange-worker.ts",
     "exchanges:upgrade": "tsx --env-file=.env scripts/upgrade-exchanges.ts"
   },

@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { isPublicPath } from '@/lib/auth/public-paths';
 
 describe('isPublicPath', () => {
+  it('allows the public changelog page', () => {
+    expect(isPublicPath('/changelog')).toBe(true);
+    expect(isPublicPath('/changelog/admin')).toBe(false);
+  });
+
   it('allows the public feed and its media files', () => {
     expect(isPublicPath('/feed')).toBe(true);
     expect(isPublicPath('/api/feed')).toBe(true);

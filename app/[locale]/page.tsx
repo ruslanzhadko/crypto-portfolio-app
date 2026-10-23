@@ -445,7 +445,10 @@ export default async function LandingPage({
 
       {/* ── Footer ── */}
       <footer className="border-t border-border py-8">
-        <div className="container text-center text-sm font-medium text-text-muted">
+        <div className="container flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-sm font-medium text-text-muted">
+          <Link href="/changelog" className="hover:text-text hover:underline">
+            {t("footerChangelog")}
+          </Link>
           {t.rich("footerAuthor", {
             link: (chunks) => (
               <a

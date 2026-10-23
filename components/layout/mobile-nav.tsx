@@ -32,10 +32,11 @@ export function MobileNav({
       (!i.adminOnly || userRole === "ADMIN") &&
       (!i.exchangesOnly || exchangesEnabled),
   );
-  const primary = ["/dashboard", "/wallets", "/exchanges", "/positions"];
-  const items = exchangesEnabled
-    ? primary.map((href) => available.find((i) => i.href === href)!)
-    : available.slice(0, 5);
+  const primary = exchangesEnabled
+    ? ["/dashboard", "/wallets", "/exchanges", "/positions"]
+    : available.slice(0, 4).map((i) => i.href);
+  const items = primary.map((href) => available.find((i) => i.href === href)!);
+  // Everything that does not fit the bar (settings, changelog, ...) lives in the "More" sheet.
   const moreItems = available.filter((i) => !primary.includes(i.href));
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export function MobileNav({
       // Own GPU layer: iOS Safari otherwise sometimes paints the bar mid-screen during momentum scrolling.
       className="fixed bottom-0 left-0 right-0 z-40 grid transform-gpu border-t border-border bg-surface [backface-visibility:hidden] md:hidden"
       style={{
-        gridTemplateColumns: `repeat(${exchangesEnabled ? 5 : items.length}, minmax(0,1fr))`,
+        gridTemplateColumns: "repeat(5, minmax(0,1fr))",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
@@ -86,7 +87,7 @@ export function MobileNav({
           </Link>
         );
       })}
-      {exchangesEnabled && (
+      {moreItems.length > 0 && (
         <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
           <DialogTrigger className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] font-medium text-text-muted">
             <MoreHorizontal className="h-5 w-5" />

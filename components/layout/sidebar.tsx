@@ -18,6 +18,7 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
   const t = useTranslations("Nav");
   const items = NAV_ITEMS.filter(
     (i) =>
+      !i.hideInSidebar &&
       (!i.adminOnly || userRole === "ADMIN") &&
       (!i.exchangesOnly || exchangesEnabled),
   );
@@ -61,7 +62,12 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
       </nav>
 
       <div className="border-t border-border p-4 text-xs text-text-muted">
-        <p>© {new Date().getFullYear()} CryptoPortfolio</p>
+        <p>
+          © {new Date().getFullYear()} CryptoPortfolio ·{" "}
+          <Link href="/changelog" className="hover:text-text hover:underline">
+            {t("changelog")}
+          </Link>
+        </p>
         <p className="mt-0.5">
           {t("footerBy")}{" "}
           <a
