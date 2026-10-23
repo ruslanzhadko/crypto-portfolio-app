@@ -19,7 +19,7 @@ async function main() {
       .split(";")
       .map((s) => s.trim())
       .filter(Boolean);
-    if (statements.some((s) => /^\s*(DROP|TRUNCATE|DELETE)\b/im.test(s)))
+    if (statements.some((s) => /^[ \t]*(DROP|TRUNCATE|DELETE)\b/im.test(s)))
       throw new Error("Upgrade is not additive.");
     await db.$transaction(
       async (tx) => {

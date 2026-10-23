@@ -13,6 +13,7 @@ import { ExchangeErrorNotice, Money, Quantity } from "./shared";
 import type { ConnectionDto } from "./exchanges-page";
 import type { OpenPosition } from "@/lib/exchanges/types";
 import { displaySymbol } from "@/lib/exchanges/display-symbol";
+import { trimTrailing } from "@/lib/utils/trim";
 
 // Position details: three tight columns on phones (the third right-aligned), six roomy ones from lg.
 /** Matches the `fold` animation in tailwind.config.ts. */
@@ -70,7 +71,7 @@ function NextFunding({ p }: { p: PositionDto }) {
     <>
       <dd title={t("nextFundingDescription")}>
         {upcoming && p.funding?.nextRate != null
-          ? `${(Number(p.funding.nextRate) * 100).toFixed(4).replace(/0+$/, "").replace(/\.$/, "")}%`
+          ? `${trimTrailing(trimTrailing((Number(p.funding.nextRate) * 100).toFixed(4), "0"), ".")}%`
           : "—"}
       </dd>
       <p className="mt-0.5 text-[11px] text-text-muted lg:text-xs">

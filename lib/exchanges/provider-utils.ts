@@ -2,6 +2,7 @@ import { record, records } from "./adapters";
 import { D, decimal, multiply } from "./decimal";
 import { positionBreakEven, type FundingSummary } from "./funding";
 import { ExchangeError, type OpenPosition } from "./types";
+import { trimTrailing } from "@/lib/utils/trim";
 export type Row = Record<string, unknown>;
 export function textField(value: unknown): string {
   if (typeof value !== "string" || !value)
@@ -72,9 +73,11 @@ export function assertOkxReadOnly(r: Row) {
 export function assertGateReadOnly(value: unknown, apiKey: string) {
   const matches = records(value).filter((r) => {
     if (r.key === apiKey) return true;
-    if (typeof r.key !== "string" || !/^[A-Za-z0-9_-]{8,}\*+$/.test(r.key))
-      return false;
-    return apiKey.startsWith(r.key.replace(/\*+$/, ""));
+    if (typeof r.key !== "string") return false;
+    // A masked key is a visible prefix of 8+ characters followed only by asterisks.
+    const prefix = trimTrailing(r.key, "*");
+    if (prefix.length === r.key.length || !/^[A-Za-z0-9_-]{8,}$/.test(prefix)) return false;
+    return apiKey.startsWith(prefix);
   });
   if (matches.length !== 1) throw new ExchangeError("INVALID_RESPONSE");
   const key = matches[0]!;

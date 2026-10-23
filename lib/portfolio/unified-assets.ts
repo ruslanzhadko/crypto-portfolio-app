@@ -51,8 +51,9 @@ export function mergeExchangeHoldings(
     const candidates = bySymbol.get(symbol) ?? [];
     const assets = new Set(candidates.map((c) => c.coingeckoId ?? c.key));
     if (candidates.length && assets.size === 1) {
-      const target = candidates.reduce((a, b) =>
-        b.totalUsd > a.totalUsd ? b : a,
+      const target = candidates.reduce(
+        (a, b) => (b.totalUsd > a.totalUsd ? b : a),
+        candidates[0]!,
       );
       target.exchanges.push(...group);
       target.totalBalance += amount;

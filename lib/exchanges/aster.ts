@@ -43,6 +43,16 @@ export function asterPositionGroups(
   return records(result.positions);
 }
 
+/** Public funding rates and mark prices of all Aster perpetuals. */
+async function readAsterPremium(): Promise<unknown> {
+  await reserveRequest("aster");
+  const response = await fetch("https://fapi.asterdex.com/fapi/v3/premiumIndex", {
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) throw new ExchangeError("UNAVAILABLE");
+  return response.json();
+}
+
 /** Public address-based RPC. Never signs requests or asks for a wallet private key. */
 export class AsterAdapter implements ExchangeAdapter {
   private marketAt = 0;
@@ -54,15 +64,7 @@ export class AsterAdapter implements ExchangeAdapter {
     private address: string,
     private prices: () => Promise<Map<string, string>>,
     private balance: (address: string) => Promise<unknown> = readAsterBalance,
-    private premium: () => Promise<unknown> = async () => {
-      await reserveRequest("aster");
-      const response = await fetch(
-        "https://fapi.asterdex.com/fapi/v3/premiumIndex",
-        { signal: AbortSignal.timeout(15_000) },
-      );
-      if (!response.ok) throw new ExchangeError("UNAVAILABLE");
-      return response.json();
-    },
+    private premium: () => Promise<unknown> = readAsterPremium,
   ) {}
   async close() {}
   async verify() {

@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 const source = readFileSync("lib/changelog/entries.ts", "utf8");
 const last = [...source.matchAll(/date:\s*"(\d{4}-\d{2}-\d{2})"/g)]
   .map((m) => m[1])
-  .sort()
+  .sort((a, b) => a.localeCompare(b))
   .at(-1);
 if (!last) throw new Error("No changelog entries found in lib/changelog/entries.ts");
 

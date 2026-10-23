@@ -1,5 +1,6 @@
 import { prisma } from "../lib/db/prisma";
-import { writeFile, unlink } from "node:fs/promises";
+import { mkdir, writeFile, unlink } from "node:fs/promises";
+import { join } from "node:path";
 import {
   discoverHyperliquid,
   earliestDueAt,
@@ -16,7 +17,10 @@ import { createActivityClient } from "../lib/exchanges/activity-client";
 import { ACTIVITY_POLL_MS, nextIdleSlot } from "../lib/exchanges/config";
 
 const ACTIVE_HEARTBEAT_MS = 20_000;
-const ALIVE_FILE = "/tmp/cryptoportfolio-worker-alive";
+// Private to the worker (owned by its user in the image), not the shared temp directory.
+const RUN_DIR = join(process.cwd(), ".worker-run");
+const ALIVE_FILE = join(RUN_DIR, "alive");
+const ID_FILE = join(RUN_DIR, "id");
 const MAINTENANCE_MS = 60_000;
 /** Neon scales to zero after 5 idle minutes; never wake it more often than this. */
 const MIN_IDLE_WAKE_MS = 5 * 60_000;
@@ -71,7 +75,8 @@ async function main() {
   });
   try {
     await workerHeartbeat(owner);
-    await writeFile("/tmp/cryptoportfolio-worker-id", owner, { mode: 0o600 });
+    await mkdir(RUN_DIR, { recursive: true, mode: 0o700 });
+    await writeFile(ID_FILE, owner, { mode: 0o600 });
     await writeAlive();
     alive = setInterval(() => void writeAlive(), 15_000);
     while (!stopping) {
@@ -136,7 +141,7 @@ async function main() {
     clearInterval(heartbeat);
     clearInterval(alive);
     await unlink(ALIVE_FILE).catch(() => {});
-    await unlink("/tmp/cryptoportfolio-worker-id").catch(() => {});
+    await unlink(ID_FILE).catch(() => {});
     await prisma.exchangeWorkerLease.deleteMany({
       where: { name: `worker:${owner}` },
     });

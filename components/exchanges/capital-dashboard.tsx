@@ -363,14 +363,17 @@ export function CapitalDashboard({
                   {t("capitalHistory")}
                 </span>
                 {/* Period buttons sit on the toggle row; clicks must not fold it. */}
-                <div className="flex gap-1" onClick={(e) => e.preventDefault()}>
+                <div className="flex gap-1">
                   {[1, 7, 30].map((d) => (
                     <Button
                       key={d}
                       size="sm"
                       className="h-7 px-2 text-xs sm:h-9 sm:px-3 sm:text-sm"
                       variant={d === days ? "secondary" : "ghost"}
-                      onClick={() => setDays(d)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setDays(d);
+                      }}
                       aria-pressed={days === d}
                     >
                       {d}

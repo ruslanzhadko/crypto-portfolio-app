@@ -6,7 +6,7 @@ fi
 key=$(cat "$1")
 [[ "$key" =~ ^ssh-ed25519\ [A-Za-z0-9+/=]+(\ .*)?$ ]] || exit 1
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
-test -s /home/rzhadko/.config/cryptoportfolio/exchange-dev.env
+[[ -s /home/rzhadko/.config/cryptoportfolio/exchange-dev.env ]]
 for command in git docker flock tar sshd; do command -v "$command" >/dev/null; done
 id worker-deploy >/dev/null 2>&1 || useradd --create-home --shell /bin/bash worker-deploy
 install -m 0755 worker-update.sh /usr/local/sbin/cryptoportfolio-worker-update

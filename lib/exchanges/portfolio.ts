@@ -28,7 +28,8 @@ export function isMigratedHypercore(
 }
 export function sourceSetHash(sources: string[]): string {
   return createHash("sha256")
-    .update([...sources].sort().join("|"))
+    // Code-unit order, as stored hashes were made with the default sort.
+    .update([...sources].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join("|"))
     .digest("hex");
 }
 

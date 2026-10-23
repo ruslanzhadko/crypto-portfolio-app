@@ -17,11 +17,11 @@ cat > /tmp/mock/bin/docker <<'MOCK'
 set -e
 echo "$*" >> /tmp/mock/calls
 case "$1" in
-  build) test ! -e /tmp/mock/build-fail ;;
-  container) test -e "/tmp/mock/containers/$3" ;;
+  build) [[ ! -e /tmp/mock/build-fail ]] ;;
+  container) [[ -e "/tmp/mock/containers/$3" ]] ;;
   inspect)
     if [[ -e /tmp/mock/unhealthy ]]; then echo unhealthy; else echo healthy; fi ;;
-  stop|start) test -e "/tmp/mock/containers/${@: -1}" ;;
+  stop|start) [[ -e "/tmp/mock/containers/${@: -1}" ]] ;;
   logs) printf '%s
 ' '[feed] listener started for 7 channels' '[triggers] trigger worker started' ;;
   rename) mv "/tmp/mock/containers/$2" "/tmp/mock/containers/$3" ;;
@@ -36,38 +36,38 @@ chmod +x /tmp/mock/bin/*
 echo old > /tmp/mock/containers/cryptoportfolio-worker-dev
 echo first > /tmp/mock/sha
 bash /source/deploy/worker-update.sh
-test "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = new
-test "$(cat /var/lib/cryptoportfolio-worker-deploy/deployed)" = first
+[[ "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = new ]]
+[[ "$(cat /var/lib/cryptoportfolio-worker-deploy/deployed)" = first ]]
 before=$(wc -l < /tmp/mock/calls)
 bash /source/deploy/worker-update.sh
-test "$(wc -l < /tmp/mock/calls)" = "$before"
+[[ "$(wc -l < /tmp/mock/calls)" = "$before" ]]
 # The listener starts only once its secrets exist; an unchanged commit starts a missing listener.
-test ! -e /tmp/mock/containers/cryptoportfolio-listener-production
+[[ ! -e /tmp/mock/containers/cryptoportfolio-listener-production ]]
 echo test-only > /home/rzhadko/.config/cryptoportfolio/telegram-feed.env
 bash /source/deploy/worker-update.sh
-test "$(cat /tmp/mock/containers/cryptoportfolio-listener-production)" = new
+[[ "$(cat /tmp/mock/containers/cryptoportfolio-listener-production)" = new ]]
 # The trigger worker follows the same rule: absent env file, no container; created later, started.
-test ! -e /tmp/mock/containers/cryptoportfolio-triggers-production
+[[ ! -e /tmp/mock/containers/cryptoportfolio-triggers-production ]]
 echo test-only > /home/rzhadko/.config/cryptoportfolio/price-triggers.env
 bash /source/deploy/worker-update.sh
-test "$(cat /tmp/mock/containers/cryptoportfolio-triggers-production)" = new
+[[ "$(cat /tmp/mock/containers/cryptoportfolio-triggers-production)" = new ]]
 echo retained > /tmp/mock/containers/cryptoportfolio-worker-dev
 echo second > /tmp/mock/sha
 touch /tmp/mock/unhealthy
 if bash /source/deploy/worker-update.sh; then echo 'Expected failure'; exit 1; fi
-test "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = retained
-test "$(cat /var/lib/cryptoportfolio-worker-deploy/failed)" = second
-test "$(cat /var/lib/cryptoportfolio-worker-deploy/deployed)" = first
+[[ "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = retained ]]
+[[ "$(cat /var/lib/cryptoportfolio-worker-deploy/failed)" = second ]]
+[[ "$(cat /var/lib/cryptoportfolio-worker-deploy/deployed)" = first ]]
 echo third > /tmp/mock/sha
 touch /tmp/mock/build-fail
 if bash /source/deploy/worker-update.sh; then echo 'Expected build failure'; exit 1; fi
-test "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = retained
+[[ "$(cat /tmp/mock/containers/cryptoportfolio-worker-dev)" = retained ]]
 echo 1111111111111111111111111111111111111111 > /tmp/mock/sha
 before=$(wc -l < /tmp/mock/calls)
 SSH_ORIGINAL_COMMAND='deploy 2222222222222222222222222222222222222222' bash /source/deploy/worker-update.sh
-test "$(wc -l < /tmp/mock/calls)" = "$before"
+[[ "$(wc -l < /tmp/mock/calls)" = "$before" ]]
 if SSH_ORIGINAL_COMMAND='arbitrary command' bash /source/deploy/worker-update.sh; then
   echo 'Expected invalid SSH command rejection'; exit 1
 fi
-test "$(wc -l < /tmp/mock/calls)" = "$before"
+[[ "$(wc -l < /tmp/mock/calls)" = "$before" ]]
 echo 'PASS: deployment, listener, trigger worker, unchanged commit, rollback, failed build, stale push, invalid command'

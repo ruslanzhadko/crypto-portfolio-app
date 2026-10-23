@@ -21,7 +21,7 @@ fi
 mkdir -p "$state"
 exec 9>"$state/lock"
 flock -w 1200 9 || exit 1
-test -s "$env_file"
+[[ -s "$env_file" ]]
 # Recreating a container deletes its logs: keep a copy of each one first (last 20 per container).
 log_archive=/var/log/cryptoportfolio
 archive_logs() {

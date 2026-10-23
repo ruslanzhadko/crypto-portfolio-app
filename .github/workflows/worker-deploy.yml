@@ -37,20 +37,22 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - run: npm ci
+      # Lifecycle scripts stay off; the only one the project needs is Prisma client generation.
+      - run: npm ci --ignore-scripts
+      - run: ./node_modules/.bin/prisma generate
       - name: Prepare disposable test schema
-        run: npx prisma db push --skip-generate
+        run: ./node_modules/.bin/prisma db push --skip-generate
       - name: Fast behavior and security regressions
         run: npm test -- --exclude lib/exchanges/integration.test.ts
       - name: Real database integration
-        run: npx vitest run lib/exchanges/integration.test.ts
+        run: ./node_modules/.bin/vitest run lib/exchanges/integration.test.ts
       - name: Test deployment rollback without real credentials
         run: |
           sudo ln -s "$GITHUB_WORKSPACE" /source
           sudo bash tests/worker-update.test.sh
       # Next build already runs lint and TypeScript checks; do not run them twice.
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - run: ./node_modules/.bin/playwright install --with-deps chromium
       - name: Critical browser flows (one browser, one retry per test)
         run: npm run test:e2e
       - name: Keep diagnostics only on failure

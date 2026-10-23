@@ -1,3 +1,5 @@
+import { trimTrailing } from "@/lib/utils/trim";
+
 export interface FeedTextLink {
   offset: number;
   length: number;
@@ -12,10 +14,10 @@ type TelegramEntity = {
 };
 
 const URL_PATTERN = /(?:https?:\/\/|www\.|t\.me\/)[^\s<>{}\[\]]+/gi;
-const TRAILING_URL_PUNCTUATION = /[.,!?;:]+$/;
+const TRAILING_URL_PUNCTUATION = ".,!?;:";
 
 function normalizeUrl(value: string): string | null {
-  const trimmed = value.trim().replace(TRAILING_URL_PUNCTUATION, "");
+  const trimmed = trimTrailing(value.trim(), TRAILING_URL_PUNCTUATION);
   if (!trimmed) return null;
 
   const candidate = /^(?:www\.|t\.me\/)/i.test(trimmed)
@@ -71,7 +73,7 @@ export function findTextUrls(text: string): FeedTextLink[] {
     const value = match[0];
     const offset = match.index;
     if (offset == null) continue;
-    const display = value.replace(TRAILING_URL_PUNCTUATION, "");
+    const display = trimTrailing(value, TRAILING_URL_PUNCTUATION);
     const url = normalizeUrl(display);
     if (url) links.push({ offset, length: display.length, url });
   }

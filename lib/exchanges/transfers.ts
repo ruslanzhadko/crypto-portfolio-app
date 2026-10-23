@@ -40,7 +40,7 @@ function time(value: unknown): Date {
   const date =
     typeof n === "number"
       ? new Date(n < 1e12 ? n * 1000 : n)
-      : new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`);
+      : new Date(/(?:[zZ]|[+-]\d\d:?\d\d)$/.test(iso) ? iso : `${iso}Z`);
   if (Number.isNaN(date.getTime())) throw new ExchangeError("INVALID_RESPONSE");
   return date;
 }

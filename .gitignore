@@ -69,3 +69,4 @@ pnpm-lock.yaml
 
 # Private operational notes (IPs, local paths) - never published
 docs/private/
+.worker-run/

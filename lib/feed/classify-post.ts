@@ -87,7 +87,7 @@ export function classifyFeedPost(text: string): ClassifiedPost {
   } satisfies Omit<ClassifiedPost, "type">;
 
   const liquidation = compact.match(
-    /#?([A-Z][A-Z0-9]{1,11})\s+Liquidated\s+(Long|Short):\s*\$([\d.,]+)([KMB])?\s+at\s+\$([\d.,]+).*?\[([^\]]+)\]/i,
+    /#?([A-Z][A-Z0-9]{1,11})\s+Liquidated\s+(Long|Short):\s*\$([\d.,]+)([KMB])?\s+at\s+\$([\d.,]+)[^[]*\[([^\]]+)\]/i,
   );
   if (
     liquidation?.[1] &&
@@ -111,7 +111,7 @@ export function classifyFeedPost(text: string): ClassifiedPost {
     /^([A-Z0-9]{1,12})\s+([+-]\d+(?:\.\d+)?)%\s+in\s+(\d+)\s+secs?!/i,
   );
   if (anomaly?.[1] && anomaly[2] && anomaly[3]) {
-    const limit = compact.match(/Limit\s*~?\s*`?\$([\d.,]+)([KMB])?/i);
+    const limit = compact.match(/Limit\s*(?:~\s*)?`?\$([\d.,]+)([KMB])?/i);
     return {
       ...base,
       type: "PRICE_ANOMALY",

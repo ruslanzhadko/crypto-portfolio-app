@@ -11,7 +11,7 @@ export function useTickerChanges(tokens: UnifiedToken[]): Record<string, number>
   const symbols = useMemo(
     () =>
       [...new Set(tokens.filter((tok) => tok.exchangeOnly).map((tok) => tok.symbol.toUpperCase()))]
-        .sort()
+        .sort((a, b) => a.localeCompare(b))
         .join(','),
     [tokens],
   );

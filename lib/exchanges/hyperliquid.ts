@@ -12,6 +12,20 @@ import {
   type OpenPosition,
 } from "./types";
 
+/** Hyperliquid public info endpoint; the address is part of the body, no keys are used. */
+async function readHyperliquidInfo(body: Record<string, unknown>): Promise<unknown> {
+  await reserveRequest("hyperliquid", 2);
+  const response = await fetch("https://api.hyperliquid.xyz/info", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok)
+    throw new ExchangeError(response.status === 429 ? "RATE_LIMIT" : "UNAVAILABLE");
+  return response.json();
+}
+
 export class HyperliquidAdapter implements ExchangeAdapter {
   private nextFunding = new NextFundingReader(
     "hyperliquid",
@@ -24,22 +38,7 @@ export class HyperliquidAdapter implements ExchangeAdapter {
   constructor(
     private address: string,
     private prices: () => Promise<Map<string, string>>,
-    private info: (body: Record<string, unknown>) => Promise<unknown> = async (
-      body,
-    ) => {
-      await reserveRequest("hyperliquid", 2);
-      const response = await fetch("https://api.hyperliquid.xyz/info", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (!response.ok)
-        throw new ExchangeError(
-          response.status === 429 ? "RATE_LIMIT" : "UNAVAILABLE",
-        );
-      return response.json();
-    },
+    private info: (body: Record<string, unknown>) => Promise<unknown> = readHyperliquidInfo,
   ) {}
   async close() {}
   transfers(since: number) {
