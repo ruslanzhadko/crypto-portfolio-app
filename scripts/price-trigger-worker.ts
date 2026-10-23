@@ -91,7 +91,11 @@ async function tick() {
         ? walletPrices
             .run()
             .then((summary) => console.log(`[triggers] wallet prices: ${summary}`))
-            .catch(() => console.warn("[triggers] wallet price update failed; next window retries"))
+            .catch((err: unknown) =>
+              console.warn(
+                `[triggers] wallet price update failed (${err instanceof Error ? err.message : String(err)}); next window retries`,
+              ),
+            )
         : null;
     if (slot !== -1) await persistLatestPrices(engine.latestPrices(), new Date(now));
     await reload(slot === -1 ? "started" : "window", now);
