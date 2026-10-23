@@ -13,6 +13,7 @@ export function isPublicPath(path: string): boolean {
     path.startsWith('/api/cron') ||
     path === '/api/worker/activity' ||
     path === '/api/worker/alert' ||
+    path === '/api/worker/wallet-sync' ||
     path === '/api/telegram/webhook'
   );
 }

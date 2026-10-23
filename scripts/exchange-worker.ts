@@ -14,6 +14,7 @@ import {
 import { sleep } from "../lib/exchanges/transport";
 import { prepareWalletConnections } from "../lib/exchanges/wallet-schema";
 import { createActivityClient } from "../lib/exchanges/activity-client";
+import { createWalletSyncClient, takeDueDeposits } from "../lib/exchanges/deposit-watch";
 import { ACTIVITY_POLL_MS, nextIdleSlot } from "../lib/exchanges/config";
 
 const ACTIVE_HEARTBEAT_MS = 20_000;
@@ -47,6 +48,15 @@ async function main() {
   await prepareWalletConnections();
   const owner = newWorkerId();
   const activity = createActivityClient();
+  const walletSync = createWalletSyncClient();
+  // A likely deposit from a wallet: have the web app sync wallets now, not in up to 4 hours.
+  const requestWalletSyncs = async () => {
+    if (!walletSync) return;
+    for (const d of takeDueDeposits()) {
+      const ok = await walletSync.request(d.userId, d.walletId);
+      console.log(`[exchange-worker] deposit suspected; wallet sync ${ok ? "requested" : "request failed"}`);
+    }
+  };
   const isActive = (userId: string) => !activity || activity.isActive(userId);
   console.log(
     activity
@@ -99,7 +109,9 @@ async function main() {
             await maintenance();
             lastMaintenance = Date.now();
           }
-          if (!(await runOneJob(isActive))) {
+          const ran = await runOneJob(isActive);
+          await requestWalletSyncs();
+          if (!ran) {
             await flushCapitalSnapshots(isActive);
             await sleep(2000);
           }
@@ -118,6 +130,7 @@ async function main() {
           while (!stopping && (await runOneJob(isActive))) {
             /* drain everything due in this slot */
           }
+          await requestWalletSyncs();
           await flushCapitalSnapshots(isActive, true);
           const due = (await earliestDueAt())?.getTime() ?? slot.getTime();
           idleWakeAt = Math.min(

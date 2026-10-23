@@ -13,6 +13,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-24",
+    title: {
+      ru: "Перевод с кошелька на биржу больше не завышает капитал",
+      uk: "Переказ із гаманця на біржу більше не завищує капітал",
+      en: "Moving funds from a wallet to an exchange no longer inflates capital",
+    },
+    items: {
+      ru: ["Когда на биржу приходит депозит, кошельки синхронизируются сразу, и деньги не считаются дважды несколько часов."],
+      uk: ["Коли на біржу надходить депозит, гаманці синхронізуються одразу, і гроші не рахуються двічі кілька годин."],
+      en: ["When a deposit reaches an exchange, your wallets sync right away, so the money is not counted twice for hours."],
+    },
+  },
+  {
     date: "2026-10-23",
     title: {
       ru: "Капитал в шапке на любой странице",

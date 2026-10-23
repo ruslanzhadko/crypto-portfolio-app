@@ -14,6 +14,7 @@ import {
   saveCapitalSnapshot,
 } from "./portfolio";
 import type { SyncResult } from "./types";
+import { resetDepositWatch, takeDueDeposits } from "./deposit-watch";
 // Explicit opt-in; refuse a production/remote target even if configured accidentally.
 const url = process.env.EXCHANGE_TEST_DATABASE_URL;
 const enabled =
@@ -261,6 +262,33 @@ describe.skipIf(!enabled)("exchange database integration", () => {
       new Date(),
     );
     expect((await getCapitalOverview(userId)).complete).toBe(false);
+    await prisma.exchangeConnection.delete({ where: { id: c.id } });
+  });
+  it("asks for a wallet sync when stablecoins grow on a connection, not on the first sync or unchanged balances", async () => {
+    resetDepositWatch();
+    const c = await prisma.exchangeConnection.create({
+      data: { userId, exchange: "bybit", label: "Deposit test" },
+    });
+    const commitWith = async (usdt: string) => {
+      await enqueue(c.id);
+      const job = (await claimJob())!;
+      const result: SyncResult = {
+        ...snapshot,
+        accounts: snapshot.accounts.map((a) => ({
+          ...a,
+          balances: a.balances.map((b) => ({ ...b, total: usdt, usdValue: usdt })),
+        })),
+      };
+      expect(await commitResult(c.id, 1, job.token, result, new Date())).toBe(true);
+    };
+    await commitWith("1000");
+    expect(takeDueDeposits()).toEqual([]);
+    await commitWith("1000");
+    expect(takeDueDeposits()).toEqual([]);
+    await commitWith("2210");
+    expect(takeDueDeposits()).toEqual([{ userId, walletId: null }]);
+    resetDepositWatch();
+    await prisma.exchangeSyncJob.delete({ where: { connectionId: c.id } });
     await prisma.exchangeConnection.delete({ where: { id: c.id } });
   });
   it("leases one job to one worker and fences stale writers after credential changes", async () => {

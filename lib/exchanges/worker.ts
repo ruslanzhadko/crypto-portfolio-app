@@ -16,6 +16,7 @@ import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
 import { BingxAdapter } from "./bingx";
 import { syncTransfers } from "./transfer-store";
+import { looksLikeDeposit, noteDeposit, stablecoinTotal } from "./deposit-watch";
 import { BitgetAdapter } from "./bitget";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
@@ -106,6 +107,15 @@ export function commitResult(
       )
         return false;
       const activeKeys = result.accounts.map((a) => a.accountKey);
+      // Stablecoins on the whole connection before this sync: growth means money came in (see deposit-watch).
+      const stableBefore = c.lastSuccessAt
+        ? stablecoinTotal(
+            await tx.exchangeBalance.findMany({
+              where: { account: { connectionId } },
+              select: { symbol: true, total: true },
+            }),
+          )
+        : null;
       // Remove only the never-synced placeholder created by the old Aster adapter.
       if (c.exchange === "aster")
         await tx.exchangeAccount.deleteMany({
@@ -214,6 +224,9 @@ export function commitResult(
             : {}),
         },
       });
+      const stableAfter = stablecoinTotal(result.accounts.flatMap((a) => a.balances));
+      if (stableBefore !== null && looksLikeDeposit(stableBefore, stableAfter))
+        noteDeposit(c.userId, c.walletId);
       if (first)
         await tx.capitalEvent.create({
           data: {

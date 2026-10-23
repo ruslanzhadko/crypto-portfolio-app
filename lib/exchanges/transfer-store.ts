@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { safeError, type ExchangeAdapter } from "./types";
 import type { Transfer } from "./transfers";
+import { noteDeposit, RECENT_DEPOSIT_MS } from "./deposit-watch";
 
 /**
  * Keeps deposit/withdrawal history in the database. Read at most every 30 minutes per account
@@ -25,7 +26,7 @@ function changed(
 }
 
 export async function syncTransfers(
-  connection: { id: string; transfersAt: Date | null },
+  connection: { id: string; transfersAt: Date | null; userId?: string; walletId?: string | null },
   adapter: ExchangeAdapter,
   now = Date.now(),
 ): Promise<"skipped" | "saved" | "failed"> {
@@ -48,6 +49,16 @@ export async function syncTransfers(
         })
       ).map((row) => [`${row.direction}:${row.externalId}`, row]),
     );
+    // A deposit seen for the first time, made recently: its wallet may still show the money.
+    const fresh = rows.some(
+      (row) =>
+        row.direction === "deposit" &&
+        row.status !== "failed" &&
+        !stored.has(`${row.direction}:${row.externalId}`) &&
+        now - row.occurredAt.getTime() < RECENT_DEPOSIT_MS,
+    );
+    if (fresh && connection.userId && connection.transfersAt)
+      noteDeposit(connection.userId, connection.walletId ?? null);
     const writes = rows
       .filter((row) => {
         const known = stored.get(`${row.direction}:${row.externalId}`);
