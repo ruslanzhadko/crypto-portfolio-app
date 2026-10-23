@@ -140,7 +140,7 @@ sudo bash -c 'source /etc/cryptoportfolio-worker-deploy.conf; git --git-dir="$st
 
 Запуск/перезапуск вручную: `sudo docker rm -f cryptoportfolio-listener-production && sudo /usr/local/sbin/cryptoportfolio-worker-update`
 (`docker rm -f` удаляет логи без копии — перед ним сохранить их вручную).
-Логи: скрипт (с 23.10, после переустановки) перед пересозданием сохраняет логи worker, listener и
+Логи: скрипт (установлен на VM 23.10, коммит 406a1ec) перед пересозданием сохраняет логи worker, listener и
 триггеров в `/var/log/cryptoportfolio/<контейнер>-<UTC-время>.log`, по 20 последних на контейнер;
 смотреть `sudo ls -lt /var/log/cryptoportfolio | head`.
 Диск VM — 19 ГБ: скрипт после успешного деплоя оставляет текущий и предыдущий образ и чистит кэш
