@@ -22,7 +22,8 @@
     "pillCapital": "Капітал",
     "pillPnl": "PnL {count, plural, one {# відкритої позиції} other {# відкритих позицій}}",
     "pillPositions": "{count, plural, one {# позиція} few {# позиції} many {# позицій} other {# позиції}}",
-    "pillStale": "Дані бірж оновлюються"
+    "pillStale": "Дані бірж оновлюються",
+    "pillDay": "Зміна за 24 год"
   },
   "Feed": {
     "pageTitle": "Криптострічка",

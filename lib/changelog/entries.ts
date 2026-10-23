@@ -20,9 +20,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       en: "Capital in the header on every page",
     },
     items: {
-      ru: ["Справа вверху — общий капитал и PnL открытых позиций; нажатие открывает обзор."],
-      uk: ["Праворуч угорі — загальний капітал і PnL відкритих позицій; натискання відкриває огляд."],
-      en: ["Top right shows your total capital and the PnL of open positions; tap it to open the overview."],
+      ru: ["Справа вверху — общий капитал, его изменение за 24 ч и PnL открытых позиций; нажатие открывает обзор."],
+      uk: ["Праворуч угорі — загальний капітал, його зміна за 24 год і PnL відкритих позицій; натискання відкриває огляд."],
+      en: ["Top right shows your total capital, its 24h change and the PnL of open positions; tap it to open the overview."],
     },
   },
   {

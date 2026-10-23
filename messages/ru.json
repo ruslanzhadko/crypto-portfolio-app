@@ -22,7 +22,8 @@
     "pillCapital": "Капитал",
     "pillPnl": "PnL {count, plural, one {# открытой позиции} other {# открытых позиций}}",
     "pillPositions": "{count, plural, one {# позиция} few {# позиции} many {# позиций} other {# позиции}}",
-    "pillStale": "Данные бирж обновляются"
+    "pillStale": "Данные бирж обновляются",
+    "pillDay": "Изменение за 24 ч"
   },
   "Feed": {
     "pageTitle": "Криптолента",

@@ -1,13 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { CapitalSummary } from '@/lib/portfolio/capital-summary';
+import type { CapitalSummary, DayAgoCapital } from '@/lib/portfolio/capital-summary';
 import { trackInteraction, userIdle } from '@/components/exchanges/use-exchange-data';
 
 const POLL_MS = 120_000;
 
 // One summary per tab: the header pill polls, the dashboard publishes what it already loaded.
 let current: { summary: CapitalSummary; at: number } | null = null;
+// Capital a day ago comes only from the pill's own request; the dashboard does not send it.
+let dayAgo: DayAgoCapital | null = null;
 const listeners = new Set<() => void>();
 let timer: ReturnType<typeof setInterval> | undefined;
 let inflight = false;
@@ -28,8 +30,11 @@ async function poll(force = false) {
   inflight = true;
   try {
     const res = await fetch('/api/portfolio/summary', { cache: 'no-store' });
-    const body = (await res.json()) as { summary?: CapitalSummary };
-    if (res.ok && body.summary) publishCapitalSummary(body.summary);
+    const body = (await res.json()) as { summary?: CapitalSummary; dayAgo?: DayAgoCapital | null };
+    if (res.ok && body.summary) {
+      dayAgo = body.dayAgo ?? null;
+      publishCapitalSummary(body.summary);
+    }
   } catch {
     // Keeps the last value; the next poll retries.
   } finally {
@@ -41,10 +46,11 @@ function onVisible() {
   if (document.visibilityState === 'visible') void poll();
 }
 
-export function useCapitalSummary(): CapitalSummary | null {
-  const [summary, setSummary] = useState<CapitalSummary | null>(current?.summary ?? null);
+export function useCapitalSummary(): { summary: CapitalSummary; dayAgo: DayAgoCapital | null } | null {
+  // Empty on the first render, as on the server; filled after mount.
+  const [state, setState] = useState<{ summary: CapitalSummary; dayAgo: DayAgoCapital | null } | null>(null);
   useEffect(() => {
-    const listener = () => setSummary(current?.summary ?? null);
+    const listener = () => setState(current ? { summary: current.summary, dayAgo } : null);
     listeners.add(listener);
     listener();
     if (listeners.size === 1) {
@@ -61,5 +67,5 @@ export function useCapitalSummary(): CapitalSummary | null {
       }
     };
   }, []);
-  return summary;
+  return state;
 }

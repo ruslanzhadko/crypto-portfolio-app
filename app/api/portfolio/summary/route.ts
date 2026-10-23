@@ -5,6 +5,7 @@ import { exchangesEnabled } from "@/lib/exchanges/config";
 import { getCapitalOverview } from "@/lib/exchanges/portfolio";
 import { summarizeOverview } from "@/lib/portfolio/capital-summary";
 import { readCapitalSummary } from "@/lib/portfolio/capital-summary-cache";
+import { readDayAgoCapital } from "@/lib/portfolio/capital-day-ago";
 
 export const dynamic = "force-dynamic";
 
@@ -26,9 +27,10 @@ export async function GET() {
         where: { wallet: { userId }, isSpam: false, isHidden: false },
         _sum: { usdValue: true },
       });
-      return { totalUsd: String(wallets._sum.usdValue ?? 0), pnlUsd: null, positions: 0, stale: false };
+      return { totalUsd: String(wallets._sum.usdValue ?? 0), pnlUsd: null, positions: 0, stale: false, sourceSet: null };
     });
-    return NextResponse.json({ summary }, { headers });
+    const dayAgo = await readDayAgoCapital(userId);
+    return NextResponse.json({ summary, dayAgo }, { headers });
   } catch {
     return NextResponse.json({ error: { code: "UNAVAILABLE" } }, { status: 503, headers });
   }

@@ -22,7 +22,8 @@
     "pillCapital": "Capital",
     "pillPnl": "PnL of {count, plural, one {# open position} other {# open positions}}",
     "pillPositions": "{count, plural, one {# position} other {# positions}}",
-    "pillStale": "Exchange data is updating"
+    "pillStale": "Exchange data is updating",
+    "pillDay": "24h change"
   },
   "Feed": {
     "pageTitle": "Crypto Feed",
