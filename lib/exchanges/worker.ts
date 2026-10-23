@@ -76,7 +76,7 @@ export async function discoverHyperliquid() {
   }
 }
 
-export async function commitResult(
+export function commitResult(
   connectionId: string,
   version: number,
   token: string,

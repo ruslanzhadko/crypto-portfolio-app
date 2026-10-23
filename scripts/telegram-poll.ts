@@ -39,7 +39,7 @@ async function sendMessage(chatId: number, text: string): Promise<void> {
 }
 
 function escapeHtml(text: string): string {
-  return text.replaceAll(/&/g, '&amp;').replaceAll(/</g, '&lt;').replaceAll(/>/g, '&gt;');
+  return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 }
 
 function buildStartReply(chatId: number, firstName?: string): string {

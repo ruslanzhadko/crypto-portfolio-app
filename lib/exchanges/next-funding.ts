@@ -37,7 +37,7 @@ export class NextFundingReader {
           const raw = (await this.request!("v5/market/tickers", "public", {
             category: "linear",
           })) as { retCode: number; result: { list: Row[] } };
-          if (raw.retCode !== 0) throw Error();
+          if (raw.retCode !== 0) throw new Error();
           entries = raw.result.list;
         } else {
           const raw = (await this.info!({ type: "metaAndAssetCtxs" })) as [
@@ -50,14 +50,14 @@ export class NextFundingReader {
             !Array.isArray(raw[0]?.universe) ||
             !Array.isArray(raw[1])
           )
-            throw Error();
+            throw new Error();
           entries = raw[0].universe.map((v, i) => ({
             symbol: v.name,
             fundingRate: raw[1][i]?.funding,
             nextFundingTime: (Math.floor(now / 3600_000) + 1) * 3600_000,
           }));
         }
-        if (!Array.isArray(entries)) throw Error();
+        if (!Array.isArray(entries)) throw new Error();
         for (const v of entries) {
           try {
             if (typeof v.symbol !== "string") continue;

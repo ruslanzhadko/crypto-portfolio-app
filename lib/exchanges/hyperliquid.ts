@@ -44,10 +44,10 @@ export class HyperliquidAdapter implements ExchangeAdapter {
   transfers(since: number) {
     return hyperliquidTransfers(this.info, this.address, since);
   }
-  async verify() {
+  verify() {
     if (!/^0x[0-9a-f]{40}$/i.test(this.address))
-      throw new ExchangeError("INVALID_RESPONSE");
-    return { externalAccountId: this.address.toLowerCase() };
+      return Promise.reject(new ExchangeError("INVALID_RESPONSE"));
+    return Promise.resolve({ externalAccountId: this.address.toLowerCase() });
   }
   async fetch(): Promise<SyncResult> {
     const mode = await this.info({

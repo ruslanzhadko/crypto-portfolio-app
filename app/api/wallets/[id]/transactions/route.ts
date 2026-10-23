@@ -459,7 +459,7 @@ async function fetchSolanaTransactionsPage(
     }
 
     // Спам-фільтри (ті ж що й для EVM)
-    const symCheck = tokenSymbol.replaceAll(/→/g, ' ');
+    const symCheck = tokenSymbol.replaceAll('→', ' ');
     if (/[^\x00-\x7F]/.test(symCheck)) continue;
     if (SOLANA_SPAM.test(symCheck)) continue;
     if (value !== null && value < MIN_SOL_AMOUNT) continue;

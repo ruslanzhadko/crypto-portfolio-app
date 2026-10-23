@@ -8,7 +8,7 @@ import {
 import type { EngineTrigger, Firing } from "./engine";
 
 /** Database side of the VM trigger worker: rules once per window, writes only when something fires. */
-export async function loadActiveTriggers(): Promise<EngineTrigger[]> {
+export function loadActiveTriggers(): Promise<EngineTrigger[]> {
   return prisma.priceTrigger.findMany({
     where: { isActive: true, user: { isBlocked: false } },
     select: {

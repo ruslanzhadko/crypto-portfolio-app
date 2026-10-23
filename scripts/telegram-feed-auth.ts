@@ -24,9 +24,10 @@ async function main() {
       await client.connect();
       console.log("Telegram на телефоне → Настройки → Устройства → Подключить устройство.\n");
       await client.signInUserWithQrCode({ apiId, apiHash }, {
-        qrCode: async ({ token }) => {
+        qrCode: ({ token }) => {
           console.log("Отсканируйте этот QR-код (он обновляется автоматически):");
           qrcode.generate(`tg://login?token=${token.toString("base64url")}`, { small: true });
+          return Promise.resolve();
         },
         password: () => rl.question("2FA password (if enabled): "),
         onError: (error) => { console.error("[telegram-auth]", error.message); return Promise.resolve(true); },

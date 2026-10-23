@@ -32,13 +32,13 @@ export function detectImageMimeType(
   }
   if (
     data.length >= 12 &&
-    String.fromCharCode(...data.slice(0, 4)) === "RIFF" &&
-    String.fromCharCode(...data.slice(8, 12)) === "WEBP"
+    String.fromCodePoint(...data.slice(0, 4)) === "RIFF" &&
+    String.fromCodePoint(...data.slice(8, 12)) === "WEBP"
   ) {
     return "image/webp";
   }
   if (data.length >= 6) {
-    const signature = String.fromCharCode(...data.slice(0, 6));
+    const signature = String.fromCodePoint(...data.slice(0, 6));
     if (signature === "GIF87a" || signature === "GIF89a") return "image/gif";
   }
   return null;

@@ -67,10 +67,10 @@ export class AsterAdapter implements ExchangeAdapter {
     private premium: () => Promise<unknown> = readAsterPremium,
   ) {}
   async close() {}
-  async verify() {
+  verify() {
     if (!/^0x[0-9a-f]{40}$/i.test(this.address))
-      throw new ExchangeError("INVALID_RESPONSE");
-    return { externalAccountId: this.address.toLowerCase() };
+      return Promise.reject(new ExchangeError("INVALID_RESPONSE"));
+    return Promise.resolve({ externalAccountId: this.address.toLowerCase() });
   }
   async fetch(): Promise<SyncResult> {
     await this.verify();

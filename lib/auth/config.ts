@@ -40,7 +40,7 @@ export const authConfig = {
   },
   providers: [],
   callbacks: {
-    async jwt({ token, user }) {
+    jwt({ token, user }) {
       if (user) {
         token.authenticatedAt = Date.now();
         token.id = user.id as string;
@@ -50,7 +50,7 @@ export const authConfig = {
       }
       return token;
     },
-    async session({ session, token }) {
+    session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id;
         session.user.role = token.role;

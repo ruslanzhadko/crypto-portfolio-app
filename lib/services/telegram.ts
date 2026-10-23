@@ -98,9 +98,9 @@ function formatKyivTime(date = new Date()): string {
 
 function escapeHtml(text: string): string {
   return text
-    .replaceAll(/&/g, '&amp;')
-    .replaceAll(/</g, '&lt;')
-    .replaceAll(/>/g, '&gt;');
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
 }
 
 export async function sendPriceAlert(
