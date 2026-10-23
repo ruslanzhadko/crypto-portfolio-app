@@ -5,6 +5,9 @@ import { useTranslations } from 'next-intl';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { TokenLogo } from '@/components/common/token-logo';
+import { ExchangeTokenLogo } from '@/components/exchanges/token-logo';
+import { describeTokenLocations } from '@/lib/portfolio/token-locations';
+import type { ExchangeHolding } from '@/lib/portfolio/unified-assets';
 import { PriceChange } from '@/components/common/price-change';
 import { Link } from '@/i18n/navigation';
 import { formatUsd } from '@/lib/utils/format';
@@ -15,9 +18,12 @@ import { Button } from '@/components/ui/button';
 const MIN_USD = 1;
 const DEFAULT_VISIBLE_COUNT = 5;
 
-function MoverRow({ tk }: { tk: AggregatedToken }) {
+type MoverToken = AggregatedToken & { exchanges?: ExchangeHolding[] };
+
+function MoverRow({ tk }: { tk: MoverToken }) {
   const t = useTranslations('TopMovers');
   const tokenPage = getTokenPageUrl(tk);
+  const location = describeTokenLocations(tk);
   // Convert the 24h price percentage into the dollar change of this position.
   // totalUsd is the current value, so compare it with the implied previous value.
   const changeFraction = Math.max(-0.999, tk.priceChange24h / 100);
@@ -25,16 +31,23 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
 
   const inner = (
     <div className="flex h-full min-h-12 w-full items-center gap-3 px-3 py-1.5 sm:px-4">
-      <TokenLogo
-        src={tk.logoUrl}
-        symbol={tk.symbol}
-        size={24}
-        chainName={tk.chainName}
-        tokenAddress={tk.tokenAddress}
-      />
+      {tk.logoUrl || tk.tokenAddress ? (
+        <TokenLogo
+          src={tk.logoUrl}
+          symbol={tk.symbol}
+          size={24}
+          chainName={tk.chainName}
+          tokenAddress={tk.tokenAddress}
+        />
+      ) : (
+        // Exchange-only coins have no wallet logo: look it up by ticker.
+        <ExchangeTokenLogo symbol={tk.symbol} size={24} />
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{tk.symbol}</p>
-        <p className="truncate text-xs text-text-muted">{tk.name}</p>
+        <p className="truncate text-xs text-text-muted" title={location || tk.name}>
+          {location || tk.name}
+        </p>
       </div>
       <div className="text-right">
         <PriceChange value={tk.priceChange24h} />
@@ -76,7 +89,7 @@ function MoverRow({ tk }: { tk: AggregatedToken }) {
   );
 }
 
-function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyText: string }) {
+function MoversList({ tokens, emptyText }: { tokens: MoverToken[]; emptyText: string }) {
   if (tokens.length === 0) {
     return <p className="px-4 pb-4 text-sm text-text-muted">{emptyText}</p>;
   }
@@ -91,7 +104,7 @@ function MoversList({ tokens, emptyText }: { tokens: AggregatedToken[]; emptyTex
   );
 }
 
-export function TopMovers({ tokens }: { tokens: AggregatedToken[] }) {
+export function TopMovers({ tokens }: { tokens: MoverToken[] }) {
   const t = useTranslations('TopMovers');
   const [expandedGainers, setExpandedGainers] = useState(false);
   const [expandedLosers, setExpandedLosers] = useState(false);
