@@ -18,4 +18,10 @@ describe('isCronAuthorized', () => {
     expect(isCronAuthorized(null)).toBe(false);
     expect(isCronAuthorized('Bearer wrong')).toBe(false);
   });
+  it('ignores whitespace around a pasted secret', () => {
+    process.env.CRON_SECRET = 'test-secret\n';
+    expect(isCronAuthorized('Bearer test-secret')).toBe(true);
+    process.env.CRON_SECRET = '  ';
+    expect(isCronAuthorized('Bearer ')).toBe(false);
+  });
 });
