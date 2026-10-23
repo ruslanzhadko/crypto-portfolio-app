@@ -25,6 +25,8 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3100",
     ...devices["Desktop Chrome"],
+    // CI uses the Google Chrome preinstalled on GitHub runners: no browser download or apt step.
+    ...(process.env.CI ? { channel: "chrome" } : {}),
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

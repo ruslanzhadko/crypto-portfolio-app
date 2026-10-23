@@ -14,6 +14,13 @@ deployment rollback, production build (including lint and TypeScript), and
 three critical Chromium browser flows. No additional database secrets or
 manual test infrastructure setup are required. See `CI_REVIEW.md` for scope.
 
+Speed (since 2026-10-23): browser flows use the runner's preinstalled Google Chrome
+(no Playwright download or apt step, which took up to 9 minutes); a `main` push whose
+commit already passed on `develop` skips the checks and goes straight to deploy; a newer
+`develop` push cancels the older run. On the VM, a commit that does not change worker
+files (image inputs: `lib`, `prisma`, worker scripts, Dockerfile, package files) is
+recorded as deployed without rebuilding or restarting the containers.
+
 ## One-time setup for the existing test VM
 
 Run on the VM as `rzhadko`:

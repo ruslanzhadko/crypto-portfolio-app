@@ -78,6 +78,17 @@ if [[ -f "$state/deployed" ]] && [[ $(cat "$state/deployed") == "$sha" ]]; then
   fi
   exit 0
 fi
+# Website-only commits (components, messages, docs) do not change the image: keep the running containers.
+if [[ -f "$state/deployed" ]] && [[ ! -f "$state/failed" ]]; then
+  deployed=$(cat "$state/deployed")
+  if git --git-dir="$state/repo.git" fetch --depth=1 "$repo" "$deployed" >/dev/null 2>&1 &&
+    git --git-dir="$state/repo.git" diff --quiet "$deployed" "$sha" --       Dockerfile.exchanges package.json package-lock.json tsconfig.json prisma lib       scripts/exchange-worker.ts scripts/exchange-worker-health.mjs       scripts/telegram-feed-listener.ts scripts/price-trigger-worker.ts; then
+    printf '%s
+' "$sha" > "$state/deployed"
+    echo "No worker changes since $deployed; containers kept: $sha"
+    exit 0
+  fi
+fi
 # Do not endlessly rebuild an unhealthy commit; a new push retries automatically.
 if [[ -f "$state/failed" ]] && [[ $(cat "$state/failed") == "$sha" ]]; then
   echo "Commit $sha previously failed. Inspect journal; remove $state/failed to retry."; exit 1

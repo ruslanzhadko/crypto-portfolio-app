@@ -5,9 +5,11 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: exchange-worker-${{ github.ref_name }}
-  cancel-in-progress: false
+  # A newer develop push makes the older check pointless; main runs are never cancelled mid-deploy.
+  cancel-in-progress: ${{ github.ref_name == 'develop' }}
 jobs:
   check:
     runs-on: ubuntu-24.04
@@ -32,28 +34,48 @@ jobs:
           --health-cmd "pg_isready -U exchange_test -d exchange_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      # main receives commits already checked on develop: the same commit is not checked twice.
+      - name: Reuse the develop check of this commit
+        id: reuse
+        if: github.ref_name == 'main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          passed=$(gh api "repos/${{ github.repository }}/actions/runs?branch=develop&head_sha=${{ github.sha }}&status=success" --jq '.total_count')
+          echo "Successful develop runs of this commit: $passed"
+          if [[ "$passed" != 0 ]]; then echo "done=true" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.reuse.outputs.done != 'true'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - if: steps.reuse.outputs.done != 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
           cache: npm
       # Lifecycle scripts stay off; the only one the project needs is Prisma client generation.
-      - run: npm ci --ignore-scripts
-      - run: ./node_modules/.bin/prisma generate
+      - if: steps.reuse.outputs.done != 'true'
+        run: npm ci --ignore-scripts
+      - if: steps.reuse.outputs.done != 'true'
+        run: ./node_modules/.bin/prisma generate
       - name: Prepare disposable test schema
+        if: steps.reuse.outputs.done != 'true'
         run: ./node_modules/.bin/prisma db push --skip-generate
       - name: Fast behavior and security regressions
+        if: steps.reuse.outputs.done != 'true'
         run: npm test -- --exclude lib/exchanges/integration.test.ts
       - name: Real database integration
+        if: steps.reuse.outputs.done != 'true'
         run: ./node_modules/.bin/vitest run lib/exchanges/integration.test.ts
       - name: Test deployment rollback without real credentials
+        if: steps.reuse.outputs.done != 'true'
         run: |
           sudo ln -s "$GITHUB_WORKSPACE" /source
           sudo bash tests/worker-update.test.sh
       # Next build already runs lint and TypeScript checks; do not run them twice.
-      - run: npm run build
-      - run: ./node_modules/.bin/playwright install --with-deps chromium
+      - if: steps.reuse.outputs.done != 'true'
+        run: npm run build
+      # Browsers: the runner's preinstalled Google Chrome (playwright config), nothing to download.
       - name: Critical browser flows (one browser, one retry per test)
+        if: steps.reuse.outputs.done != 'true'
         run: npm run test:e2e
       - name: Keep diagnostics only on failure
         if: failure()
