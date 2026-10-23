@@ -22,12 +22,21 @@ mkdir -p "$state"
 exec 9>"$state/lock"
 flock -w 1200 9 || exit 1
 test -s "$env_file"
+# Recreating a container deletes its logs: keep a copy of each one first (last 20 per container).
+log_archive=/var/log/cryptoportfolio
+archive_logs() {
+  docker container inspect "$1" >/dev/null 2>&1 || return 0
+  mkdir -p "$log_archive"
+  docker logs "$1" > "$log_archive/$1-$(date -u +%Y%m%d-%H%M%S).log" 2>&1 || true
+  ls -1t "$log_archive/$1-"*.log 2>/dev/null | tail -n +21 | xargs -r rm -f
+}
 # Only one process may use the Telegram session: the old container is removed before the new one starts.
 # Failures here never roll back the exchange worker.
 start_listener() {
   [[ -s "$listener_env_file" ]] || { echo 'Listener env file absent; listener skipped.'; return 0; }
   # Graceful stop lets the listener write the posts it is still holding.
   docker stop --time 20 "$listener_name" >/dev/null 2>&1 || true
+  archive_logs "$listener_name"
   docker rm -f "$listener_name" >/dev/null 2>&1 || true
   docker run -d --name "$listener_name" --restart unless-stopped     --env-file "$listener_env_file" --no-healthcheck --log-driver json-file     --log-opt max-size=10m --log-opt max-file=3     --security-opt no-new-privileges:true --cap-drop ALL     "$1" node --import tsx scripts/telegram-feed-listener.ts || { echo 'WARNING: listener failed to start.'; return 0; }
   for _ in {1..18}; do
@@ -40,6 +49,7 @@ start_listener() {
 start_triggers() {
   [[ -s "$triggers_env_file" ]] || { echo 'Trigger worker env file absent; trigger worker skipped.'; return 0; }
   docker stop --time 15 "$triggers_name" >/dev/null 2>&1 || true
+  archive_logs "$triggers_name"
   docker rm -f "$triggers_name" >/dev/null 2>&1 || true
   docker run -d --name "$triggers_name" --restart unless-stopped     --env-file "$triggers_env_file" --no-healthcheck --log-driver json-file     --log-opt max-size=10m --log-opt max-file=3     --security-opt no-new-privileges:true --cap-drop ALL     "$1" node --import tsx scripts/price-trigger-worker.ts || { echo 'WARNING: trigger worker failed to start.'; return 0; }
   for _ in {1..18}; do
@@ -122,7 +132,7 @@ $healthy || rollback
 printf '%s\n' "$sha" > "$state/deployed"
 trap - ERR INT TERM
 # Keep the previous image for rollback, but remove the superseded stopped container.
-if $had_old; then docker rm "$old"; fi
+if $had_old; then archive_logs "$old"; docker rm "$old"; fi
 echo "Worker deployed and heartbeat verified: $sha"
 start_listener "$image"
 start_triggers "$image"

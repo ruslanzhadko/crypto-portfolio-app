@@ -138,7 +138,11 @@ root-овый, после изменений в репозитории его н
 sudo bash -c 'source /etc/cryptoportfolio-worker-deploy.conf; git --git-dir="$state/repo.git" show <SHA>:deploy/worker-update.sh > /tmp/w.new && bash -n /tmp/w.new && install -m 0755 /tmp/w.new /usr/local/sbin/cryptoportfolio-worker-update && rm /tmp/w.new'
 ```
 
-Запуск/перезапуск вручную: `sudo docker rm -f cryptoportfolio-listener-production && sudo /usr/local/sbin/cryptoportfolio-worker-update`.
+Запуск/перезапуск вручную: `sudo docker rm -f cryptoportfolio-listener-production && sudo /usr/local/sbin/cryptoportfolio-worker-update`
+(`docker rm -f` удаляет логи без копии — перед ним сохранить их вручную).
+Логи: скрипт (с 23.10, после переустановки) перед пересозданием сохраняет логи worker, listener и
+триггеров в `/var/log/cryptoportfolio/<контейнер>-<UTC-время>.log`, по 20 последних на контейнер;
+смотреть `sudo ls -lt /var/log/cryptoportfolio | head`.
 Диск VM — 19 ГБ: скрипт после успешного деплоя оставляет текущий и предыдущий образ и чистит кэш
 сборки старше суток (22.10 диск заполнился и деплой упал с `ENOSPC`). Вручную:
 `sudo docker image prune -a -f && sudo docker builder prune -a -f`, затем удалить `<state>/failed`

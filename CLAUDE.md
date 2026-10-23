@@ -28,7 +28,8 @@ docs, small fixes, anything the owner does not see as a product change.
   (the browser suite retries once; rerun a failed run one time at most).
 - Never run tests or the worker against the local `.env` (it points at production). Use a throwaway
   PostgreSQL in Docker. Production database changes: backup first, additive only, no reset or drop.
-- Do not print secrets in chat or logs. Before a deploy that recreates the VM containers, ask the owner for
-  the container logs: recreating them deletes the logs.
+- Do not print secrets in chat or logs. The VM deploy script archives container logs to `/var/log/cryptoportfolio`
+  before recreating them; ask the owner to save logs by hand only when the script on the VM is older than that
+  or a container is removed manually.
 - Keep documentation short and current; delete outdated sections instead of accumulating history.
 - Long-running processes must not poll PostgreSQL continuously (Neon billing).
