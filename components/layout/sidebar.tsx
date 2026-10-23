@@ -67,10 +67,13 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
       <div className="border-t border-border p-4 text-xs text-text-muted">
         <p>
           © {new Date().getFullYear()} CryptoPortfolio ·{" "}
-          <Link href="/changelog" className="hover:text-text hover:underline">
-            {t("changelog")}
-          </Link>
-          <ChangelogNewDot className="ml-1.5 align-middle" />
+          {/* The dot stays glued to the link when the line wraps. */}
+          <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+            <Link href="/changelog" className="hover:text-text hover:underline">
+              {t("changelog")}
+            </Link>
+            <ChangelogNewDot />
+          </span>
         </p>
         <p className="mt-0.5">
           {t("footerBy")}{" "}
