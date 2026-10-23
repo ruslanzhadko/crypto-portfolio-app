@@ -308,7 +308,13 @@
     "logPrevPage": "Previous",
     "logNextPage": "Next",
     "logPageOf": "Page {page} of {total}",
-    "logTargetReached": "Target reached"
+    "logToday": "Today",
+    "logYesterday": "Yesterday",
+    "logWindowMinutes": "in {minutes} min",
+    "logWindowHours": "in {hours} h",
+    "logTargetHit": "Target {price} reached",
+    "logNew": "New",
+    "logNotDelivered": "Not delivered to Telegram"
   },
   "NewAlert": {
     "backToTriggers": "Back to triggers",
@@ -334,7 +340,9 @@
     "menuDelete": "Delete",
     "toastUpdateFailedTitle": "Failed to update",
     "toastDeleteFailedTitle": "Failed to delete",
-    "toastDeletedTitle": "Trigger deleted"
+    "toastDeletedTitle": "Trigger deleted",
+    "nowLabel": "now",
+    "checkedShort": "checked {time}"
   },
   "TriggerForm": {
     "triggerTypeLabel": "Trigger type",

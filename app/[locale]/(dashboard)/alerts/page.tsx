@@ -5,9 +5,8 @@ import { prisma } from '@/lib/db/prisma';
 import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { TriggerCard } from '@/components/alerts/trigger-card';
-import { NotificationLog } from '@/components/alerts/notification-log';
+import { AlertsTabs } from '@/components/alerts/alerts-tabs';
 import { EmptyState } from '@/components/common/empty-state';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
@@ -42,7 +41,7 @@ export default async function AlertsPage() {
   const currentPriceMap = new Map(cachedPrices.map((p) => [p.tokenId, p.currentPrice]));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
@@ -71,13 +70,10 @@ export default async function AlertsPage() {
         </Card>
       )}
 
-      <Tabs defaultValue="triggers">
-        <TabsList>
-          <TabsTrigger value="triggers">{t('tabTriggers', { count: triggers.length })}</TabsTrigger>
-          <TabsTrigger value="logs">{t('tabLogs')}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="triggers" className="space-y-4">
-          {triggers.length === 0 ? (
+      <AlertsTabs
+        triggerCount={triggers.length}
+        triggers={
+          triggers.length === 0 ? (
             <EmptyState
               icon={Bell}
               title={t('emptyTriggersTitle')}
@@ -89,21 +85,14 @@ export default async function AlertsPage() {
               }
             />
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
               {triggers.map((tr) => (
-                <TriggerCard
-                  key={tr.id}
-                  trigger={tr}
-                  currentPrice={currentPriceMap.get(tr.tokenId)}
-                />
+                <TriggerCard key={tr.id} trigger={tr} currentPrice={currentPriceMap.get(tr.tokenId)} />
               ))}
             </div>
-          )}
-        </TabsContent>
-        <TabsContent value="logs">
-          <NotificationLog />
-        </TabsContent>
-      </Tabs>
+          )
+        }
+      />
     </div>
   );
 }

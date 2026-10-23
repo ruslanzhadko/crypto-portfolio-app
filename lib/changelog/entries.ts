@@ -15,6 +15,28 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-23",
     title: {
+      ru: "Новые уведомления видно на сайте",
+      uk: "Нові сповіщення видно на сайті",
+      en: "New alerts are visible on the site",
+    },
+    items: {
+      ru: [
+        "Красная точка у «Алертов» в меню (на телефоне — у «Ещё»), пока сработавшее уведомление не просмотрено.",
+        "Журнал уведомлений крупнее, сгруппирован по дням, новые отмечены; триггеры — компактными карточками.",
+      ],
+      uk: [
+        "Червона крапка біля «Алертів» у меню (на телефоні — біля «Ще»), доки спрацьоване сповіщення не переглянуто.",
+        "Журнал сповіщень більший, згрупований за днями, нові позначено; тригери — компактними картками.",
+      ],
+      en: [
+        "A red dot next to Alerts in the menu (More on phones) until a fired alert has been seen.",
+        "The notification log is larger, grouped by day with new alerts marked; triggers are compact cards.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-23",
+    title: {
       ru: "Честный результат в лидерах роста и падения",
       uk: "Чесний результат у лідерах зростання та падіння",
       en: "Honest results in top gainers and losers",

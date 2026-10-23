@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations, useLocale } from 'next-intl';
 import { Bell, Loader2, MoreVertical, Target, Trash2 } from 'lucide-react';
@@ -14,8 +14,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
-import { formatRelative, formatUsd } from '@/lib/utils/format';
+import { formatRelativeCompact, formatUsd } from '@/lib/utils/format';
+import { cn } from '@/lib/utils/cn';
 import { useToast } from '@/hooks/use-toast';
 
 interface TriggerCardProps {
@@ -109,6 +109,60 @@ function TriggerMenu({
 }
 
 // ─────────────────────────────────────────
+// Compact card shared by both trigger types
+// ─────────────────────────────────────────
+
+function TriggerShell({
+  trigger,
+  icon,
+  summary,
+  status,
+  statusTone,
+  isPending,
+  onToggle,
+  onDelete,
+}: {
+  trigger: PriceTrigger;
+  icon: ReactNode;
+  summary: ReactNode;
+  status: string;
+  statusTone: string;
+  isPending: boolean;
+  onToggle: (v: boolean) => void;
+  onDelete: () => void;
+}) {
+  const t = useTranslations('TriggerCard');
+  const locale = useLocale();
+  return (
+    <Card className={cn('card-gradient min-w-0 transition-opacity', !trigger.isActive && 'opacity-70')}>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-3">
+          {icon}
+          <div className="min-w-0 flex-1">
+            <p className="flex items-baseline gap-1.5">
+              <span className="font-semibold">{trigger.tokenSymbol}</span>
+              <span className="truncate text-xs text-text-muted">{trigger.tokenName}</span>
+            </p>
+            <p className="truncate text-sm">{summary}</p>
+          </div>
+          <Switch checked={trigger.isActive} disabled={isPending} onCheckedChange={onToggle} />
+          <TriggerMenu isPending={isPending} onDelete={onDelete} />
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-2 pl-12 text-xs text-text-muted">
+          <span className={cn('inline-flex items-center gap-1.5 font-medium', statusTone)}>
+            <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+            {status}
+          </span>
+          <span className="truncate">
+            {t('checkedShort', { time: formatRelativeCompact(trigger.lastCheckedAt, locale) })}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─────────────────────────────────────────
 // PERCENT trigger card
 // ─────────────────────────────────────────
 
@@ -124,7 +178,6 @@ function PercentTriggerCard({
   onDelete: () => void;
 }) {
   const t = useTranslations('TriggerCard');
-  const locale = useLocale();
 
   const directionLabel =
     trigger.direction === TriggerDirection.UP
@@ -139,48 +192,28 @@ function PercentTriggerCard({
       : `${trigger.interval}m`;
 
   return (
-    <Card className="card-gradient">
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2.5 sm:gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary sm:h-10 sm:w-10">
-              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold">{trigger.tokenSymbol}</p>
-              <p className="truncate text-xs text-text-muted">{trigger.tokenName}</p>
-            </div>
-          </div>
-          <TriggerMenu isPending={isPending} onDelete={onDelete} />
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:mt-4 sm:gap-2">
-          <div>
-            <p className="text-xs text-text-muted">{t('thresholdLabel')}</p>
-            <p className="font-medium">±{trigger.threshold}%</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">{t('directionLabel')}</p>
-            <p className="font-medium">{directionLabel}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">{t('intervalLabel')}</p>
-            <p className="font-medium">{intervalLabel}</p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">{t('checkedLabel')}</p>
-            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt, locale)}</p>
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-2 sm:mt-4 sm:pt-3">
-          <Badge variant={trigger.isActive ? 'success' : 'secondary'}>
-            {trigger.isActive ? t('badgeActive') : t('badgeInactive')}
-          </Badge>
-          <Switch checked={trigger.isActive} disabled={isPending} onCheckedChange={onToggle} />
-        </div>
-      </CardContent>
-    </Card>
+    <TriggerShell
+      trigger={trigger}
+      isPending={isPending}
+      onToggle={onToggle}
+      onDelete={onDelete}
+      icon={
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Bell className="h-4 w-4" />
+        </span>
+      }
+      summary={
+        <>
+          <span className="font-semibold">±{trigger.threshold}%</span>
+          <span className="text-text-muted">
+            {' · '}
+            {intervalLabel} · {directionLabel}
+          </span>
+        </>
+      }
+      status={trigger.isActive ? t('badgeActive') : t('badgeInactive')}
+      statusTone={trigger.isActive ? 'text-success' : 'text-text-muted'}
+    />
   );
 }
 
@@ -202,18 +235,12 @@ function PriceTargetCard({
   onDelete: () => void;
 }) {
   const t = useTranslations('TriggerCard');
-  const locale = useLocale();
   const fired = !trigger.isActive && !!trigger.lastCheckedAt;
 
   const price = currentPrice ?? trigger.lastPrice ?? null;
   const distancePct =
     price != null && trigger.targetPrice != null
       ? ((trigger.targetPrice - price) / price) * 100
-      : null;
-
-  const distanceLabel =
-    distancePct != null
-      ? `${distancePct > 0 ? '+' : ''}${distancePct.toFixed(1)}%`
       : null;
 
   const distanceColor =
@@ -226,57 +253,38 @@ function PriceTargetCard({
           : 'text-danger';
 
   return (
-    <Card className="card-gradient border-warning/20">
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2.5 sm:gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/10 text-warning sm:h-10 sm:w-10">
-              <Target className="h-4 w-4 sm:h-5 sm:w-5" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold">{trigger.tokenSymbol}</p>
-              <p className="truncate text-xs text-text-muted">{trigger.tokenName}</p>
-            </div>
-          </div>
-          <TriggerMenu isPending={isPending} onDelete={onDelete} />
-        </div>
-
-        <div className="mt-3 grid grid-cols-2 gap-1.5 text-sm sm:mt-4 sm:gap-2">
-          <div>
-            <p className="text-xs text-text-muted">{t('targetLabel')}</p>
-            <p className="font-semibold text-warning">
-              {trigger.targetPrice != null ? formatUsd(trigger.targetPrice) : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">{t('distanceLabel')}</p>
-            <p className={`font-semibold ${distanceColor}`}>
-              {distanceLabel ?? '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">{t('currentPriceLabel')}</p>
-            <p className="font-medium">
-              {price != null ? formatUsd(price) : '—'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-text-muted">{t('checkedLabel')}</p>
-            <p className="text-xs font-medium">{formatRelative(trigger.lastCheckedAt, locale)}</p>
-          </div>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between border-t border-border pt-2 sm:mt-4 sm:pt-3">
-          {fired ? (
-            <Badge variant="warning">{t('badgeFired')}</Badge>
-          ) : (
-            <Badge variant={trigger.isActive ? 'success' : 'secondary'}>
-              {trigger.isActive ? t('badgeWaiting') : t('badgeInactive')}
-            </Badge>
+    <TriggerShell
+      trigger={trigger}
+      isPending={isPending}
+      onToggle={onToggle}
+      onDelete={onDelete}
+      icon={
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-warning/10 text-warning">
+          <Target className="h-4 w-4" />
+        </span>
+      }
+      summary={
+        <>
+          <span className="font-semibold text-warning">
+            {trigger.targetPrice != null ? formatUsd(trigger.targetPrice) : '—'}
+          </span>
+          {price != null && (
+            <span className="text-text-muted">
+              {' · '}
+              {t('nowLabel')} {formatUsd(price)}
+            </span>
           )}
-          <Switch checked={trigger.isActive} disabled={isPending} onCheckedChange={onToggle} />
-        </div>
-      </CardContent>
-    </Card>
+          {distancePct != null && (
+            <span className={cn('font-medium', distanceColor)}>
+              {' · '}
+              {distancePct > 0 ? '+' : ''}
+              {distancePct.toFixed(1)}%
+            </span>
+          )}
+        </>
+      }
+      status={fired ? t('badgeFired') : trigger.isActive ? t('badgeWaiting') : t('badgeInactive')}
+      statusTone={fired ? 'text-warning' : trigger.isActive ? 'text-success' : 'text-text-muted'}
+    />
   );
 }

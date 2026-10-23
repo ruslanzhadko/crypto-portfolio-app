@@ -10,6 +10,9 @@ import { cn } from "@/lib/utils/cn";
 import { NAV_ITEMS } from "./nav-items";
 import { MoreHorizontal } from "lucide-react";
 import { ChangelogNewDot } from "@/components/changelog/new-dot";
+import { AlertsNewDot } from "@/components/alerts/new-dot";
+import { useChangelogUnread } from "@/lib/changelog/unread";
+import { useAlertsUnread } from "@/lib/alerts/unread";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +31,8 @@ export function MobileNav({
   const [moreOpen, setMoreOpen] = useState(false);
   const pathname = usePathname();
   const t = useTranslations("Nav");
+  const changelogUnread = useChangelogUnread();
+  const alertsUnread = useAlertsUnread();
   const available = NAV_ITEMS.filter(
     (i) =>
       (!i.adminOnly || userRole === "ADMIN") &&
@@ -78,7 +83,10 @@ export function MobileNav({
               active ? "text-primary" : "text-text-muted",
             )}
           >
-            <Icon className="h-5 w-5" />
+            <span className="relative">
+              <Icon className="h-5 w-5" />
+              {item.href === "/alerts" && <AlertsNewDot className="absolute -right-1 -top-0.5" />}
+            </span>
             <span
               className="block w-full truncate text-center"
               aria-hidden="true"
@@ -93,7 +101,14 @@ export function MobileNav({
           <DialogTrigger className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] font-medium text-text-muted">
             <span className="relative">
               <MoreHorizontal className="h-5 w-5" />
-              <ChangelogNewDot className="absolute -right-1 -top-0.5" />
+              {/* Something new behind "More": the changelog, or alerts when they live in the sheet. */}
+              {(changelogUnread ||
+                (alertsUnread && moreItems.some((i) => i.href === "/alerts"))) && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-danger"
+                />
+              )}
             </span>
             <span>{t("more")}</span>
           </DialogTrigger>
@@ -119,6 +134,7 @@ export function MobileNav({
                   </span>
                   {t(item.labelKey)}
                   {item.href === "/changelog" && <ChangelogNewDot />}
+                  {item.href === "/alerts" && <AlertsNewDot />}
                 </Link>
               ))}
             </div>

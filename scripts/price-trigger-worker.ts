@@ -9,6 +9,7 @@ import {
   pairsByVenue,
   type Venue,
 } from "../lib/triggers/prices";
+import { createAlertSignalClient } from "../lib/alerts/signal-client";
 import { createTriggersVersionClient } from "../lib/triggers/signal";
 import { createUpdatePricesCaller } from "../lib/triggers/update-prices";
 import {
@@ -37,6 +38,7 @@ if (!process.env.DATABASE_URL || !process.env.TELEGRAM_BOT_TOKEN)
 const engine = new TriggerEngine();
 const versions = createTriggersVersionClient();
 const walletPrices = createUpdatePricesCaller();
+const alertSignal = createAlertSignalClient();
 let mapping = new Map<string, { venue: Venue; pair: string }>();
 let coingecko = new Map<string, number>();
 let coingeckoAt = 0;
@@ -138,6 +140,8 @@ async function tick() {
   );
   for (const firing of firings) {
     const result = await deliverFiring(firing, new Date(now));
+    // Lights the "new alerts" dot on the site; a failed Telegram delivery is still shown there.
+    if (result !== "skipped") await alertSignal?.fired(firing.trigger.userId, now);
     console.log(
       `[triggers] ${firing.kind} ${firing.trigger.tokenSymbol} #${firing.trigger.id} ${result}`,
     );

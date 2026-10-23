@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
         orderBy: { sentAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
-        include: { trigger: { select: { triggerType: true, direction: true } } },
+        include: {
+          trigger: {
+            select: { triggerType: true, direction: true, interval: true, targetPrice: true, tokenName: true },
+          },
+        },
       }),
       prisma.notificationLog.count({ where: { userId: guard.user.id } }),
     ]);

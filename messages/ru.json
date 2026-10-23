@@ -308,7 +308,13 @@
     "logPrevPage": "Назад",
     "logNextPage": "Вперёд",
     "logPageOf": "Стр. {page} из {total}",
-    "logTargetReached": "Цель достигнута"
+    "logToday": "Сегодня",
+    "logYesterday": "Вчера",
+    "logWindowMinutes": "за {minutes} мин",
+    "logWindowHours": "за {hours} ч",
+    "logTargetHit": "Цель {price} достигнута",
+    "logNew": "Новое",
+    "logNotDelivered": "Не доставлено в Telegram"
   },
   "NewAlert": {
     "backToTriggers": "К списку триггеров",
@@ -334,7 +340,9 @@
     "menuDelete": "Удалить",
     "toastUpdateFailedTitle": "Не удалось обновить",
     "toastDeleteFailedTitle": "Не удалось удалить",
-    "toastDeletedTitle": "Триггер удалён"
+    "toastDeletedTitle": "Триггер удалён",
+    "nowLabel": "сейчас",
+    "checkedShort": "проверено {time}"
   },
   "TriggerForm": {
     "triggerTypeLabel": "Тип триггера",

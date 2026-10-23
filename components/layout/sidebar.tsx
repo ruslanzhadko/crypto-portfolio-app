@@ -8,6 +8,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils/cn";
 import { NAV_ITEMS } from "./nav-items";
 import { ChangelogNewDot } from "@/components/changelog/new-dot";
+import { AlertsNewDot } from "@/components/alerts/new-dot";
 
 interface SidebarProps {
   userRole: Role;
@@ -57,6 +58,7 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
             >
               <Icon className="h-4 w-4" />
               {t(item.labelKey as "dashboard")}
+              {item.href === "/alerts" && <AlertsNewDot className="-ml-1" />}
             </Link>
           );
         })}
