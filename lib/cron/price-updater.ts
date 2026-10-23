@@ -5,6 +5,7 @@ import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
 import { sendPriceAlert, sendPriceTargetAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 import { syncWallet } from '@/lib/services/wallet-sync';
+import { recordHoldingSnapshots } from '@/lib/portfolio/holding-snapshots';
 import {
   checkedPrice,
   VERIFIED_COINGECKO_IDS,
@@ -37,6 +38,8 @@ export interface PriceUpdaterResult {
   pricesWritten: number;
   balancesRecalculated: number;
   snapshotsCreated: number;
+  /** Users whose 30-minute coin snapshot was written (24h result of the movers). */
+  holdingSnapshots: number;
   errors: number;
   durationMs: number;
 }
@@ -590,13 +593,14 @@ async function syncDueWallets(startedAt: number): Promise<number> {
 
 export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
   const startedAt = Date.now();
-  const stepsMs = { walletSync: 0, prices: 0, recalculate: 0, snapshots: 0 };
+  const stepsMs = { walletSync: 0, prices: 0, recalculate: 0, snapshots: 0, holdings: 0 };
   const result: PriceUpdaterResult = {
     walletsSynced: 0,
     pricesUpdated: 0,
     pricesWritten: 0,
     balancesRecalculated: 0,
     snapshotsCreated: 0,
+    holdingSnapshots: 0,
     errors: 0,
     durationMs: 0,
   };
@@ -647,6 +651,17 @@ export async function runPriceUpdater(): Promise<PriceUpdaterResult> {
     console.error('[price-updater] step 4 (snapshots):', err);
   } finally {
     stepsMs.snapshots = Date.now() - stepStartedAt;
+  }
+
+  stepStartedAt = Date.now();
+  try {
+    const holdings = await recordHoldingSnapshots();
+    result.holdingSnapshots = holdings.users;
+  } catch (err) {
+    result.errors++;
+    console.error('[price-updater] step 5 (holding snapshots):', err);
+  } finally {
+    stepsMs.holdings = Date.now() - stepStartedAt;
   }
 
   // Перевірку цінових тригерів робить окремий легкий ендпоінт

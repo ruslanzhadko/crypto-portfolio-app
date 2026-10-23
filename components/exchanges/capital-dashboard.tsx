@@ -21,7 +21,8 @@ import type {
 } from "@/lib/exchanges/portfolio";
 import { useExchangeData, exchangeAction } from "./use-exchange-data";
 import { Money, Quantity, Updated, ExchangeErrorNotice } from "./shared";
-import { BalanceTable, exchangeBalanceRows } from "./balance-table";
+import { BalanceTable } from "./balance-table";
+import { exchangeBalanceRows } from "@/lib/exchanges/balance-rows";
 import { TokenTable } from "@/components/dashboard/token-table";
 import type { AggregatedToken } from "@/lib/services/portfolio";
 import {

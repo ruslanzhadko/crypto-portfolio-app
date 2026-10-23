@@ -40,6 +40,7 @@ model User {
   exchangeConnections ExchangeConnection[]
   capitalSnapshots PortfolioCapitalSnapshot[]
   capitalEvents CapitalEvent[]
+  holdingSeries TokenHoldingSeries?
 
   @@index([email])
 }
@@ -540,4 +541,21 @@ model ExchangeTransfer {
   @@unique([connectionId, direction, externalId])
   @@index([connectionId, occurredAt])
   @@index([txHash])
+}
+
+/// Coin quantities of one user over the last ~24h, one row per user (see lib/portfolio/holding-returns.ts).
+/// `data` keeps quantity changes per coin; `result` is the 24h return the dashboard reads.
+model TokenHoldingSeries {
+  userId String @id
+  data Json
+  result Json?
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Coin prices at each 30-minute slot of the last ~24h, shared by all users (one row, id "global").
+model TokenPriceSeries {
+  id String @id
+  data Json
+  updatedAt DateTime @updatedAt
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -14,20 +14,22 @@ import { formatUsd } from '@/lib/utils/format';
 import type { AggregatedToken } from '@/lib/services/portfolio';
 import { getTokenPageUrl } from '@/lib/utils/token-links';
 import { Button } from '@/components/ui/button';
+import { moverChange, type MoverChange } from '@/lib/portfolio/holding-returns';
+import { useHoldingReturns } from './use-holding-returns';
 
 const MIN_USD = 1;
 const DEFAULT_VISIBLE_COUNT = 5;
 
 type MoverToken = AggregatedToken & { exchanges?: ExchangeHolding[] };
+type MoverRowToken = MoverToken & { change: MoverChange };
 
-function MoverRow({ tk }: { tk: MoverToken }) {
+function MoverRow({ tk }: { tk: MoverRowToken }) {
   const t = useTranslations('TopMovers');
   const tokenPage = getTokenPageUrl(tk);
   const location = describeTokenLocations(tk);
-  // Convert the 24h price percentage into the dollar change of this position.
-  // totalUsd is the current value, so compare it with the implied previous value.
-  const changeFraction = Math.max(-0.999, tk.priceChange24h / 100);
-  const changeUsd = tk.totalUsd - tk.totalUsd / (1 + changeFraction);
+  const changeUsd = tk.change.usd;
+  // Held for less than a day (or snapshots started recently): say what period the result covers.
+  const hours = tk.change.hours !== null && tk.change.hours < 23.5 ? Math.max(1, Math.round(tk.change.hours)) : null;
 
   const inner = (
     <div className="flex h-full min-h-12 w-full items-center gap-3 px-3 py-1.5 sm:px-4">
@@ -55,6 +57,14 @@ function MoverRow({ tk }: { tk: MoverToken }) {
           <span className={changeUsd > 0 ? 'text-success' : changeUsd < 0 ? 'text-danger' : 'text-text-muted'}>
             {changeUsd > 0 ? '+' : changeUsd < 0 ? '−' : ''}{formatUsd(Math.abs(changeUsd), { compact: true })}
           </span>
+          {hours !== null && (
+            <>
+              <span className="text-text-muted" aria-hidden>·</span>
+              <span className="text-text-muted" title={t('periodHoursTitle', { hours })}>
+                {t('periodHours', { hours })}
+              </span>
+            </>
+          )}
           <span className="text-text-muted" aria-hidden>·</span>
           <span
             className="text-text-muted"
@@ -89,7 +99,7 @@ function MoverRow({ tk }: { tk: MoverToken }) {
   );
 }
 
-function MoversList({ tokens, emptyText }: { tokens: MoverToken[]; emptyText: string }) {
+function MoversList({ tokens, emptyText }: { tokens: MoverRowToken[]; emptyText: string }) {
   if (tokens.length === 0) {
     return <p className="px-4 pb-4 text-sm text-text-muted">{emptyText}</p>;
   }
@@ -104,14 +114,31 @@ function MoversList({ tokens, emptyText }: { tokens: MoverToken[]; emptyText: st
   );
 }
 
-export function TopMovers({ tokens }: { tokens: MoverToken[] }) {
+export function TopMovers({
+  tokens,
+  scope = 'all',
+}: {
+  tokens: MoverToken[];
+  /** "wallets": wallet tokens only, so coins also held on an exchange use their wallet-only result. */
+  scope?: 'all' | 'wallets';
+}) {
   const t = useTranslations('TopMovers');
+  const holdingReturns = useHoldingReturns();
+  // Personal 24h result from the 30-minute snapshots; sorted by it below.
+  const rows: MoverRowToken[] = useMemo(
+    () =>
+      tokens.map((tk) => {
+        const change = moverChange(tk, holdingReturns, scope);
+        return { ...tk, priceChange24h: change.percent, change };
+      }),
+    [tokens, holdingReturns, scope],
+  );
   const [expandedGainers, setExpandedGainers] = useState(false);
   const [expandedLosers, setExpandedLosers] = useState(false);
   const [mobileView, setMobileView] = useState<'gainers' | 'losers'>('gainers');
 
   // Only include tokens worth more than $1 (avoids spam/dust noise)
-  const withChange = tokens
+  const withChange = rows
     .filter((tk) => tk.totalUsd >= MIN_USD)
     .filter((tk) => Number.isFinite(tk.priceChange24h) && tk.priceChange24h !== 0);
 

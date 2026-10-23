@@ -136,7 +136,7 @@ export function DashboardSections({
             data-jump={tm("gainersTitle")}
             className="min-w-0 scroll-mt-20 animate-in fade-in slide-in-from-bottom-2 duration-300 motion-reduce:animate-none xl:h-full"
           >
-            <TopMovers tokens={overview.tokens} />
+            <TopMovers tokens={overview.tokens} scope="wallets" />
           </div>
         )}
         <div

@@ -15,6 +15,28 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-23",
     title: {
+      ru: "Честный результат в лидерах роста и падения",
+      uk: "Чесний результат у лідерах зростання та падіння",
+      en: "Honest results in top gainers and losers",
+    },
+    items: {
+      ru: [
+        "Доллары за 24 ч учитывают покупки и продажи внутри суток, а не только текущий размер позиции.",
+        "Процент — ваша доходность по позиции: для монеты, купленной сегодня, он считается от покупки, рядом видно, за сколько часов.",
+      ],
+      uk: [
+        "Долари за 24 год враховують купівлі та продажі всередині доби, а не лише поточний розмір позиції.",
+        "Відсоток — ваша дохідність за позицією: для монети, купленої сьогодні, він рахується від купівлі, поруч видно, за скільки годин.",
+      ],
+      en: [
+        "The 24h dollar change now accounts for buys and sells during the day, not just the current position size.",
+        "The percentage is your own return on the position: for a coin bought today it counts from the purchase, with the hours shown next to it.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-23",
+    title: {
       ru: "Мобильное меню и точные цены",
       uk: "Мобільне меню та точні ціни",
       en: "Mobile menu and accurate prices",

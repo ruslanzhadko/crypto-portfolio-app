@@ -156,7 +156,9 @@
     "showAll": "Show all",
     "showLess": "Show less",
     "emptyGainers": "No price movement data available.",
-    "emptyLosers": "No assets with negative 24h performance."
+    "emptyLosers": "No assets with negative 24h performance.",
+    "periodHours": "{hours} h",
+    "periodHoursTitle": "Result for the last {hours} h: the coin was held, or snapshots exist, only for that long"
   },
   "TokenTable": {
     "cardTitle": "Tokens",
