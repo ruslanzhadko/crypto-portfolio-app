@@ -9,6 +9,7 @@ import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils/cn";
 import { NAV_ITEMS } from "./nav-items";
 import { MoreHorizontal } from "lucide-react";
+import { ChangelogNewDot } from "@/components/changelog/new-dot";
 import {
   Dialog,
   DialogContent,
@@ -90,7 +91,10 @@ export function MobileNav({
       {moreItems.length > 0 && (
         <Dialog open={moreOpen} onOpenChange={setMoreOpen}>
           <DialogTrigger className="flex min-w-0 flex-col items-center justify-center gap-1 px-1 py-2.5 text-[11px] font-medium text-text-muted">
-            <MoreHorizontal className="h-5 w-5" />
+            <span className="relative">
+              <MoreHorizontal className="h-5 w-5" />
+              <ChangelogNewDot className="absolute -right-1 -top-0.5" />
+            </span>
             <span>{t("more")}</span>
           </DialogTrigger>
           {/* A rounded sheet that grows out of the "More" tab, just above the bottom bar. */}
@@ -114,6 +118,7 @@ export function MobileNav({
                     <item.icon className="h-[18px] w-[18px]" />
                   </span>
                   {t(item.labelKey)}
+                  {item.href === "/changelog" && <ChangelogNewDot />}
                 </Link>
               ))}
             </div>

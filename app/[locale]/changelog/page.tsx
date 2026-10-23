@@ -9,6 +9,7 @@ import { Navbar } from "@/components/layout/navbar";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Button } from "@/components/ui/button";
 import { exchangesEnabled } from "@/lib/exchanges/config";
+import { ChangelogSeenMarker } from "@/components/changelog/seen-marker";
 import { CHANGELOG, type ChangelogLocale } from "@/lib/changelog/entries";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,7 @@ export default async function ChangelogPage({
 
   const content = (
     <div className="mx-auto max-w-3xl">
+      <ChangelogSeenMarker />
       <div className="border-b border-border pb-4">
         <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
           {t("pageTitle")}

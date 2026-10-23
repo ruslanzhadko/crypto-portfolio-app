@@ -7,6 +7,7 @@ import type { Role } from "@prisma/client";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils/cn";
 import { NAV_ITEMS } from "./nav-items";
+import { ChangelogNewDot } from "@/components/changelog/new-dot";
 
 interface SidebarProps {
   userRole: Role;
@@ -67,6 +68,7 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
           <Link href="/changelog" className="hover:text-text hover:underline">
             {t("changelog")}
           </Link>
+          <ChangelogNewDot className="ml-1.5 align-middle" />
         </p>
         <p className="mt-0.5">
           {t("footerBy")}{" "}
