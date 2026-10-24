@@ -15,6 +15,19 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-24",
     title: {
+      ru: "Монеты на биржах открываются на бирже",
+      uk: "Монети на біржах відкриваються на біржі",
+      en: "Exchange coins open on their exchange",
+    },
+    items: {
+      ru: ["Нажатие на монету, которая лежит на бирже, открывает её торговую страницу на этой бирже (обзор, лидеры, страница биржи)."],
+      uk: ["Натискання на монету, яка лежить на біржі, відкриває її торгову сторінку на цій біржі (огляд, лідери, сторінка біржі)."],
+      en: ["Tapping a coin held on an exchange opens its market on that exchange (overview, movers, exchange page)."],
+    },
+  },
+  {
+    date: "2026-10-24",
+    title: {
       ru: "Перевод с кошелька на биржу больше не завышает капитал",
       uk: "Переказ із гаманця на біржу більше не завищує капітал",
       en: "Moving funds from a wallet to an exchange no longer inflates capital",

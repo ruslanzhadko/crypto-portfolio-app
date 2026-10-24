@@ -1069,6 +1069,7 @@
     "connectAsterApi": "Connect Aster API",
     "asterSigner": "API Wallet address (signer)",
     "asterSignerSecret": "API Wallet key",
-    "asterApiInstructions": "Create a separate Aster API Wallet with read-only access: canRead enabled; spot trading, perpetual trading and withdrawals disabled. Allowlist the worker IP. Enter this API Wallet address and its key, never your main wallet private key. This upgrades your current futures account; spot is not included yet."
+    "asterApiInstructions": "Create a separate Aster API Wallet with read-only access: canRead enabled; spot trading, perpetual trading and withdrawals disabled. Allowlist the worker IP. Enter this API Wallet address and its key, never your main wallet private key. This upgrades your current futures account; spot is not included yet.",
+    "openOnExchange": "Open on {exchange}"
   }
 }

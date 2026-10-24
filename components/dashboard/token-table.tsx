@@ -26,6 +26,7 @@ import { getChainDisplayName } from '@/lib/utils/networks';
 import { filterDashboardTokens } from '@/lib/utils/dashboard-token-filter';
 import type { AggregatedToken, WalletTokenBreakdown } from '@/lib/services/portfolio';
 import { mergeExchangeHoldings, type ExchangeHolding, type UnifiedToken } from '@/lib/portfolio/unified-assets';
+import { ExchangeTradeLink } from '@/components/exchanges/trade-link';
 import { ExchangeTokenLogo } from '@/components/exchanges/token-logo';
 import { ExchangeLogo, exchangeName } from '@/components/exchanges/exchange-logo';
 import { useDisplayPreference } from '@/components/exchanges/display-preferences';
@@ -320,7 +321,13 @@ export function TokenTable({
                           </span>
                           <div className="min-w-0">
                             <p className="flex items-center gap-1.5 text-sm font-medium sm:text-base">
-                              {tok.symbol}
+                              {onlyExchange ? (
+                                <ExchangeTradeLink exchange={onlyExchange.exchange} symbol={tok.symbol}>
+                                  {tok.symbol}
+                                </ExchangeTradeLink>
+                              ) : (
+                                tok.symbol
+                              )}
                               {isSpam && (
                                 <span className="rounded-full bg-warning/15 px-1.5 text-[10px] font-medium uppercase text-warning">
                                   {t('spamBadge')}
@@ -403,7 +410,7 @@ export function TokenTable({
                               onToggleWallet={(walletKey) => toggle(openWallets, setOpenWallets, walletKey)}
                             />
                             {visibleExchanges.length > 0 && (
-                              <ExchangeBreakdown holdings={visibleExchanges} totalUsd={tok.totalUsd} />
+                              <ExchangeBreakdown symbol={tok.symbol} holdings={visibleExchanges} totalUsd={tok.totalUsd} />
                             )}
                             {hiddenCount > 0 && (
                               <div className="pl-2 pt-1 text-[11px] text-text-muted sm:ml-6">
@@ -652,7 +659,15 @@ function ExchangeBadge({ exchange }: { exchange: string }) {
   );
 }
 
-function ExchangeBreakdown({ holdings, totalUsd }: { holdings: ExchangeHolding[]; totalUsd: number }) {
+function ExchangeBreakdown({
+  holdings,
+  totalUsd,
+  symbol,
+}: {
+  holdings: ExchangeHolding[];
+  totalUsd: number;
+  symbol: string;
+}) {
   const te = useTranslations('Exchanges');
   return (
     <div className={cn('sm:ml-6 sm:space-y-1', UNFOLD)}>
@@ -666,7 +681,9 @@ function ExchangeBreakdown({ holdings, totalUsd }: { holdings: ExchangeHolding[]
             <span aria-hidden />
             <div className="flex min-w-0 flex-1 items-center gap-1.5 md:gap-2">
               <ExchangeLogo exchange={h.exchange} size={14} />
-              <span className="truncate font-medium">{h.label}</span>
+              <ExchangeTradeLink exchange={h.exchange} symbol={symbol} className="min-w-0 truncate font-medium">
+                <span className="truncate font-medium">{h.label}</span>
+              </ExchangeTradeLink>
               <span className="hidden shrink-0 text-[10px] text-text-muted md:inline">
                 {exchangeName(h.exchange)} · {te.has(`kinds.${h.kind}`) ? te(`kinds.${h.kind}`) : h.kind}
                 {h.note === 'equity' && ` · ${te('asterEquityBalance')}`}

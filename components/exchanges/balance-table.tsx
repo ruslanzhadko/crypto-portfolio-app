@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import type { CapitalOverview } from "@/lib/exchanges/portfolio";
 import { exchangeBalanceRows } from "@/lib/exchanges/balance-rows";
 import { Money, Quantity } from "./shared";
+import { ExchangeTradeLink } from "./trade-link";
 import { useDisplayPreference, warningPreference } from "./display-preferences";
 import { ExchangeTokenLogo } from "./token-logo";
 
@@ -100,7 +101,9 @@ export function BalanceTable({
                       <ExchangeTokenLogo symbol={b.symbol} />
                       <span className="min-w-0">
                         <span className="block truncate" title={b.symbol}>
-                          {b.symbol}
+                          <ExchangeTradeLink exchange={b.account.exchange} symbol={b.symbol}>
+                            {b.symbol}
+                          </ExchangeTradeLink>
                         </span>
                         <span
                           className="mt-1 block truncate text-xs font-normal text-text-muted sm:hidden"

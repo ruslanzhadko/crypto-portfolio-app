@@ -13,6 +13,7 @@ import { Link } from '@/i18n/navigation';
 import { formatUsd } from '@/lib/utils/format';
 import type { AggregatedToken } from '@/lib/services/portfolio';
 import { getTokenPageUrl } from '@/lib/utils/token-links';
+import { exchangeTradeUrl } from '@/lib/exchanges/trade-links';
 import { Button } from '@/components/ui/button';
 import { moverChange, type MoverChange } from '@/lib/portfolio/holding-returns';
 import { useHoldingReturns } from './use-holding-returns';
@@ -32,7 +33,9 @@ type MoverRowToken = MoverToken & { change: MoverChange };
 
 function MoverRow({ tk }: { tk: MoverRowToken }) {
   const t = useTranslations('TopMovers');
-  const tokenPage = getTokenPageUrl(tk);
+  // Exchange-only coins open their market on the exchange holding most of them.
+  const exchangePage = tk.exchanges?.[0] ? exchangeTradeUrl(tk.exchanges[0].exchange, tk.symbol) : null;
+  const tokenPage = getTokenPageUrl(tk) ?? (exchangePage ? { href: exchangePage, external: true } : null);
   const location = describeTokenLocations(tk);
   const changeUsd = tk.change.usd;
   // Held for less than a day (or snapshots started recently): say what period the result covers.
