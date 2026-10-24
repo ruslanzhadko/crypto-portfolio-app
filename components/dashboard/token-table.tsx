@@ -26,7 +26,9 @@ import { getChainDisplayName } from '@/lib/utils/networks';
 import { filterDashboardTokens } from '@/lib/utils/dashboard-token-filter';
 import type { AggregatedToken, WalletTokenBreakdown } from '@/lib/services/portfolio';
 import { mergeExchangeHoldings, type ExchangeHolding, type UnifiedToken } from '@/lib/portfolio/unified-assets';
-import { ExchangeTradeLink } from '@/components/exchanges/trade-link';
+import { exchangeTradeUrl } from '@/lib/exchanges/trade-links';
+import { getTokenPageUrl } from '@/lib/utils/token-links';
+import { useRouter } from '@/i18n/navigation';
 import { ExchangeTokenLogo } from '@/components/exchanges/token-logo';
 import { ExchangeLogo, exchangeName } from '@/components/exchanges/exchange-logo';
 import { useDisplayPreference } from '@/components/exchanges/display-preferences';
@@ -46,6 +48,11 @@ interface WalletGroup {
 /** Rows shown before "Show all" on long lists. */
 const COLLAPSED_ROWS = 10;
 
+function pageHref(page: { href: string; external: boolean } | null): string | null {
+  if (!page) return null;
+  return page.external ? page.href : `${page.href}?from=dashboard`;
+}
+
 export function TokenTable({
   tokens: walletTokens,
   spamTokens,
@@ -60,6 +67,12 @@ export function TokenTable({
   exchangeHoldings?: ExchangeHolding[];
 }) {
   const t = useTranslations('TokenTable');
+  const router = useRouter();
+  // Exchange markets and DexScreener open in a new tab; market pages of this app in place.
+  const openHref = (href: string) => {
+    if (/^https?:/.test(href)) window.open(href, '_blank', 'noopener,noreferrer');
+    else router.push(href);
+  };
   const tokens: UnifiedToken[] = useMemo(
     () => mergeExchangeHoldings(walletTokens, exchangeHoldings ?? []),
     [walletTokens, exchangeHoldings],
@@ -283,15 +296,30 @@ export function TokenTable({
                     : tok.exchangeOnly
                       ? [...new Set(tok.exchanges.map((h) => exchangeName(h.exchange)))].join(' · ')
                       : tok.name;
+                // A coin held in one place opens it: its exchange market, or the token page for a wallet.
+                const tokenHref = pageHref(getTokenPageUrl(tok));
+                const rowHref = hasBreakdown
+                  ? null
+                  : onlyExchange
+                    ? exchangeTradeUrl(onlyExchange.exchange, tok.symbol, onlyExchange.kind)
+                    : tokenHref;
+                const openRow = () => {
+                  if (hasBreakdown) toggle(openTokens, setOpenTokens, tok.key);
+                  else if (rowHref) openHref(rowHref);
+                };
                 return (
                   <Fragment key={tok.key}>
                     <tr
                       className={cn(
                         'border-b border-border/60 transition-colors max-sm:flex max-sm:items-start',
-                        hasBreakdown && 'cursor-pointer hover:bg-surface-2/50',
+                        (hasBreakdown || rowHref) && 'cursor-pointer hover:bg-surface-2/50',
                         isOpen && 'bg-surface-2/40',
                       )}
-                      onClick={() => hasBreakdown && toggle(openTokens, setOpenTokens, tok.key)}
+                      onClick={openRow}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') openRow();
+                      }}
+                      tabIndex={hasBreakdown || rowHref ? 0 : undefined}
                     >
                       <td className="overflow-hidden px-3 py-2 max-sm:min-w-0 max-sm:flex-1 sm:px-4 sm:py-3">
                         <div className="min-w-0 flex items-center gap-2 sm:gap-3">
@@ -321,13 +349,7 @@ export function TokenTable({
                           </span>
                           <div className="min-w-0">
                             <p className="flex items-center gap-1.5 text-sm font-medium sm:text-base">
-                              {onlyExchange ? (
-                                <ExchangeTradeLink exchange={onlyExchange.exchange} symbol={tok.symbol}>
-                                  {tok.symbol}
-                                </ExchangeTradeLink>
-                              ) : (
-                                tok.symbol
-                              )}
+                              {tok.symbol}
                               {isSpam && (
                                 <span className="rounded-full bg-warning/15 px-1.5 text-[10px] font-medium uppercase text-warning">
                                   {t('spamBadge')}
@@ -402,6 +424,8 @@ export function TokenTable({
                             )}
                           >
                             <WalletBreakdown
+                              tokenHref={tokenHref}
+                              onOpen={openHref}
                               tokenKey={tok.key}
                               groups={groups}
                               totalUsd={tok.totalUsd}
@@ -481,6 +505,8 @@ function groupByWallet(wallets: WalletTokenBreakdown[]): WalletGroup[] {
 }
 
 function WalletBreakdown({
+  tokenHref,
+  onOpen,
   tokenKey,
   groups,
   totalUsd,
@@ -488,6 +514,9 @@ function WalletBreakdown({
   openWallets,
   onToggleWallet,
 }: {
+  /** Token page for wallet lines without networks to unfold. */
+  tokenHref: string | null;
+  onOpen: (href: string) => void;
   tokenKey: string;
   groups: WalletGroup[];
   totalUsd: number;
@@ -507,10 +536,13 @@ function WalletBreakdown({
           <div key={walletKey}>
             <button
               type="button"
-              onClick={() => hasMultipleChains && onToggleWallet(walletKey)}
+              onClick={() => {
+                if (hasMultipleChains) onToggleWallet(walletKey);
+                else if (tokenHref) onOpen(tokenHref);
+              }}
               className={cn(
                 'flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1.5 text-left text-xs transition-colors md:grid md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2',
-                hasMultipleChains ? 'cursor-pointer hover:bg-surface-2/60' : 'cursor-default',
+                hasMultipleChains || tokenHref ? 'cursor-pointer hover:bg-surface-2/60' : 'cursor-default',
                 isOpen && 'md:bg-surface-2/40',
               )}
             >
@@ -575,7 +607,7 @@ function WalletBreakdown({
             </button>
 
             {isOpen && hasMultipleChains && (
-              <ChainBreakdown chains={g.chains} walletTotalUsd={g.totalUsd} />
+              <ChainBreakdown chains={g.chains} walletTotalUsd={g.totalUsd} tokenHref={tokenHref} onOpen={onOpen} />
             )}
           </div>
         );
@@ -595,18 +627,27 @@ const UNFOLD = 'animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-red
 function ChainBreakdown({
   chains,
   walletTotalUsd,
+  tokenHref,
+  onOpen,
 }: {
   chains: WalletTokenBreakdown[];
   walletTotalUsd: number;
+  tokenHref: string | null;
+  onOpen: (href: string) => void;
 }) {
   return (
     <div className={cn('ml-5 md:ml-7 md:mt-0.5 md:space-y-0.5 md:border-l md:border-border/60 md:pl-3', UNFOLD)}>
       {chains.map((c, idx) => {
         const chainShare = walletTotalUsd > 0 ? (c.usdValue / walletTotalUsd) * 100 : 0;
         return (
-          <div
+          <button
+            type="button"
             key={`${c.chainName}::${idx}`}
-            className="flex min-w-0 items-center justify-between gap-2 rounded-md px-1 py-1.5 text-[11px] text-text-muted md:grid md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2 md:py-1 md:hover:bg-surface-2/40"
+            onClick={() => tokenHref && onOpen(tokenHref)}
+            className={cn(
+              'flex w-full min-w-0 items-center justify-between gap-2 rounded-md px-1 py-1.5 text-left text-[11px] text-text-muted md:grid md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2 md:py-1 md:hover:bg-surface-2/40',
+              tokenHref ? 'cursor-pointer' : 'cursor-default',
+            )}
           >
             <ChainBadge chainName={c.chainName} />
             <span className="hidden text-right font-mono tabular-nums md:inline">{formatTokenBalance(c.balance)}</span>
@@ -617,7 +658,7 @@ function ChainBreakdown({
               <span className="font-mono text-text md:hidden">{formatTokenBalance(c.balance)}</span>
               <span>{chainShare.toFixed(1)}%</span>
             </span>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -673,17 +714,23 @@ function ExchangeBreakdown({
     <div className={cn('sm:ml-6 sm:space-y-1', UNFOLD)}>
       {holdings.map((h) => {
         const share = totalUsd > 0 ? (h.usdValue / totalUsd) * 100 : 0;
+        const href = exchangeTradeUrl(h.exchange, symbol, h.kind);
+        const Line = href ? 'a' : 'div';
         return (
-          <div
+          <Line
             key={h.key}
-            className="flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1.5 text-left text-xs md:grid md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2"
+            {...(href
+              ? { href, target: '_blank', rel: 'noreferrer', title: te('openOnExchange', { exchange: exchangeName(h.exchange) }) }
+              : {})}
+            className={cn(
+              'flex w-full min-w-0 items-center gap-1.5 rounded-md px-1 py-1.5 text-left text-xs md:grid md:grid-cols-[1rem_minmax(0,1fr)_auto_auto_auto] md:gap-x-3 md:px-2',
+              href && 'transition-colors hover:bg-surface-2/60',
+            )}
           >
             <span aria-hidden />
             <div className="flex min-w-0 flex-1 items-center gap-1.5 md:gap-2">
               <ExchangeLogo exchange={h.exchange} size={14} />
-              <ExchangeTradeLink exchange={h.exchange} symbol={symbol} className="min-w-0 truncate font-medium">
-                <span className="truncate font-medium">{h.label}</span>
-              </ExchangeTradeLink>
+              <span className="truncate font-medium">{h.label}</span>
               <span className="hidden shrink-0 text-[10px] text-text-muted md:inline">
                 {exchangeName(h.exchange)} · {te.has(`kinds.${h.kind}`) ? te(`kinds.${h.kind}`) : h.kind}
                 {h.note === 'equity' && ` · ${te('asterEquityBalance')}`}
@@ -700,7 +747,7 @@ function ExchangeBreakdown({
               </div>
               <span className="w-10 text-right text-text-muted md:w-12">{share.toFixed(1)}%</span>
             </div>
-          </div>
+          </Line>
         );
       })}
     </div>

@@ -34,7 +34,9 @@ type MoverRowToken = MoverToken & { change: MoverChange };
 function MoverRow({ tk }: { tk: MoverRowToken }) {
   const t = useTranslations('TopMovers');
   // Exchange-only coins open their market on the exchange holding most of them.
-  const exchangePage = tk.exchanges?.[0] ? exchangeTradeUrl(tk.exchanges[0].exchange, tk.symbol) : null;
+  const exchangePage = tk.exchanges?.[0]
+    ? exchangeTradeUrl(tk.exchanges[0].exchange, tk.symbol, tk.exchanges[0].kind)
+    : null;
   const tokenPage = getTokenPageUrl(tk) ?? (exchangePage ? { href: exchangePage, external: true } : null);
   const location = describeTokenLocations(tk);
   const changeUsd = tk.change.usd;

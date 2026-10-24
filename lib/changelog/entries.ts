@@ -20,9 +20,9 @@ export const CHANGELOG: ChangelogEntry[] = [
       en: "Exchange coins open on their exchange",
     },
     items: {
-      ru: ["Нажатие на монету, которая лежит на бирже, открывает её торговую страницу на этой бирже (обзор, лидеры, страница биржи)."],
-      uk: ["Натискання на монету, яка лежить на біржі, відкриває її торгову сторінку на цій біржі (огляд, лідери, сторінка біржі)."],
-      en: ["Tapping a coin held on an exchange opens its market on that exchange (overview, movers, exchange page)."],
+      ru: ["Нажатие на монету, которая лежит на бирже, открывает её торговую страницу на этой бирже, для фьючерсного счёта — фьючерсы; строки кошельков ведут на страницу токена."],
+      uk: ["Натискання на монету, яка лежить на біржі, відкриває її торгову сторінку на цій біржі, для ф'ючерсного рахунку — ф'ючерси; рядки гаманців ведуть на сторінку токена."],
+      en: ["Tapping a coin held on an exchange opens its market there (futures for a futures account); wallet lines open the token page."],
     },
   },
   {

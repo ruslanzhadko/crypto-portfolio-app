@@ -101,7 +101,7 @@ export function BalanceTable({
                       <ExchangeTokenLogo symbol={b.symbol} />
                       <span className="min-w-0">
                         <span className="block truncate" title={b.symbol}>
-                          <ExchangeTradeLink exchange={b.account.exchange} symbol={b.symbol}>
+                          <ExchangeTradeLink exchange={b.account.exchange} symbol={b.symbol} kind={b.account.kind}>
                             {b.symbol}
                           </ExchangeTradeLink>
                         </span>

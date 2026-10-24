@@ -10,16 +10,19 @@ import { exchangeName } from "./exchange-logo";
 export function ExchangeTradeLink({
   exchange,
   symbol,
+  kind,
   className,
   children,
 }: {
   exchange: string;
   symbol: string;
+  /** "futures" opens the perpetual; anything else the spot market. */
+  kind?: string;
   className?: string;
   children: ReactNode;
 }) {
   const t = useTranslations("Exchanges");
-  const href = exchangeTradeUrl(exchange, symbol);
+  const href = exchangeTradeUrl(exchange, symbol, kind);
   if (!href) return <>{children}</>;
   return (
     <a
