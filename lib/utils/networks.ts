@@ -168,6 +168,37 @@ export const ALL_CHAINS: ChainInfo[] = [...EVM_CHAINS, ...HYPERCORE_CHAINS, SOLA
 
 const CHAIN_MAP = new Map<string, ChainInfo>(ALL_CHAINS.map((c) => [c.chainName, c]));
 
+/**
+ * Networks seen only in exchange deposits and withdrawals: a name and a logo for the badge, no
+ * wallet support. Keys are what `transferChain` (lib/exchanges/transfer-networks.ts) returns.
+ */
+const EXTRA_NETWORKS: Record<string, { displayName: string; logo: string }> = {
+  tron: { displayName: 'Tron', logo: `${TW}/tron/info/logo.png` },
+  plasma: { displayName: 'Plasma', logo: `${TW}/plasma/info/logo.png` },
+  aptos: { displayName: 'Aptos', logo: `${TW}/aptos/info/logo.png` },
+  ton: { displayName: 'TON', logo: `${TW}/ton/info/logo.png` },
+  sui: { displayName: 'Sui', logo: `${TW}/sui/info/logo.png` },
+  bitcoin: { displayName: 'Bitcoin', logo: `${TW}/bitcoin/info/logo.png` },
+  linea: { displayName: 'Linea', logo: `${TW}/linea/info/logo.png` },
+  zksync: { displayName: 'zkSync Era', logo: `${TW}/zksync/info/logo.png` },
+  scroll: { displayName: 'Scroll', logo: `${TW}/scroll/info/logo.png` },
+  mantle: { displayName: 'Mantle', logo: `${TW}/mantle/info/logo.png` },
+  near: { displayName: 'NEAR', logo: `${TW}/near/info/logo.png` },
+  celo: { displayName: 'Celo', logo: `${TW}/celo/info/logo.png` },
+  sei: { displayName: 'Sei', logo: `${TW}/sei/info/logo.png` },
+  sonic: { displayName: 'Sonic', logo: `${TW}/sonic/info/logo.png` },
+  opbnb: { displayName: 'opBNB', logo: `${TW}/opbnb/info/logo.png` },
+  cardano: { displayName: 'Cardano', logo: `${TW}/cardano/info/logo.png` },
+  litecoin: { displayName: 'Litecoin', logo: `${TW}/litecoin/info/logo.png` },
+  polkadot: { displayName: 'Polkadot', logo: `${TW}/polkadot/info/logo.png` },
+  cosmos: { displayName: 'Cosmos Hub', logo: `${TW}/cosmos/info/logo.png` },
+};
+
+/** Badge logo of a wallet chain or of a network known only from exchange transfers. */
+export function getChainLogoUrl(chainName: string): string | null {
+  return CHAIN_MAP.get(chainName)?.chainLogoUrl ?? EXTRA_NETWORKS[chainName]?.logo ?? null;
+}
+
 export function getChainInfo(chainName: string): ChainInfo | null {
   return CHAIN_MAP.get(chainName) ?? null;
 }
@@ -182,5 +213,5 @@ export function getChainColor(chainName: string): string {
 }
 
 export function getChainDisplayName(chainName: string): string {
-  return CHAIN_MAP.get(chainName)?.displayName ?? chainName;
+  return CHAIN_MAP.get(chainName)?.displayName ?? EXTRA_NETWORKS[chainName]?.displayName ?? chainName;
 }

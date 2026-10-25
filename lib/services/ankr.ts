@@ -320,6 +320,7 @@ export async function fetchTransactionsPage(
   const MAX_ANKR_FETCHES = 2;
 
   const collected: NormalizedTransaction[] = [];
+  const calls: WalletCall[] = [];
   let currentToken = pageToken;
   let finalNextToken: string | undefined;
   let isFirst = true;
@@ -330,7 +331,7 @@ export async function fetchTransactionsPage(
       // Нативні ETH/BNB — тільки на першому запиті першої сторінки
       isFirst && !pageToken
         ? fetchAnkrNativeTransfersRaw(wallet, pageSize)
-        : Promise.resolve({ transfers: [] }),
+        : Promise.resolve({ transfers: [], calls: [] }),
     ]);
     isFirst = false;
 
@@ -339,7 +340,8 @@ export async function fetchTransactionsPage(
       : { transfers: [], nextPageToken: undefined };
     const nativeData = nativeResult.status === 'fulfilled'
       ? nativeResult.value
-      : { transfers: [] };
+      : { transfers: [], calls: [] };
+    calls.push(...nativeData.calls);
 
     const classified = classifyTokenTransfers(wallet, tokenData.transfers);
     const nativeTxs = nativeData.transfers as NormalizedTransaction[];
@@ -355,7 +357,9 @@ export async function fetchTransactionsPage(
     if (collected.length >= MIN_RESULTS || !finalNextToken) break;
   }
 
-  const sorted = collected.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+  const nativeIn = await fetchNativeIn(wallet, collected, calls);
+  const sorted = attachNativeLegs(collected, calls, nativeIn)
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
   return {
     // The cursor is after ALL raw events in this batch. Callers reveal 20 at
     // a time and keep the remainder, even on the final provider page.
@@ -403,9 +407,8 @@ async function fetchAnkrTokenTransfersPage(
 async function fetchAnkrNativeTransfersRaw(
   wallet: string,
   limit: number,
-): Promise<{ transfers: NormalizedTransaction[] }> {
-  const txs = await fetchAnkrNativeTransfers(wallet, limit);
-  return { transfers: txs };
+): Promise<{ transfers: NormalizedTransaction[]; calls: WalletCall[] }> {
+  return fetchAnkrNativeActivity(wallet, limit);
 }
 
 /**
@@ -465,6 +468,98 @@ async function fetchAnkrTokenTransfers(
     console.warn('[Ankr] fetchAnkrTokenTransfers:', err instanceof Error ? err.message : err);
     return [];
   }
+}
+
+/** Total of the transfers of the same token as `first` (null when none has a readable amount). */
+function sumSameToken(group: AnkrTokenTransfer[], first: AnkrTokenTransfer): number | null {
+  const contract = first.contractAddress?.toLowerCase();
+  const amounts = group
+    .filter((t) => (t.contractAddress?.toLowerCase() ?? null) === (contract ?? null) && t.tokenSymbol === first.tokenSymbol)
+    .map(tokenTransferAmount)
+    .filter((amount): amount is number => amount !== null);
+  return amounts.length ? amounts.reduce((sum, amount) => sum + amount, 0) : null;
+}
+
+/** A contract call the wallet sent itself (router, bridge...), with the native coin it attached. */
+export interface WalletCall { hash: string; chainName: string; value: number }
+
+/**
+ * Token transfers alone miss the native coin of a DEX trade: buying a token for ETH sends ETH as the
+ * call's value, and selling returns ETH in an internal transaction. With the wallet's own calls and
+ * the internal ETH it received, those one-sided rows become swaps ("ETH → ZC", "ZC → ETH").
+ */
+export function attachNativeLegs(
+  txs: NormalizedTransaction[],
+  calls: readonly WalletCall[],
+  nativeIn: ReadonlyMap<string, number>,
+): NormalizedTransaction[] {
+  const byHash = new Map(calls.map((call) => [call.hash.toLowerCase(), call]));
+  return txs.map((tx) => {
+    const call = byHash.get(tx.hash.toLowerCase());
+    if (!call || call.chainName !== tx.chainName || !tx.tokenSymbol) return tx;
+    const native = NATIVE_INFO[tx.chainName]?.symbol ?? 'ETH';
+    if (tx.type === 'receive' && call.value > 0) {
+      return {
+        ...tx, type: 'swap', tokenSymbol: `${native} → ${tx.tokenSymbol}`, tokenName: `${native} → ${tx.tokenSymbol}`,
+        sentValue: call.value, fromAddress: tx.toAddress, logoUrl: null, swapLogoUrl: tx.logoUrl ?? null,
+        swapOutTokenAddress: null, swapInTokenAddress: tx.tokenAddresses?.[0] ?? null,
+      };
+    }
+    const received = nativeIn.get(tx.hash.toLowerCase()) ?? 0;
+    if (tx.type === 'send' && received > 0) {
+      return {
+        ...tx, type: 'swap', tokenSymbol: `${tx.tokenSymbol} → ${native}`, tokenName: `${tx.tokenSymbol} → ${native}`,
+        sentValue: tx.value, value: received, toAddress: tx.fromAddress, swapLogoUrl: null,
+        swapOutTokenAddress: tx.tokenAddresses?.[0] ?? null, swapInTokenAddress: null,
+      };
+    }
+    return tx;
+  });
+}
+
+const ETHERSCAN = 'https://api.etherscan.io/v2/api';
+const CHAIN_IDS: Record<string, number> = {
+  ethereum: 1, bsc: 56, polygon: 137, avalanche: 43114, arbitrum: 42161, optimism: 10, base: 8453, xlayer: 196,
+};
+/** Settled transactions never change, so their internal transfers are cached for the process. */
+const nativeInCache = new Map<string, number>();
+const MAX_INTERNAL_LOOKUPS = 8;
+
+/**
+ * Native coin a wallet received inside its own token sends (DEX sells), read from Etherscan's
+ * internal transactions for a few candidates per page. Failures leave the row a plain send.
+ */
+async function fetchNativeIn(wallet: string, txs: NormalizedTransaction[], calls: readonly WalletCall[]) {
+  const result = new Map<string, number>();
+  const key = process.env.ETHERSCAN_API_KEY?.trim();
+  const own = new Set(calls.map((call) => call.hash.toLowerCase()));
+  const candidates = txs
+    .filter((tx) => tx.type === 'send' && own.has(tx.hash.toLowerCase()) && CHAIN_IDS[tx.chainName])
+    .slice(0, MAX_INTERNAL_LOOKUPS);
+  await Promise.all(candidates.map(async (tx) => {
+    const hash = tx.hash.toLowerCase();
+    const cached = nativeInCache.get(hash);
+    if (cached !== undefined) { result.set(hash, cached); return; }
+    if (!key) return;
+    try {
+      const { data } = await axios.get<{ status: string; result: { to?: string; value?: string; isError?: string }[] | string }>(
+        ETHERSCAN,
+        { timeout: 8_000, params: { chainid: CHAIN_IDS[tx.chainName], module: 'account', action: 'txlistinternal', txhash: hash, apikey: key } },
+      );
+      // "No transactions found" is a valid empty answer; anything else non-array is an error.
+      const rows = Array.isArray(data.result) ? data.result : [];
+      if (!Array.isArray(data.result) && data.status !== '0') return;
+      const wei = rows
+        .filter((row) => row.isError !== '1' && row.to?.toLowerCase() === wallet)
+        .reduce((sum, row) => sum + Number(row.value ?? 0), 0);
+      const value = Number.isFinite(wei) ? wei / 1e18 : 0;
+      nativeInCache.set(hash, value);
+      result.set(hash, value);
+    } catch (err) {
+      console.warn('[Etherscan] internal transfers:', err instanceof Error ? err.message : err);
+    }
+  }));
+  return result;
 }
 
 /**
@@ -532,7 +627,7 @@ export function classifyTokenTransfers(
       const s  = sent[0]!;
       tokenSymbol = s.tokenSymbol?.trim() || null;
       tokenName   = s.tokenName?.trim()   || tokenSymbol;
-      value       = tokenTransferAmount(s);
+      value       = sumSameToken(sent, s);
       fromAddress = wallet;
       toAddress   = s.toAddress?.toLowerCase() ?? null;
     } else {
@@ -540,7 +635,7 @@ export function classifyTokenTransfers(
       const r  = received[0]!;
       tokenSymbol = r.tokenSymbol?.trim() || null;
       tokenName   = r.tokenName?.trim()   || tokenSymbol;
-      value       = tokenTransferAmount(r);
+      value       = sumSameToken(received, r);
       fromAddress = r.fromAddress?.toLowerCase() ?? null;
       toAddress   = wallet;
     }
@@ -606,6 +701,13 @@ async function fetchAnkrNativeTransfers(
   wallet: string,
   limit: number,
 ): Promise<NormalizedTransaction[]> {
+  return (await fetchAnkrNativeActivity(wallet, limit)).transfers;
+}
+
+async function fetchAnkrNativeActivity(
+  wallet: string,
+  limit: number,
+): Promise<{ transfers: NormalizedTransaction[]; calls: WalletCall[] }> {
   try {
     const { data } = await axios.post<AnkrNativeTxResponse>(
       getEndpoint(),
@@ -624,21 +726,28 @@ async function fetchAnkrNativeTransfers(
     );
     if (data.error) {
       console.warn(`[Ankr] getNativeTxs ${data.error.code}: ${data.error.message}`);
-      return [];
+      return { transfers: [], calls: [] };
     }
 
     const results: NormalizedTransaction[] = [];
+    const calls: WalletCall[] = [];
     for (const tx of data.result?.transactions ?? []) {
       const hash = tx.hash ?? tx.transactionHash;
       if (!hash) continue;
 
       const chainName = ANKR_TO_CHAIN[tx.blockchain];
       if (!chainName) continue;
-
-      // Тільки прості нативні перекази (порожній calldata)
-      if (tx.input && tx.input !== '0x' && tx.input !== '0x0') continue;
       // Тільки успішні
       if (tx.status && tx.status !== '0x1') continue;
+
+      // Contract calls are not transfers themselves, but they carry a DEX trade's native leg.
+      if (tx.input && tx.input !== '0x' && tx.input !== '0x0') {
+        if (tx.from?.toLowerCase() === wallet) {
+          const attached = Number.parseInt(tx.value ?? '0x0', 16) / 1e18;
+          calls.push({ hash, chainName, value: Number.isFinite(attached) ? attached : 0 });
+        }
+        continue;
+      }
 
       const weiHex = tx.value ?? '0x0';
       const valueWei = Number.parseInt(weiHex, 16);
@@ -667,9 +776,9 @@ async function fetchAnkrNativeTransfers(
         timestamp: new Date((Number.isFinite(ts) ? ts : 0) * 1000),
       });
     }
-    return results;
+    return { transfers: results, calls };
   } catch (err) {
     console.warn('[Ankr] fetchAnkrNativeTransfers:', err instanceof Error ? err.message : err);
-    return [];
+    return { transfers: [], calls: [] };
   }
 }

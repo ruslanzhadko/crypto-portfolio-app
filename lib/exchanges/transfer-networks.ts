@@ -26,16 +26,36 @@ const CHAIN_BY_NETWORK: Record<string, string> = {
   XLAYER: "xlayer",
 };
 
+/** Networks without wallet support; ids match the badge list in lib/utils/networks.ts. */
 const NAMES: Record<string, string> = {
-  TRX: "Tron",
-  TRC20: "Tron",
-  TRON: "Tron",
-  PLASMA: "Plasma",
-  APTOS: "Aptos",
-  APT: "Aptos",
-  TON: "TON",
-  SUI: "Sui",
-  BTC: "Bitcoin",
+  TRX: "tron",
+  TRC20: "tron",
+  TRON: "tron",
+  PLASMA: "plasma",
+  XPL: "plasma",
+  APTOS: "aptos",
+  APT: "aptos",
+  TON: "ton",
+  SUI: "sui",
+  BTC: "bitcoin",
+  BITCOIN: "bitcoin",
+  LINEA: "linea",
+  ZKSYNC: "zksync",
+  ZKSYNCERA: "zksync",
+  ZKSERA: "zksync",
+  SCROLL: "scroll",
+  MANTLE: "mantle",
+  MNT: "mantle",
+  NEAR: "near",
+  CELO: "celo",
+  SEI: "sei",
+  SONIC: "sonic",
+  OPBNB: "opbnb",
+  ADA: "cardano",
+  CARDANO: "cardano",
+  LTC: "litecoin",
+  DOT: "polkadot",
+  ATOM: "cosmos",
 };
 
 const EXPLORER: Record<string, string> = {
@@ -48,9 +68,15 @@ const EXPLORER: Record<string, string> = {
   solana: "https://solscan.io/tx/",
   avalanche: "https://snowtrace.io/tx/",
   xlayer: "https://explorer.xlayer.xyz/tx/",
-  Tron: "https://tronscan.org/#/transaction/",
-  Plasma: "https://plasmascan.to/tx/",
-  Aptos: "https://explorer.aptoslabs.com/txn/",
+  tron: "https://tronscan.org/#/transaction/",
+  plasma: "https://plasmascan.to/tx/",
+  aptos: "https://explorer.aptoslabs.com/txn/",
+  linea: "https://lineascan.build/tx/",
+  scroll: "https://scrollscan.com/tx/",
+  mantle: "https://mantlescan.xyz/tx/",
+  zksync: "https://era.zksync.network/tx/",
+  sonic: "https://sonicscan.org/tx/",
+  opbnb: "https://opbnb.bscscan.com/tx/",
 };
 
 function key(network: string) {
@@ -59,7 +85,7 @@ function key(network: string) {
   return last.replace(/[\s_()]/g, "").toUpperCase();
 }
 
-/** Wallet chain id ("bsc") or a readable network name ("Tron"); null when the exchange gave none. */
+/** Wallet chain id ("bsc"), a known network id ("tron") or the exchange's own name; null when none. */
 export function transferChain(network: string | null): string | null {
   if (!network?.trim()) return null;
   const k = key(network.trim());

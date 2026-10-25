@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { AlertTriangle, ArrowDownLeft, CandlestickChart, ArrowLeftRight, ArrowUpRight, Clock, Eye, EyeOff, FileText, RefreshCw, RotateCcw, WifiOff } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, ArrowRightLeft, CandlestickChart, ArrowLeftRight, ArrowUpRight, Clock, Eye, EyeOff, FileText, RefreshCw, RotateCcw, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -15,6 +15,7 @@ import { formatRelativeCompact, formatTokenBalance, formatUsd, shortAddress } fr
 import { getChainDisplayName } from '@/lib/utils/networks';
 import { tradeDirectionLabel } from '@/lib/utils/trade-direction';
 import type { TradeDetails } from '@/lib/services/token-types';
+import { linkOwnTransfers, type Party } from '@/lib/portfolio/own-transfers';
 import { cn } from '@/lib/utils/cn';
 
 interface RecentTransaction {
@@ -38,6 +39,8 @@ interface RecentTransaction {
   walletId: string;
   walletLabel: string | null;
   walletAddress: string;
+  fromAddress?: string | null;
+  toAddress?: string | null;
   usdValue?: number | null;
   /** Set for exchange-style fills (type "trade"), e.g. HyperCore perps. */
   trade?: TradeDetails | null;
@@ -58,14 +61,18 @@ interface ExchangeTransfer {
   status: 'pending' | 'completed' | 'failed';
   timestamp: string;
   explorerUrl: string | null;
+  txHash: string | null;
+  address: string | null;
 }
 
 interface ExchangeAccount { id: string; exchange: string; label: string }
 
 type Source = 'all' | 'wallets' | 'exchanges';
+/** Set when the row moves money between the user's own wallets and exchange accounts. */
+interface Own { from: Party; to: Party; label: string }
 type Item =
-  | { kind: 'wallet'; key: string; timestamp: string; tx: RecentTransaction }
-  | { kind: 'exchange'; key: string; timestamp: string; tx: ExchangeTransfer };
+  | { kind: 'wallet'; key: string; timestamp: string; tx: RecentTransaction; own: Own | null }
+  | { kind: 'exchange'; key: string; timestamp: string; tx: ExchangeTransfer; own: Own | null };
 
 const FILTER_TRIGGER = 'h-9 min-w-0 bg-surface px-2.5 text-xs [&>span]:truncate';
 
@@ -96,6 +103,18 @@ const TX_META = {
   trade: { icon: CandlestickChart, color: 'text-primary', bg: 'bg-primary/10' },
   contract: { icon: FileText, color: 'text-text-muted', bg: 'bg-surface-2' },
 } as const;
+
+/** Money moved between the user's own wallets and exchanges: neither income nor spending. */
+const OWN_META = { icon: ArrowRightLeft, color: 'text-sky-400', bg: 'bg-sky-400/10' } as const;
+
+/** Phones keep only the icon of the type badge (the label stays for screen readers and on hover). */
+function TypeBadge({ meta, label }: { meta: { icon: typeof ArrowDownLeft; color: string; bg: string }; label: string }) {
+  const Icon = meta.icon;
+  return <span title={label} className={cn('inline-flex h-6 min-w-6 shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-md px-1.5 text-[11px] font-medium sm:px-2', meta.bg, meta.color)}>
+    <Icon className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
+    <span className="sr-only sm:not-sr-only">{label}</span>
+  </span>;
+}
 
 /**
  * Latest wallet transactions; with `withExchanges` (dashboard "All" tab) also exchange deposits and
@@ -221,13 +240,44 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
   }, [load]);
 
   const items = useMemo<Item[]>(() => {
-    const wallet: Item[] = source === 'exchanges' ? [] : (transactions ?? [])
-      .filter((tx) => showSpam || !tx.isSpam)
-      .map((tx) => ({ kind: 'wallet', key: `${tx.walletId}:${tx.chainName}:${tx.id}`, timestamp: tx.timestamp, tx }));
-    const exchange: Item[] = !withExchanges || source === 'wallets' ? [] : transfers
-      .map((tx) => ({ kind: 'exchange', key: `ex:${tx.id}`, timestamp: tx.timestamp, tx }));
-    return [...wallet, ...exchange].sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
-  }, [transactions, transfers, showSpam, source, withExchanges]);
+    const walletTxs = (transactions ?? []).filter((tx) => showSpam || !tx.isSpam);
+    const exchangeTxs = withExchanges ? transfers : [];
+    const walletKey = (tx: RecentTransaction) => `${tx.walletId}:${tx.chainName}:${tx.id}`;
+    const links = linkOwnTransfers({
+      walletTxs: walletTxs.map((tx) => ({
+        ...tx, key: walletKey(tx), fromAddress: tx.fromAddress ?? null, toAddress: tx.toAddress ?? null,
+      })),
+      transfers: exchangeTxs.map((tx) => ({ ...tx, key: `ex:${tx.id}` })),
+      wallets,
+    });
+    const partyLabel = (party: Party) => {
+      if (party.kind === 'wallet') {
+        const wallet = wallets.find((w) => w.id === party.id);
+        return wallet?.label?.trim() || (wallet ? `${t('walletFallback')} ${shortAddress(wallet.address, 4)}` : t('walletFallback'));
+      }
+      const account = accounts.find((a) => a.id === party.id);
+      return account ? `${exchangeName(account.exchange)} · ${account.label}` : t('sourceExchanges');
+    };
+    const own = (key: string): Own | null => {
+      const link = links.get(key);
+      return link ? { from: link.from, to: link.to, label: `${partyLabel(link.from)} → ${partyLabel(link.to)}` } : null;
+    };
+    // The receiving leg of a pair is folded into the sending row.
+    const visible = (key: string) => !links.get(key)?.hidden;
+    const all: Item[] = [
+      ...walletTxs.filter((tx) => visible(walletKey(tx)))
+        .map((tx): Item => ({ kind: 'wallet', key: walletKey(tx), timestamp: tx.timestamp, tx, own: own(walletKey(tx)) })),
+      ...exchangeTxs.filter((tx) => visible(`ex:${tx.id}`))
+        .map((tx): Item => ({ kind: 'exchange', key: `ex:${tx.id}`, timestamp: tx.timestamp, tx, own: own(`ex:${tx.id}`) })),
+    ];
+    // A move between a wallet and an exchange belongs to both the wallets and the exchanges list.
+    const touches = (item: Item, kind: Party['kind']) => item.own
+      ? item.own.from.kind === kind || item.own.to.kind === kind
+      : (item.kind === 'wallet' ? 'wallet' : 'exchange') === kind;
+    return all
+      .filter((item) => source === 'all' || touches(item, source === 'wallets' ? 'wallet' : 'exchange'))
+      .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
+  }, [transactions, transfers, wallets, accounts, showSpam, source, withExchanges, t]);
 
   const chains = useMemo(() => [...new Set(items
     .map((item) => item.kind === 'wallet' ? item.tx.chainName : item.tx.chain)
@@ -235,6 +285,14 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
     .sort((a, b) => getChainDisplayName(a).localeCompare(getChainDisplayName(b))), [items]);
 
   const filtered = useMemo(() => items.filter((item) => {
+    if (item.own) {
+      const { from, to } = item.own;
+      const account = (party: Party) => party.kind === 'wallet' ? party.id : `${EXCHANGE_PREFIX}${party.id}`;
+      const chain = item.kind === 'wallet' ? item.tx.chainName : item.tx.chain;
+      return (walletFilter === 'all' || walletFilter === account(from) || walletFilter === account(to))
+        && (chainFilter === 'all' || chain === chainFilter)
+        && (typeFilter === 'all' || typeFilter === 'internal');
+    }
     if (item.kind === 'exchange') {
       const transfer = item.tx;
       return (walletFilter === 'all' || walletFilter === `${EXCHANGE_PREFIX}${transfer.connectionId}`)
@@ -342,6 +400,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
                 <SelectItem value="send">{t('typeSend')}</SelectItem>
                 <SelectItem value="swap">{t('typeSwap')}</SelectItem>
                 <SelectItem value="trade">{t('typeTrade')}</SelectItem>
+                <SelectItem value="internal">{t('typeInternal')}</SelectItem>
                 <SelectItem value="contract">{t('typeContract')}</SelectItem>
               </SelectContent>
             </Select>
@@ -401,12 +460,14 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
                   typeLabel={typeLabels[item.tx.type] ?? t('typeContract')}
                   tradeLabel={item.tx.trade ? tradeDirectionLabel(item.tx.trade.direction, (key) => td(key)) : null}
                   marketLabel={item.tx.trade ? td(item.tx.trade.market) : null}
+                  ownLabel={item.own?.label ?? null} ownTypeLabel={t('typeInternal')}
                 />
                 : <TransferRow
                   key={item.key}
                   transfer={item.tx} locale={locale}
                   typeLabel={item.tx.direction === 'deposit' ? t('typeDeposit') : t('typeWithdrawal')}
                   failedLabel={t('failed')} pendingLabel={t('pending')}
+                  ownLabel={item.own?.label ?? null} ownTypeLabel={t('typeInternal')}
                 />)}
             </div>
             {walletsLoading && source !== 'exchanges' && <TransactionSkeleton rows={2} />}
@@ -441,14 +502,15 @@ function MessageState({ title, description, icon = false, children }: {
   </div>;
 }
 
-function TransactionRow({ transaction, locale, walletFallback, failedLabel, spamLabel, typeLabel, tradeLabel, marketLabel }: {
+function TransactionRow({ transaction, locale, walletFallback, failedLabel, spamLabel, typeLabel, tradeLabel, marketLabel, ownLabel, ownTypeLabel }: {
   transaction: RecentTransaction; locale: string; walletFallback: string;
   failedLabel: string; spamLabel: string; typeLabel: string;
   /** Localized fill direction ("Open Long") and market ("Perp") of a trade row. */
   tradeLabel: string | null; marketLabel: string | null;
+  /** "Main EVM → Binance · Main" when the money stays within the user's own accounts. */
+  ownLabel: string | null; ownTypeLabel: string;
 }) {
-  const meta = TX_META[transaction.type as keyof typeof TX_META] ?? TX_META.contract;
-  const Icon = meta.icon;
+  const meta = ownLabel ? OWN_META : TX_META[transaction.type as keyof typeof TX_META] ?? TX_META.contract;
   const explorer = EXPLORER[transaction.chainName];
   const isSwap = transaction.type === 'swap';
   const walletName = transaction.walletLabel?.trim() || `${walletFallback} ${shortAddress(transaction.walletAddress, 4)}`;
@@ -464,7 +526,7 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
     ? `${tradeLabel} · ${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${transaction.tokenSymbol ?? ''}${transaction.usdValue ? ` · ${formatUsd(transaction.usdValue)}` : ''}`
     : isSwap
     ? `${transaction.sentValue == null ? '—' : formatTokenBalance(transaction.sentValue)} ${outSymbol} → ${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${inSymbol}`
-    : `${transaction.type === 'send' ? '−' : transaction.type === 'receive' || transaction.type === 'transfer' ? '+' : ''}${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${transaction.tokenSymbol ?? ''}`;
+    : `${ownLabel ? '' : transaction.type === 'send' ? '−' : transaction.type === 'receive' || transaction.type === 'transfer' ? '+' : ''}${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${transaction.tokenSymbol ?? ''}`;
   const content = <>
     <div className="relative grid h-11 w-12 shrink-0 place-items-center">
       {isSwap ? <>
@@ -486,15 +548,13 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
         <span className="shrink-0 pt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>{formatRelativeCompact(transaction.timestamp, locale)}</span>
       </div>
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 truncate text-xs text-text-muted" title={`${walletName} · ${transaction.walletAddress}`}>{walletName}</p>
-        <div className="flex min-w-0 max-w-[75%] shrink-0 items-center justify-end gap-1.5">
-          <span className={cn('inline-flex h-6 min-w-0 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-medium', meta.bg, meta.color)}>
-            <Icon className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-            {typeLabel}
-          </span>
+        <p className={cn('min-w-0 flex-1 truncate text-xs', ownLabel ? 'text-sky-400' : 'text-text-muted')}
+          title={ownLabel ?? `${walletName} · ${transaction.walletAddress}`}>{ownLabel ?? walletName}</p>
+        <div className="flex min-w-0 max-w-[60%] shrink-0 items-center justify-end gap-1.5">
+          <TypeBadge meta={meta} label={ownLabel ? ownTypeLabel : typeLabel} />
           {transaction.isSpam && <span className="rounded-full bg-danger/10 px-1.5 py-0.5 text-[10px] font-medium text-danger">{spamLabel}</span>}
           {transaction.status !== 'success' && <span className="text-[10px] font-medium text-danger">{failedLabel}</span>}
-          <ChainBadge chainName={transaction.chainName} className="min-w-0 shrink overflow-hidden" />
+          <ChainBadge chainName={transaction.chainName} compact className="min-w-0 shrink overflow-hidden" />
         </div>
       </div>
     </div>
@@ -510,12 +570,13 @@ const TRANSFER_META = {
   withdrawal: { icon: ArrowUpRight, color: 'text-danger', bg: 'bg-danger/10', sign: '−' },
 } as const;
 
-function TransferRow({ transfer, locale, typeLabel, failedLabel, pendingLabel }: {
+function TransferRow({ transfer, locale, typeLabel, failedLabel, pendingLabel, ownLabel, ownTypeLabel }: {
   transfer: ExchangeTransfer; locale: string; typeLabel: string; failedLabel: string; pendingLabel: string;
+  ownLabel: string | null; ownTypeLabel: string;
 }) {
-  const meta = TRANSFER_META[transfer.direction] ?? TRANSFER_META.deposit;
-  const Icon = meta.icon;
-  const account = `${exchangeName(transfer.exchange)} · ${transfer.accountLabel}`;
+  const direction = TRANSFER_META[transfer.direction] ?? TRANSFER_META.deposit;
+  const meta = ownLabel ? { ...OWN_META, sign: '' } : direction;
+  const account = ownLabel ?? `${exchangeName(transfer.exchange)} · ${transfer.accountLabel}`;
   const content = <>
     <div className="relative grid h-11 w-12 shrink-0 place-items-center">
       <ExchangeTokenLogo symbol={transfer.asset} size={40} />
@@ -532,18 +593,15 @@ function TransferRow({ transfer, locale, typeLabel, failedLabel, pendingLabel }:
         <span className="shrink-0 pt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>{formatRelativeCompact(transfer.timestamp, locale)}</span>
       </div>
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2">
-        <p className="min-w-0 flex-1 truncate text-xs text-text-muted" title={account}>{account}</p>
-        <div className="flex min-w-0 max-w-[75%] shrink-0 items-center justify-end gap-1.5">
-          <span className={cn('inline-flex h-6 min-w-0 shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-2 text-[11px] font-medium', meta.bg, meta.color)}>
-            <Icon className="h-3 w-3 shrink-0" strokeWidth={2} aria-hidden />
-            {typeLabel}
-          </span>
+        <p className={cn('min-w-0 flex-1 truncate text-xs', ownLabel ? 'text-sky-400' : 'text-text-muted')} title={account}>{account}</p>
+        <div className="flex min-w-0 max-w-[60%] shrink-0 items-center justify-end gap-1.5">
+          <TypeBadge meta={meta} label={ownLabel ? ownTypeLabel : typeLabel} />
           {transfer.status === 'pending' && <span className="inline-flex shrink-0 items-center gap-1 text-[10px] font-medium text-warning" title={pendingLabel}>
             {/* Phones keep the clock only: the row has no room for the word next to type and network. */}
             <Clock className="h-3 w-3" aria-hidden /><span className="sr-only sm:not-sr-only">{pendingLabel}</span>
           </span>}
           {transfer.status === 'failed' && <span className="text-[10px] font-medium text-danger">{failedLabel}</span>}
-          {transfer.chain && <ChainBadge chainName={transfer.chain} className="min-w-0 shrink overflow-hidden" />}
+          {transfer.chain && <ChainBadge chainName={transfer.chain} compact className="min-w-0 shrink overflow-hidden" />}
         </div>
       </div>
     </div>

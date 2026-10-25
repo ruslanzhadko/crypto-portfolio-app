@@ -9,8 +9,8 @@ describe("exchange transfer networks", () => {
     expect(transferChain("ETH")).toBe("ethereum");
     expect(transferChain("USDT-Polygon")).toBe("polygon");
     expect(transferChain("Arbitrum One")).toBe("arbitrum");
-    expect(transferChain("TRX")).toBe("Tron");
-    expect(transferChain("PLASMA")).toBe("Plasma");
+    expect(transferChain("TRX")).toBe("tron");
+    expect(transferChain("PLASMA")).toBe("plasma");
     expect(transferChain("SomeNewChain")).toBe("SomeNewChain");
     expect(transferChain(null)).toBeNull();
     expect(transferChain("  ")).toBeNull();
@@ -18,7 +18,7 @@ describe("exchange transfer networks", () => {
 
   it("links only chain hashes on known explorers", () => {
     expect(transferExplorerUrl("bsc", HASH)).toBe(`https://bscscan.com/tx/${HASH}`);
-    expect(transferExplorerUrl("Tron", "b".repeat(64))).toBe(
+    expect(transferExplorerUrl("tron", "b".repeat(64))).toBe(
       `https://tronscan.org/#/transaction/${"b".repeat(64)}`,
     );
     // Internal transfers carry exchange ids, not chain hashes.

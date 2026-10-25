@@ -709,7 +709,8 @@
     "exchangesError": "Перекази бірж не завантажилися. Гаманці показано.",
     "exchangesUnavailable": "Історія переказів недоступна: {accounts}. Перевірте права ключа.",
     "typeTrade": "Угода",
-    "issues": "{count, plural, one {# проблема} few {# проблеми} many {# проблем} other {# проблеми}}"
+    "issues": "{count, plural, one {# проблема} few {# проблеми} many {# проблем} other {# проблеми}}",
+    "typeInternal": "Між своїми"
   },
   "TransactionList": {
     "cardTitle": "Транзакції",

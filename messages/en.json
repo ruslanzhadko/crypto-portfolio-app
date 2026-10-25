@@ -709,7 +709,8 @@
     "exchangesError": "Exchange transfers did not load. Wallets are shown.",
     "exchangesUnavailable": "Transfer history unavailable: {accounts}. Check the key permissions.",
     "typeTrade": "Trade",
-    "issues": "{count, plural, one {# issue} other {# issues}}"
+    "issues": "{count, plural, one {# issue} other {# issues}}",
+    "typeInternal": "Own transfer"
   },
   "TransactionList": {
     "cardTitle": "Transactions",

@@ -709,7 +709,8 @@
     "exchangesError": "Переводы бирж не загрузились. Кошельки показаны.",
     "exchangesUnavailable": "История переводов недоступна: {accounts}. Проверьте права ключа.",
     "typeTrade": "Сделка",
-    "issues": "{count, plural, one {# проблема} few {# проблемы} many {# проблем} other {# проблемы}}"
+    "issues": "{count, plural, one {# проблема} few {# проблемы} many {# проблем} other {# проблемы}}",
+    "typeInternal": "Между своими"
   },
   "TransactionList": {
     "cardTitle": "Транзакции",

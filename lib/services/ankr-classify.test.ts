@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyTokenTransfers } from '@/lib/services/ankr';
+import { attachNativeLegs, classifyTokenTransfers } from '@/lib/services/ankr';
 
 // classifyTokenTransfers — чиста класифікація ERC-20 переказів за net-change:
 // групує по transactionHash, визначає send / receive / swap відносно гаманця,
@@ -129,5 +129,36 @@ describe('classifyTokenTransfers (net-change)', () => {
     expect(r).toHaveLength(2);
     const byType = r.map((t) => t.type).sort((a, b) => a.localeCompare(b));
     expect(byType).toEqual(['receive', 'send']);
+  });
+});
+
+describe('DEX trades paid or settled in the native coin', () => {
+  it('sums every part of one token delivered in several transfers', () => {
+    const r = classify([
+      transfer({ transactionHash: '0xbuy', fromAddress: '0x0', value: '100', tokenSymbol: 'ZC', contractAddress: '0xzc' }),
+      transfer({ transactionHash: '0xbuy', fromAddress: '0x0', value: '50', tokenSymbol: 'ZC', contractAddress: '0xzc' }),
+    ]);
+    expect(r[0]).toMatchObject({ type: 'receive', value: 150 });
+  });
+
+  it('turns a token bought with ETH (the call value) into an ETH → token swap', () => {
+    const [buy] = classify([transfer({ transactionHash: '0xBuy', fromAddress: '0x0', value: '120', tokenSymbol: 'ZC', contractAddress: '0xzc' })]);
+    const [r] = attachNativeLegs([buy!], [{ hash: '0xbuy', chainName: 'ethereum', value: 0.021 }], new Map());
+    expect(r).toMatchObject({ type: 'swap', tokenSymbol: 'ETH → ZC', sentValue: 0.021, value: 120, swapInTokenAddress: '0xzc', logoUrl: null });
+  });
+
+  it('turns a token sold for internal ETH into a token → ETH swap', () => {
+    const [sell] = classify([transfer({ transactionHash: '0xsell', fromAddress: WALLET, toAddress: '0xrouter', value: '300', tokenSymbol: 'ZC', contractAddress: '0xzc' })]);
+    const [r] = attachNativeLegs([sell!], [{ hash: '0xsell', chainName: 'ethereum', value: 0 }], new Map([['0xsell', 0.1]]));
+    expect(r).toMatchObject({ type: 'swap', tokenSymbol: 'ZC → ETH', sentValue: 300, value: 0.1, swapOutTokenAddress: '0xzc' });
+  });
+
+  it('leaves plain transfers and calls without a native leg alone', () => {
+    const txs = classify([
+      transfer({ transactionHash: '0xin', value: '5' }),
+      transfer({ transactionHash: '0xout', fromAddress: WALLET, toAddress: '0xfriend', value: '3' }),
+    ]);
+    const r = attachNativeLegs(txs, [{ hash: '0xout', chainName: 'ethereum', value: 0 }], new Map());
+    expect(r.map((t) => t.type).sort((a, b) => a.localeCompare(b))).toEqual(['receive', 'send']);
   });
 });

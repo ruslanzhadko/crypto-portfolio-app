@@ -38,6 +38,7 @@ export async function GET(req: Request) {
             network: true,
             amount: true,
             fee: true,
+            address: true,
             txHash: true,
             status: true,
             occurredAt: true,
@@ -63,6 +64,9 @@ export async function GET(req: Request) {
           status: row.status,
           timestamp: row.occurredAt.toISOString(),
           explorerUrl: transferExplorerUrl(chain, row.txHash),
+          // Hash and address let the list pair this transfer with the user's own wallets.
+          txHash: row.txHash,
+          address: row.address,
         };
       }),
       hasMore: rows.length > limit,

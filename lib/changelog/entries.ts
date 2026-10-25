@@ -23,14 +23,20 @@ export const CHANGELOG: ChangelogEntry[] = [
       ru: [
         "На вкладке «Всё» обзора — один список транзакций кошельков и переводов бирж, по времени.",
         "Переключатель «Всё / Кошельки / Биржи», фильтры по счёту, сети и типу; ожидающие и неудачные переводы помечены.",
+        "Переводы между своими кошельками и биржами показываются одной строкой «откуда → куда».",
+        "Покупки и продажи токенов за ETH через DEX-агрегаторы теперь свапы, а не отдельные получения и отправки; сделки Hyperliquid — сделки с PnL.",
       ],
       uk: [
         "На вкладці «Усе» огляду — один список транзакцій гаманців і переказів бірж, за часом.",
         "Перемикач «Усе / Гаманці / Біржі», фільтри за рахунком, мережею і типом; очікувані й невдалі перекази позначено.",
+        "Перекази між своїми гаманцями та біржами показуються одним рядком «звідки → куди».",
+        "Купівлі й продажі токенів за ETH через DEX-агрегатори тепер свопи, а не окремі отримання й відправлення; угоди Hyperliquid — угоди з PnL.",
       ],
       en: [
         "The overview's All tab shows wallet transactions and exchange transfers in one list, newest first.",
         "An All / Wallets / Exchanges switch and filters by account, network and type; pending and failed transfers are marked.",
+        "Transfers between your own wallets and exchanges show as one \"from → to\" row.",
+        "Tokens bought or sold for ETH through DEX aggregators show as swaps, not separate receives and sends; Hyperliquid fills show as trades with PnL.",
       ],
     },
   },

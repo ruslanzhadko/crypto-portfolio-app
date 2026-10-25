@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { Network } from '@prisma/client';
-import { getChainDisplayName, getChainInfo } from '@/lib/utils/networks';
+import { getChainDisplayName, getChainLogoUrl } from '@/lib/utils/networks';
 import { TokenLogo } from '@/components/common/token-logo';
 import { cn } from '@/lib/utils/cn';
 
@@ -31,23 +31,27 @@ export function NetworkBadge({ network, className }: NetworkBadgeProps) {
 interface ChainBadgeProps {
   chainName: string;
   className?: string;
+  /** Logo only on phones; the name stays for screen readers, on hover and from sm up. */
+  compact?: boolean;
 }
 
-export function ChainBadge({ chainName, className }: ChainBadgeProps) {
+export function ChainBadge({ chainName, className, compact = false }: ChainBadgeProps) {
   return (
     <span
+      title={getChainDisplayName(chainName)}
       className={cn(
         'inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-medium text-text',
+        compact && 'px-1 py-1 sm:px-2 sm:py-0.5',
         className,
       )}
     >
       <TokenLogo
-        src={getChainInfo(chainName)?.chainLogoUrl}
+        src={getChainLogoUrl(chainName)}
         symbol={getChainDisplayName(chainName)}
         size={14}
         className="shrink-0 object-contain text-[8px]"
       />
-      <span className="min-w-0 truncate" title={getChainDisplayName(chainName)}>{getChainDisplayName(chainName)}</span>
+      <span className={cn('min-w-0 truncate', compact && 'sr-only sm:not-sr-only')}>{getChainDisplayName(chainName)}</span>
     </span>
   );
 }
