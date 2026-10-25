@@ -38,4 +38,16 @@ export interface NormalizedTransaction {
   status: string;
   blockNumber: bigint | null;
   timestamp: Date;
+  /** Exchange-style fill (type "trade", e.g. HyperCore): a position change, not a token swap. */
+  trade?: TradeDetails | null;
+}
+
+export interface TradeDetails {
+  market: 'perp' | 'spot';
+  /** As the venue names it: "Open Long", "Close Short", "Buy", "Sell", "Long > Short"... */
+  direction: string;
+  /** Average fill price in USD. */
+  price: number | null;
+  /** Realized PnL of a closing fill, in USD; null when nothing was closed. */
+  closedPnl: number | null;
 }

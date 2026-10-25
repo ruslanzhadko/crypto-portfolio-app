@@ -210,7 +210,8 @@ export async function fetchHyperEvmTransactions(address: string, pageToken?: str
 }
 
 const fill = z.object({ hash: z.string(), tid: z.number(), coin: z.string(), side: z.string(),
-  sz: z.string(), px: z.string(), time: z.number() });
+  sz: z.string(), px: z.string(), time: z.number(), oid: z.number().optional(), dir: z.string().optional(),
+  closedPnl: z.string().optional() });
 const ledger = z.object({ hash: z.string(), time: z.number(), delta: z.object({ type: z.string() }).passthrough() });
 const pairMeta = z.object({ tokens: z.array(z.object({ index: z.number(), name: z.string(), tokenId: z.string().optional() })),
   universe: z.array(z.object({ index: z.number(), tokens: z.array(z.number()) })) });
@@ -243,14 +244,36 @@ export async function fetchHyperCoreTransactions(address: string): Promise<(Norm
   const names = new Map(meta.tokens.map((token) => [token.index, token.name]));
   const namesById = new Map(meta.tokens.filter((token) => token.tokenId).map((token) => [token.tokenId!.toLowerCase(), token.name]));
   const pairs = new Map(meta.universe.map((pair) => [pair.index, pair.tokens.map((idx) => names.get(idx) ?? '?').join('/')]));
-  const transactions: (NormalizedTransaction & { id: string })[] = fills.map((item) => ({
-    hash: item.hash, chainName: 'hypercore', type: 'swap',
-    tokenSymbol: item.coin.startsWith('@') ? pairs.get(Number(item.coin.slice(1))) ?? item.coin : `${item.coin} perp`,
-    tokenName: item.side === 'B' ? 'Buy' : 'Sell', fromAddress: address, toAddress: null,
-    value: finite(item.sz), usdValue: finite(item.sz) * finite(item.px), gasUsed: null,
-    status: 'success', blockNumber: null, timestamp: new Date(item.time),
-    id: `${item.hash}:fill:${item.tid}`,
-  }));
+  // One order fills in several parts; the list shows it once, like the exchange's own trade history.
+  const orders = new Map<string, z.infer<typeof fill>[]>();
+  for (const item of fills) {
+    const key = item.oid === undefined ? `${item.hash}:fill:${item.tid}` : `${item.hash}:order:${item.oid}`;
+    orders.set(key, [...(orders.get(key) ?? []), item]);
+  }
+  const transactions: (NormalizedTransaction & { id: string })[] = [...orders].map(([id, parts]) => {
+    const first = parts[0]!;
+    const spot = first.coin.startsWith('@') || first.coin.includes('/');
+    const pair = first.coin.startsWith('@') ? pairs.get(Number(first.coin.slice(1))) ?? first.coin : first.coin;
+    const size = parts.reduce((sum, part) => sum + finite(part.sz), 0);
+    const usd = parts.reduce((sum, part) => sum + finite(part.sz) * finite(part.px), 0);
+    const pnl = parts.reduce((sum, part) => sum + finite(part.closedPnl), 0);
+    return {
+      // Perp fills carry the perps badge, so the network filter tells them apart from spot.
+      hash: first.hash, chainName: spot ? 'hypercore' : 'hypercore-perps', type: 'trade',
+      // Spot pairs are "BASE/QUOTE"; the row names the coin that was bought or sold.
+      tokenSymbol: spot ? pair.split('/')[0] ?? pair : first.coin,
+      tokenName: spot ? pair : `${first.coin} perp`, fromAddress: address, toAddress: null,
+      value: size, usdValue: usd, gasUsed: null,
+      status: 'success', blockNumber: null, timestamp: new Date(Math.max(...parts.map((part) => part.time))),
+      trade: {
+        market: spot ? 'spot' : 'perp',
+        direction: first.dir ?? (first.side === 'B' ? 'Buy' : 'Sell'),
+        price: size > 0 ? usd / size : null,
+        closedPnl: pnl === 0 ? null : pnl,
+      },
+      id,
+    };
+  });
   for (const [index, item] of updates.entries()) {
     const d = item.delta;
     const kind = d.type;

@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Clock, Eye, EyeOff, FileText, RefreshCw, RotateCcw, WifiOff } from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, CandlestickChart, ArrowLeftRight, ArrowUpRight, Clock, Eye, EyeOff, FileText, RefreshCw, RotateCcw, WifiOff } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -11,8 +11,10 @@ import { TokenLogo } from '@/components/common/token-logo';
 import { ChainBadge } from '@/components/common/network-badge';
 import { ExchangeLogo, exchangeName } from '@/components/exchanges/exchange-logo';
 import { ExchangeTokenLogo } from '@/components/exchanges/token-logo';
-import { formatRelativeCompact, formatTokenBalance, shortAddress } from '@/lib/utils/format';
+import { formatRelativeCompact, formatTokenBalance, formatUsd, shortAddress } from '@/lib/utils/format';
 import { getChainDisplayName } from '@/lib/utils/networks';
+import { tradeDirectionLabel } from '@/lib/utils/trade-direction';
+import type { TradeDetails } from '@/lib/services/token-types';
 import { cn } from '@/lib/utils/cn';
 
 interface RecentTransaction {
@@ -36,6 +38,9 @@ interface RecentTransaction {
   walletId: string;
   walletLabel: string | null;
   walletAddress: string;
+  usdValue?: number | null;
+  /** Set for exchange-style fills (type "trade"), e.g. HyperCore perps. */
+  trade?: TradeDetails | null;
 }
 
 interface WalletOption { id: string; label: string | null; address: string }
@@ -62,6 +67,8 @@ type Item =
   | { kind: 'wallet'; key: string; timestamp: string; tx: RecentTransaction }
   | { kind: 'exchange'; key: string; timestamp: string; tx: ExchangeTransfer };
 
+const FILTER_TRIGGER = 'h-9 min-w-0 bg-surface px-2.5 text-xs [&>span]:truncate';
+
 /** Exchange accounts share the account filter with wallets under this prefix. */
 const EXCHANGE_PREFIX = 'ex:';
 
@@ -76,6 +83,8 @@ const EXPLORER: Record<string, string> = {
   polygon: 'https://polygonscan.com/tx/', avalanche: 'https://snowtrace.io/tx/',
   arbitrum: 'https://arbiscan.io/tx/', optimism: 'https://optimistic.etherscan.io/tx/',
   base: 'https://basescan.org/tx/', solana: 'https://solscan.io/tx/',
+  hypercore: 'https://app.hyperliquid.xyz/explorer/tx/',
+  'hypercore-perps': 'https://app.hyperliquid.xyz/explorer/tx/',
   xlayer: 'https://explorer.xlayer.xyz/tx/', robinhood: 'https://robinhoodchain.blockscout.com/tx/',
 };
 
@@ -84,6 +93,7 @@ const TX_META = {
   transfer: { icon: ArrowDownLeft, color: 'text-success', bg: 'bg-success/10' },
   send: { icon: ArrowUpRight, color: 'text-danger', bg: 'bg-danger/10' },
   swap: { icon: ArrowLeftRight, color: 'text-primary', bg: 'bg-primary/10' },
+  trade: { icon: CandlestickChart, color: 'text-primary', bg: 'bg-primary/10' },
   contract: { icon: FileText, color: 'text-text-muted', bg: 'bg-surface-2' },
 } as const;
 
@@ -97,6 +107,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
 }) {
   const withExchanges = withExchangesProp || exchangesOnly;
   const t = useTranslations('RecentTransactions');
+  const td = useTranslations('TradeDirection');
   const locale = useLocale();
   const [transactions, setTransactions] = useState<RecentTransaction[] | null>(null);
   const [wallets, setWallets] = useState<WalletOption[]>([]);
@@ -118,6 +129,8 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
   const [unavailableAccounts, setUnavailableAccounts] = useState<string[]>([]);
   const [exchangeError, setExchangeError] = useState(false);
   const [exchangeLoaded, setExchangeLoaded] = useState(false);
+  const [issuesOpen, setIssuesOpen] = useState(false);
+  const issuesId = useId();
   const limitRef = useRef(INITIAL_LIMIT);
   const requestRef = useRef<AbortController | null>(null);
 
@@ -247,14 +260,25 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
   // With exchanges the list can open on exchange rows while wallet providers are still answering.
   const listLoading = walletsLoading
     && (!withExchanges || !exchangeLoaded || source === 'wallets' || (source === 'all' && transfers.length === 0));
+  // Everything that may hide rows (a network or provider down, an exchange key without history access)
+  // collapses into one notice chip next to the counter instead of a banner per problem.
+  const unavailableNetworkNames = unavailableNetworks.map(getChainDisplayName).join(', ');
+  const issues = [
+    ...(partialError && source !== 'exchanges'
+      ? [unavailableNetworkNames ? t('partialError', { networks: unavailableNetworkNames }) : t('partialErrorUnknown')]
+      : []),
+    ...(withExchanges && source !== 'wallets' && exchangeError ? [t('exchangesError')] : []),
+    ...(withExchanges && source !== 'wallets' && unavailableAccounts.length > 0
+      ? [t('exchangesUnavailable', { accounts: unavailableAccounts.join(', ') })]
+      : []),
+  ];
   const hasSources = wallets.length > 0 || (withExchanges && accounts.length > 0);
   const filtersActive = walletFilter !== 'all' || chainFilter !== 'all' || typeFilter !== 'all';
-  const unavailableNetworkNames = unavailableNetworks.map(getChainDisplayName).join(', ');
   const resetFilters = () => { setWalletFilter('all'); setChainFilter('all'); setTypeFilter('all'); };
   const loadMore = () => void load(Math.min(limitRef.current + LIMIT_STEP, MAX_LIMIT), 'more');
   const typeLabels: Record<string, string> = {
     receive: t('typeReceive'), transfer: t('typeReceive'), send: t('typeSend'),
-    swap: t('typeSwap'), contract: t('typeContract'),
+    swap: t('typeSwap'), trade: t('typeTrade'), contract: t('typeContract'),
   };
   const sourceLabels: Record<Source, string> = {
     all: t('sourceAll'), wallets: t('sourceWallets'), exchanges: t('sourceExchanges'),
@@ -265,13 +289,10 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
 
   return (
     <Card className="flex min-w-0 flex-col overflow-hidden">
-      <CardHeader className="min-w-0 gap-4 space-y-0 border-b border-border p-4 sm:px-6 sm:py-5">
+      <CardHeader className="min-w-0 gap-3 space-y-0 border-b border-border p-4 sm:px-6 sm:py-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <CardTitle className="text-base leading-snug sm:text-lg">{t('title')}</CardTitle>
-            <p className="mt-2 text-xs text-text-muted">{exchangesOnly ? t('subtitleExchanges') : withExchanges ? t('subtitleWithExchanges') : t('subtitle')}</p>
-          </div>
-          <Button variant="ghost" size="icon" className="h-11 w-11 shrink-0 text-text-muted sm:h-9 sm:w-9"
+          <CardTitle className="min-w-0 text-base leading-snug sm:text-lg">{t('title')}</CardTitle>
+          <Button variant="ghost" size="icon" className="h-10 w-10 shrink-0 text-text-muted sm:h-9 sm:w-9"
             onClick={() => void load(limitRef.current, 'refresh')} disabled={refreshing || loadingMore || transactions === null}
             aria-label={t('refresh')} title={t('refresh')}>
             <RefreshCw className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} aria-hidden />
@@ -282,7 +303,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
           <div className="grid grid-cols-3 gap-1 rounded-lg bg-surface-2 p-1" role="group" aria-label={t('sourceFilter')}>
             {(['all', 'wallets', 'exchanges'] as const).map((s) => (
               <Button key={s} variant="ghost" size="sm"
-                className={cn('h-9 px-2 text-xs sm:h-8', source === s ? 'bg-surface text-text shadow-sm hover:bg-surface' : 'text-text-muted')}
+                className={cn('h-8 px-2 text-xs', source === s ? 'bg-surface text-text shadow-sm hover:bg-surface' : 'text-text-muted')}
                 aria-pressed={source === s} onClick={() => changeSource(s)}>
                 {sourceLabels[s]}
               </Button>
@@ -290,10 +311,11 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
           </div>
         )}
 
+        {/* One compact row: account, network and type; long names truncate inside their trigger. */}
         {hasSources && (
-          <div className="grid min-w-0 grid-cols-2 gap-3">
+          <div className="grid min-w-0 grid-cols-3 gap-2">
             <Select value={walletFilter} onValueChange={setWalletFilter}>
-              <SelectTrigger className="col-span-2 h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('walletFilter')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className={FILTER_TRIGGER} aria-label={t('walletFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{allAccountsLabel}</SelectItem>
                 {source !== 'exchanges' && wallets.map((wallet) => <SelectItem key={wallet.id} value={wallet.id}>
@@ -306,56 +328,56 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
               </SelectContent>
             </Select>
             <Select value={chainFilter} onValueChange={setChainFilter}>
-              <SelectTrigger className="h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('networkFilter')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className={FILTER_TRIGGER} aria-label={t('networkFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allNetworks')}</SelectItem>
                 {chains.map((chain) => <SelectItem key={chain} value={chain}>{getChainDisplayName(chain)}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-11 min-w-0 bg-surface text-sm sm:h-9 sm:text-xs" aria-label={t('typeFilter')}><SelectValue /></SelectTrigger>
+              <SelectTrigger className={FILTER_TRIGGER} aria-label={t('typeFilter')}><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">{t('allTypes')}</SelectItem>
                 <SelectItem value="receive">{t('typeReceive')}</SelectItem>
                 <SelectItem value="send">{t('typeSend')}</SelectItem>
                 <SelectItem value="swap">{t('typeSwap')}</SelectItem>
+                <SelectItem value="trade">{t('typeTrade')}</SelectItem>
                 <SelectItem value="contract">{t('typeContract')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
         )}
 
-        {transactions !== null && hasSources && (
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-xs tabular-nums text-text-muted">{t('results', { count: filtered.length })}</span>
-            <div className="flex items-center gap-1">
-              {spamCount > 0 && source !== 'exchanges' && <Button variant="ghost" size="sm" className="h-11 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2 sm:h-8"
+        {hasSources && !listLoading && (
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-xs tabular-nums text-text-muted">{t('results', { count: filtered.length })}</span>
+            <div className="flex shrink-0 items-center gap-1">
+              {issues.length > 0 && <Button variant="ghost" size="sm"
+                className="h-8 gap-1.5 rounded-lg bg-warning/10 px-2.5 text-xs text-warning hover:bg-warning/15 hover:text-warning"
+                onClick={() => setIssuesOpen((open) => !open)} aria-expanded={issuesOpen} aria-controls={issuesId}
+                title={t('issues', { count: issues.length })}>
+                <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+                <span className="sr-only sm:not-sr-only">{t('issues', { count: issues.length })}</span>
+                <span className="sm:hidden" aria-hidden>{issues.length}</span>
+              </Button>}
+              {spamCount > 0 && source !== 'exchanges' && <Button variant="ghost" size="sm" className="h-8 gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs text-text-muted hover:bg-surface-2"
                 onClick={() => setShowSpam((current) => !current)} aria-pressed={showSpam}>
                 {showSpam ? <EyeOff className="h-3.5 w-3.5" aria-hidden /> : <Eye className="h-3.5 w-3.5" aria-hidden />}
                 {showSpam ? t('hideSpam') : t('showSpam', { count: spamCount })}
               </Button>}
-              {filtersActive && <Button variant="ghost" size="icon" className="h-11 w-11 text-text-muted sm:h-8 sm:w-8"
+              {filtersActive && <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted"
                 onClick={resetFilters} aria-label={t('resetFilters')} title={t('resetFilters')}>
                 <RotateCcw className="h-3.5 w-3.5" aria-hidden />
               </Button>}
             </div>
           </div>
         )}
-        {partialError && source !== 'exchanges' && <div className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
-          <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-          <p className="text-xs leading-relaxed">
-            {unavailableNetworkNames
-              ? t('partialError', { networks: unavailableNetworkNames })
-              : t('partialErrorUnknown')}
-          </p>
-        </div>}
-        {withExchanges && source !== 'wallets' && (exchangeError || unavailableAccounts.length > 0) && (
-          <div className="flex items-start gap-2 rounded-lg bg-warning/10 px-3 py-2.5 text-warning" role="status">
-            <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-            <p className="text-xs leading-relaxed">
-              {exchangeError ? t('exchangesError') : t('exchangesUnavailable', { accounts: unavailableAccounts.join(', ') })}
-            </p>
-          </div>
+        {issuesOpen && issues.length > 0 && (
+          <ul id={issuesId} className="space-y-1.5 rounded-lg bg-warning/10 px-3 py-2.5 text-xs leading-relaxed text-warning" role="status">
+            {issues.map((issue) => <li key={issue} className="flex items-start gap-2">
+              <WifiOff className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />{issue}
+            </li>)}
+          </ul>
         )}
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col p-0" aria-busy={walletsLoading || refreshing || loadingMore}>
@@ -377,6 +399,8 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
                   transaction={item.tx} locale={locale} walletFallback={t('walletFallback')}
                   failedLabel={t('failed')} spamLabel={t('spam')}
                   typeLabel={typeLabels[item.tx.type] ?? t('typeContract')}
+                  tradeLabel={item.tx.trade ? tradeDirectionLabel(item.tx.trade.direction, (key) => td(key)) : null}
+                  marketLabel={item.tx.trade ? td(item.tx.trade.market) : null}
                 />
                 : <TransferRow
                   key={item.key}
@@ -417,9 +441,11 @@ function MessageState({ title, description, icon = false, children }: {
   </div>;
 }
 
-function TransactionRow({ transaction, locale, walletFallback, failedLabel, spamLabel, typeLabel }: {
+function TransactionRow({ transaction, locale, walletFallback, failedLabel, spamLabel, typeLabel, tradeLabel, marketLabel }: {
   transaction: RecentTransaction; locale: string; walletFallback: string;
   failedLabel: string; spamLabel: string; typeLabel: string;
+  /** Localized fill direction ("Open Long") and market ("Perp") of a trade row. */
+  tradeLabel: string | null; marketLabel: string | null;
 }) {
   const meta = TX_META[transaction.type as keyof typeof TX_META] ?? TX_META.contract;
   const Icon = meta.icon;
@@ -430,8 +456,12 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
   const inSymbol = transaction.swapInSymbol ?? transaction.tokenSymbol?.split('→')[1]?.trim() ?? '?';
   const tokenLabel = isSwap ? `${outSymbol} → ${inSymbol}` : transaction.tokenSymbol ?? '—';
   const isZeroValueContract = transaction.type === 'contract' && Number(transaction.value ?? 0) === 0;
+  const trade = transaction.trade ?? null;
+  const pnl = trade?.closedPnl ?? null;
   const valueLabel = isZeroValueContract
     ? typeLabel
+    : trade
+    ? `${tradeLabel} · ${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${transaction.tokenSymbol ?? ''}${transaction.usdValue ? ` · ${formatUsd(transaction.usdValue)}` : ''}`
     : isSwap
     ? `${transaction.sentValue == null ? '—' : formatTokenBalance(transaction.sentValue)} ${outSymbol} → ${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${inSymbol}`
     : `${transaction.type === 'send' ? '−' : transaction.type === 'receive' || transaction.type === 'transfer' ? '+' : ''}${transaction.value == null ? '—' : formatTokenBalance(transaction.value)} ${transaction.tokenSymbol ?? ''}`;
@@ -440,12 +470,19 @@ function TransactionRow({ transaction, locale, walletFallback, failedLabel, spam
       {isSwap ? <>
         <TokenLogo src={transaction.logoUrl} symbol={outSymbol} chainName={transaction.chainName} tokenAddress={transaction.swapOutTokenAddress ?? undefined} size={34} className="absolute left-0 top-0 ring-2 ring-surface" />
         <TokenLogo src={transaction.swapLogoUrl} symbol={inSymbol} chainName={transaction.chainName} tokenAddress={transaction.swapInTokenAddress ?? undefined} size={30} className="absolute bottom-0 right-0 ring-2 ring-surface" />
-      </> : <TokenLogo src={transaction.logoUrl} symbol={transaction.tokenSymbol ?? tokenLabel} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={40} />}
+      </> : trade?.market === 'perp'
+        // Perp coins have no token contract: look the logo up by ticker, as exchange rows do.
+        ? <ExchangeTokenLogo symbol={transaction.tokenSymbol ?? '?'} size={40} />
+        : <TokenLogo src={transaction.logoUrl} symbol={transaction.tokenSymbol ?? tokenLabel} chainName={transaction.chainName} tokenAddress={transaction.tokenAddresses?.[0]} size={40} />}
     </div>
     <div className="min-w-0 flex-1">
       <div className="flex min-w-0 flex-wrap items-start justify-between gap-x-3 gap-y-1">
-        <div className="min-w-0"><p className="truncate text-sm font-semibold">{tokenLabel}</p>
-          <p className={cn('mt-0.5 break-words text-xs font-medium tabular-nums', meta.color)}>{valueLabel}</p></div>
+        <div className="min-w-0"><p className="truncate text-sm font-semibold">{tokenLabel}
+          {marketLabel && <span className="ml-1.5 text-[11px] font-medium text-text-muted">{marketLabel}</span>}</p>
+          <p className={cn('mt-0.5 break-words text-xs font-medium tabular-nums', meta.color)}>{valueLabel}</p>
+          {pnl !== null && <p className={cn('mt-0.5 text-xs font-medium tabular-nums', pnl >= 0 ? 'text-success' : 'text-danger')}>
+            PnL {pnl >= 0 ? '+' : '−'}{formatUsd(Math.abs(pnl))}
+          </p>}</div>
         <span className="shrink-0 pt-0.5 text-[11px] text-text-muted" suppressHydrationWarning>{formatRelativeCompact(transaction.timestamp, locale)}</span>
       </div>
       <div className="mt-2 flex min-w-0 items-center justify-between gap-2">

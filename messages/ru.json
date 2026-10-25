@@ -668,7 +668,6 @@
   },
   "RecentTransactions": {
     "title": "Последние транзакции",
-    "subtitle": "Все активные кошельки",
     "refresh": "Обновить транзакции",
     "partialError": "Недоступны: {networks}. Остальные сети загружены.",
     "partialErrorUnknown": "Часть сетей временно недоступна. Остальные сети загружены.",
@@ -698,7 +697,6 @@
     "noMatchesDescription": "Измените выбранные фильтры или сбросьте их.",
     "loadMore": "Загрузить ещё",
     "loadingMore": "Загружаем…",
-    "subtitleWithExchanges": "Кошельки и биржи",
     "sourceFilter": "Источник",
     "sourceAll": "Всё",
     "sourceWallets": "Кошельки",
@@ -710,7 +708,8 @@
     "pending": "В обработке",
     "exchangesError": "Переводы бирж не загрузились. Кошельки показаны.",
     "exchangesUnavailable": "История переводов недоступна: {accounts}. Проверьте права ключа.",
-    "subtitleExchanges": "Депозиты и выводы бирж"
+    "typeTrade": "Сделка",
+    "issues": "{count, plural, one {# проблема} few {# проблемы} many {# проблем} other {# проблемы}}"
   },
   "TransactionList": {
     "cardTitle": "Транзакции",
@@ -744,7 +743,8 @@
     "hideSpam": "Скрыть спам ({count})",
     "spamHidden": "Подозрительные транзакции скрыты. Их можно посмотреть кнопкой «Спам».",
     "spamBadge": "Спам",
-    "otherEvmNetworks": "Другие EVM-сети"
+    "otherEvmNetworks": "Другие EVM-сети",
+    "txTrade": "Сделка"
   },
   "AdminLogsTable": {
     "filterAll": "Все",
@@ -1084,5 +1084,17 @@
     "asterSignerSecret": "Ключ API Wallet",
     "asterApiInstructions": "В Aster создай отдельный API Wallet с доступом только для чтения: canRead включён, торговля спотом и фьючерсами и вывод выключены. Добавь IP worker. Укажи адрес этого API Wallet и его ключ, а не приватный ключ основного кошелька. Подключение дополнит текущий аккаунт фьючерсов; спот пока не включён.",
     "openOnExchange": "Открыть на {exchange}"
+  },
+  "TradeDirection": {
+    "openLong": "Открытие лонга",
+    "closeLong": "Закрытие лонга",
+    "openShort": "Открытие шорта",
+    "closeShort": "Закрытие шорта",
+    "longToShort": "Лонг → шорт",
+    "shortToLong": "Шорт → лонг",
+    "buy": "Покупка",
+    "sell": "Продажа",
+    "perp": "Фьючерс",
+    "spot": "Спот"
   }
 }

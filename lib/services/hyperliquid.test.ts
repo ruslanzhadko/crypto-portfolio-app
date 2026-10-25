@@ -92,5 +92,23 @@ it('keeps separate IDs for multiple fills in a single HyperCore transaction', as
   expect(txs.map((tx) => tx.id)).toEqual([
     `0x${'a'.repeat(64)}:fill:1`, `0x${'a'.repeat(64)}:fill:2`,
   ]);
-  expect(txs[0]?.tokenSymbol).toBe('HYPE/USDC');
+  expect(txs[0]).toMatchObject({ type: 'trade', tokenSymbol: 'HYPE', tokenName: 'HYPE/USDC', trade: { market: 'spot', direction: 'Buy' } });
+});
+
+it('shows one perp order filled in parts as one trade with its realized PnL', async () => {
+  const hash = `0x${'b'.repeat(64)}`;
+  post.mockImplementation(async (_url, body) => ({ data: (body as { type: string }).type === 'userFills'
+    ? [
+      { hash, tid: 1, oid: 7, coin: 'PURR', side: 'A', sz: '600', px: '0.2', time: 1000, dir: 'Close Long', closedPnl: '3.5' },
+      { hash, tid: 2, oid: 7, coin: 'PURR', side: 'A', sz: '390', px: '0.25', time: 1001, dir: 'Close Long', closedPnl: '1.5' },
+    ]
+    : (body as { type: string }).type === 'spotMeta' ? meta[0] : [] }) as never);
+  const txs = await fetchHyperCoreTransactions(user);
+  expect(txs).toHaveLength(1);
+  expect(txs[0]).toMatchObject({
+    id: `${hash}:order:7`, chainName: 'hypercore-perps', type: 'trade', tokenSymbol: 'PURR', value: 990, usdValue: 217.5,
+    trade: { market: 'perp', direction: 'Close Long', closedPnl: 5 },
+  });
+  expect(txs[0]?.trade?.price).toBeCloseTo(217.5 / 990);
+  expect(txs[0]?.timestamp.getTime()).toBe(1001);
 });

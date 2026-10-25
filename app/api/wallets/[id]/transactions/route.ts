@@ -543,6 +543,7 @@ async function getWalletTransactionsPayload(
       status: transaction.status,
       timestamp: transaction.timestamp.toISOString(),
       blockNumber: transaction.blockNumber ? transaction.blockNumber.toString() : null,
+      trade: transaction.trade ?? null,
       ...transactionAssets(transaction, balances),
     };
   });

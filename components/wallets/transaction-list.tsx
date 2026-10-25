@@ -2,17 +2,19 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, FileText, ExternalLink, Search, Eye, EyeOff } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, ArrowLeftRight, CandlestickChart, FileText, ExternalLink, Search, Eye, EyeOff } from 'lucide-react';
 import { ChainBadge } from '@/components/common/network-badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
-import { formatDate, formatNumber, shortAddress } from '@/lib/utils/format';
+import { formatDate, formatNumber, formatUsd, shortAddress } from '@/lib/utils/format';
 import { Badge } from '@/components/ui/badge';
 import { TokenLogo } from '@/components/common/token-logo';
 import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
+import { tradeDirectionLabel } from '@/lib/utils/trade-direction';
+import type { TradeDetails } from '@/lib/services/token-types';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -35,6 +37,9 @@ interface TransactionDTO {
   swapOutTokenAddress?: string | null;
   swapInTokenAddress?: string | null;
   isSpam?: boolean;
+  usdValue?: number | null;
+  /** Set for exchange-style fills (type "trade"), e.g. HyperCore perps. */
+  trade?: TradeDetails | null;
 }
 
 interface TransactionListProps {
@@ -65,6 +70,7 @@ const EXPLORER: Record<string, string> = {
   robinhood: 'https://robinhoodchain.blockscout.com/tx/',
   hyperevm: 'https://www.hyperscan.com/tx/',
   hypercore: 'https://app.hyperliquid.xyz/explorer/tx/',
+  'hypercore-perps': 'https://app.hyperliquid.xyz/explorer/tx/',
 };
 
 function explorerUrl(chainName: string, hash: string): string | null {
@@ -76,6 +82,7 @@ const TX_STYLE: Record<string, { icon: typeof ArrowDownLeft; color: string; bg: 
   receive:  { icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
   send:     { icon: ArrowUpRight,   color: 'text-danger',     bg: 'bg-danger/10'   },
   swap:     { icon: ArrowLeftRight, color: 'text-primary',    bg: 'bg-primary/10'  },
+  trade:    { icon: CandlestickChart, color: 'text-primary',  bg: 'bg-primary/10'  },
   transfer: { icon: ArrowDownLeft,  color: 'text-success',    bg: 'bg-success/10'  },
   contract: { icon: FileText,       color: 'text-text-muted', bg: 'bg-surface-2'   },
 };
@@ -86,6 +93,7 @@ function getTxStyle(type: string, isOutgoing: boolean) {
 
 export function TransactionList({ walletId, walletAddress, network }: TransactionListProps) {
   const t = useTranslations('TransactionList');
+  const td = useTranslations('TradeDirection');
   const [items, setItems] = useState<TransactionDTO[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -170,6 +178,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
     receive: t('txReceive'),
     send: t('txSend'),
     swap: t('txSwap'),
+    trade: t('txTrade'),
     transfer: t('txTransfer'),
     contract: t('txContract'),
   };
@@ -267,7 +276,7 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">{t('allTypes')}</SelectItem>
-              {(['receive', 'send', 'swap', 'transfer', 'contract'] as const).map((type) => (
+              {(['receive', 'send', 'swap', 'trade', 'transfer', 'contract'] as const).map((type) => (
                 <SelectItem key={type} value={type}>{txLabels[type]}</SelectItem>
               ))}
             </SelectContent>
@@ -342,7 +351,20 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
 
                 <div className="col-start-2 min-w-0 text-left sm:shrink-0 sm:text-right">
                   {tx.value !== null && tx.value > 0 ? (
-                    isSwap ? (
+                    tx.trade ? (
+                      /* A fill changes a position: direction, size and realized PnL, not a token swap. */
+                      <div className="text-sm tabular-nums sm:text-right">
+                        <p className="font-semibold text-primary">
+                          {tradeDirectionLabel(tx.trade.direction, (key) => td(key))} · {formatNumber(tx.value, tx.value < 1 ? 4 : 2)}
+                          <span className="ml-1 text-xs font-medium text-text-muted">{td(tx.trade.market)}</span>
+                        </p>
+                        {tx.trade.closedPnl !== null && (
+                          <p className={cn('text-xs font-medium', tx.trade.closedPnl >= 0 ? 'text-success' : 'text-danger')}>
+                            PnL {tx.trade.closedPnl >= 0 ? '+' : '−'}{formatUsd(Math.abs(tx.trade.closedPnl))}
+                          </p>
+                        )}
+                      </div>
+                    ) : isSwap ? (
                       /* Своп: −sentAmount [outLogo] → [inLogo] +recvAmount */
                       <div className="flex flex-wrap items-center gap-1.5 sm:justify-end">
                         {tx.sentValue != null &&
