@@ -174,65 +174,53 @@ export function DashboardSections({
 
   return (
     <div className="min-w-0 space-y-3 sm:space-y-5">
-      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1.5 md:flex md:flex-wrap md:justify-between md:gap-3">
-        <h1 className="min-w-0 text-lg font-bold tracking-tight sm:text-xl md:text-3xl">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <h1 className="shrink-0 text-lg font-bold tracking-tight sm:text-xl md:text-3xl">
           {pageTitle}
         </h1>
-        <div className="contents md:flex md:flex-wrap md:items-center md:justify-end md:gap-3">
-          <div className="col-span-2 row-start-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {lastPriceUpdateAt && (
-              <span
-                className="text-[11px] text-text-muted sm:text-xs"
-                suppressHydrationWarning
+        {/* Freshness stamps sit beside the title so they cost no extra row on phones. */}
+        <div className="flex min-w-0 flex-1 flex-col text-[10px] leading-tight text-text-muted sm:text-xs">
+          {lastPriceUpdateAt && (
+            <span className="truncate" suppressHydrationWarning>
+              {t("pricesPrefix")}{" "}
+              {formatRelative(new Date(lastPriceUpdateAt), locale)}
+            </span>
+          )}
+          {latestSyncAt && (
+            <span className="truncate" suppressHydrationWarning>
+              {t("syncPrefix")} {formatRelative(new Date(latestSyncAt), locale)}
+            </span>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          {/* With exchanges, the capital card's button refreshes the selected tab instead. */}
+          {!exchangesEnabled && <SyncAllButton compactOnMobile />}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 w-9 gap-1.5 px-0 sm:w-auto sm:px-3"
               >
-                {t("pricesPrefix")}{" "}
-                {formatRelative(new Date(lastPriceUpdateAt), locale)}
-              </span>
-            )}
-            {latestSyncAt && (
-              <span
-                className="text-[11px] text-text-muted sm:text-xs"
-                suppressHydrationWarning
-              >
-                {t("syncPrefix")}{" "}
-                {formatRelative(new Date(latestSyncAt), locale)}
-              </span>
-            )}
-          </div>
-          <div className="col-start-2 row-start-1 flex items-center gap-1.5 sm:gap-2">
-            {/* With exchanges, the capital card's button refreshes the selected tab instead. */}
-            {!exchangesEnabled && <SyncAllButton compactOnMobile />}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-9 w-9 gap-1.5 px-0 sm:w-auto sm:px-3"
+                <SlidersHorizontal className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("sectionsButton")}</span>
+                <span className="sr-only sm:hidden">{t("sectionsButton")}</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              <DropdownMenuLabel>{t("showSections")}</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {(Object.keys(sectionLabels) as SectionKey[]).map((key) => (
+                <DropdownMenuCheckboxItem
+                  key={key}
+                  checked={show[key]}
+                  onCheckedChange={() => toggle(key)}
                 >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    {t("sectionsButton")}
-                  </span>
-                  <span className="sr-only sm:hidden">
-                    {t("sectionsButton")}
-                  </span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-60">
-                <DropdownMenuLabel>{t("showSections")}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {(Object.keys(sectionLabels) as SectionKey[]).map((key) => (
-                  <DropdownMenuCheckboxItem
-                    key={key}
-                    checked={show[key]}
-                    onCheckedChange={() => toggle(key)}
-                  >
-                    {sectionLabels[key]}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                  {sectionLabels[key]}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
