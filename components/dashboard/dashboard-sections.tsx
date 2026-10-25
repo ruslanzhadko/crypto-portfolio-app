@@ -174,20 +174,20 @@ export function DashboardSections({
 
   return (
     <div className="min-w-0 space-y-3 sm:space-y-5">
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-3 sm:gap-4">
         <h1 className="shrink-0 text-lg font-bold tracking-tight sm:text-xl md:text-3xl">
           {pageTitle}
         </h1>
-        {/* Freshness stamps sit beside the title so they cost no extra row on phones. */}
-        <div className="flex min-w-0 flex-1 flex-col text-[10px] leading-tight text-text-muted sm:text-xs">
+        {/* Freshness stamps sit centred between the title and the buttons, so they cost no extra row on phones. */}
+        <div className="flex min-w-0 flex-1 flex-col items-center text-center text-[10px] leading-tight text-text-muted sm:text-xs">
           {lastPriceUpdateAt && (
-            <span className="truncate" suppressHydrationWarning>
+            <span className="max-w-full truncate" suppressHydrationWarning>
               {t("pricesPrefix")}{" "}
               {formatRelative(new Date(lastPriceUpdateAt), locale)}
             </span>
           )}
           {latestSyncAt && (
-            <span className="truncate" suppressHydrationWarning>
+            <span className="max-w-full truncate" suppressHydrationWarning>
               {t("syncPrefix")} {formatRelative(new Date(latestSyncAt), locale)}
             </span>
           )}
