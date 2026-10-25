@@ -376,6 +376,8 @@ model ExchangeConnection {
   // Deposit/withdrawal history: last successful read and why it is unavailable (e.g. key permission).
   transfersAt DateTime?
   transfersError String?
+  /// Oldest moment the stored transfer history covers (a year back, or 90 days where the exchange keeps less).
+  transfersFrom DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

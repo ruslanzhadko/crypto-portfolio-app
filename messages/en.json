@@ -713,7 +713,7 @@
     "typeInternal": "Own transfer",
     "capReached": "This card shows the latest {count} transactions. Full history is on the wallet and exchange pages.",
     "endOfList": "That is everything loaded.",
-    "exchangeHistoryDepth": "Exchange transfers cover the last 90 days."
+    "exchangeHistoryDepth": "Exchange transfers cover the last year (or as much as the exchange keeps)."
   },
   "TransactionList": {
     "cardTitle": "Transactions",

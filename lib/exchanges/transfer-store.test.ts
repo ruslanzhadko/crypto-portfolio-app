@@ -52,7 +52,7 @@ beforeEach(() => {
 });
 
 describe("syncTransfers", () => {
-  it("backfills 90 days the first time and writes only new or changed rows", async () => {
+  it("backfills a year the first time and writes only new or changed rows", async () => {
     db.stored = [
       { direction: "deposit", externalId: "d1", status: "completed", txHash: "0x1", fee: null },
       { direction: "withdrawal", externalId: "w1", status: "pending", txHash: null, fee: null },
@@ -63,19 +63,45 @@ describe("syncTransfers", () => {
       transfer({ externalId: "d2" }),
     ]);
     expect(await syncTransfers({ id: "c1", transfersAt: null }, a, NOW)).toBe("saved");
-    expect(a.since).toBe(NOW - 90 * 86_400_000);
+    expect(a.since).toBe(NOW - 365 * 86_400_000);
     expect(db.upsert).toHaveBeenCalledTimes(2);
-    expect(db.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { transfersAt: new Date(NOW), transfersError: null } }),
-    );
+    expect(db.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: { transfersAt: new Date(NOW), transfersError: null, transfersFrom: new Date(NOW - 365 * 86_400_000) },
+    }));
   });
 
   it("reads again from a day before the last read, at most every 30 minutes", async () => {
     const a = adapter([]);
     const last = new Date(NOW - 3600_000);
-    expect(await syncTransfers({ id: "c2", transfersAt: last }, a, NOW)).toBe("saved");
+    const from = new Date(NOW - 365 * 86_400_000);
+    expect(await syncTransfers({ id: "c2", transfersAt: last, transfersFrom: from }, a, NOW)).toBe("saved");
     expect(a.since).toBe(last.getTime() - 86_400_000);
-    expect(await syncTransfers({ id: "c2", transfersAt: last }, a, NOW + 60_000)).toBe("skipped");
+    expect(db.update.mock.calls[0]![0]).toMatchObject({ data: { transfersAt: new Date(NOW) } });
+    expect((db.update.mock.calls[0]![0] as { data: object }).data).not.toHaveProperty("transfersFrom");
+    expect(await syncTransfers({ id: "c2", transfersAt: last, transfersFrom: from }, a, NOW + 60_000)).toBe("skipped");
+  });
+
+  it("reads a year back once for accounts read only 90 days so far", async () => {
+    const a = adapter([]);
+    expect(await syncTransfers({ id: "c5", transfersAt: new Date(NOW - 3600_000), transfersFrom: null }, a, NOW)).toBe("saved");
+    expect(a.since).toBe(NOW - 365 * 86_400_000);
+  });
+
+  it("settles for 90 days when the exchange refuses a year", async () => {
+    const calls: number[] = [];
+    const a: ExchangeAdapter = {
+      ...adapter([]),
+      transfers: async (since) => {
+        calls.push(since);
+        if (since < NOW - 100 * 86_400_000) throw new ExchangeError("INVALID_RESPONSE");
+        return [];
+      },
+    };
+    expect(await syncTransfers({ id: "c6", transfersAt: null }, a, NOW)).toBe("saved");
+    expect(calls).toEqual([NOW - 365 * 86_400_000, NOW - 90 * 86_400_000]);
+    expect(db.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ transfersFrom: new Date(NOW - 90 * 86_400_000) }),
+    }));
   });
 
   it("records why history is unavailable without throwing", async () => {

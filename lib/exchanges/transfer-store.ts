@@ -5,13 +5,17 @@ import { noteDeposit, RECENT_DEPOSIT_MS } from "./deposit-watch";
 
 /**
  * Keeps deposit/withdrawal history in the database. Read at most every 30 minutes per account
- * (during a sync the worker runs anyway), the first time for the last 90 days, then from a day
- * before the last successful read so late status changes are caught. Only new or changed rows are
- * written; a failure is recorded on the connection and never fails the balance sync.
+ * (during a sync the worker runs anyway): once a year back, then from a day before the last
+ * successful read so late status changes are caught. An exchange that keeps less than a year is
+ * read 90 days back instead, and `transfersFrom` records how far the history goes so the long read
+ * is never repeated. Only new or changed rows are written; a failure is recorded on the connection
+ * and never fails the balance sync.
  */
 const INTERVAL_MS = 30 * 60_000;
-const BACKFILL_MS = 90 * 86_400_000;
-const OVERLAP_MS = 86_400_000;
+const DAY_MS = 86_400_000;
+const HISTORY_MS = 365 * DAY_MS;
+const FALLBACK_MS = 90 * DAY_MS;
+const OVERLAP_MS = DAY_MS;
 const lastAttempt = new Map<string, number>();
 
 function changed(
@@ -26,18 +30,31 @@ function changed(
 }
 
 export async function syncTransfers(
-  connection: { id: string; transfersAt: Date | null; userId?: string; walletId?: string | null },
+  connection: {
+    id: string;
+    transfersAt: Date | null;
+    transfersFrom?: Date | null;
+    userId?: string;
+    walletId?: string | null;
+  },
   adapter: ExchangeAdapter,
   now = Date.now(),
 ): Promise<"skipped" | "saved" | "failed"> {
   if (!adapter.transfers) return "skipped";
   if (now - (lastAttempt.get(connection.id) ?? 0) < INTERVAL_MS) return "skipped";
   lastAttempt.set(connection.id, now);
-  const since = connection.transfersAt
-    ? connection.transfersAt.getTime() - OVERLAP_MS
-    : now - BACKFILL_MS;
+  // Accounts that were never read a year back (new ones, and those read 90 days before) do it once.
+  const deep = !connection.transfersFrom || !connection.transfersAt;
+  let from = deep ? now - HISTORY_MS : connection.transfersAt!.getTime() - OVERLAP_MS;
   try {
-    const rows = await adapter.transfers(since);
+    let rows: Transfer[];
+    try {
+      rows = await adapter.transfers(from);
+    } catch (error) {
+      if (!deep) throw error;
+      from = now - FALLBACK_MS;
+      rows = await adapter.transfers(from);
+    }
     const stored = new Map(
       (
         await prisma.exchangeTransfer.findMany({
@@ -81,7 +98,11 @@ export async function syncTransfers(
       ...writes,
       prisma.exchangeConnection.update({
         where: { id: connection.id },
-        data: { transfersAt: new Date(now), transfersError: null },
+        data: {
+          transfersAt: new Date(now),
+          transfersError: null,
+          ...(deep ? { transfersFrom: new Date(from) } : {}),
+        },
       }),
     ]);
     return "saved";
