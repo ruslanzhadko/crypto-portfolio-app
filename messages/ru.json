@@ -697,7 +697,20 @@
     "noMatches": "Операций не найдено",
     "noMatchesDescription": "Измените выбранные фильтры или сбросьте их.",
     "loadMore": "Загрузить ещё",
-    "loadingMore": "Загружаем…"
+    "loadingMore": "Загружаем…",
+    "subtitleWithExchanges": "Кошельки и биржи",
+    "sourceFilter": "Источник",
+    "sourceAll": "Всё",
+    "sourceWallets": "Кошельки",
+    "sourceExchanges": "Биржи",
+    "allAccounts": "Все кошельки и счета",
+    "allExchangeAccounts": "Все счета бирж",
+    "typeDeposit": "Депозит",
+    "typeWithdrawal": "Вывод",
+    "pending": "В обработке",
+    "exchangesError": "Переводы бирж не загрузились. Кошельки показаны.",
+    "exchangesUnavailable": "История переводов недоступна: {accounts}. Проверьте права ключа.",
+    "subtitleExchanges": "Депозиты и выводы бирж"
   },
   "TransactionList": {
     "cardTitle": "Транзакции",

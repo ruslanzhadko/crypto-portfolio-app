@@ -697,7 +697,20 @@
     "noMatches": "No matching activity",
     "noMatchesDescription": "Change the selected filters or reset them.",
     "loadMore": "Load more",
-    "loadingMore": "Loading…"
+    "loadingMore": "Loading…",
+    "subtitleWithExchanges": "Wallets and exchanges",
+    "sourceFilter": "Source",
+    "sourceAll": "All",
+    "sourceWallets": "Wallets",
+    "sourceExchanges": "Exchanges",
+    "allAccounts": "All wallets and accounts",
+    "allExchangeAccounts": "All exchange accounts",
+    "typeDeposit": "Deposit",
+    "typeWithdrawal": "Withdrawal",
+    "pending": "Pending",
+    "exchangesError": "Exchange transfers did not load. Wallets are shown.",
+    "exchangesUnavailable": "Transfer history unavailable: {accounts}. Check the key permissions.",
+    "subtitleExchanges": "Exchange deposits and withdrawals"
   },
   "TransactionList": {
     "cardTitle": "Transactions",

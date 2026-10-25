@@ -202,16 +202,6 @@ model TokenPrice {
   @@index([symbol])
 }
 
-model PriceHistory {
-  id        String   @id @default(cuid())
-  tokenId   String
-  price     Float
-  timestamp DateTime
-  createdAt DateTime @default(now())
-
-  @@index([tokenId, timestamp])
-}
-
 // ═══════════════════════════════════════
 // ЦІНОВІ ТРИГЕРИ
 // ═══════════════════════════════════════

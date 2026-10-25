@@ -32,6 +32,7 @@ import {
   type ExchangeHolding,
 } from "@/lib/portfolio/unified-assets";
 import { TopMovers } from "@/components/dashboard/top-movers";
+import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import {
   tokenChange,
   useTickerChanges,
@@ -66,6 +67,7 @@ export function CapitalDashboard({
   }, []);
   const t = useTranslations("Exchanges"),
     tm = useTranslations("TopMovers"),
+    tr = useTranslations("RecentTransactions"),
     locale = useLocale();
   const [scope, setScope] = useState<"all" | "wallets" | "exchanges">("all"),
     [days, setDays] = useState(30);
@@ -602,6 +604,19 @@ export function CapitalDashboard({
           {scope !== "wallets" && (
             <div data-jump={t("positions")} className="scroll-mt-20">
               <PositionsPage compact />
+            </div>
+          )}
+          {scope !== "wallets" && (
+            <div
+              data-jump={tr("title")}
+              className="min-w-0 scroll-mt-20 xl:max-w-3xl"
+            >
+              {/* The wallets tab has its own wallet-only list inside walletDetails. */}
+              {scope === "all" ? (
+                <RecentTransactions key="all" withExchanges />
+              ) : (
+                <RecentTransactions key="exchanges" exchangesOnly />
+              )}
             </div>
           )}
           {scope === "wallets" && walletDetails}

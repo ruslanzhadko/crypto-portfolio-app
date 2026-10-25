@@ -697,7 +697,20 @@
     "noMatches": "Операцій не знайдено",
     "noMatchesDescription": "Змініть вибрані фільтри або скиньте їх.",
     "loadMore": "Завантажити ще",
-    "loadingMore": "Завантажуємо…"
+    "loadingMore": "Завантажуємо…",
+    "subtitleWithExchanges": "Гаманці та біржі",
+    "sourceFilter": "Джерело",
+    "sourceAll": "Усе",
+    "sourceWallets": "Гаманці",
+    "sourceExchanges": "Біржі",
+    "allAccounts": "Усі гаманці та рахунки",
+    "allExchangeAccounts": "Усі рахунки бірж",
+    "typeDeposit": "Депозит",
+    "typeWithdrawal": "Виведення",
+    "pending": "В обробці",
+    "exchangesError": "Перекази бірж не завантажилися. Гаманці показано.",
+    "exchangesUnavailable": "Історія переказів недоступна: {accounts}. Перевірте права ключа.",
+    "subtitleExchanges": "Депозити та виведення бірж"
   },
   "TransactionList": {
     "cardTitle": "Транзакції",

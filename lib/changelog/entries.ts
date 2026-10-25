@@ -13,6 +13,28 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-25",
+    title: {
+      ru: "Депозиты и выводы бирж в последних транзакциях",
+      uk: "Депозити та виведення бірж в останніх транзакціях",
+      en: "Exchange deposits and withdrawals in recent transactions",
+    },
+    items: {
+      ru: [
+        "На вкладке «Всё» обзора — один список транзакций кошельков и переводов бирж, по времени.",
+        "Переключатель «Всё / Кошельки / Биржи», фильтры по счёту, сети и типу; ожидающие и неудачные переводы помечены.",
+      ],
+      uk: [
+        "На вкладці «Усе» огляду — один список транзакцій гаманців і переказів бірж, за часом.",
+        "Перемикач «Усе / Гаманці / Біржі», фільтри за рахунком, мережею і типом; очікувані й невдалі перекази позначено.",
+      ],
+      en: [
+        "The overview's All tab shows wallet transactions and exchange transfers in one list, newest first.",
+        "An All / Wallets / Exchanges switch and filters by account, network and type; pending and failed transfers are marked.",
+      ],
+    },
+  },
+  {
     date: "2026-10-24",
     title: {
       ru: "Монеты на биржах открываются на бирже",
