@@ -532,7 +532,10 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   // The combined list uses the same "Balances from" minimum ($0.10 by default).
   await expect(page.getByLabel("Balances from")).toHaveValue("0.10");
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Exchanges", exact: true }).click();
+  await page
+    .getByRole("group", { name: "Capital sources" })
+    .getByRole("button", { name: "Exchanges", exact: true })
+    .click();
   await expect(page.getByText("DUST", { exact: true })).toHaveCount(0);
   await expect(page.getByText("UNKNOWN", { exact: true })).not.toBeVisible();
   // Unpriced coins are left out of totals by design: no partial-capital warning.
@@ -546,7 +549,10 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(page.getByText("UNKNOWN", { exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "DUST", exact: true })).toHaveAttribute("src", /\/logo\.png$/);
   await page.reload();
-  await page.getByRole("button", { name: "Exchanges", exact: true }).click();
+  await page
+    .getByRole("group", { name: "Capital sources" })
+    .getByRole("button", { name: "Exchanges", exact: true })
+    .click();
   await expect(page.getByLabel("Balances from")).toHaveValue("0");
   if (process.env.EXCHANGE_VISUAL_QA) {
     await page.getByLabel("Balances from").scrollIntoViewIfNeeded();
