@@ -54,6 +54,25 @@ describe("own transfers between wallets and exchanges", () => {
     expect(links.get("x1")).toEqual({ from: { kind: "exchange", id: "okx" }, to: { kind: "exchange", id: "binance" }, hidden: false });
   });
 
+  it("uses the exchange leg found by hash in the whole history when that row is not loaded", () => {
+    const links = linkOwnTransfers({
+      walletTxs: [
+        { key: "w1", walletId: "main", hash: "0x1", chainName: "bsc", type: "send", fromAddress: null, toAddress: "0xnew",
+          exchangeLeg: { connectionId: "binance", direction: "deposit" } },
+        { key: "w2", walletId: "cold", hash: "0x2", chainName: "bsc", type: "receive", fromAddress: "0xhot", toAddress: null,
+          exchangeLeg: { connectionId: "bybit", direction: "withdrawal" } },
+        // A leg in the wrong direction is not a move between own accounts.
+        { key: "w3", walletId: "main", hash: "0x3", chainName: "bsc", type: "send", fromAddress: null, toAddress: "0xx",
+          exchangeLeg: { connectionId: "bybit", direction: "withdrawal" } },
+      ],
+      transfers: [],
+      wallets,
+    });
+    expect(links.get("w1")).toEqual({ from: { kind: "wallet", id: "main" }, to: { kind: "exchange", id: "binance" }, hidden: false });
+    expect(links.get("w2")).toEqual({ from: { kind: "exchange", id: "bybit" }, to: { kind: "wallet", id: "cold" }, hidden: false });
+    expect(links.has("w3")).toBe(false);
+  });
+
   it("ignores swaps and two legs of the same account", () => {
     const links = linkOwnTransfers({
       walletTxs: [

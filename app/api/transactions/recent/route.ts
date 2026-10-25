@@ -3,6 +3,9 @@ import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { GET as getWalletTransactions } from '@/app/api/wallets/[id]/transactions/route';
+import { exchangesEnabled } from '@/lib/exchanges/config';
+import { findExchangeLegs, type ExchangeLeg } from '@/lib/exchanges/transfer-match';
+import { normalizeHash } from '@/lib/portfolio/own-transfers';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -129,8 +132,23 @@ export async function GET(req: Request) {
     const cleanTransactions = sorted.filter((transaction) => !transaction.isSpam);
     const clean = cleanTransactions.slice(0, limit);
     const spam = sorted.filter((transaction) => transaction.isSpam).slice(0, 10);
-    const transactions = [...clean, ...spam]
+    const sortedTransactions = [...clean, ...spam]
       .sort((a, b) => Date.parse(String(b.timestamp)) - Date.parse(String(a.timestamp)));
+    // Sends and receives that are also in the user's exchange history: moves between own accounts.
+    let legs = new Map<string, ExchangeLeg>();
+    if (exchangesEnabled(guard.user.id)) {
+      try {
+        legs = await findExchangeLegs(guard.user.id, clean
+          .filter((tx) => ['send', 'receive', 'transfer'].includes(String(tx.type)))
+          .map((tx) => String(tx.hash ?? '')));
+      } catch (error) {
+        console.warn('[transactions] exchange leg lookup failed:', error instanceof Error ? error.message : error);
+      }
+    }
+    const transactions = sortedTransactions.map((tx) => {
+      const leg = legs.get(normalizeHash(typeof tx.hash === 'string' ? tx.hash : null) ?? '');
+      return leg ? { ...tx, exchangeLeg: leg } : tx;
+    });
 
     return ok({
       transactions,

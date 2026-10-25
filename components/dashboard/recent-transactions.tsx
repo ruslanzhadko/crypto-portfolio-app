@@ -41,6 +41,8 @@ interface RecentTransaction {
   walletAddress: string;
   fromAddress?: string | null;
   toAddress?: string | null;
+  /** The same hash in the user's exchange history (server lookup over all of it). */
+  exchangeLeg?: { connectionId: string; exchange: string; label: string; direction: 'deposit' | 'withdrawal' } | null;
   usdValue?: number | null;
   /** Set for exchange-style fills (type "trade"), e.g. HyperCore perps. */
   trade?: TradeDetails | null;
@@ -259,7 +261,9 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
         const wallet = wallets.find((w) => w.id === party.id);
         return wallet?.label?.trim() || (wallet ? `${t('walletFallback')} ${shortAddress(wallet.address, 4)}` : t('walletFallback'));
       }
-      const account = accounts.find((a) => a.id === party.id);
+      // The wallets tab loads no exchange accounts; the server lookup carries the name then.
+      const account = accounts.find((a) => a.id === party.id)
+        ?? walletTxs.map((tx) => tx.exchangeLeg).find((leg) => leg?.connectionId === party.id);
       return account ? `${exchangeName(account.exchange)} · ${account.label}` : t('sourceExchanges');
     };
     const own = (key: string): Own | null => {

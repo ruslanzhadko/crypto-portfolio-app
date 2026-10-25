@@ -4,11 +4,15 @@ const mocks = vi.hoisted(() => ({
   requireUser: vi.fn(),
   findMany: vi.fn(),
   getWalletTransactions: vi.fn(),
+  exchangesEnabled: vi.fn(() => false),
+  findExchangeLegs: vi.fn(),
 }));
 
 vi.mock('@/lib/api/auth-guard', () => ({ requireUser: mocks.requireUser }));
 vi.mock('@/lib/db/prisma', () => ({ prisma: { wallet: { findMany: mocks.findMany } } }));
 vi.mock('@/app/api/wallets/[id]/transactions/route', () => ({ GET: mocks.getWalletTransactions }));
+vi.mock('@/lib/exchanges/config', () => ({ exchangesEnabled: mocks.exchangesEnabled }));
+vi.mock('@/lib/exchanges/transfer-match', () => ({ findExchangeLegs: mocks.findExchangeLegs }));
 
 import { GET } from './route';
 
@@ -58,5 +62,22 @@ describe('recent transaction wallet selection', () => {
     expect(response.status).toBe(404);
     expect(mocks.findMany.mock.calls[0]![0].where).toEqual({ userId: 'user', isActive: true });
     expect(mocks.getWalletTransactions).not.toHaveBeenCalled();
+  });
+
+  it('marks sends found in the exchange history, whatever the hash case', async () => {
+    const hash = `0x${'ABC123'.padEnd(64, '0')}`;
+    mocks.exchangesEnabled.mockReturnValue(true);
+    mocks.findExchangeLegs.mockResolvedValue(new Map([
+      [hash.slice(2).toLowerCase(), { connectionId: 'bn', exchange: 'binance', label: 'Main', direction: 'deposit' }],
+    ]));
+    mocks.getWalletTransactions.mockImplementation(async () => Response.json({ transactions: [
+      { id: '1', hash, chainName: 'bsc', type: 'send', timestamp: '2026-09-28T12:00:00Z' },
+      { id: '2', hash: '0xother', chainName: 'bsc', type: 'swap', timestamp: '2026-09-28T11:00:00Z' },
+    ], hasMore: false }));
+    const body = await (await GET(new Request('https://example.com/api/transactions/recent?walletId=busy'))).json();
+    expect(mocks.findExchangeLegs).toHaveBeenCalledWith('user', [hash]);
+    const byId = (id: string) => body.transactions.find((tx: { id: string }) => tx.id === id);
+    expect(byId('1').exchangeLeg).toMatchObject({ connectionId: 'bn', direction: 'deposit' });
+    expect(byId('2').exchangeLeg).toBeUndefined();
   });
 });

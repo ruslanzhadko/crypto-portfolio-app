@@ -28,6 +28,8 @@ export interface WalletLegInput {
   type: string;
   fromAddress: string | null;
   toAddress: string | null;
+  /** The same hash found in the user's whole exchange history (server lookup), if any. */
+  exchangeLeg?: { connectionId: string; direction: "deposit" | "withdrawal" } | null;
 }
 
 export interface ExchangeLegInput {
@@ -46,7 +48,7 @@ interface Leg {
 }
 
 /** Exchanges store hashes in their own case and sometimes without the 0x prefix. */
-function normalizeHash(hash: string | null): string | null {
+export function normalizeHash(hash: string | null): string | null {
   const value = hash?.trim().toLowerCase().replace(/^0x/, "");
   return value && /^[0-9a-z]{32,}$/.test(value) ? value : null;
 }
@@ -105,10 +107,19 @@ export function linkOwnTransfers(input: {
     result.set(into.key, { from: out.party, to: into.party, hidden: true });
   }
 
-  // One leg only: recognise the other side by an own wallet address.
+  // One leg only: the exchange history found by hash on the server, else an own address.
   for (const tx of input.walletTxs) {
     if (result.has(tx.key)) continue;
     const self: Party = { kind: "wallet", id: tx.walletId };
+    const leg = tx.exchangeLeg;
+    if (leg && tx.type === "send" && leg.direction === "deposit") {
+      result.set(tx.key, { from: self, to: { kind: "exchange", id: leg.connectionId }, hidden: false });
+      continue;
+    }
+    if (leg && (tx.type === "receive" || tx.type === "transfer") && leg.direction === "withdrawal") {
+      result.set(tx.key, { from: { kind: "exchange", id: leg.connectionId }, to: self, hidden: false });
+      continue;
+    }
     const other = tx.type === "send" ? tx.toAddress : tx.type === "receive" || tx.type === "transfer" ? tx.fromAddress : null;
     // Money arriving from an exchange comes from its hot wallet, never from a deposit address.
     const owner = ownerOf(other);
