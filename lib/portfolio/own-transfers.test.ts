@@ -43,6 +43,17 @@ describe("own transfers between wallets and exchanges", () => {
     expect(links.get("x1")?.to).toEqual({ kind: "wallet", id: "main" });
   });
 
+  it("recognises a send to an exchange deposit address used before", () => {
+    const links = linkOwnTransfers({
+      walletTxs: [{ key: "w1", walletId: "main", hash: "0x1", chainName: "bsc", type: "send", fromAddress: null, toAddress: "0xDEPOSIT" }],
+      transfers: [{ key: "x1", connectionId: "okx", direction: "withdrawal", txHash: null, address: "0xdeposit" }],
+      wallets,
+      exchangeAddresses: [{ connectionId: "binance", address: "0xdeposit" }, { connectionId: "bybit", address: null }],
+    });
+    expect(links.get("w1")).toEqual({ from: { kind: "wallet", id: "main" }, to: { kind: "exchange", id: "binance" }, hidden: false });
+    expect(links.get("x1")).toEqual({ from: { kind: "exchange", id: "okx" }, to: { kind: "exchange", id: "binance" }, hidden: false });
+  });
+
   it("ignores swaps and two legs of the same account", () => {
     const links = linkOwnTransfers({
       walletTxs: [

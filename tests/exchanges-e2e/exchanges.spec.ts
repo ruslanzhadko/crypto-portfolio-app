@@ -519,8 +519,9 @@ test("dashboard and positions render on desktop/mobile, old navigation remains r
   await expect(page.locator('.recharts-surface').first()).toBeVisible();
   if (process.env.EXCHANGE_VISUAL_QA) await page.locator('.recharts-surface').first().screenshot({ path: "test-results/capital-chart-desktop.png" });
   await page.getByText("Capital history", { exact: true }).click();
-  await expect(page.locator("#capital-sources").getByRole("heading", {name: "Capital sources"})).toBeVisible();
-  expect(await page.locator("#capital-sources").evaluate(el => el.parentElement?.lastElementChild === el)).toBe(true);
+  // In "All" the capital sources sit beside recent transactions (one row on wide screens).
+  await expect(page.getByRole("heading", { name: "Capital sources" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent transactions" })).toBeVisible();
   await expect(page.locator('.recharts-surface').first()).not.toBeVisible();
   await page.reload();
   await expect(page.locator('.recharts-surface').first()).not.toBeVisible();

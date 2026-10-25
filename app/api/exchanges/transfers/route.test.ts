@@ -45,7 +45,9 @@ describe("exchange transfers for the dashboard list", () => {
   });
 
   it("returns the user's latest transfers with chain, link and unavailable accounts", async () => {
-    mocks.transfers.mockResolvedValue([row("a", 1), row("b", 2), row("c", 3), row("d", 4), row("e", 5), row("f", 6)]);
+    mocks.transfers
+      .mockResolvedValueOnce([row("a", 1), row("b", 2), row("c", 3), row("d", 4), row("e", 5), row("f", 6)])
+      .mockResolvedValueOnce([{ connectionId: "binance-1", address: "0xdeposit" }]);
     const res = await GET(new Request("https://example.com/api/exchanges/transfers?limit=5"));
     const body = await res.json();
 
@@ -64,6 +66,8 @@ describe("exchange transfers for the dashboard list", () => {
       explorerUrl: `https://bscscan.com/tx/0x${"c".repeat(64)}`,
     });
     expect(body.unavailable).toEqual(["Gate main"]);
+    expect(body.depositAddresses).toEqual([{ connectionId: "binance-1", address: "0xdeposit" }]);
+    expect(mocks.transfers.mock.calls[1]![0]).toMatchObject({ where: { direction: "deposit" }, distinct: ["connectionId", "address"] });
   });
 
   it("is hidden from users outside the exchange pilot", async () => {

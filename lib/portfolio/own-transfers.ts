@@ -5,7 +5,8 @@
  * Both legs of one move share the on-chain hash (a wallet send and an exchange deposit, an exchange
  * withdrawal and a wallet receive...). Such pairs collapse into one row, shown on the sending leg.
  * When only one leg is loaded, the counterparty is still recognised by address: a wallet send to
- * another own wallet, or an exchange withdrawal to an own wallet address.
+ * another own wallet or to a deposit address an own exchange account has used, an exchange
+ * withdrawal to an own wallet or to another account's deposit address.
  */
 
 export type Party =
@@ -56,8 +57,23 @@ export function linkOwnTransfers(input: {
   walletTxs: readonly WalletLegInput[];
   transfers: readonly ExchangeLegInput[];
   wallets: readonly { id: string; address: string }[];
+  /** Deposit addresses seen in each exchange account's history. */
+  exchangeAddresses?: readonly { connectionId: string; address: string | null }[];
 }): Map<string, OwnTransfer> {
   const walletByAddress = new Map(input.wallets.map((w) => [w.address.toLowerCase(), w.id]));
+  const exchangeByAddress = new Map(
+    (input.exchangeAddresses ?? [])
+      .filter((entry): entry is { connectionId: string; address: string } => Boolean(entry.address))
+      .map((entry) => [entry.address.toLowerCase(), entry.connectionId]),
+  );
+  /** The own wallet or exchange account behind an address, if any. */
+  const ownerOf = (address: string | null): Party | null => {
+    if (!address) return null;
+    const wallet = walletByAddress.get(address.toLowerCase());
+    if (wallet) return { kind: "wallet", id: wallet };
+    const account = exchangeByAddress.get(address.toLowerCase());
+    return account ? { kind: "exchange", id: account } : null;
+  };
   const legs: Leg[] = [
     ...input.walletTxs
       .filter((tx) => tx.type === "send" || tx.type === "receive" || tx.type === "transfer")
@@ -94,23 +110,19 @@ export function linkOwnTransfers(input: {
     if (result.has(tx.key)) continue;
     const self: Party = { kind: "wallet", id: tx.walletId };
     const other = tx.type === "send" ? tx.toAddress : tx.type === "receive" || tx.type === "transfer" ? tx.fromAddress : null;
-    const otherId = other ? walletByAddress.get(other.toLowerCase()) : undefined;
-    if (!otherId || otherId === tx.walletId) continue;
-    const party: Party = { kind: "wallet", id: otherId };
+    // Money arriving from an exchange comes from its hot wallet, never from a deposit address.
+    const owner = ownerOf(other);
+    const counterpart = tx.type === "send" || owner?.kind === "wallet" ? owner : null;
+    if (!counterpart || sameParty(counterpart, self)) continue;
     result.set(tx.key, tx.type === "send"
-      ? { from: self, to: party, hidden: false }
-      : { from: party, to: self, hidden: false });
+      ? { from: self, to: counterpart, hidden: false }
+      : { from: counterpart, to: self, hidden: false });
   }
   for (const tr of input.transfers) {
-    if (result.has(tr.key) || tr.direction !== "withdrawal" || !tr.address) continue;
-    const walletId = walletByAddress.get(tr.address.toLowerCase());
-    if (walletId) {
-      result.set(tr.key, {
-        from: { kind: "exchange", id: tr.connectionId },
-        to: { kind: "wallet", id: walletId },
-        hidden: false,
-      });
-    }
+    if (result.has(tr.key) || tr.direction !== "withdrawal") continue;
+    const self: Party = { kind: "exchange", id: tr.connectionId };
+    const to = ownerOf(tr.address);
+    if (to && !sameParty(to, self)) result.set(tr.key, { from: self, to, hidden: false });
   }
   return result;
 }

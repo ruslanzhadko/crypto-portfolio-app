@@ -606,21 +606,23 @@ export function CapitalDashboard({
               <PositionsPage compact />
             </div>
           )}
+          {/* Wide screens: transactions and capital sources side by side instead of a half-empty row. */}
           {scope !== "wallets" && (
-            <div
-              data-jump={tr("title")}
-              className="min-w-0 scroll-mt-20 xl:max-w-3xl"
-            >
-              {/* The wallets tab has its own wallet-only list inside walletDetails. */}
-              {scope === "all" ? (
-                <RecentTransactions key="all" withExchanges />
-              ) : (
-                <RecentTransactions key="exchanges" exchangesOnly />
-              )}
+            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-2">
+              <div data-jump={tr("title")} className="min-w-0 scroll-mt-20">
+                {/* The wallets tab has its own wallet-only list inside walletDetails. */}
+                {scope === "all" ? (
+                  <RecentTransactions key="all" withExchanges />
+                ) : (
+                  <RecentTransactions key="exchanges" exchangesOnly />
+                )}
+              </div>
+              <div className="min-w-0">{sources}</div>
             </div>
           )}
           {scope === "wallets" && walletDetails}
-          {sources &&
+          {scope === "wallets" &&
+            sources &&
             (sourcesTarget ? createPortal(sources, sourcesTarget) : sources)}
         </>
       )}

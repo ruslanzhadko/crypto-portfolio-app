@@ -145,6 +145,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
   const [source, setSource] = useState<Source>(exchangesOnly ? 'exchanges' : 'all');
   const [transfers, setTransfers] = useState<ExchangeTransfer[]>([]);
   const [accounts, setAccounts] = useState<ExchangeAccount[]>([]);
+  const [depositAddresses, setDepositAddresses] = useState<{ connectionId: string; address: string | null }[]>([]);
   const [unavailableAccounts, setUnavailableAccounts] = useState<string[]>([]);
   const [exchangeError, setExchangeError] = useState(false);
   const [exchangeLoaded, setExchangeLoaded] = useState(false);
@@ -174,6 +175,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
             if (!r.ok) throw new Error('Exchange transfers request failed');
             return await r.json() as {
               transfers: ExchangeTransfer[]; accounts: ExchangeAccount[]; unavailable: string[]; hasMore: boolean;
+              depositAddresses?: { connectionId: string; address: string | null }[];
             };
           })
           .catch(() => null)
@@ -185,6 +187,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
             if (!exchangeData) return;
             setTransfers(Array.isArray(exchangeData.transfers) ? exchangeData.transfers : []);
             setAccounts(Array.isArray(exchangeData.accounts) ? exchangeData.accounts : []);
+            setDepositAddresses(Array.isArray(exchangeData.depositAddresses) ? exchangeData.depositAddresses : []);
             setUnavailableAccounts(Array.isArray(exchangeData.unavailable) ? exchangeData.unavailable : []);
           })
         : Promise.resolve();
@@ -249,6 +252,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
       })),
       transfers: exchangeTxs.map((tx) => ({ ...tx, key: `ex:${tx.id}` })),
       wallets,
+      exchangeAddresses: withExchanges ? depositAddresses : [],
     });
     const partyLabel = (party: Party) => {
       if (party.kind === 'wallet') {
@@ -277,7 +281,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
     return all
       .filter((item) => source === 'all' || touches(item, source === 'wallets' ? 'wallet' : 'exchange'))
       .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp));
-  }, [transactions, transfers, wallets, accounts, showSpam, source, withExchanges, t]);
+  }, [transactions, transfers, wallets, accounts, depositAddresses, showSpam, source, withExchanges, t]);
 
   const chains = useMemo(() => [...new Set(items
     .map((item) => item.kind === 'wallet' ? item.tx.chainName : item.tx.chain)
