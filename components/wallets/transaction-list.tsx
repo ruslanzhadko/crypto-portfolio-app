@@ -401,6 +401,12 @@ export function TransactionList({ walletId, walletAddress, network }: Transactio
           })}
         </div>
 
+        {!hasMore && filtered.length > 0 && filtered.length <= visibleCount && (
+          <p className="border-t border-border px-4 py-3 text-center text-xs leading-relaxed text-text-muted">
+            {t('endOfHistory')}
+            {network === 'EVM' && <> {t('endOfHistoryHyperliquid')}</>}
+          </p>
+        )}
         {(hasMore || filtered.length > visibleCount) && (
           <div className="flex justify-center border-t border-border p-4">
             <Button variant="outline" size="sm" disabled={loadingMore}

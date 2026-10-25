@@ -710,7 +710,10 @@
     "exchangesUnavailable": "Історія переказів недоступна: {accounts}. Перевірте права ключа.",
     "typeTrade": "Угода",
     "issues": "{count, plural, one {# проблема} few {# проблеми} many {# проблем} other {# проблеми}}",
-    "typeInternal": "Між своїми"
+    "typeInternal": "Між своїми",
+    "capReached": "Тут видно останні {count} операцій. Повна історія — на сторінках гаманців і бірж.",
+    "endOfList": "Це всі завантажені операції.",
+    "exchangeHistoryDepth": "Перекази бірж — за останні 90 днів."
   },
   "TransactionList": {
     "cardTitle": "Транзакції",
@@ -745,7 +748,9 @@
     "spamHidden": "Підозрілі транзакції приховано. Їх можна переглянути кнопкою «Спам».",
     "spamBadge": "Спам",
     "otherEvmNetworks": "Інші EVM-мережі",
-    "txTrade": "Угода"
+    "txTrade": "Угода",
+    "endOfHistory": "Більше історії в постачальника даних немає.",
+    "endOfHistoryHyperliquid": "Hyperliquid віддає перекази за 30 днів і останні 2000 угод."
   },
   "AdminLogsTable": {
     "filterAll": "Всі",

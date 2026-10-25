@@ -710,7 +710,10 @@
     "exchangesUnavailable": "Transfer history unavailable: {accounts}. Check the key permissions.",
     "typeTrade": "Trade",
     "issues": "{count, plural, one {# issue} other {# issues}}",
-    "typeInternal": "Own transfer"
+    "typeInternal": "Own transfer",
+    "capReached": "This card shows the latest {count} transactions. Full history is on the wallet and exchange pages.",
+    "endOfList": "That is everything loaded.",
+    "exchangeHistoryDepth": "Exchange transfers cover the last 90 days."
   },
   "TransactionList": {
     "cardTitle": "Transactions",
@@ -745,7 +748,9 @@
     "spamHidden": "Suspicious transactions are hidden. Use “Spam” to review them.",
     "spamBadge": "Spam",
     "otherEvmNetworks": "Other EVM networks",
-    "txTrade": "Trade"
+    "txTrade": "Trade",
+    "endOfHistory": "The data provider has no older history.",
+    "endOfHistoryHyperliquid": "Hyperliquid returns transfers for 30 days and the latest 2,000 trades."
   },
   "AdminLogsTable": {
     "filterAll": "All",

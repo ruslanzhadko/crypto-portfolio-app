@@ -8,6 +8,7 @@ import { fetchHyperCoreTransactions, fetchHyperEvmTransactions, parseHyperEvmCur
 import { transactionIsSpam, type TransactionSpamCandidate } from '@/lib/services/transaction-spam';
 import { transactionInitiators } from '@/lib/services/transaction-verification';
 import { transactionAssets } from '@/lib/services/transaction-assets';
+import { pairRelayedSwaps } from '@/lib/services/solana-relayed-swaps';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -195,8 +196,11 @@ async function fetchSolanaTransactionsHelius(
     }
     // ────────────────────────────────────────────────────────────────────
 
+    const relayed = pairRelayedSwaps(txs.filter((tx) => !tx.transactionError), address);
     for (const tx of txs) {
       if (tx.transactionError) continue;
+      // The hand-over of a gasless swap is shown as part of the swap itself.
+      if (relayed.skip.has(tx.signature)) continue;
 
       const symOf = (mint: string) =>
         mintMeta.get(mint)?.symbol ?? (mint === WSOL ? 'SOL' : mint.slice(0, 6));
@@ -207,6 +211,8 @@ async function fetchSolanaTransactionsHelius(
         if (t.fromUserAccount === address) netByMint.set(t.mint, (netByMint.get(t.mint) ?? 0) - t.tokenAmount);
         if (t.toUserAccount   === address) netByMint.set(t.mint, (netByMint.get(t.mint) ?? 0) + t.tokenAmount);
       }
+      const handedOver = relayed.handedOver.get(tx.signature);
+      if (handedOver) netByMint.set(handedOver.mint, (netByMint.get(handedOver.mint) ?? 0) - handedOver.amount);
       const wsolNet = netByMint.get(WSOL) ?? 0;
       netByMint.delete(WSOL);
 

@@ -710,7 +710,10 @@
     "exchangesUnavailable": "История переводов недоступна: {accounts}. Проверьте права ключа.",
     "typeTrade": "Сделка",
     "issues": "{count, plural, one {# проблема} few {# проблемы} many {# проблем} other {# проблемы}}",
-    "typeInternal": "Между своими"
+    "typeInternal": "Между своими",
+    "capReached": "Здесь видны последние {count} операций. Полная история — на страницах кошельков и бирж.",
+    "endOfList": "Это все загруженные операции.",
+    "exchangeHistoryDepth": "Переводы бирж — за последние 90 дней."
   },
   "TransactionList": {
     "cardTitle": "Транзакции",
@@ -745,7 +748,9 @@
     "spamHidden": "Подозрительные транзакции скрыты. Их можно посмотреть кнопкой «Спам».",
     "spamBadge": "Спам",
     "otherEvmNetworks": "Другие EVM-сети",
-    "txTrade": "Сделка"
+    "txTrade": "Сделка",
+    "endOfHistory": "Больше истории у провайдера данных нет.",
+    "endOfHistoryHyperliquid": "Hyperliquid отдаёт переводы за 30 дней и последние 2000 сделок."
   },
   "AdminLogsTable": {
     "filterAll": "Все",

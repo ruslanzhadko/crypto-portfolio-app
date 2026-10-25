@@ -140,6 +140,9 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
   const [loadingMore, setLoadingMore] = useState(false);
   const [walletHasMore, setWalletHasMore] = useState(false);
   const [exchangeHasMore, setExchangeHasMore] = useState(false);
+  /** The provider has more, but the card stops at MAX_LIMIT rows. */
+  const [walletCapped, setWalletCapped] = useState(false);
+  const [exchangeCapped, setExchangeCapped] = useState(false);
   const [walletFilter, setWalletFilter] = useState('all');
   const [chainFilter, setChainFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
@@ -186,6 +189,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
             setExchangeError(exchangeData === null);
             setExchangeLoaded(true);
             setExchangeHasMore(Boolean(exchangeData?.hasMore) && requestedLimit < MAX_LIMIT);
+            setExchangeCapped(Boolean(exchangeData?.hasMore) && requestedLimit >= MAX_LIMIT);
             if (!exchangeData) return;
             setTransfers(Array.isArray(exchangeData.transfers) ? exchangeData.transfers : []);
             setAccounts(Array.isArray(exchangeData.accounts) ? exchangeData.accounts : []);
@@ -214,6 +218,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
       setPartialError(Boolean(data.partialError));
       setUnavailableNetworks(Array.isArray(data.unavailableNetworks) ? data.unavailableNetworks : []);
       setWalletHasMore(Boolean(data.hasMore) && requestedLimit < MAX_LIMIT);
+      setWalletCapped(Boolean(data.hasMore) && requestedLimit >= MAX_LIMIT);
       limitRef.current = requestedLimit;
     } catch {
       if (controller.signal.aborted) return;
@@ -480,6 +485,15 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
             </div>
             {walletsLoading && source !== 'exchanges' && <TransactionSkeleton rows={2} />}
           </>}
+        {/* Say why the list ends instead of a button that silently disappears. */}
+        {!hasMore && !listLoading && items.length > 0 && (
+          <p className="border-t border-border px-4 py-3 text-center text-xs leading-relaxed text-text-muted">
+            {((source !== 'exchanges' && walletCapped) || (withExchanges && source !== 'wallets' && exchangeCapped))
+              ? t('capReached', { count: MAX_LIMIT })
+              : t('endOfList')}
+            {withExchanges && source !== 'wallets' && <> {t('exchangeHistoryDepth')}</>}
+          </p>
+        )}
         {hasMore && <div className="border-t border-border p-3">
           {error && <p className="mb-2 text-sm text-danger" role="alert">{t('errorDescription')}</p>}
           <Button variant="outline" size="sm" className="h-11 w-full gap-2 sm:h-9" onClick={loadMore} disabled={loadingMore || refreshing}>
