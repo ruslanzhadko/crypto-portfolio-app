@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExchangeData } from "./use-exchange-data";
-import { ExchangeErrorNotice, Money, Quantity } from "./shared";
+import { ExchangeErrorNotice, Money, Percent, Quantity } from "./shared";
 import type { ConnectionDto } from "./exchanges-page";
 import type { OpenPosition } from "@/lib/exchanges/types";
 import { displaySymbol } from "@/lib/exchanges/display-symbol";
-import { trimTrailing } from "@/lib/utils/trim";
 
 // Position details: three tight columns on phones (the third right-aligned), six roomy ones from lg.
 /** Matches the `fold` animation in tailwind.config.ts. */
@@ -52,8 +51,8 @@ function liquidationDistance(p: PositionDto): number | null {
 
 function marginReturn(p: PositionDto) {
   return p.margin && Number(p.margin) > 0 && p.unrealizedPnl != null
-    ? `${Number(p.unrealizedPnl) > 0 ? "+" : ""}${((Number(p.unrealizedPnl) / Number(p.margin)) * 100).toFixed(2)}%`
-    : "—";
+    ? Number(p.unrealizedPnl) / Number(p.margin)
+    : null;
 }
 function NextFunding({ p }: { p: PositionDto }) {
   const t = useTranslations("Exchanges"),
@@ -81,9 +80,15 @@ function NextFunding({ p }: { p: PositionDto }) {
     <>
       <dd title={t("nextFundingDescription")}>
         <span>
-          {upcoming && p.funding?.nextRate != null
-            ? `${trimTrailing(trimTrailing((Number(p.funding.nextRate) * 100).toFixed(4), "0"), ".")}%`
-            : "—"}
+          <Percent
+            fraction={
+              upcoming && p.funding?.nextRate != null
+                ? Number(p.funding.nextRate)
+                : null
+            }
+            digits={4}
+            trim
+          />
         </span>
         {payment != null && (
           <span
@@ -725,7 +730,7 @@ export function PositionsPage({
                         className="text-xs text-text-muted lg:text-sm"
                         title={t("returnOnMargin") + ": " + t("returnFormula")}
                       >
-                        {marginReturn(p)}
+                        <Percent fraction={marginReturn(p)} signed />
                       </p>
                       {p.stale && (
                         <p className="text-[11px] text-warning lg:text-xs">

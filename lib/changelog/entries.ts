@@ -13,6 +13,34 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-26",
+    title: {
+      ru: "Гайд по подключению бирж и Gate Earn",
+      uk: "Гайд із підключення бірж і Gate Earn",
+      en: "Exchange connection guide and Gate Earn",
+    },
+    items: {
+      ru: [
+        "Новая страница «Как подключить»: где создать API-ключ на каждой бирже и какие права включить. Ссылка есть в форме подключения, в меню «Ещё» и на главной.",
+        "Gate: баланс Simple Earn входит в капитал и подписан «Earn» (нужно право Earn «только чтение» в ключе).",
+        "В позиции рядом со ставкой следующего funding показана ожидаемая сумма в долларах: получите вы или заплатите.",
+        "Суммы и проценты на странице позиций меняются плавно, а не скачком.",
+      ],
+      uk: [
+        "Нова сторінка «Як підключити»: де створити API-ключ на кожній біржі та які права ввімкнути. Посилання є у формі підключення, в меню «Ще» і на головній.",
+        "Gate: баланс Simple Earn входить у капітал і підписаний «Earn» (потрібне право Earn «лише читання» в ключі).",
+        "У позиції поруч зі ставкою наступного funding показана очікувана сума в доларах: отримаєте ви чи заплатите.",
+        "Суми й відсотки на сторінці позицій змінюються плавно, а не стрибком.",
+      ],
+      en: [
+        "New \"How to connect\" page: where to create an API key on each exchange and which permissions to enable. Linked from the connection form, the More menu and the home page.",
+        "Gate: the Simple Earn balance counts in your capital and is labelled Earn (the key needs the Earn read-only permission).",
+        "A position shows the expected next funding payment in dollars beside the rate: whether you receive or pay.",
+        "Amounts and percentages on the positions page change smoothly instead of jumping.",
+      ],
+    },
+  },
+  {
     date: "2026-10-25",
     title: {
       ru: "Депозиты и выводы бирж в последних транзакциях",
