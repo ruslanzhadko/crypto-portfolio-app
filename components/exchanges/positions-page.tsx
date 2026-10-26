@@ -67,12 +67,30 @@ function NextFunding({ p }: { p: PositionDto }) {
   const time = p.funding?.nextTime;
   const upcoming = time != null && time > now && now > 0;
   const minutes = upcoming ? Math.ceil((time! - now) / 60_000) : 0;
+  // A positive rate: longs pay shorts. The amount is estimated on the current position value.
+  const notional = Number(p.notionalUsd),
+    rate = Number(p.funding?.nextRate);
+  const payment =
+    upcoming &&
+    p.notionalUsd != null &&
+    p.funding?.nextRate != null &&
+    Number.isFinite(notional * rate)
+      ? (p.side === "long" ? -1 : 1) * notional * rate
+      : null;
   return (
     <>
       <dd title={t("nextFundingDescription")}>
         {upcoming && p.funding?.nextRate != null
           ? `${trimTrailing(trimTrailing((Number(p.funding.nextRate) * 100).toFixed(4), "0"), ".")}%`
           : "—"}
+        {payment != null && (
+          <span
+            className={`ml-1.5 ${payment > 0 ? "text-success" : payment < 0 ? "text-danger" : ""}`}
+            title={t("nextFundingAmount")}
+          >
+            <Money value={String(payment)} signed />
+          </span>
+        )}
       </dd>
       <p className="mt-0.5 text-[11px] text-text-muted lg:text-xs">
         {upcoming ? (

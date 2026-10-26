@@ -1,4 +1,5 @@
 interface BalanceLike {
+  assetId?: string;
   symbol: string;
   total: string;
   priceUsd: string | null;
@@ -31,6 +32,8 @@ export function exchangeBalanceRows<A extends AccountLike>(accounts: A[]) {
           account: a,
           cashTotal: b.total,
           showsEquity,
+          // Gate Simple Earn rows are stored beside spot with an `earn` asset id.
+          earn: b.assetId?.includes(":earn:") ?? false,
           total: showsEquity
             ? String(Number(a.equityUsd) / Number(b.priceUsd))
             : b.total,

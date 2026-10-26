@@ -1031,6 +1031,7 @@
     "sources": "Capital sources",
     "assets": "Assets",
     "kinds": {
+      "earn": "Earn",
       "spot": "Spot",
       "futures": "Futures",
       "unified": "Unified account"
@@ -1099,6 +1100,7 @@
     "breakEvenDescription": "For the remaining size: closes + funding − fees already incurred. Future closing fees and funding are excluded.",
     "nextFunding": "Next funding",
     "nextFundingDescription": "Current exchange estimate; rate may change before settlement. Positive rate: longs pay shorts.",
+    "nextFundingAmount": "Expected payment: + you receive, − you pay; on the current position value",
     "fundingIn": "in {hours}h {minutes}m",
     "fundingTimePending": "Awaiting settlement time update",
     "connectAsterApi": "Connect Aster API",

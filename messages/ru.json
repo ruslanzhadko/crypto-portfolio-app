@@ -1031,6 +1031,7 @@
     "sources": "Источники капитала",
     "assets": "Активы",
     "kinds": {
+      "earn": "Earn",
       "spot": "Спот",
       "futures": "Фьючерсы",
       "unified": "Единый счёт"
@@ -1099,6 +1100,7 @@
     "breakEvenDescription": "Для оставшегося объёма: закрытия + funding − уже уплаченные комиссии. Будущая комиссия закрытия и funding не включены.",
     "nextFunding": "Следующий funding",
     "nextFundingDescription": "Текущая оценка биржи; до расчёта ставка может измениться. Положительная ставка: Long платит Short.",
+    "nextFundingAmount": "Ожидаемая выплата: «+» вы получите, «−» заплатите; по текущей стоимости позиции",
     "fundingIn": "через {hours} ч {minutes} мин",
     "fundingTimePending": "Ожидаем обновления времени",
     "connectAsterApi": "Подключить API Aster",

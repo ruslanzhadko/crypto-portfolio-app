@@ -7,6 +7,44 @@ import { ExchangeTradeLink } from "./trade-link";
 import { useDisplayPreference, warningPreference } from "./display-preferences";
 import { ExchangeTokenLogo } from "./token-logo";
 
+const hasAmount = (value: string | null) =>
+  value !== null && Number(value) !== 0;
+
+/** Only the parts that carry information, in one wrapped line instead of a column of dashes. */
+function BalanceBreakdown({
+  row,
+}: {
+  row: {
+    free: string | null;
+    locked: string | null;
+    debt: string | null;
+    cashTotal: string;
+    showsEquity: boolean;
+    earn: boolean;
+  };
+}) {
+  const t = useTranslations("Exchanges");
+  const parts = [
+    row.showsEquity ? ["asterCashBalance", row.cashTotal] : null,
+    // Earn funds are all "locked" in the product; the row label already says so.
+    !row.earn && hasAmount(row.free) && hasAmount(row.locked)
+      ? ["available", row.free]
+      : null,
+    !row.earn && hasAmount(row.locked) ? ["locked", row.locked] : null,
+    hasAmount(row.debt) ? ["debt", row.debt] : null,
+  ].filter((part): part is [string, string] => part !== null);
+  if (!parts.length) return null;
+  return (
+    <p className="mt-1 flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[13px] text-text-muted">
+      {parts.map(([key, value]) => (
+        <span key={key} className="whitespace-nowrap">
+          {t(key as "available")}: <Quantity value={value} />
+        </span>
+      ))}
+    </p>
+  );
+}
+
 export function BalanceTable({
   accounts,
 }: {
@@ -101,15 +139,20 @@ export function BalanceTable({
                       <ExchangeTokenLogo symbol={b.symbol} />
                       <span className="min-w-0">
                         <span className="block truncate" title={b.symbol}>
-                          <ExchangeTradeLink exchange={b.account.exchange} symbol={b.symbol} kind={b.account.kind}>
+                          <ExchangeTradeLink
+                            exchange={b.account.exchange}
+                            symbol={b.symbol}
+                            kind={b.account.kind}
+                          >
                             {b.symbol}
                           </ExchangeTradeLink>
                         </span>
                         <span
                           className="mt-1 block truncate text-xs font-normal text-text-muted sm:hidden"
-                          title={`${b.account.label} · ${t(`kinds.${b.account.kind}`)}`}
+                          title={`${b.account.label} · ${t(`kinds.${b.earn ? "earn" : b.account.kind}`)}`}
                         >
-                          {b.account.label} · {t(`kinds.${b.account.kind}`)}
+                          {b.account.label} ·{" "}
+                          {t(`kinds.${b.earn ? "earn" : b.account.kind}`)}
                         </span>
                       </span>
                     </span>
@@ -119,7 +162,7 @@ export function BalanceTable({
                       {b.account.label}
                     </p>
                     <span className="text-xs text-text-muted">
-                      {t(`kinds.${b.account.kind}`)}
+                      {t(`kinds.${b.earn ? "earn" : b.account.kind}`)}
                     </span>
                     {b.showsEquity && (
                       <p className="text-xs text-text-muted">
@@ -132,26 +175,7 @@ export function BalanceTable({
                   </td>
                   <td className="px-2 py-2 text-right sm:px-3">
                     <Quantity value={b.total} />
-                    <details className="mt-1 text-xs text-text-muted break-words">
-                      <summary className="inline-block cursor-pointer">
-                        {t("details")}
-                      </summary>
-                      {b.showsEquity && (
-                        <p>
-                          {t("asterCashBalance")}:{" "}
-                          <Quantity value={b.cashTotal} />
-                        </p>
-                      )}
-                      <p>
-                        {t("available")}: <Quantity value={b.free} />
-                      </p>
-                      <p>
-                        {t("locked")}: <Quantity value={b.locked} />
-                      </p>
-                      <p>
-                        {t("debt")}: <Quantity value={b.debt} />
-                      </p>
-                    </details>
+                    <BalanceBreakdown row={b} />
                   </td>
                   <td className="px-2 py-2 text-right sm:px-3">
                     {b.usdValue === null ? (

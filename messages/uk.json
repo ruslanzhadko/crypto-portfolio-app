@@ -1031,6 +1031,7 @@
     "sources": "Джерела капіталу",
     "assets": "Активи",
     "kinds": {
+      "earn": "Earn",
       "spot": "Спот",
       "futures": "Ф’ючерси",
       "unified": "Єдиний рахунок"
@@ -1099,6 +1100,7 @@
     "breakEvenDescription": "Для залишкового обсягу: закриття + funding − вже сплачені комісії. Майбутні комісія закриття та funding не включені.",
     "nextFunding": "Наступний funding",
     "nextFundingDescription": "Поточна оцінка біржі; ставка може змінитися. Додатна ставка: Long платить Short.",
+    "nextFundingAmount": "Очікувана виплата: «+» ви отримаєте, «−» заплатите; за поточною вартістю позиції",
     "fundingIn": "через {hours} год {minutes} хв",
     "fundingTimePending": "Очікуємо оновлення часу",
     "connectAsterApi": "Підключити API Aster",
