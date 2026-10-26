@@ -12,6 +12,7 @@ import {
 } from "./types";
 import type { Request } from "./transport";
 import { CycleHistoryReader } from "./cycle-history";
+import { bingxTransfers } from "./transfers";
 
 export function bingxData(value: unknown): unknown {
   const envelope = record(value);
@@ -39,6 +40,9 @@ export class BingxAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  transfers(since: number) {
+    return bingxTransfers(this.request, bingxData, since);
+  }
   async verify() {
     const permissions = record(
       bingxData(

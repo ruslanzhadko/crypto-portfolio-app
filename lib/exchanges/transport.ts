@@ -8,6 +8,7 @@ export type Request = (
   api: string,
   params?: Record<string, unknown>,
   weight?: number,
+  method?: "GET" | "POST",
 ) => Promise<unknown>;
 export function createTransport(
   id: "binance" | "bybit" | "gate" | "okx" | "bingx" | "bitget",

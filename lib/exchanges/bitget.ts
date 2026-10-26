@@ -17,6 +17,7 @@ import {
   type SyncResult,
 } from "./types";
 import type { Request } from "./transport";
+import { bitgetTransfers } from "./transfers";
 
 // Bitget uses the same signed GET mechanism for Classic (v2) and UTA (v3).
 export function bitgetData(value: unknown): unknown {
@@ -60,6 +61,13 @@ export class BitgetAdapter implements ExchangeAdapter {
     params: Record<string, unknown> = {},
   ) {
     return bitgetData(await this.request(path, api, params));
+  }
+  transfers(since: number) {
+    return bitgetTransfers(
+      (path, api, params) => this.data(path, api, params),
+      this.mode === "unified",
+      since,
+    );
   }
   async verify() {
     this.mode = null;

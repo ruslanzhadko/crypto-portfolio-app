@@ -14,6 +14,7 @@ import {
   ExchangeError,
   safeError,
   type AccountBalance,
+  type AssetBalance,
   type ExchangeAdapter,
   type OpenPosition,
   type SyncResult,
@@ -52,6 +53,33 @@ export class GateAdapter implements ExchangeAdapter {
     this.verified = true;
     return { externalAccountId: String(detail.user_id) };
   }
+  /**
+   * Simple Earn (flexible) positions are held outside the spot wallet and need the key's Earn read
+   * right. They are an extra, so a key without it keeps the spot account as before.
+   */
+  private async earn(prices: Map<string, string>) {
+    try {
+      return records(await this.request("uni/lends", "private:earn"))
+        .map((r) => {
+          const symbol = textField(r.currency),
+            total = rd(r.current_amount ?? r.amount),
+            price = prices.get(symbol) ?? null;
+          return {
+            assetId: `gate:earn:${symbol}`,
+            symbol,
+            total,
+            free: null,
+            locked: total,
+            debt: null,
+            priceUsd: price,
+            usdValue: multiply(total, price),
+          };
+        })
+        .filter((b) => !new D(b.total).isZero());
+    } catch {
+      return [];
+    }
+  }
   private async spot(rates: Map<string, string>): Promise<AccountBalance> {
     const rows = records(await this.request("accounts", "private:spot"));
     const tickers = records(await this.request("tickers", "public:spot"));
@@ -67,7 +95,7 @@ export class GateAdapter implements ExchangeAdapter {
           if (price) prices.set(t.currency_pair.slice(0, -5), price);
         }
       }
-    const balances = rows
+    const balances: AssetBalance[] = rows
       .map((r) => {
         const symbol = textField(r.currency),
           free = rd(r.available),
@@ -87,6 +115,11 @@ export class GateAdapter implements ExchangeAdapter {
       })
       .filter((b) => !new D(b.total).isZero());
     const complete = balances.every((b) => b.usdValue != null);
+    const availableUsd = complete
+      ? sum(balances.map((b) => multiply(b.free, b.priceUsd)))
+      : null;
+    balances.push(...(await this.earn(prices)));
+    const allPriced = balances.every((b) => b.usdValue != null);
     return {
       accountKey: "spot",
       kind: "spot",
@@ -94,12 +127,10 @@ export class GateAdapter implements ExchangeAdapter {
       equityUsd: sum(
         balances.filter((b) => b.usdValue != null).map((b) => b.usdValue),
       ),
-      availableUsd: complete
-        ? sum(balances.map((b) => multiply(b.free, b.priceUsd)))
-        : null,
+      availableUsd,
       unrealizedPnlUsd: null,
-      complete,
-      errorCode: complete ? null : "UNPRICED_ASSETS",
+      complete: allPriced,
+      errorCode: allPriced ? null : "UNPRICED_ASSETS",
       balances,
       positions: [],
     };

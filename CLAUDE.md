@@ -32,4 +32,5 @@ docs, small fixes, anything the owner does not see as a product change.
   before recreating them; ask the owner to save logs by hand only when the script on the VM is older than that
   or a container is removed manually.
 - Keep documentation short and current; delete outdated sections instead of accumulating history.
+- No docs-only commits: leave doc edits uncommitted; they go out with the next code commit or fix.
 - Long-running processes must not poll PostgreSQL continuously (Neon billing).

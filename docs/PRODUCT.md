@@ -12,11 +12,11 @@ The primary user tracks a personal crypto portfolio and monitors market activity
 
 ## Product Purpose
 
-The product combines read-only multichain portfolio tracking, market data, alerts, and a curated Telegram-derived crypto feed in one authenticated dashboard.
+The product combines read-only multichain wallet tracking, read-only exchange accounts (balances, positions, deposits and withdrawals), market data, alerts, and a curated Telegram-derived crypto feed in one authenticated dashboard.
 
 ## Operating Context
 
-Users work in a responsive web dashboard. A continuously running Telegram user-session worker reads selected channels, stores normalized posts in PostgreSQL, and the web application reads that shared database.
+Users work in a responsive web dashboard. Long-running workers on a VM read exchange accounts with read-only keys, Telegram channels and prices, keep hot state in memory and write to PostgreSQL in batches; the web application reads that shared database.
 
 ## Capabilities and Constraints
 

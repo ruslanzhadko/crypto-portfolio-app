@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  asterTransfers,
   binanceTransfers,
+  bingxTransfers,
+  bitgetTransfers,
   bybitTransfers,
   gateTransfers,
   hyperliquidTransfers,
@@ -115,5 +118,50 @@ describe("exchange transfer history", () => {
       ["deposit", "1000", null, "0xh1"],
       ["withdrawal", "200", "1", "0xh3"],
     ]);
+  });
+});
+
+describe("Aster, BingX and Bitget transfer history", () => {
+  it("reads Aster deposits and withdrawals with a POST history and skips older rows", async () => {
+    const { request, calls } = mock({
+      "v3/aster/deposit-withdraw-history": [
+        { id: "1", type: "DEPOSIT", asset: "USDT", amount: "100", state: "SUCCESS", txHash: "0xabc", time: NOW - DAY, chainId: 56 },
+        { id: "2", type: "WITHDRAW", asset: "USDT", amount: "40", state: "PROCESSING", txHash: null, time: NOW - 2 * DAY, chainId: 42161 },
+        { id: "3", type: "DEPOSIT", asset: "USDT", amount: "5", state: "SUCCESS", txHash: "0xold", time: NOW - 400 * DAY, chainId: 1 },
+      ],
+    });
+    const rows = await asterTransfers(request, "v3/aster/deposit-withdraw-history", NOW - 365 * DAY);
+    expect(calls[0]).toMatchObject({ api: "fapiPrivate" });
+    expect(rows.map((r) => [r.direction, r.network, r.status, r.externalId])).toEqual([
+      ["deposit", "BSC", "completed", "1"],
+      ["withdrawal", "Arbitrum", "pending", "2"],
+    ]);
+  });
+
+  it("reads BingX history in the Binance shape", async () => {
+    const { request } = mock({
+      "capital/deposit/hisrec": { code: 0, data: [{ coin: "USDT", network: "BEP20", amount: "7", status: 1, txId: "0x1", insertTime: NOW - DAY }] },
+      "capital/withdraw/history": { code: 0, data: [{ id: "w1", coin: "ETH", network: "ETH", amount: "1", transactionFee: "0.01", status: 6, txId: "0x2", applyTime: "2026-10-20 10:00:00" }] },
+    });
+    const rows = await bingxTransfers(request, (r) => (r as { data: unknown }).data, NOW - 30 * DAY, NOW);
+    expect(rows.map((r) => [r.direction, r.status, r.fee])).toEqual([
+      ["deposit", "completed", null],
+      ["withdrawal", "completed", "0.01"],
+    ]);
+  });
+
+  it("reads Bitget classic records and splits a full page", async () => {
+    const full = Array.from({ length: 100 }, (_, i) => ({
+      orderId: `o${i}`, coin: "USDT", size: "1", status: "success", chain: "TRC20", cTime: String(NOW - DAY), tradeId: `t${i}`,
+    }));
+    let deposits = 0;
+    const data = async (path: string) => {
+      if (!path.includes("deposit")) return [];
+      const call = deposits++;
+      return call === 0 ? full : call === 1 ? full.slice(0, 3) : [];
+    };
+    const rows = await bitgetTransfers(data, false, NOW - 10 * DAY, NOW);
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toMatchObject({ direction: "deposit", status: "completed", network: "TRC20" });
   });
 });

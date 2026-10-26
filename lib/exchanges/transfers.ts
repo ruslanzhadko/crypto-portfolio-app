@@ -240,6 +240,130 @@ export async function gateTransfers(request: Request, since: number, now = Date.
   return result;
 }
 
+// ── Aster: POST /fapi/v3/aster/deposit-withdraw-history, the whole history in one answer ──
+const ASTER_CHAINS: Record<string, string> = {
+  "1": "ETH", "56": "BSC", "42161": "Arbitrum", "101": "Solana", "534352": "Scroll",
+};
+const ASTER_STATUS: Record<string, Transfer["status"]> = {
+  SUCCESS: "completed", FAILED: "failed", PROCESSING: "pending",
+};
+export async function asterTransfers(request: Request, path: string, since: number) {
+  const result: Transfer[] = [];
+  for (const row of records(await request(path, "fapiPrivate", {}, 5, "POST")) as Row[]) {
+    const occurredAt = time(row.time);
+    if (occurredAt.getTime() < since) continue;
+    const kind = String(row.type).toUpperCase();
+    if (kind !== "DEPOSIT" && kind !== "WITHDRAW") throw new ExchangeError("INVALID_RESPONSE");
+    const chain = text(row.chainId);
+    result.push({
+      direction: kind === "DEPOSIT" ? "deposit" : "withdrawal",
+      asset: required(row.asset),
+      network: chain === null ? null : (ASTER_CHAINS[chain] ?? `Chain ${chain}`),
+      amount: requiredDecimal(row.amount),
+      fee: null,
+      address: null,
+      txHash: text(row.txHash),
+      status: ASTER_STATUS[String(row.state).toUpperCase()] ?? "pending",
+      externalId: required(row.id ?? row.txHash),
+      occurredAt,
+    });
+  }
+  return result;
+}
+
+// ── BingX: /openApi/api/v3/capital/{deposit/hisrec, withdraw/history}, Binance-shaped, 90-day windows ──
+const BINGX_DEPOSIT: Record<string, Transfer["status"]> = { "0": "pending", "6": "pending", "1": "completed" };
+const BINGX_WITHDRAWAL: Record<string, Transfer["status"]> = {
+  "4": "pending", "5": "failed", "6": "completed",
+};
+export async function bingxTransfers(
+  request: Request,
+  unwrap: (response: unknown) => unknown,
+  since: number,
+  now = Date.now(),
+) {
+  const result: Transfer[] = [];
+  for (const [startTime, endTime] of windows(since, now, 90 * DAY)) {
+    for (const row of records(
+      unwrap(await request("capital/deposit/hisrec", "api:v3:private", { startTime, endTime, limit: 1000 }, 1)),
+    ) as Row[])
+      result.push({
+        direction: "deposit",
+        asset: required(row.coin),
+        network: text(row.network),
+        amount: requiredDecimal(row.amount),
+        fee: null,
+        address: text(row.address),
+        txHash: text(row.txId),
+        status: BINGX_DEPOSIT[String(row.status)] ?? "pending",
+        externalId: required(row.id ?? row.txId),
+        occurredAt: time(row.insertTime),
+      });
+    for (const row of records(
+      unwrap(await request("capital/withdraw/history", "api:v3:private", { startTime, endTime, limit: 1000 }, 1)),
+    ) as Row[])
+      result.push({
+        direction: "withdrawal",
+        asset: required(row.coin),
+        network: text(row.network),
+        amount: requiredDecimal(row.amount),
+        fee: fee(row.transactionFee),
+        address: text(row.address),
+        txHash: text(row.txId),
+        status: BINGX_WITHDRAWAL[String(row.status)] ?? "pending",
+        externalId: required(row.id ?? row.txId),
+        occurredAt: time(row.applyTime),
+      });
+  }
+  return result;
+}
+
+// ── Bitget: classic v2/spot/wallet/{deposit,withdrawal}-records (90 days) or UTA v3/account/... (30 days) ──
+const BITGET_PAGE = 100;
+const BITGET_STATUS: Record<string, Transfer["status"]> = { success: "completed", fail: "failed", failed: "failed" };
+export async function bitgetTransfers(
+  data: (path: string, api: string, params: Row) => Promise<unknown>,
+  uta: boolean,
+  since: number,
+  now = Date.now(),
+) {
+  const byId = new Map<string, Transfer>();
+  const api = uta ? "private:uta" : "private:spot";
+  const span = (uta ? 30 : 90) * DAY;
+  for (const direction of ["deposit", "withdrawal"] as const) {
+    const path = uta
+      ? `v3/account/${direction === "deposit" ? "deposit" : "withdrawal"}-records`
+      : `v2/spot/wallet/${direction === "deposit" ? "deposit" : "withdrawal"}-records`;
+    // A full page may hide older rows: split the range until every part fits one page.
+    const read = async (startTime: number, endTime: number, depth = 0): Promise<void> => {
+      const rows = records(await data(path, api, { startTime, endTime, limit: BITGET_PAGE })) as Row[];
+      if (rows.length >= BITGET_PAGE && endTime - startTime > 3_600_000 && depth < 12) {
+        const mid = Math.floor((startTime + endTime) / 2);
+        await read(startTime, mid, depth + 1);
+        await read(mid + 1, endTime, depth + 1);
+        return;
+      }
+      for (const row of rows) {
+        const id = required(row.orderId ?? row.recordId ?? row.tradeId);
+        byId.set(`${direction}:${id}`, {
+          direction,
+          asset: required(row.coin),
+          network: text(row.chain),
+          amount: requiredDecimal(row.size),
+          fee: direction === "withdrawal" ? fee(row.fee) : null,
+          address: text(row.toAddress),
+          txHash: text(row.tradeId ?? row.recordId),
+          status: BITGET_STATUS[String(row.status).toLowerCase()] ?? "pending",
+          externalId: id,
+          occurredAt: time(row.cTime ?? row.createdTime),
+        });
+      }
+    };
+    for (const [start, end] of windows(since, now, span)) await read(start, end);
+  }
+  return [...byId.values()];
+}
+
 // ── Hyperliquid: public ledger by address (bridge deposits and withdrawals of USDC) ──
 export async function hyperliquidTransfers(
   info: (body: Record<string, unknown>) => Promise<unknown>,

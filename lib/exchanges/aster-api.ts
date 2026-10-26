@@ -5,6 +5,7 @@ import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
 import { positive, textField, timestamp } from "./provider-utils";
 import { reserveRequest } from "./rate-budget";
 import { CycleHistoryReader } from "./cycle-history";
+import { asterTransfers } from "./transfers";
 import {
   ExchangeError,
   type Credentials,
@@ -21,6 +22,7 @@ const PRIVATE_PATHS = new Set([
   "v3/userTrades",
   "v3/income",
 ]);
+const TRANSFER_HISTORY_PATH = "v3/aster/deposit-withdraw-history";
 /** Agent responses can encode the saved IP list as text or an array. */
 export function assertAsterIpWhitelist(value: unknown) {
   let list: unknown = value;
@@ -75,10 +77,26 @@ export function createAsterTransport(user: string, credentials: Credentials) {
   )
     throw new ExchangeError("INVALID_KEY");
   client.verbose = false;
-  const request: Request = async (path, api, params = {}, weight = 1) => {
+  const request: Request = async (
+    path,
+    api,
+    params = {},
+    weight = 1,
+    method = "GET",
+  ) => {
+    // The only POST is the read-only deposit and withdrawal history.
     if (
-      !(api === "fapiPrivate" && PRIVATE_PATHS.has(path)) &&
-      !(api === "fapiPublic" && ["v3/premiumIndex", "v3/klines"].includes(path))
+      !(
+        api === "fapiPrivate" &&
+        (method === "POST"
+          ? path === TRANSFER_HISTORY_PATH
+          : PRIVATE_PATHS.has(path))
+      ) &&
+      !(
+        api === "fapiPublic" &&
+        method === "GET" &&
+        ["v3/premiumIndex", "v3/klines"].includes(path)
+      )
     )
       throw new ExchangeError("INVALID_RESPONSE");
     await reserveRequest("aster", weight);
@@ -86,7 +104,7 @@ export function createAsterTransport(user: string, credentials: Credentials) {
       return await client.request(
         path,
         api,
-        "GET",
+        method,
         api === "fapiPrivate"
           ? { ...params, user, signer: credentials.apiKey }
           : params,
@@ -147,6 +165,10 @@ export class AsterApiAdapter implements ExchangeAdapter {
     assertAsterIpWhitelist(agent.ipWhitelist);
     this.verified = true;
     return { externalAccountId: this.user.toLowerCase() };
+  }
+  async transfers(since: number) {
+    if (!this.verified) throw new ExchangeError("INVALID_KEY");
+    return asterTransfers(this.request, TRANSFER_HISTORY_PATH, since);
   }
   async fetch(): Promise<SyncResult> {
     if (!this.verified) throw new ExchangeError("INVALID_KEY");
