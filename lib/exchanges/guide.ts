@@ -5,6 +5,7 @@ type Text = Record<ChangelogLocale, string>;
 export interface ExchangeGuide {
   /** Exchange id, also the page anchor. */
   id: string;
+  name: string;
   /** Where the key is created and what to click, in order. */
   steps: Record<ChangelogLocale, string[]>;
   /** Permissions to enable (all read-only). */
@@ -20,6 +21,7 @@ export interface ExchangeGuide {
 export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   {
     id: "binance",
+    name: "Binance",
     steps: {
       ru: [
         "Откройте профиль → «Управление API» (API Management) и нажмите «Создать API».",
@@ -56,6 +58,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "bybit",
+    name: "Bybit",
     steps: {
       ru: [
         "Откройте профиль → «API» и нажмите «Создать новый ключ».",
@@ -89,6 +92,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "gate",
+    name: "Gate",
     steps: {
       ru: [
         "Откройте профиль → «Управление API» и нажмите «Создать API-ключ».",
@@ -125,6 +129,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "okx",
+    name: "OKX",
     steps: {
       ru: [
         "Откройте профиль → «API» и нажмите «Создать V5 API-ключ».",
@@ -154,6 +159,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "bingx",
+    name: "BingX",
     steps: {
       ru: [
         "Откройте профиль → «Управление API» и создайте ключ.",
@@ -183,6 +189,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "bitget",
+    name: "Bitget",
     steps: {
       ru: [
         "Откройте профиль → «API-ключи» и нажмите «Создать API-ключ», тип — системный.",
@@ -216,6 +223,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "hyperliquid",
+    name: "Hyperliquid",
     steps: {
       ru: [
         "Ключ не нужен: Hyperliquid публичный.",
@@ -238,6 +246,7 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
   },
   {
     id: "aster",
+    name: "Aster",
     steps: {
       ru: [
         "Без ключа: добавьте EVM-кошелёк и подключите Aster. Баланс и позиции видны, если приватность аккаунта выключена в Aster.",

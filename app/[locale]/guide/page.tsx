@@ -1,6 +1,6 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ContentShell } from "@/components/layout/content-shell";
-import { ExchangeLogo, exchangeName } from "@/components/exchanges/exchange-logo";
+import { ExchangeLogo } from "@/components/exchanges/exchange-logo";
 import { EXCHANGE_GUIDES } from "@/lib/exchanges/guide";
 import type { ChangelogLocale } from "@/lib/changelog/entries";
 
@@ -47,7 +47,7 @@ export default async function GuidePage({
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
             >
               <ExchangeLogo exchange={guide.id} size={16} />
-              {exchangeName(guide.id)}
+              {guide.name}
             </a>
           ))}
         </nav>
@@ -57,7 +57,7 @@ export default async function GuidePage({
             <section key={guide.id} id={guide.id} className="scroll-mt-24">
               <h2 className="flex items-center gap-2 text-lg font-semibold">
                 <ExchangeLogo exchange={guide.id} size={22} />
-                {exchangeName(guide.id)}
+                {guide.name}
               </h2>
               <h3 className="mt-3 text-sm font-medium">{t("stepsTitle")}</h3>
               <ol className="mt-1.5 list-decimal space-y-1.5 pl-5 text-sm leading-6 text-text-muted">
