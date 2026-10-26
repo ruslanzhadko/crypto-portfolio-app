@@ -67,6 +67,11 @@ export function Sidebar({ userRole, exchangesEnabled = false }: SidebarProps) {
       {/* One item per line, evenly spaced, so nothing wraps differently by language. */}
       <div className="space-y-1 border-t border-border p-4 text-xs text-text-muted">
         <p>© {new Date().getFullYear()} CryptoPortfolio</p>
+        <p>
+          <Link href="/guide" className="hover:text-text hover:underline">
+            {t("guide")}
+          </Link>
+        </p>
         <p className="flex items-center gap-1.5">
           <Link href="/changelog" className="hover:text-text hover:underline">
             {t("changelog")}

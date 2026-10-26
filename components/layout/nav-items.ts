@@ -9,6 +9,7 @@ import {
   Building2,
   Activity,
   Sparkles,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +46,12 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/changelog",
     labelKey: "changelog",
     icon: Sparkles,
+    hideInSidebar: true,
+  },
+  {
+    href: "/guide",
+    labelKey: "guide",
+    icon: BookOpen,
     hideInSidebar: true,
   },
   { href: "/admin", labelKey: "admin", icon: ShieldCheck, adminOnly: true },

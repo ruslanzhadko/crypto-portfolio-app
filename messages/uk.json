@@ -14,6 +14,7 @@
     "defaultUser": "Користувач",
     "adminBadge": "Admin",
     "changelog": "Що нового",
+    "guide": "Як підключити",
     "footerBy": "Автор",
     "exchanges": "Біржі",
     "positions": "Позиції",
@@ -820,6 +821,17 @@
     "pageTitle": "Що нового",
     "pageDescription": "Основні зміни: нові функції та важливі виправлення."
   },
+  "Guide": {
+    "pageTitle": "Як підключити біржу",
+    "pageDescription": "Де взяти API-ключ на кожній біржі, які права ввімкнути і що вводити на сайті.",
+    "rulesTitle": "Загальні правила",
+    "ruleReadOnly": "Потрібні лише права на читання. Торгівлю, виведення коштів і перекази не вмикайте: сайт не прийме такий ключ.",
+    "ruleIp": "Прив'яжіть ключ до IP із форми підключення на сайті (він показаний там же).",
+    "ruleSecret": "Secret показується один раз, на сайті він зберігається зашифрованим і повторно не відображається.",
+    "jump": "Біржі",
+    "stepsTitle": "Кроки",
+    "permissionsTitle": "Права"
+  },
   "Landing": {
     "navSignIn": "Увійти",
     "navGetStarted": "Почати",
@@ -885,7 +897,10 @@
     "footerRights": "Усі права захищені.",
     "marketRefresh": "CoinGecko · оновлення щохвилини",
     "marketUnavailable": "Оновлення цін тимчасово недоступне. Показані дані можуть бути застарілими.",
-    "moreNetworksSoon": "Більше мереж — попереду"
+    "moreNetworksSoon": "Більше мереж — попереду",
+    "guideTitle": "Підключіть біржу за пару хвилин",
+    "guideSubtitle": "Лише ключ на читання: без торгівлі та виведення коштів. Покрокова інструкція для кожної біржі: де створити ключ, які права ввімкнути.",
+    "guideCta": "Відкрити інструкцію"
   },
   "Exchanges": {
     "updatingPositions": "Оновлюємо позиції…",
@@ -899,7 +914,8 @@
     "ipNotConfigured": "Не налаштовано — зверніться до оператора",
     "supported": "Підтримуються Binance Spot і USDⓈ-M, Bybit Unified, Gate Classic (спот і USDT-фʼючерси), глобальний OKX (торговий рахунок, спот і лінійні USDT/USDC-фʼючерси), BingX (спот і безстрокові USDT-фʼючерси), Bitget Classic і Unified (спот і USDT/USDC-фʼючерси), основні perpetuals Hyperliquid. Earn, funding-рахунки, опціони, inverse і portfolio margin не включені.",
     "passphraseHint": "API Passphrase, заданий під час створення ключа OKX. Це не пароль акаунта. Підтримується глобальний OKX.",
-    "gatePermissionsHint": "Gate: класичний акаунт, права Spot, Futures, Account і Unified — лише читання; додай IP worker. Перевірка прав ключа потребує доступу до API основного акаунта.",
+    "gatePermissionsHint": "Gate: класичний акаунт (не Unified), тип API v4. Spot, Perpetual futures і Account — лише читання, з IP із форми. Якщо у вас є розділ Earn (Simple Earn), увімкніть ще Earn — лише читання, і він потрапить у баланс. Wallets — лише читання: дає депозити й виведення. За замовчуванням у Earn і Wallets стоїть «Читання і запис» — переключіть.",
+    "guideLink": "Покрокова інструкція з підключення",
     "bitgetPermissionsHint": "Bitget: потрібні API key, secret і Passphrase. Для Classic увімкни лише читання споту та фʼючерсів, для Unified — лише читання керування й торгівлі Unified. Додай IP worker. Режим визначається автоматично: Classic показує окремі баланси споту та USDT/USDC-фʼючерсів, Unified — один спільний капітал. Funding-рахунок, Earn та inverse-фʼючерси не включені.",
     "bingxPermissionsHint": "BingX: увімкни лише читання та додай IP worker. Торгівлю, виведення та перекази залиш вимкненими. Підтримуються спот і безстрокові USDT-фʼючерси.",
     "exchange": "Біржа",

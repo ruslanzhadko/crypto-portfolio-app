@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Link } from "@/i18n/navigation";
 import { ExchangeErrorNotice } from "./shared";
 import { exchangeAction } from "./use-exchange-data";
 import { useExchangeData } from "./use-exchange-data";
@@ -96,6 +97,13 @@ export function ConnectionForm({
               : "keyInstructions",
         )}
       </p>
+      <Link
+        href={`/guide#${exchange}`}
+        target="_blank"
+        className="inline-block text-sm text-primary hover:underline"
+      >
+        {t("guideLink")}
+      </Link>
       {!walletBased && (
         <p className="text-sm">
           {t("workerIp")}:{" "}

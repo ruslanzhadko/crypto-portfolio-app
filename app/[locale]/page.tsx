@@ -20,6 +20,7 @@ import {
   type LandingCoin,
 } from "@/lib/services/landing-market";
 import { LiveMarket } from "@/components/landing/live-market";
+import { ExchangeLogo } from "@/components/exchanges/exchange-logo";
 import { ALL_CHAINS } from "@/lib/utils/networks";
 import { LandingFaq } from "@/components/landing/landing-faq";
 import { LocaleSwitcher } from "@/components/common/locale-switcher";
@@ -335,6 +336,36 @@ export default async function LandingPage({
               </span>
             </div>
           </div>
+        </ScrollReveal>
+      </section>
+
+      {/* ── Exchange connection guide ── */}
+      <section className="container py-12 md:py-16">
+        <ScrollReveal>
+          <Link
+            href="/guide"
+            className="group mx-auto flex max-w-4xl flex-col gap-6 rounded-2xl bg-surface p-6 ring-1 ring-border transition-colors duration-300 hover:bg-surface-2/80 sm:p-8 md:flex-row md:items-center md:justify-between"
+          >
+            <div>
+              <div className="mb-4 flex items-center gap-2">
+                {["binance", "bybit", "gate", "okx", "bitget", "bingx"].map(
+                  (id) => (
+                    <ExchangeLogo key={id} exchange={id} size={28} />
+                  ),
+                )}
+              </div>
+              <h2 className="text-xl font-bold tracking-[-0.02em] md:text-2xl">
+                {t("guideTitle")}
+              </h2>
+              <p className="landing-copy mt-2 max-w-xl text-[15px] text-text-muted">
+                {t("guideSubtitle")}
+              </p>
+            </div>
+            <span className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-primary">
+              {t("guideCta")}
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+            </span>
+          </Link>
         </ScrollReveal>
       </section>
 

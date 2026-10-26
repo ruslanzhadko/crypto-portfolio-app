@@ -14,6 +14,7 @@
     "defaultUser": "User",
     "adminBadge": "Admin",
     "changelog": "What's new",
+    "guide": "How to connect",
     "footerBy": "By",
     "exchanges": "Exchanges",
     "positions": "Positions",
@@ -820,6 +821,17 @@
     "pageTitle": "What's new",
     "pageDescription": "Main changes: new features and important fixes."
   },
+  "Guide": {
+    "pageTitle": "How to connect an exchange",
+    "pageDescription": "Where to find the API key on each exchange, which permissions to enable and what to enter on the site.",
+    "rulesTitle": "General rules",
+    "ruleReadOnly": "Read permissions only. Do not enable trading, withdrawals or transfers: the site rejects such a key.",
+    "ruleIp": "Bind the key to the IP shown in the connection form on the site.",
+    "ruleSecret": "The Secret is shown once; the site stores it encrypted and never shows it again.",
+    "jump": "Exchanges",
+    "stepsTitle": "Steps",
+    "permissionsTitle": "Permissions"
+  },
   "Landing": {
     "navSignIn": "Sign in",
     "navGetStarted": "Get started",
@@ -885,7 +897,10 @@
     "footerRights": "All rights reserved.",
     "marketRefresh": "CoinGecko · refreshes every minute",
     "marketUnavailable": "Price updates are temporarily unavailable. Displayed data may be outdated.",
-    "moreNetworksSoon": "More networks to come"
+    "moreNetworksSoon": "More networks to come",
+    "guideTitle": "Connect an exchange in minutes",
+    "guideSubtitle": "A read-only key: no trading, no withdrawals. A step-by-step guide for each exchange: where to create the key and which permissions to enable.",
+    "guideCta": "Open the guide"
   },
   "Exchanges": {
     "updatingPositions": "Updating positions…",
@@ -899,7 +914,8 @@
     "ipNotConfigured": "Not configured — contact the operator",
     "supported": "Supported: Binance Spot and USDⓈ-M, Bybit Unified, Gate classic Spot and USDT perpetuals, global OKX trading account (spot and linear USDT/USDC perpetuals), BingX Spot and USDT perpetuals, Bitget Classic and Unified (spot and USDT/USDC futures), Hyperliquid core perpetuals. Earn, funding wallets, options, inverse and portfolio margin are excluded.",
     "passphraseHint": "API passphrase chosen when creating the OKX key, not your account password. Global OKX accounts only.",
-    "gatePermissionsHint": "Gate: classic account, Spot, Futures, Account and Unified permissions — read-only, with the worker IP allowlisted. Key permissions must be available via the main-account API.",
+    "gatePermissionsHint": "Gate: classic account (not Unified), API v4. Spot, Perpetual futures and Account: read-only, with the IP from the form. If you use Gate Earn (Simple Earn), also enable Earn, read-only, so it counts in the balance. Wallets, read-only, gives deposits and withdrawals. Earn and Wallets default to Read and write: switch them.",
+    "guideLink": "Step-by-step connection guide",
     "bitgetPermissionsHint": "Bitget: provide API key, secret and Passphrase. Use read-only Spot and Futures permissions for Classic, or read-only Unified account management and trade for UTA; allowlist the worker IP. The account mode is detected automatically. Classic keeps separate Spot and USDT/USDC futures balances; UTA uses one shared equity pool. Funding wallets, Earn and inverse futures are excluded.",
     "bingxPermissionsHint": "BingX: enable Read only and allowlist the worker IP. Leave trading, withdrawals and transfers disabled. Supports Spot and USDT perpetual futures.",
     "exchange": "Exchange",
