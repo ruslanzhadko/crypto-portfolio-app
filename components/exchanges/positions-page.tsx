@@ -80,9 +80,11 @@ function NextFunding({ p }: { p: PositionDto }) {
   return (
     <>
       <dd title={t("nextFundingDescription")}>
-        {upcoming && p.funding?.nextRate != null
-          ? `${trimTrailing(trimTrailing((Number(p.funding.nextRate) * 100).toFixed(4), "0"), ".")}%`
-          : "—"}
+        <span>
+          {upcoming && p.funding?.nextRate != null
+            ? `${trimTrailing(trimTrailing((Number(p.funding.nextRate) * 100).toFixed(4), "0"), ".")}%`
+            : "—"}
+        </span>
         {payment != null && (
           <span
             className={`ml-1.5 ${payment > 0 ? "text-success" : payment < 0 ? "text-danger" : ""}`}
