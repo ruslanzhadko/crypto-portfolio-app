@@ -6,6 +6,7 @@ import { Link } from '@/i18n/navigation';
 import { cn } from '@/lib/utils/cn';
 import { formatUsd } from '@/lib/utils/format';
 import { dailyChange } from '@/lib/portfolio/capital-summary';
+import { AnimatedNumber } from '@/components/common/animated-number';
 import { useCapitalSummary } from './use-capital-summary';
 
 /** Capital and open-position PnL in the header, visible from any page; opens the dashboard. */
@@ -47,17 +48,33 @@ export function CapitalPill({ className }: { className?: string }) {
       )}
     >
       <Wallet className="hidden h-4 w-4 shrink-0 text-text-muted sm:block" aria-hidden="true" />
-      <span className="font-semibold">{formatUsd(total, { compact: true })}</span>
+      <span className="font-semibold">
+        <AnimatedNumber value={total} format={(v) => formatUsd(v, { compact: true })} />
+      </span>
       {/* Daily change; on phones only when there is no position PnL to show. */}
-      {dayText && (
-        <span className={cn('font-medium', dayTone, showPnl && 'hidden sm:inline')}>{dayText}</span>
+      {dayText && day && (
+        <span className={cn('font-medium', dayTone, showPnl && 'hidden sm:inline')}>
+          {day.percent !== null ? (
+            <AnimatedNumber
+              value={day.percent}
+              format={(v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}%`}
+            />
+          ) : (
+            <AnimatedNumber
+              value={day.usd}
+              format={(v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatUsd(Math.abs(v), { compact: true })}`}
+            />
+          )}
+        </span>
       )}
       {showPnl && (
         <>
           <span className="h-3.5 w-px shrink-0 bg-border" aria-hidden="true" />
           <span className={cn('font-medium', tone)}>
-            {sign}
-            {formatUsd(Math.abs(pnl), { compact: true })}
+            <AnimatedNumber
+              value={pnl}
+              format={(v) => `${v > 0 ? '+' : v < 0 ? '−' : ''}${formatUsd(Math.abs(v), { compact: true })}`}
+            />
           </span>
           <span className="hidden text-xs text-text-muted lg:inline">
             {t('pillPositions', { count: summary.positions })}

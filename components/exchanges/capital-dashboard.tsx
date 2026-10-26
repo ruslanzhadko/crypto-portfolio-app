@@ -343,7 +343,9 @@ export function CapitalDashboard({
                   <dt className="text-text-muted">
                     {t("openPositions")}
                   </dt>
-                  <dd className="font-medium tabular-nums">{overview.positionCount}</dd>
+                  <dd className="font-medium tabular-nums">
+                    <Quantity value={String(overview.positionCount)} maximumFractionDigits={0} />
+                  </dd>
                 </div>
               </dl>
             </div>
