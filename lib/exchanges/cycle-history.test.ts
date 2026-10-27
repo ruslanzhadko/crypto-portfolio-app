@@ -366,7 +366,9 @@ describe("current cycle funding and fees", () => {
           code: 0,
           data: { fill_orders: [...f.fills.map(bare), foreignFill] },
         };
-      // Order 1 was placed long before: neither allOrders window lists it.
+      // Order 1 was placed long before: neither allOrders window lists it. An empty week is null.
+      if (path === "trade/allOrders" && Number(params.endTime) < opening)
+        return { code: 0, data: { orders: null } };
       if (path === "trade/allOrders")
         return {
           code: 0,

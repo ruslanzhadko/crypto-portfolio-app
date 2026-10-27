@@ -14,6 +14,7 @@ const WEEK = 7 * 86400_000;
 const LOOKBACK = 90 * 86400_000;
 /** Orders filled inside a window but placed before it that may be looked up one by one. */
 const MAX_ORDER_LOOKUPS = 20;
+const BUDGET_EXHAUSTED = "History budget exhausted";
 function time(value: unknown) {
   const n =
     typeof value === "string" && !/^\d+$/.test(value)
@@ -91,7 +92,7 @@ export class CycleHistoryReader {
     // Aster needs up to 26 weekly windows each for fills, commissions and funding.
     let budget = this.venue === "aster" ? 98 : 80;
     const get = async (path: string, params: Row = {}, weight = 1) => {
-      if (--budget < 0) throw new Error("History budget exhausted");
+      if (--budget < 0) throw new Error(BUDGET_EXHAUSTED);
       const response = await this.request(
         path,
         this.venue === "bingx" ? "swap:v2:private" : "fapiPrivate",
@@ -124,6 +125,8 @@ export class CycleHistoryReader {
     }[] = [];
     const otherTimes: number[] = [];
     const ids = new Set<string>();
+    // BingX: filled quantity per order across every window read so far.
+    const filled = new Map<string, InstanceType<typeof D>>();
     let since: number | null = null;
     for (let end = now; end >= earliest && since === null; ) {
       const start = Math.max(earliest, end - WEEK + 1);
@@ -135,7 +138,9 @@ export class CycleHistoryReader {
           startTs: start,
           endTs: end,
         });
-        batch = records(Array.isArray(data) ? data : record(data).fill_orders);
+        batch = records(
+          Array.isArray(data) ? data : (record(data).fill_orders ?? []),
+        );
         if (batch.length >= 1000)
           throw new Error("Truncated account fill history");
         // Reconcile fills with executed orders: some API revisions silently cap
@@ -149,7 +154,7 @@ export class CycleHistoryReader {
               limit: 1000,
             });
             const list = records(
-              Array.isArray(orders) ? orders : record(orders).orders,
+              Array.isArray(orders) ? orders : (record(orders).orders ?? []),
             );
             if (list.length >= 1000) throw new Error("Truncated order history");
             return list;
@@ -171,12 +176,16 @@ export class CycleHistoryReader {
           // Fills carry no symbol: an order not found under this symbol belongs to another market.
           const foreign = new Set<string>();
           for (const id of missing) {
-            const found = await get("trade/order", {
-              symbol: p.symbol,
-              orderId: id,
-            }).catch(() => null);
-            const order =
-              found == null ? null : record(record(found).order ?? found);
+            let order: Row | null = null;
+            try {
+              const found = record(
+                await get("trade/order", { symbol: p.symbol, orderId: id }),
+              );
+              order = record(found.order ?? found);
+            } catch (error) {
+              if (error instanceof Error && error.message === BUDGET_EXHAUSTED)
+                throw error;
+            }
             if (
               order &&
               String(order.orderId) === id &&
@@ -186,25 +195,24 @@ export class CycleHistoryReader {
             else foreign.add(id);
           }
           batch = batch.filter((r) => !foreign.has(String(r.orderId)));
-          const quantities = new Map<string, InstanceType<typeof D>>();
           for (const r of batch) {
             if (r.orderId == null)
               throw new Error("Missing fill order identity");
             const id = String(r.orderId);
-            quantities.set(
+            filled.set(
               id,
-              (quantities.get(id) ?? new D(0)).plus(rd(r.qty ?? r.volume)),
+              (filled.get(id) ?? new D(0)).plus(rd(r.qty ?? r.volume)),
             );
           }
           for (const r of list) {
             const qty = new D(rd(r.executedQty));
             if (
               !qty.isZero() &&
-              !qty.eq(quantities.get(String(r.orderId)) ?? new D(0))
+              !qty.eq(filled.get(String(r.orderId)) ?? new D(0))
             )
               throw new Error("Incomplete fills for executed order");
           }
-          if ([...quantities.keys()].some((id) => !byId.has(id)))
+          if (batch.some((r) => !byId.has(String(r.orderId))))
             throw new Error("Unresolved fill order");
           batch = batch.map((r) => {
             const order = byId.get(String(r.orderId));
@@ -365,7 +373,7 @@ export class CycleHistoryReader {
             const key = `${charge.asset}:${minute}`;
             let rate = rates.get(key);
             if (rate === undefined) {
-              if (--budget < 0) throw new Error("History budget exhausted");
+              if (--budget < 0) throw new Error(BUDGET_EXHAUSTED);
               const candles = await this.request(
                 "v3/klines",
                 "fapiPublic",
