@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExchangeData } from "./use-exchange-data";
+import { publishPositionTotals } from "@/components/layout/use-capital-summary";
 import { ExchangeErrorNotice, Money, Percent, Quantity } from "./shared";
 import type { ConnectionDto } from "./exchanges-page";
 import type { OpenPosition } from "@/lib/exchanges/types";
@@ -261,6 +262,18 @@ export function PositionsPage({
       unrealized: { value: string | null; known: number; total?: number };
     };
   }>(`/api/positions?${qs}`, 15_000, true);
+  // Unfiltered and fully priced, the page's totals are fresher than the header pill's: share them.
+  const unfiltered =
+    !compact && !connectionId && !exchange && !account && !searchCoin && !side && !pnlResult;
+  const unrealizedTotal = result.data?.summary?.unrealized;
+  useEffect(() => {
+    if (
+      unfiltered &&
+      unrealizedTotal?.value != null &&
+      unrealizedTotal.known === unrealizedTotal.total
+    )
+      publishPositionTotals(unrealizedTotal.value, unrealizedTotal.total ?? 0);
+  }, [unfiltered, unrealizedTotal]);
   const options = useExchangeData<{ connections: ConnectionDto[] }>(
     "/api/exchanges",
     60_000,

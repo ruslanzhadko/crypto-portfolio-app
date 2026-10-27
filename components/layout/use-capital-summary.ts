@@ -18,9 +18,30 @@ function notify() {
   for (const listener of listeners) listener();
 }
 
+// Fresher position totals from the positions page; they win over an older summary for a short while.
+let positionTotals: { pnlUsd: string; positions: number; at: number } | null = null;
+const POSITION_TOTALS_TTL_MS = 30_000;
+
+function withPositionTotals(summary: CapitalSummary): CapitalSummary {
+  if (!positionTotals || Date.now() - positionTotals.at > POSITION_TOTALS_TTL_MS) return summary;
+  const { pnlUsd, positions } = positionTotals;
+  return { ...summary, pnlUsd: positions > 0 ? pnlUsd : null, positions };
+}
+
 /** Called by pages that load the full overview anyway, so the pill matches them without a request. */
 export function publishCapitalSummary(summary: CapitalSummary) {
-  current = { summary, at: Date.now() };
+  current = { summary: withPositionTotals(summary), at: Date.now() };
+  notify();
+}
+
+/**
+ * The positions page refreshes positions every 15 seconds, more often than the pill: it passes its
+ * unrealized PnL and count so the pill shows the same numbers as the page.
+ */
+export function publishPositionTotals(pnlUsd: string, positions: number) {
+  positionTotals = { pnlUsd, positions, at: Date.now() };
+  if (!current) return;
+  current = { ...current, summary: withPositionTotals(current.summary) };
   notify();
 }
 
