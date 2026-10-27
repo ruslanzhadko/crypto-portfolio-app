@@ -13,6 +13,31 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-27",
+    title: {
+      ru: "Единый вид обзора для кошельков и бирж",
+      uk: "Єдиний вигляд огляду для гаманців і бірж",
+      en: "One overview layout for wallets and exchanges",
+    },
+    items: {
+      ru: [
+        "Вкладки «Всё», «Кошельки» и «Биржи» в обзоре устроены одинаково: транзакции слева, графики распределения и источники капитала справа.",
+        "Лидеры роста и падения и распределение активов теперь есть и для бирж. На вкладке «Биржи» график показывает распределение по биржам, на «Всё» — по сетям и биржам вместе.",
+        "«Настроить обзор» включает и выключает эти блоки на всех трёх вкладках.",
+      ],
+      uk: [
+        "Вкладки «Усе», «Гаманці» та «Біржі» в огляді влаштовані однаково: транзакції ліворуч, графіки розподілу та джерела капіталу праворуч.",
+        "Лідери зростання й падіння та розподіл активів тепер є й для бірж. На вкладці «Біржі» графік показує розподіл по біржах, на «Усе» — по мережах і біржах разом.",
+        "«Налаштувати огляд» вмикає й вимикає ці блоки на всіх трьох вкладках.",
+      ],
+      en: [
+        "The All, Wallets and Exchanges tabs of the overview share one layout: transactions on the left, allocation charts and capital sources on the right.",
+        "Top gainers and losers and asset allocation now cover exchanges too. The Exchanges tab shows allocation by exchange; All shows networks and exchanges together.",
+        "Customize overview turns these blocks on and off on all three tabs.",
+      ],
+    },
+  },
+  {
     date: "2026-10-26",
     title: {
       ru: "Гайд по подключению бирж и Gate Earn",
