@@ -426,6 +426,21 @@ describe("current cycle funding and fees", () => {
       f.request.mock.calls.filter(([path]) => path === "trade/order"),
     ).toHaveLength(2);
   });
+  it("treats an empty BingX income page (data: null) as no funding", async () => {
+    const f = fixture(),
+      original = f.request.getMockImplementation()!;
+    f.request.mockImplementation(async (path, api, params = {}) =>
+      path === "user/income"
+        ? { code: 0, data: null }
+        : original(path, api, params),
+    );
+    await f.reader.enrich([f.p]);
+    expect(f.p.funding).toMatchObject({
+      status: "complete",
+      amount: "0",
+      realizedPnl: "50",
+    });
+  });
   it("reads legacy BingX realized cashflow from income when fills omit it", async () => {
     const f = fixture(),
       original = f.request.getMockImplementation()!;

@@ -106,7 +106,8 @@ export class CycleHistoryReader {
       if (this.venue !== "bingx") return response;
       const envelope = record(response);
       if (String(envelope.code) !== "0") throw new Error("History unavailable");
-      return envelope.data;
+      // An empty page is `data: null`; an endpoint that expects an object still rejects a list.
+      return envelope.data ?? [];
     };
     // Split isolated positions cannot be attributed using symbol-only history.
     if (this.venue === "bingx") {
