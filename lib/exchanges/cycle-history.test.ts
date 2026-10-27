@@ -271,11 +271,26 @@ describe("current cycle funding and fees", () => {
       original = truncated.request.getMockImplementation()!;
     truncated.request.mockImplementation(async (path, api, params) =>
       path.endsWith("allOrders")
-        ? { code: 0, data: [{ orderId: "1", executedQty: "3" }] }
+        ? {
+            code: 0,
+            // Both orders are known, but order 1 executed more than its fills show.
+            data: truncated.fills.map((r) => ({
+              orderId: r.orderId,
+              symbol: r.symbol,
+              side: r.side,
+              positionSide: r.positionSide,
+              executedQty: r.orderId === "1" ? "3" : r.qty,
+            })),
+          }
         : original(path, api, params),
     );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     await truncated.reader.enrich([truncated.p]);
     expect(truncated.p.funding?.amount).toBeNull();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("Incomplete fills for executed order"),
+    );
+    warn.mockRestore();
   });
   it("does not fabricate funding for concurrent hedge legs, but keeps attributable fees", async () => {
     const f = fixture();

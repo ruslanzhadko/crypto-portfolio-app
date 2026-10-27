@@ -14,13 +14,27 @@ import { assertBinanceReadOnly, assertBybitReadOnly } from "./permissions";
 import type { Request } from "./transport";
 import { binanceTransfers, bybitTransfers } from "./transfers";
 
+function kindOf(value: unknown) {
+  return value === null
+    ? "null"
+    : Array.isArray(value)
+      ? "array"
+      : typeof value;
+}
 export function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new ExchangeError("INVALID_RESPONSE");
+    throw new ExchangeError(
+      "INVALID_RESPONSE",
+      `expected object, got ${kindOf(value)}`,
+    );
   return value as Record<string, unknown>;
 }
 export function records(value: unknown): Record<string, unknown>[] {
-  if (!Array.isArray(value)) throw new ExchangeError("INVALID_RESPONSE");
+  if (!Array.isArray(value))
+    throw new ExchangeError(
+      "INVALID_RESPONSE",
+      `expected list, got ${kindOf(value)}`,
+    );
   return value.map(record);
 }
 function str(value: unknown): string {

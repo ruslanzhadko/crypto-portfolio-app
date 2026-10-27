@@ -7,7 +7,7 @@ import {
   type FundingSummary,
 } from "./funding";
 import type { Request } from "./transport";
-import { errorDiagnostics, type OpenPosition } from "./types";
+import { ExchangeError, errorDiagnostics, type OpenPosition } from "./types";
 
 type Row = Record<string, unknown>;
 const WEEK = 7 * 86400_000;
@@ -28,6 +28,8 @@ function time(value: unknown) {
 /** Bounded current-cycle accounting. Unknown/truncated history never means zero. */
 export class CycleHistoryReader {
   private cache = new Map<string, FundingSummary>();
+  /** Last request or parse step of a history read, for the log when a response has an odd shape. */
+  private step = "";
   constructor(
     private venue: "bingx" | "aster",
     private request: Request,
@@ -52,10 +54,11 @@ export class CycleHistoryReader {
             summary = await this.read(p, positions);
           } catch (error) {
             // Own checks throw plain Errors with fixed texts; provider errors show class and code only.
-            const reason =
+            let reason =
               error instanceof Error && error.name === "Error"
                 ? error.message
                 : errorDiagnostics(error);
+            if (error instanceof ExchangeError) reason += ` after ${this.step}`;
             console.warn(
               `[cycle-history] ${this.venue} ${p.symbol} unavailable: ${reason}`,
             );
@@ -93,6 +96,7 @@ export class CycleHistoryReader {
     let budget = this.venue === "aster" ? 98 : 80;
     const get = async (path: string, params: Row = {}, weight = 1) => {
       if (--budget < 0) throw new Error(BUDGET_EXHAUSTED);
+      this.step = path;
       const response = await this.request(
         path,
         this.venue === "bingx" ? "swap:v2:private" : "fapiPrivate",
@@ -125,8 +129,11 @@ export class CycleHistoryReader {
     }[] = [];
     const otherTimes: number[] = [];
     const ids = new Set<string>();
-    // BingX: filled quantity per order across every window read so far.
+    // BingX: filled quantity and first fill time per order across every window read, and the
+    // executed quantities of this market's listed orders.
     const filled = new Map<string, InstanceType<typeof D>>();
+    const firstFill = new Map<string, number>();
+    const executed = new Map<string, string>();
     let since: number | null = null;
     for (let end = now; end >= earliest && since === null; ) {
       const start = Math.max(earliest, end - WEEK + 1);
@@ -199,19 +206,19 @@ export class CycleHistoryReader {
             if (r.orderId == null)
               throw new Error("Missing fill order identity");
             const id = String(r.orderId);
+            this.step = "fill quantity";
             filled.set(
               id,
               (filled.get(id) ?? new D(0)).plus(rd(r.qty ?? r.volume)),
             );
+            const at = time(r.time ?? r.tradeTime ?? r.filledTime);
+            firstFill.set(id, Math.min(firstFill.get(id) ?? at, at));
           }
-          for (const r of list) {
-            const qty = new D(rd(r.executedQty));
-            if (
-              !qty.isZero() &&
-              !qty.eq(filled.get(String(r.orderId)) ?? new D(0))
-            )
-              throw new Error("Incomplete fills for executed order");
-          }
+          // Checked once every window is read: an order listed here can have fills in older weeks.
+          this.step = "order executedQty";
+          for (const r of list)
+            if (r.symbol === p.symbol)
+              executed.set(String(r.orderId), rd(r.executedQty));
           if (batch.some((r) => !byId.has(String(r.orderId))))
             throw new Error("Unresolved fill order");
           batch = batch.map((r) => {
@@ -274,6 +281,13 @@ export class CycleHistoryReader {
       end = start - 1;
     }
     if (since === null) throw new Error("Opening outside history");
+    // A list capped without a cursor shows up as fewer fills than the order executed. An order that
+    // also filled before this position opened belongs partly to an earlier cycle and is skipped.
+    for (const [id, qty] of executed) {
+      if ((firstFill.get(id) ?? since) < since || new D(qty).isZero()) continue;
+      if (!new D(qty).eq(filled.get(id) ?? new D(0)))
+        throw new Error("Incomplete fills for executed order");
+    }
     const cycle = trades.filter((r) => r.time >= since!);
     const foreignFees = cycle.some(
       (r) => !new D(r.fee).isZero() && r.feeAsset !== p.settle,

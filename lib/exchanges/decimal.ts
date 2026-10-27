@@ -20,7 +20,11 @@ export function decimal(value: unknown): string | null {
 }
 export function requiredDecimal(value: unknown): string {
   const result = decimal(value);
-  if (result === null) throw new ExchangeError("INVALID_RESPONSE");
+  if (result === null)
+    throw new ExchangeError(
+      "INVALID_RESPONSE",
+      `expected number, got ${value === null ? "null" : typeof value}${typeof value === "string" ? ` of length ${value.length}` : ""}`,
+    );
   return result;
 }
 export function sum(values: (string | null)[]): string {
