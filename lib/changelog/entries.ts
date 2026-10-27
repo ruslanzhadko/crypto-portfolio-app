@@ -15,6 +15,25 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-27",
     title: {
+      ru: "BingX снова подключается",
+      uk: "BingX знову підключається",
+      en: "BingX connects again",
+    },
+    items: {
+      ru: [
+        "Ключи BingX больше не застревают на «Биржа временно недоступна»: проверка прав понимает формат, в котором их сейчас отдаёт BingX.",
+      ],
+      uk: [
+        "Ключі BingX більше не зависають на «Біржа тимчасово недоступна»: перевірка прав розуміє формат, у якому їх зараз віддає BingX.",
+      ],
+      en: [
+        "BingX keys no longer get stuck on “The exchange is temporarily unavailable”: the permission check understands the format BingX now returns.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-27",
+    title: {
       ru: "Уведомления по позициям на биржах",
       uk: "Сповіщення по позиціях на біржах",
       en: "Notifications for exchange positions",

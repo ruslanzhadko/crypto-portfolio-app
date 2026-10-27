@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { BingxAdapter, bingxData } from "./bingx";
+import { assertBingxReadOnly, BingxAdapter, bingxData } from "./bingx";
 import { errorDiagnostics } from "./types";
 import { bingx } from "ccxt";
 const key = {
@@ -87,7 +87,12 @@ describe("BingX spot and perpetuals", () => {
       ],
     ] as const) {
       // CCXT types `api` as a string, but its BingX signer receives the path segments.
-      const signed = client.sign(path, [...api] as unknown as string, "GET", {});
+      const signed = client.sign(
+        path,
+        [...api] as unknown as string,
+        "GET",
+        {},
+      );
       expect(signed.url).toContain(suffix + "?");
       expect(signed.url).toContain("signature=");
       expect(signed.headers?.["X-BX-APIKEY"]).toBe("fixture-key");
@@ -195,18 +200,60 @@ describe("BingX spot and perpetuals", () => {
   });
 });
 
+describe("BingX key permissions as keys report them", () => {
+  const real = {
+    apiKey: "masked",
+    permissions: [2],
+    ipAddresses: ["203.0.113.10"],
+    note: "Algo",
+  };
+  it("accepts a read-only key with an IP whitelist", () => {
+    expect(() => assertBingxReadOnly(real)).not.toThrow();
+    expect(() =>
+      assertBingxReadOnly({ ...real, permissions: ["2"] }),
+    ).not.toThrow();
+  });
+  it("rejects trading, transfer or withdrawal rights, a missing read right and no whitelist", () => {
+    for (const permissions of [[2, 1], [2, 3], [2, 4], [2, 5], [2, 7], [1], []])
+      expect(() => assertBingxReadOnly({ ...real, permissions })).toThrow(
+        "UNSAFE_KEY",
+      );
+    expect(() => assertBingxReadOnly({ ...real, ipAddresses: [] })).toThrow(
+      "IP_RESTRICTED",
+    );
+    expect(() =>
+      assertBingxReadOnly({ ...real, ipAddresses: undefined }),
+    ).toThrow("IP_RESTRICTED");
+  });
+  it("verifies an adapter whose key answers in this format", async () => {
+    const request = vi.fn(async (path: string) =>
+      path === "account/apiPermissions"
+        ? real
+        : { code: 0, data: { uid: "123456789" } },
+    );
+    const adapter = new BingxAdapter(request, async () => new Map());
+    expect(await adapter.verify()).toEqual({ externalAccountId: "123456789" });
+  });
+});
+
 describe("errorDiagnostics", () => {
   it("keeps the class and numeric code but never the provider message", () => {
-    const error = new Error('bingx {"code":100421,"msg":"timestamp https://signed?url"}');
+    const error = new Error(
+      'bingx {"code":100421,"msg":"timestamp https://signed?url"}',
+    );
     error.name = "InvalidNonce";
     expect(errorDiagnostics(error)).toBe("InvalidNonce code 100421");
-    expect(errorDiagnostics(new TypeError("fetch failed https://x"))).toBe("TypeError");
+    expect(errorDiagnostics(new TypeError("fetch failed https://x"))).toBe(
+      "TypeError",
+    );
     let thrown: unknown;
     try {
       bingxData({ msg: "secret text", data: {} }, "uid");
     } catch (e) {
       thrown = e;
     }
-    expect(errorDiagnostics(thrown)).toBe("ExchangeError [uid code undefined fields msg,data]");
+    expect(errorDiagnostics(thrown)).toBe(
+      "ExchangeError [uid code undefined fields msg,data]",
+    );
   });
 });

@@ -32,6 +32,35 @@ export function bingxData(value: unknown, endpoint = "?"): unknown {
   return envelope.data;
 }
 
+/** BingX key permission codes: 1 spot, 2 read, 3 perpetuals, 4 universal transfer, 5 withdraw, 7 internal transfer. */
+const READ_PERMISSION = "2";
+
+/**
+ * Accepts only a read-only key bound to an IP whitelist. Keys answer with a bare
+ * `{ apiKey, permissions: number[], ipAddresses, note }`; the documented Binance-style flags
+ * inside the usual envelope are still understood.
+ */
+export function assertBingxReadOnly(value: unknown) {
+  const body = record(value);
+  if (!Array.isArray(body.permissions)) {
+    assertBinanceReadOnly(record(bingxData(value, "account/apiPermissions")));
+    return;
+  }
+  const codes = body.permissions.map(String);
+  if (
+    !codes.includes(READ_PERMISSION) ||
+    codes.some((code) => code !== READ_PERMISSION)
+  )
+    throw new ExchangeError(
+      "UNSAFE_KEY",
+      `account/apiPermissions codes ${codes.join(",")}`,
+    );
+  const ips = Array.isArray(body.ipAddresses)
+    ? body.ipAddresses.filter((ip) => typeof ip === "string" && ip.trim())
+    : [];
+  if (!ips.length) throw new ExchangeError("IP_RESTRICTED");
+}
+
 /** Spot and USDT perpetuals use separate equity pools. All requests are GET. */
 export class BingxAdapter implements ExchangeAdapter {
   private verified = false;
@@ -47,14 +76,9 @@ export class BingxAdapter implements ExchangeAdapter {
     return bingxTransfers(this.request, bingxData, since);
   }
   async verify() {
-    const permissions = record(
-      bingxData(
-        await this.request("account/apiPermissions", "account:v1:private"),
-        "account/apiPermissions",
-      ),
+    assertBingxReadOnly(
+      await this.request("account/apiPermissions", "account:v1:private"),
     );
-    // BingX documents the same read/trade/withdraw permission flags as Binance.
-    assertBinanceReadOnly(permissions);
     const identity = record(
       bingxData(await this.request("uid", "account:v1:private"), "uid"),
     );
