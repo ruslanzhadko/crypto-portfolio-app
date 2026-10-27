@@ -27,6 +27,8 @@ model User {
   telegramUserId String?   @unique
   telegramBotAccess Boolean @default(false)
   telegramNotificationsEnabled Boolean @default(true)
+  /// Position notification settings (lib/positions/alert-settings.ts); null = all off.
+  positionAlerts Json?
   sessionVersion Int @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -255,6 +257,10 @@ model NotificationLog {
   price        Float
   status       String   @default("sent")
   sentAt       DateTime @default(now())
+  /// Position alerts: "opened", "closed", "liquidation", "pnlSign"; null for price triggers.
+  kind         String?
+  /// Position alert data for the log (exchange, side, PnL, distance).
+  details      Json?
 
   user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   trigger PriceTrigger? @relation(fields: [triggerId], references: [id])

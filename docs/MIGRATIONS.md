@@ -35,7 +35,7 @@
 | Место | Что там | Кто читает |
 | --- | --- | --- |
 | Vercel → Environment Variables | БД (`DATABASE_URL`, `DIRECT_URL`), авторизация, API-ключи провайдеров, бот Telegram, `CRON_SECRET`, биржевые `EXCHANGE*`. Полная таблица — INFRASTRUCTURE.md §6a | Сайт и API |
-| VM: `~/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko | Контейнер `cryptoportfolio-worker-production` |
+| VM: `~/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko, `TELEGRAM_BOT_TOKEN` (уведомления по позициям) | Контейнер `cryptoportfolio-worker-production` |
 | VM: `/etc/cryptoportfolio-worker-deploy.conf` (root, 600) | `branch=main`, state `/var/lib/cryptoportfolio-worker-production-deploy`, env-файл, имя контейнера | Root-скрипт деплоя |
 | VM: `~/.config/cryptoportfolio/telegram-feed.env` (600) | `DATABASE_URL`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET` (значения без кавычек) | Контейнер `cryptoportfolio-listener-production` |
 | VM: `~/.config/cryptoportfolio/price-triggers.env` (600) | `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `COINGECKO_API_KEY` (и `COINGECKO_BASE_URL`, если есть), `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET`, `CRON_SECRET` (как в Vercel) | Контейнер `cryptoportfolio-triggers-production` |
@@ -132,6 +132,15 @@ PostgreSQL, число строк всех 27 таблиц совпало).
 Только добавление (`prisma/transfers-from.sql`): `ExchangeConnection.transfersFrom` — докуда прочитана история.
 Порядок как в §4b, колонка добавлена до пуша в `main` (worker читает подключение целиком). После деплоя каждое
 подключение один раз читает переводы за 365 дней; если биржа отказывает, — за 90 дней (`lib/exchanges/transfer-store.ts`).
+
+## 4d. Уведомления по позициям — **не применена**
+
+Только добавление (`prisma/position-alerts.sql`): `User.positionAlerts` (JSON настроек) и `NotificationLog.kind`,
+`NotificationLog.details`. Применить **до** пуша в `main`: сайт и worker читают эти колонки. Порядок как в §4b:
+резервная копия → SQL → `prisma migrate diff --exit-code` = 0.
+
+Worker на VM отправляет сообщения сам: в `exchange-production.env` нужен `TELEGRAM_BOT_TOKEN` (тот же, что в
+`price-triggers.env`), затем пересоздать контейнер. Без него события пишутся только в журнал на сайте.
 
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { ArrowDownRight, ArrowUpRight, Bell, Target } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Bell, CircleDot, CircleOff, Target, TriangleAlert } from 'lucide-react';
 import type { NotificationLog as NotificationLogModel, TriggerType, TriggerDirection } from '@prisma/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/common/empty-state';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import type { PositionLogDetails } from '@/lib/positions/delivery';
+import { exchangeName } from '@/components/exchanges/exchange-logo';
 
 type LogWithTrigger = Omit<NotificationLogModel, 'sentAt'> & {
   sentAt: string;
@@ -163,6 +165,7 @@ function LogRow({
   relative: string;
 }) {
   const t = useTranslations('Alerts');
+  if (log.kind) return <PositionLogRow log={log} isNew={isNew} time={time} relative={relative} />;
   const isTarget = log.trigger?.triggerType === 'PRICE_TARGET';
   const up = isTarget ? log.trigger?.direction !== 'DOWN' : log.deltaPercent > 0;
   const minutes = log.trigger?.interval;
@@ -232,6 +235,85 @@ function LogRow({
 
       <div className="text-right">
         {!isTarget && <p className={cn('text-base font-semibold tabular-nums sm:hidden', tone)}>{change}</p>}
+        <p className="text-sm tabular-nums text-text-muted sm:text-base sm:text-text" title={relative}>
+          {time}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** A position event (POSITION_ALERTS.md): open, close, liquidation distance or PnL sign. */
+function PositionLogRow({
+  log,
+  isNew,
+  time,
+  relative,
+}: {
+  log: LogWithTrigger;
+  isNew: boolean;
+  time: string;
+  relative: string;
+}) {
+  const t = useTranslations('Alerts');
+  const tp = useTranslations('PositionAlerts.log');
+  const d = (log.details ?? {}) as Partial<PositionLogDetails>;
+  const signedUsd = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatUsd(Math.abs(value))}`;
+  const kind = log.kind ?? '';
+  const positive = kind === 'pnlSign' ? d.positive === true : kind === 'closed' ? (d.pnlUsd ?? 0) >= 0 : null;
+  const tone =
+    kind === 'liquidation' ? 'text-warning' : positive === null ? 'text-primary' : positive ? 'text-success' : 'text-danger';
+  const Icon =
+    kind === 'liquidation' ? TriangleAlert : kind === 'closed' ? CircleOff : kind === 'opened' ? CircleDot : positive ? ArrowUpRight : ArrowDownRight;
+  const event =
+    kind === 'pnlSign' ? tp(d.positive ? 'pnlPlus' : 'pnlMinus') : ['opened', 'closed', 'liquidation'].includes(kind) ? tp(kind) : kind;
+  const detail =
+    kind === 'liquidation' && d.distancePercent != null
+      ? tp('distance', { value: d.distancePercent.toFixed(1) })
+      : d.pnlUsd != null
+        ? tp(d.approximate ? 'pnlApprox' : 'pnl', { value: signedUsd(d.pnlUsd) })
+        : null;
+  const side = d.side ? `${d.side === 'long' ? 'LONG' : 'SHORT'}${d.leverage ? ` ×${Number(d.leverage)}` : ''}` : null;
+  const where = [d.label ?? (d.exchange ? exchangeName(d.exchange) : null), side].filter(Boolean).join(' · ');
+  const size = d.sizeUsd != null && Number.isFinite(Number(d.sizeUsd)) ? formatUsd(Number(d.sizeUsd)) : null;
+
+  return (
+    <div
+      className={cn(
+        'grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:grid-cols-[auto_minmax(8rem,1fr)_minmax(10rem,1.4fr)_minmax(6rem,0.8fr)_5rem] sm:gap-4 sm:px-6',
+        isNew && 'bg-primary/5',
+      )}
+    >
+      <span className={cn('flex h-9 w-9 items-center justify-center rounded-full bg-surface-2', tone)}>
+        <Icon className="h-4 w-4" />
+      </span>
+
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 text-base font-semibold leading-tight">
+          {log.tokenSymbol}
+          {isNew && (
+            <span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] font-medium uppercase text-primary">
+              {t('logNew')}
+            </span>
+          )}
+        </p>
+        <p className="truncate text-sm text-text-muted sm:hidden">{[event, detail].filter(Boolean).join(' · ')}</p>
+        <p className="hidden truncate text-sm text-text-muted sm:block">{where}</p>
+        {log.status === 'failed' && (
+          <p className="truncate text-xs text-danger" title={log.message}>
+            {t('logNotDelivered')}
+          </p>
+        )}
+      </div>
+
+      <div className="hidden min-w-0 sm:block">
+        <p className={cn('truncate text-base font-semibold', tone)}>{event}</p>
+        {detail && <p className="truncate text-sm text-text-muted">{detail}</p>}
+      </div>
+
+      <p className="hidden text-base tabular-nums sm:block">{size ?? ''}</p>
+
+      <div className="text-right">
         <p className="text-sm tabular-nums text-text-muted sm:text-base sm:text-text" title={relative}>
           {time}
         </p>

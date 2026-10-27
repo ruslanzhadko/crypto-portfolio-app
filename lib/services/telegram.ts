@@ -92,11 +92,11 @@ function formatPrice(price: number): string {
   return price.toFixed(8);
 }
 
-function formatKyivTime(date = new Date()): string {
+export function formatKyivTime(date = new Date()): string {
   return date.toLocaleString('ru-RU', { timeZone: 'Europe/Kyiv' });
 }
 
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -141,6 +141,11 @@ export async function sendPriceTargetAlert(
   payload: PriceTargetPayload,
 ): Promise<void> {
   const text = formatPriceTargetAlert(payload);
+  await sendMessage({ chatId, text, parseMode: 'HTML' });
+}
+
+/** Sends a ready HTML message (position alerts format their own text). */
+export async function sendTelegramHtml(chatId: string, text: string): Promise<void> {
   await sendMessage({ chatId, text, parseMode: 'HTML' });
 }
 

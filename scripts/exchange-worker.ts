@@ -9,8 +9,11 @@ import {
   newWorkerId,
   pullForward,
   runOneJob,
+  setPositionObserver,
   workerHeartbeat,
 } from "../lib/exchanges/worker";
+import { PositionAlertService } from "../lib/positions/alert-service";
+import { createAlertSignalClient } from "../lib/alerts/signal-client";
 import { sleep } from "../lib/exchanges/transport";
 import { prepareWalletConnections } from "../lib/exchanges/wallet-schema";
 import { createActivityClient } from "../lib/exchanges/activity-client";
@@ -58,6 +61,24 @@ async function main() {
     }
   };
   const isActive = (userId: string) => !activity || activity.isActive(userId);
+  // Position alerts: background polling for users who turned them on (POSITION_ALERTS.md).
+  const alerts = new PositionAlertService();
+  const alertSignal = createAlertSignalClient();
+  setPositionObserver((c, result, at) => alerts.observe(c, result, at));
+  if (!process.env.TELEGRAM_BOT_TOKEN)
+    console.warn("[position-alerts] TELEGRAM_BOT_TOKEN not set: position alerts go to the site log only");
+  const runAlerts = async (fast: boolean) => {
+    try {
+      const reloaded = await alerts.maybeReload(activity?.positionAlertsVersion() ?? null);
+      if (alerts.size) await alerts.pollDue();
+      const users = await alerts.flush();
+      for (const userId of users) await alertSignal?.fired(userId, Date.now());
+      // In idle mode nothing else keeps the database awake: close the pool after touching it.
+      if (!fast && (reloaded || users.length)) await prisma.$disconnect();
+    } catch {
+      console.error("[position-alerts] cycle failed; retrying next round");
+    }
+  };
   console.log(
     activity
       ? "[exchange-worker] Viewer-driven mode: fast sync for viewers, otherwise every idle slot."
@@ -102,6 +123,7 @@ async function main() {
         }
         const wasFast = fast;
         fast = !activity || viewers.size > 0;
+        await runAlerts(fast);
 
         if (fast) {
           if (!wasFast) await workerHeartbeat(owner);

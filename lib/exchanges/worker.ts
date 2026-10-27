@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { decryptCredentials, encryptCredentials } from "./crypto";
 import {
@@ -31,10 +32,22 @@ import {
 } from "./types";
 import { saveCapitalSnapshot } from "./portfolio";
 
+/** Sees every successful sync, so position alerts reuse the job's data instead of polling twice. */
+let positionObserver:
+  | ((c: { id: string; userId: string }, result: SyncResult, at: number) => void)
+  | null = null;
+export function setPositionObserver(observer: typeof positionObserver) {
+  positionObserver = observer;
+}
+
 const clients = new Map<
   string,
   { version: number; adapter: ExchangeAdapter; touched: number }
 >();
+/** Key version of the cached client, if any: a newer one means the stored row is outdated. */
+export function clientVersion(connectionId: string): number | null {
+  return clients.get(connectionId)?.version ?? null;
+}
 // Keep clients across idle slots, so verification and market caches survive them.
 const CLIENT_TTL_MS = IDLE_SYNC_MS + 5 * 60_000;
 export async function evictClients() {
@@ -310,6 +323,112 @@ export async function earliestDueAt(): Promise<Date | null> {
   return rows[0]?.dueAt ?? null;
 }
 
+type ConnectionWithWallet = Prisma.ExchangeConnectionGetPayload<{
+  include: { wallet: true };
+}>;
+
+/** The cached exchange client of a connection, created (and its key re-encrypted) on first use. */
+export async function connectionClient(c: ConnectionWithWallet) {
+  if (["hyperliquid", "aster"].includes(c.exchange) && !c.wallet?.isActive)
+    throw new ExchangeError("UNSUPPORTED_ACCOUNT");
+  let cached = clients.get(c.id);
+  if (cached && cached.version !== c.credentialVersion) {
+    await cached.adapter.close().catch(() => {});
+    clients.delete(c.id);
+    cached = undefined;
+  }
+  if (!cached) {
+    let adapter: ExchangeAdapter;
+    if (["hyperliquid", "aster"].includes(c.exchange)) {
+      if (!c.wallet?.isActive) throw new ExchangeError("UNSUPPORTED_ACCOUNT");
+      if (c.exchange === "aster" && c.credentials) {
+        const credentials = decryptCredentials(c.credentials, c.userId, c.id);
+        const transport = createAsterTransport(c.wallet.address, credentials);
+        adapter = new AsterApiAdapter(
+          c.wallet.address,
+          credentials.apiKey,
+          transport.request,
+          settlementPrices,
+          transport.close,
+        );
+      } else
+        adapter =
+          c.exchange === "aster"
+            ? new AsterAdapter(c.wallet.address, settlementPrices)
+            : new HyperliquidAdapter(c.wallet.address, settlementPrices);
+    } else {
+      if (
+        !c.credentials ||
+        !["binance", "bybit", "gate", "okx", "bingx", "bitget"].includes(
+          c.exchange,
+        )
+      )
+        throw new ExchangeError("INVALID_KEY");
+      const credentials = decryptCredentials(c.credentials, c.userId, c.id);
+      const transport = createTransport(
+        c.exchange as
+          | "binance"
+          | "bybit"
+          | "gate"
+          | "okx"
+          | "bingx"
+          | "bitget",
+        credentials,
+      );
+      adapter =
+        c.exchange === "bitget"
+          ? new BitgetAdapter(
+              transport.request,
+              settlementPrices,
+              transport.close,
+            )
+          : c.exchange === "bingx"
+            ? new BingxAdapter(
+                transport.request,
+                settlementPrices,
+                transport.close,
+              )
+            : c.exchange === "gate"
+              ? new GateAdapter(
+                  transport.request,
+                  settlementPrices,
+                  credentials.apiKey,
+                  transport.close,
+                )
+              : c.exchange === "okx"
+                ? new OkxAdapter(
+                    transport.request,
+                    settlementPrices,
+                    transport.close,
+                  )
+                : c.exchange === "binance"
+                  ? new BinanceAdapter(
+                      transport.request,
+                      settlementPrices,
+                      transport.close,
+                    )
+                  : new BybitAdapter(
+                      transport.request,
+                      settlementPrices,
+                      transport.close,
+                    );
+      // Re-encrypt with the active key version; old versions remain available during rollout.
+      const encrypted = encryptCredentials(credentials, c.userId, c.id);
+      await prisma.exchangeConnection.updateMany({
+        where: {
+          id: c.id,
+          credentialVersion: c.credentialVersion,
+          credentials: c.credentials,
+        },
+        data: { credentials: encrypted },
+      });
+    }
+    cached = { version: c.credentialVersion, adapter, touched: Date.now() };
+    clients.set(c.id, cached);
+  }
+  return cached;
+}
+
 export async function runOneJob(
   isActive: (userId: string) => boolean = () => true,
 ): Promise<boolean> {
@@ -350,103 +469,7 @@ export async function runOneJob(
       });
   }, 30_000);
   try {
-    if (["hyperliquid", "aster"].includes(c.exchange) && !c.wallet?.isActive)
-      throw new ExchangeError("UNSUPPORTED_ACCOUNT");
-    let cached = clients.get(c.id);
-    if (cached && cached.version !== c.credentialVersion) {
-      await cached.adapter.close().catch(() => {});
-      clients.delete(c.id);
-      cached = undefined;
-    }
-    if (!cached) {
-      let adapter: ExchangeAdapter;
-      if (["hyperliquid", "aster"].includes(c.exchange)) {
-        if (!c.wallet?.isActive) throw new ExchangeError("UNSUPPORTED_ACCOUNT");
-        if (c.exchange === "aster" && c.credentials) {
-          const credentials = decryptCredentials(c.credentials, c.userId, c.id);
-          const transport = createAsterTransport(c.wallet.address, credentials);
-          adapter = new AsterApiAdapter(
-            c.wallet.address,
-            credentials.apiKey,
-            transport.request,
-            settlementPrices,
-            transport.close,
-          );
-        } else
-          adapter =
-            c.exchange === "aster"
-              ? new AsterAdapter(c.wallet.address, settlementPrices)
-              : new HyperliquidAdapter(c.wallet.address, settlementPrices);
-      } else {
-        if (
-          !c.credentials ||
-          !["binance", "bybit", "gate", "okx", "bingx", "bitget"].includes(
-            c.exchange,
-          )
-        )
-          throw new ExchangeError("INVALID_KEY");
-        const credentials = decryptCredentials(c.credentials, c.userId, c.id);
-        const transport = createTransport(
-          c.exchange as
-            | "binance"
-            | "bybit"
-            | "gate"
-            | "okx"
-            | "bingx"
-            | "bitget",
-          credentials,
-        );
-        adapter =
-          c.exchange === "bitget"
-            ? new BitgetAdapter(
-                transport.request,
-                settlementPrices,
-                transport.close,
-              )
-            : c.exchange === "bingx"
-              ? new BingxAdapter(
-                  transport.request,
-                  settlementPrices,
-                  transport.close,
-                )
-              : c.exchange === "gate"
-                ? new GateAdapter(
-                    transport.request,
-                    settlementPrices,
-                    credentials.apiKey,
-                    transport.close,
-                  )
-                : c.exchange === "okx"
-                  ? new OkxAdapter(
-                      transport.request,
-                      settlementPrices,
-                      transport.close,
-                    )
-                  : c.exchange === "binance"
-                    ? new BinanceAdapter(
-                        transport.request,
-                        settlementPrices,
-                        transport.close,
-                      )
-                    : new BybitAdapter(
-                        transport.request,
-                        settlementPrices,
-                        transport.close,
-                      );
-        // Re-encrypt with the active key version; old versions remain available during rollout.
-        const encrypted = encryptCredentials(credentials, c.userId, c.id);
-        await prisma.exchangeConnection.updateMany({
-          where: {
-            id: c.id,
-            credentialVersion: c.credentialVersion,
-            credentials: c.credentials,
-          },
-          data: { credentials: encrypted },
-        });
-      }
-      cached = { version: c.credentialVersion, adapter, touched: Date.now() };
-      clients.set(c.id, cached);
-    }
+    const cached = await connectionClient(c);
     cached.touched = Date.now();
     const identity = await cached.adapter.verify();
     const result = await cached.adapter.fetch(
@@ -456,6 +479,7 @@ export async function runOneJob(
     );
     result.externalAccountId =
       identity.externalAccountId ?? result.externalAccountId;
+    positionObserver?.(c, result, Date.now());
     if (
       await commitResult(
         c.id,

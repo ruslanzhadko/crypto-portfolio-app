@@ -1122,5 +1122,43 @@
     "sell": "Sell",
     "perp": "Perp",
     "spot": "Spot"
+  },
+  "PositionAlerts": {
+    "cardTitle": "Position notifications",
+    "cardDescription": "Messages about positions on connected exchanges, in Telegram and in the alert log. Positions are checked about every 15 seconds, even when the site is closed.",
+    "kinds": {
+      "opened": {
+        "title": "Position opened",
+        "description": "A new position appeared on an account."
+      },
+      "closed": {
+        "title": "Position closed",
+        "description": "A position is gone; the message shows an estimate from the last PnL."
+      },
+      "liquidation": {
+        "title": "Liquidation close",
+        "description": "The distance to the liquidation price fell below the threshold. Again only after moving 3% past it."
+      },
+      "pnlSign": {
+        "title": "Profit / loss",
+        "description": "Position PnL crossed zero: the position went into profit or into loss."
+      }
+    },
+    "liquidationThreshold": "Threshold:",
+    "accountsTitle": "Accounts",
+    "accountsDescription": "Untick an account to stop notifications for it.",
+    "telegramOff": "Telegram is not connected or its notifications are off: events will appear only in the alert log.",
+    "note": "Changes apply within a minute.",
+    "saveFailed": "Could not save. Please try again.",
+    "log": {
+      "opened": "Position opened",
+      "closed": "Position closed",
+      "liquidation": "Liquidation close",
+      "pnlPlus": "Position in profit",
+      "pnlMinus": "Position in loss",
+      "pnlApprox": "PnL ≈ {value}",
+      "pnl": "PnL {value}",
+      "distance": "{value}% to liquidation"
+    }
   }
 }

@@ -13,6 +13,9 @@ import { PasswordForm } from '@/components/settings/password-form';
 import { TelegramLogin } from '@/components/settings/telegram-login';
 import { publicEmail } from '@/lib/auth/public-email';
 import { socialAvailability, telegramBotReady } from '@/lib/auth/social';
+import { PositionAlertsCard } from '@/components/settings/position-alerts-card';
+import { exchangesEnabled } from '@/lib/exchanges/config';
+import { readPositionAlertSettings } from '@/lib/positions/alert-settings';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +37,7 @@ export default async function SettingsPage({
       telegramUserId: true,
       telegramBotAccess: true,
       telegramNotificationsEnabled: true,
+      positionAlerts: true,
       createdAt: true,
       role: true,
       passwordHash: true,
@@ -43,6 +47,18 @@ export default async function SettingsPage({
   if (!user) return null;
 
   const t = await getTranslations('Settings');
+  const tp = await getTranslations('PositionAlerts');
+  const positionAlerts = exchangesEnabled(session.user.id);
+  const connections = positionAlerts
+    ? await prisma.exchangeConnection.findMany({
+        where: {
+          userId: session.user.id,
+          status: { in: ['PENDING', 'ACTIVE', 'PARTIAL', 'ERROR'] },
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, label: true, exchange: true },
+      })
+    : [];
   const authMessages = await getTranslations('Auth');
 
   return (
@@ -112,6 +128,22 @@ export default async function SettingsPage({
           />
         </CardContent>
       </Card>
+
+      {positionAlerts && (
+        <Card id="notifications" className="scroll-mt-20">
+          <CardHeader>
+            <CardTitle>{tp('cardTitle')}</CardTitle>
+            <CardDescription>{tp('cardDescription')}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PositionAlertsCard
+              initial={readPositionAlertSettings(user.positionAlerts)}
+              connections={connections}
+              telegramReady={!!user.telegramChatId && user.telegramNotificationsEnabled}
+            />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

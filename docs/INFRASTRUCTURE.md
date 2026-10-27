@@ -47,8 +47,8 @@
   вероятный депозит и просит сайт синхронизировать кошельки (`lib/exchanges/deposit-watch.ts`).
 - **Депозиты и выводы бирж** (`ExchangeTransfer`): Binance, Bybit, OKX, Hyperliquid, Aster (POST
   `v3/aster/deposit-withdraw-history`), BingX, Bitget (Classic и UTA); история за год
-  (`transfersFrom`, MIGRATIONS.md §4c), дальше — новое раз в 30 минут. Gate — `IP_RESTRICTED` (ключу нужно
-  право Wallet read-only). Aster, BingX и Bitget написаны по документации, на живых ключах не проверены.
+  (`transfersFrom`, MIGRATIONS.md §4c), дальше — новое раз в 30 минут. Gate — право Wallet read-only у ключа
+  включено 27.10, появление переводов Gate ещё не проверено. Aster, BingX и Bitget написаны по документации, на живых ключах не проверены.
   Gate Earn: Simple Earn (`uni/lends`) входит в спотовый счёт строками `gate:earn:*`, нужно право Earn read;
   без него Earn пропускается.
 - **Последние транзакции** (25.10): на «Всё» — кошельки и биржи в одном списке с переключателем
@@ -75,16 +75,16 @@
 
 Владелец:
 
-1. 28–31.10 — графики Neon (CU·ч и transfer) и решение Free/Launch (MIGRATIONS.md §3).
-2. Удалить выключенные задачи в cron-job.org; Gate — включить ключу Wallet read-only.
-3. На сайте проверить продажу ZC → ETH: должна быть свапом (внутренний ETH читается через Etherscan,
-   локально без ключа не проверялось).
+1. 28–31.10 — графики Neon (CU·ч и transfer) и решение Free/Launch (MIGRATIONS.md §3). На 27.10 в
+   Billing $3,32 с начала Launch (19.10), уведомление о тратах на $14.
+
+Сделано 27.10: ключ Gate получил Wallet и Earn read-only, свап ZC → ETH на сайте виден как свап,
+задачи cron-job.org выключены.
 
 Разработка, по порядку:
 
-1. **Уведомления по позициям, этап 1** ([POSITION_ALERTS.md](POSITION_ALERTS.md)): карточка «Уведомления»
-   в настройках, фоновый опрос позиций в worker раз в 15–30 с в памяти, открытие/закрытие с PnL, ликвидация,
-   переход в плюс/минус.
+1. **Уведомления по позициям, этап 1** ([POSITION_ALERTS.md](POSITION_ALERTS.md)): код готов 27.10; выпуск —
+   миграция MIGRATIONS.md §4d и `TELEGRAM_BOT_TOKEN` в env worker; затем точный закрытый PnL из истории бирж.
 2. **Свои переводы в истории капитала:** перевод кошелёк ↔ биржа не должен выглядеть как рост или падение;
    отметить такие моменты на графике.
 3. **Цены кошельков на VM в памяти** (Binance/Gate, DexScreener): раз в минуту, пока смотрят дашборд, иначе
