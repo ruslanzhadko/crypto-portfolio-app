@@ -148,26 +148,27 @@ export function DashboardSections({
         </div>
       </div>
 
-      <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] 2xl:grid-cols-[minmax(0,1fr)_29rem]">
-        <div className="min-w-0">
-          {!exchangesEnabled ? (
-            <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
-          ) : (
-            <PortfolioSummary data={overview} showLargestPositions={false} />
-          )}
-        </div>
-        <div data-jump={tr("title")} className="min-w-0 scroll-mt-20">
-          <RecentTransactions />
-        </div>
-      </div>
+      {/* With exchanges, transactions, charts and sources share one layout across all tabs. */}
+      {!exchangesEnabled && (
+        <>
+          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_27rem] 2xl:grid-cols-[minmax(0,1fr)_29rem]">
+            <div className="min-w-0">
+              <TokenTable tokens={overview.tokens} spamTokens={spamTokens} />
+            </div>
+            <div data-jump={tr("title")} className="min-w-0 scroll-mt-20">
+              <RecentTransactions />
+            </div>
+          </div>
 
-      {(show.allocation || show.networkAllocation) && (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {show.allocation && <AllocationChart tokens={overview.tokens} />}
-          {show.networkAllocation && (
-            <NetworkAllocationChart chains={overview.chains} />
+          {(show.allocation || show.networkAllocation) && (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {show.allocation && <AllocationChart tokens={overview.tokens} />}
+              {show.networkAllocation && (
+                <NetworkAllocationChart chains={overview.chains} />
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
     </>
   );
@@ -229,6 +230,8 @@ export function DashboardSections({
           <CapitalDashboard
             walletDetails={walletDetails}
             walletTokens={overview.tokens}
+            walletChains={overview.chains}
+            sections={show}
             spamTokens={spamTokens}
             walletAssets={
               overview.tokens.length || spamTokens.length ? (
@@ -245,7 +248,6 @@ export function DashboardSections({
           />
         )}
         {!exchangesEnabled && <>{walletDetails}</>}
-        {exchangesEnabled && <div id="capital-sources" />}
       </div>
       <SectionJump />
     </div>

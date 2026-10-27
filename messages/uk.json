@@ -149,6 +149,8 @@
     "othersLabel": "Інші ({count})"
   },
   "NetworkAllocationChart": {
+    "exchangesTitle": "Розподіл по біржах",
+    "combinedTitle": "Розподіл по мережах і біржах",
     "cardTitle": "Розподіл по мережах",
     "noData": "Немає даних",
     "tooltipTokens": "{count} токенів"

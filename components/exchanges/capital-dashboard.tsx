@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState, useMemo } from "react";
-import { createPortal } from "react-dom";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -26,12 +25,23 @@ import { Money, Quantity, Updated, ExchangeErrorNotice } from "./shared";
 import { BalanceTable } from "./balance-table";
 import { exchangeBalanceRows } from "@/lib/exchanges/balance-rows";
 import { TokenTable } from "@/components/dashboard/token-table";
-import type { AggregatedToken } from "@/lib/services/portfolio";
+import type {
+  AggregatedToken,
+  ChainAllocation,
+} from "@/lib/services/portfolio";
 import {
   mergeExchangeHoldings,
   type ExchangeHolding,
+  type UnifiedToken,
 } from "@/lib/portfolio/unified-assets";
+import {
+  combineAllocations,
+  exchangeAllocation,
+} from "@/lib/portfolio/exchange-allocation";
+import { EXCHANGE_NAMES } from "./exchange-logo";
 import { TopMovers } from "@/components/dashboard/top-movers";
+import { AllocationChart } from "@/components/dashboard/allocation-chart";
+import { NetworkAllocationChart } from "@/components/dashboard/network-allocation";
 import { RecentTransactions } from "@/components/dashboard/recent-transactions";
 import {
   tokenChange,
@@ -51,22 +61,25 @@ export function CapitalDashboard({
   walletAssets,
   walletDetails,
   walletTokens,
+  walletChains,
   spamTokens,
+  sections = { topMovers: true, allocation: true, networkAllocation: true },
 }: {
   walletAssets: React.ReactNode;
-  /** Wallet charts, movers and transactions for the "Wallets" tab. */
+  /** Wallet movers and the wallet list for the "Wallets" tab. */
   walletDetails?: React.ReactNode;
   /** Wallet tokens for the combined wallets + exchanges list in "All". */
   walletTokens?: AggregatedToken[];
+  /** Wallet value per network, for the allocation bars. */
+  walletChains?: ChainAllocation[];
   spamTokens?: AggregatedToken[];
+  /** Overview blocks the user chose to show; every tab honours them. */
+  sections?: { topMovers: boolean; allocation: boolean; networkAllocation: boolean };
 }) {
   const tooltip = useTouchTooltip();
-  const [sourcesTarget, setSourcesTarget] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setSourcesTarget(document.getElementById("capital-sources"));
-  }, []);
   const t = useTranslations("Exchanges"),
     tm = useTranslations("TopMovers"),
+    tn = useTranslations("NetworkAllocationChart"),
     tr = useTranslations("RecentTransactions"),
     locale = useLocale();
   const [scope, setScope] = useState<"all" | "wallets" | "exchanges">("all"),
@@ -249,15 +262,36 @@ export function CapitalDashboard({
     () => mergeExchangeHoldings(walletTokens ?? [], exchangeHoldings),
     [walletTokens, exchangeHoldings],
   );
-  const tickerChanges = useTickerChanges(unified);
-  const movers = useMemo(
-    () =>
-      unified.map((tok) => ({
+  const exchangeTokens = useMemo(
+    () => mergeExchangeHoldings([], exchangeHoldings),
+    [exchangeHoldings],
+  );
+  // Every exchange ticker: covers the exchange-only rows of "All" as well.
+  const tickerChanges = useTickerChanges(exchangeTokens);
+  const movers = useMemo(() => {
+    const withChange = (rows: UnifiedToken[]) =>
+      rows.map((tok) => ({
         ...tok,
         priceChange24h: tokenChange(tok, tickerChanges) ?? 0,
-      })),
-    [unified, tickerChanges],
-  );
+      }));
+    return { all: withChange(unified), exchanges: withChange(exchangeTokens) };
+  }, [unified, exchangeTokens, tickerChanges]);
+  // Allocation donut and bars for the selected tab.
+  const allocationTokens = useMemo(() => {
+    const rows =
+      scope === "wallets"
+        ? (walletTokens ?? [])
+        : scope === "exchanges"
+          ? exchangeTokens
+          : unified;
+    return [...rows].sort((a, b) => b.totalUsd - a.totalUsd);
+  }, [scope, walletTokens, exchangeTokens, unified]);
+  const allocationBars = useMemo(() => {
+    const byExchange = exchangeAllocation(exchangeHoldings, EXCHANGE_NAMES);
+    if (scope === "wallets") return walletChains ?? [];
+    if (scope === "exchanges") return byExchange;
+    return combineAllocations(walletChains ?? [], byExchange);
+  }, [scope, walletChains, exchangeHoldings]);
   return (
     <div className="min-w-0 space-y-3 sm:space-y-4">
       <ExchangeErrorNotice code={error ?? data.error ?? chartData.error} />
@@ -598,9 +632,13 @@ export function CapitalDashboard({
               </>
             )}
           </section>
-          {scope === "all" && (
+          {scope === "wallets" && walletDetails}
+          {scope !== "wallets" && sections.topMovers && (
             <div data-jump={tm("gainersTitle")} className="scroll-mt-20">
-              <TopMovers tokens={movers} />
+              <TopMovers
+                key={scope}
+                tokens={scope === "all" ? movers.all : movers.exchanges}
+              />
             </div>
           )}
           {scope !== "wallets" && (
@@ -608,24 +646,36 @@ export function CapitalDashboard({
               <PositionsPage compact />
             </div>
           )}
-          {/* Wide screens: transactions and capital sources side by side instead of a half-empty row. */}
-          {scope !== "wallets" && (
-            <div className="grid min-w-0 items-start gap-4 xl:grid-cols-2">
-              <div data-jump={tr("title")} className="min-w-0 scroll-mt-20">
-                {/* The wallets tab has its own wallet-only list inside walletDetails. */}
-                {scope === "all" ? (
-                  <RecentTransactions key="all" withExchanges />
-                ) : (
-                  <RecentTransactions key="exchanges" exchangesOnly />
-                )}
-              </div>
-              <div className="min-w-0">{sources}</div>
+          {/* Same layout on every tab: transactions on the left; charts and capital sources on the right. */}
+          <div className="grid min-w-0 items-start gap-4 xl:grid-cols-2">
+            <div data-jump={tr("title")} className="min-w-0 scroll-mt-20">
+              {scope === "all" ? (
+                <RecentTransactions key="all" withExchanges />
+              ) : scope === "exchanges" ? (
+                <RecentTransactions key="exchanges" exchangesOnly />
+              ) : (
+                <RecentTransactions key="wallets" />
+              )}
             </div>
-          )}
-          {scope === "wallets" && walletDetails}
-          {scope === "wallets" &&
-            sources &&
-            (sourcesTarget ? createPortal(sources, sourcesTarget) : sources)}
+            <div className="min-w-0 space-y-4">
+              {sections.allocation && (
+                <AllocationChart key={scope} tokens={allocationTokens} />
+              )}
+              {sections.networkAllocation && (
+                <NetworkAllocationChart
+                  chains={allocationBars}
+                  title={
+                    scope === "exchanges"
+                      ? tn("exchangesTitle")
+                      : scope === "all"
+                        ? tn("combinedTitle")
+                        : undefined
+                  }
+                />
+              )}
+              {sources}
+            </div>
+          </div>
         </>
       )}
     </div>

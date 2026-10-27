@@ -149,6 +149,8 @@
     "othersLabel": "Others ({count})"
   },
   "NetworkAllocationChart": {
+    "exchangesTitle": "Exchange allocation",
+    "combinedTitle": "Network and exchange allocation",
     "cardTitle": "Network allocation",
     "noData": "No data",
     "tooltipTokens": "{count} tokens"

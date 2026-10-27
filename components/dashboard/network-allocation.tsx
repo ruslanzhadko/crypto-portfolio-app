@@ -11,11 +11,13 @@ type TFn = ReturnType<typeof useTranslations<'NetworkAllocationChart'>>;
 
 interface NetworkAllocationProps {
   chains: ChainAllocation[];
+  /** Card title when the bars are exchanges, or networks and exchanges together. */
+  title?: string;
 }
 
 const MIN_CHAIN_USD = 0.05;
 
-export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
+export function NetworkAllocationChart({ chains, title }: NetworkAllocationProps) {
   const t = useTranslations('NetworkAllocationChart');
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -25,7 +27,7 @@ export function NetworkAllocationChart({ chains }: NetworkAllocationProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{t('cardTitle')}</CardTitle>
+        <CardTitle>{title ?? t('cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="h-[280px]">
         {visibleChains.length === 0 ? (
