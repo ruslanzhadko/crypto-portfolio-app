@@ -153,6 +153,17 @@ describe('DEX trades paid or settled in the native coin', () => {
     expect(r).toMatchObject({ type: 'swap', tokenSymbol: 'ZC → ETH', sentValue: 300, value: 0.1, swapOutTokenAddress: '0xzc' });
   });
 
+  it('turns an older or relayed sale into a swap without a call by the wallet', () => {
+    const [sell] = classify([transfer({ transactionHash: '0xold', fromAddress: WALLET, toAddress: '0xsettlement', value: '320273', tokenSymbol: 'ZC', contractAddress: '0xzc' })]);
+    const [r] = attachNativeLegs([sell!], [], new Map([['0xold', 0.4]]));
+    expect(r).toMatchObject({ type: 'swap', tokenSymbol: 'ZC → ETH', sentValue: 320273, value: 0.4 });
+  });
+
+  it('does not treat a received token as a buy without a call by the wallet', () => {
+    const [received] = classify([transfer({ transactionHash: '0xgift', fromAddress: '0x0', value: '10', tokenSymbol: 'ZC' })]);
+    expect(attachNativeLegs([received!], [], new Map())[0]).toMatchObject({ type: 'receive' });
+  });
+
   it('leaves plain transfers and calls without a native leg alone', () => {
     const txs = classify([
       transfer({ transactionHash: '0xin', value: '5' }),

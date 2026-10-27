@@ -13,6 +13,28 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-28",
+    title: {
+      ru: "PnL и безубыток BingX, продажи токенов как свопы",
+      uk: "PnL і беззбиток BingX, продажі токенів як свопи",
+      en: "BingX PnL and break-even, token sales as swaps",
+    },
+    items: {
+      ru: [
+        "У позиций BingX появились реализованный PnL и цена безубытка, в том числе когда ордер выставлен заранее или исполнялся несколько недель.",
+        "Продажа токена за ETH показывается как своп («ZC → ETH»), даже если сделка старая или прошла через агрегатор.",
+      ],
+      uk: [
+        "У позицій BingX з'явилися реалізований PnL і ціна беззбитку, зокрема коли ордер виставлено заздалегідь або він виконувався кілька тижнів.",
+        "Продаж токена за ETH показується як своп («ZC → ETH»), навіть якщо угода давня або пройшла через агрегатор.",
+      ],
+      en: [
+        "BingX positions now show realized PnL and the break-even price, including orders placed in advance or filled over several weeks.",
+        "Selling a token for ETH shows as a swap (“ZC → ETH”), even for older trades or ones routed through an aggregator.",
+      ],
+    },
+  },
+  {
     date: "2026-10-27",
     title: {
       ru: "BingX подключается, суммы бирж не пропадают",

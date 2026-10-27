@@ -495,10 +495,12 @@ export function attachNativeLegs(
 ): NormalizedTransaction[] {
   const byHash = new Map(calls.map((call) => [call.hash.toLowerCase(), call]));
   return txs.map((tx) => {
-    const call = byHash.get(tx.hash.toLowerCase());
-    if (!call || call.chainName !== tx.chainName || !tx.tokenSymbol) return tx;
+    if (!tx.tokenSymbol) return tx;
+    const found = byHash.get(tx.hash.toLowerCase());
+    const call = found?.chainName === tx.chainName ? found : undefined;
     const native = NATIVE_INFO[tx.chainName]?.symbol ?? 'ETH';
-    if (tx.type === 'receive' && call.value > 0) {
+    // A buy needs the wallet's own call (the ETH it attached); a sell only the ETH it got back.
+    if (tx.type === 'receive' && call && call.value > 0) {
       return {
         ...tx, type: 'swap', tokenSymbol: `${native} → ${tx.tokenSymbol}`, tokenName: `${native} → ${tx.tokenSymbol}`,
         sentValue: call.value, fromAddress: tx.toAddress, logoUrl: null, swapLogoUrl: tx.logoUrl ?? null,
@@ -523,18 +525,21 @@ const CHAIN_IDS: Record<string, number> = {
 };
 /** Settled transactions never change, so their internal transfers are cached for the process. */
 const nativeInCache = new Map<string, number>();
-const MAX_INTERNAL_LOOKUPS = 8;
+const MAX_INTERNAL_LOOKUPS = 12;
 
 /**
- * Native coin a wallet received inside its own token sends (DEX sells), read from Etherscan's
- * internal transactions for a few candidates per page. Failures leave the row a plain send.
+ * Native coin a wallet received inside its token sends (DEX sells), read from Etherscan's internal
+ * transactions for a few candidates per page. The wallet's own recent calls go first, but any send
+ * qualifies: the call list covers only the latest transactions, and relayed swaps (CowSwap,
+ * UniswapX) are not the wallet's calls at all. Failures leave the row a plain send.
  */
 async function fetchNativeIn(wallet: string, txs: NormalizedTransaction[], calls: readonly WalletCall[]) {
   const result = new Map<string, number>();
   const key = process.env.ETHERSCAN_API_KEY?.trim();
   const own = new Set(calls.map((call) => call.hash.toLowerCase()));
   const candidates = txs
-    .filter((tx) => tx.type === 'send' && own.has(tx.hash.toLowerCase()) && CHAIN_IDS[tx.chainName])
+    .filter((tx) => tx.type === 'send' && !!tx.tokenSymbol && CHAIN_IDS[tx.chainName])
+    .sort((a, b) => Number(own.has(b.hash.toLowerCase())) - Number(own.has(a.hash.toLowerCase())))
     .slice(0, MAX_INTERNAL_LOOKUPS);
   await Promise.all(candidates.map(async (tx) => {
     const hash = tx.hash.toLowerCase();
