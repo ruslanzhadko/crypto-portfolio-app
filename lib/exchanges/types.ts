@@ -92,7 +92,11 @@ export interface ExchangeAdapter {
 }
 
 export class ExchangeError extends Error {
-  constructor(public readonly code: ErrorCode) {
+  constructor(
+    public readonly code: ErrorCode,
+    /** Safe diagnosis for logs (endpoint, provider code, field names); never provider text. */
+    public readonly detail?: string,
+  ) {
     super(code);
     this.name = "ExchangeError";
   }
@@ -105,7 +109,8 @@ export function errorDiagnostics(error: unknown): string {
   const name = error instanceof Error ? error.name : typeof error;
   const message = error instanceof Error ? error.message : "";
   const code = /"(?:code|retCode|ret_code)"\s*:\s*"?(-?\d{1,9})"?/.exec(message)?.[1];
-  return code ? `${name} code ${code}` : name;
+  const detail = error instanceof ExchangeError && error.detail ? ` [${error.detail}]` : "";
+  return (code ? `${name} code ${code}` : name) + detail;
 }
 
 // Never forward provider messages: they can contain signed URLs or headers.

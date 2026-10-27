@@ -15,18 +15,20 @@ import type { Request } from "./transport";
 import { CycleHistoryReader } from "./cycle-history";
 import { bingxTransfers } from "./transfers";
 
-export function bingxData(value: unknown): unknown {
+export function bingxData(value: unknown, endpoint = "?"): unknown {
   const envelope = record(value);
   const code = String(envelope.code);
+  // Endpoint, code and field names only: enough to tell an error from an unexpected shape.
+  const detail = `${endpoint} code ${code} fields ${Object.keys(envelope).join(",") || "none"}`;
   if (code !== "0") {
     if (["100001", "100004", "100412", "100413"].includes(code))
-      throw new ExchangeError("INVALID_KEY");
-    if (code === "100419") throw new ExchangeError("IP_RESTRICTED");
-    if (code === "100410") throw new ExchangeError("RATE_LIMIT");
-    throw new ExchangeError("UNAVAILABLE");
+      throw new ExchangeError("INVALID_KEY", detail);
+    if (code === "100419") throw new ExchangeError("IP_RESTRICTED", detail);
+    if (code === "100410") throw new ExchangeError("RATE_LIMIT", detail);
+    throw new ExchangeError("UNAVAILABLE", detail);
   }
   if (envelope.data === undefined || envelope.data === null)
-    throw new ExchangeError("INVALID_RESPONSE");
+    throw new ExchangeError("INVALID_RESPONSE", detail);
   return envelope.data;
 }
 
@@ -48,12 +50,13 @@ export class BingxAdapter implements ExchangeAdapter {
     const permissions = record(
       bingxData(
         await this.request("account/apiPermissions", "account:v1:private"),
+        "account/apiPermissions",
       ),
     );
     // BingX documents the same read/trade/withdraw permission flags as Binance.
     assertBinanceReadOnly(permissions);
     const identity = record(
-      bingxData(await this.request("uid", "account:v1:private")),
+      bingxData(await this.request("uid", "account:v1:private"), "uid"),
     );
     const uid = textField(identity.uid);
     if (!/^\d+$/.test(uid)) throw new ExchangeError("INVALID_RESPONSE");
@@ -62,12 +65,18 @@ export class BingxAdapter implements ExchangeAdapter {
   }
   private async spot(rates: Map<string, string>): Promise<AccountBalance> {
     const wallet = record(
-      bingxData(await this.request("account/balance", "spot:v1:private")),
+      bingxData(
+        await this.request("account/balance", "spot:v1:private"),
+        "account/balance",
+      ),
     );
     const prices = new Map(rates);
     try {
       for (const row of records(
-        bingxData(await this.request("ticker/price", "spot:v2:public")),
+        bingxData(
+          await this.request("ticker/price", "spot:v2:public"),
+          "ticker/price",
+        ),
       )) {
         if (typeof row.symbol !== "string" || !row.symbol.endsWith("-USDT"))
           continue;
@@ -116,17 +125,26 @@ export class BingxAdapter implements ExchangeAdapter {
   }
   private async futures(rates: Map<string, string>): Promise<AccountBalance> {
     const wallets = records(
-      bingxData(await this.request("user/balance", "swap:v3:private")),
+      bingxData(
+        await this.request("user/balance", "swap:v3:private"),
+        "user/balance",
+      ),
     );
     if (!wallets.length || wallets.some((wallet) => wallet.asset !== "USDT"))
       throw new ExchangeError("UNSUPPORTED_ACCOUNT");
     const rows = records(
-      bingxData(await this.request("user/positions", "swap:v2:private")),
+      bingxData(
+        await this.request("user/positions", "swap:v2:private"),
+        "user/positions",
+      ),
     );
     const market = new Map<string, Record<string, unknown>>();
     try {
       for (const row of records(
-        bingxData(await this.request("quote/premiumIndex", "swap:v2:public")),
+        bingxData(
+          await this.request("quote/premiumIndex", "swap:v2:public"),
+          "quote/premiumIndex",
+        ),
       )) {
         if (typeof row.symbol === "string") market.set(row.symbol, row);
       }
@@ -249,6 +267,8 @@ export class BingxAdapter implements ExchangeAdapter {
 /** A failed account read; the log keeps the provider's class and code for diagnosis. */
 function failure(accountKey: string, kind: "spot" | "futures", error: unknown) {
   const errorCode = safeError(error);
-  console.warn(`[bingx] ${accountKey} read failed: ${errorCode} (${errorDiagnostics(error)})`);
+  console.warn(
+    `[bingx] ${accountKey} read failed: ${errorCode} (${errorDiagnostics(error)})`,
+  );
   return { accountKey, kind, errorCode };
 }

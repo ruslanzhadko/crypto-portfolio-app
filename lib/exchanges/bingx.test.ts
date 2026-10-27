@@ -201,5 +201,12 @@ describe("errorDiagnostics", () => {
     error.name = "InvalidNonce";
     expect(errorDiagnostics(error)).toBe("InvalidNonce code 100421");
     expect(errorDiagnostics(new TypeError("fetch failed https://x"))).toBe("TypeError");
+    let thrown: unknown;
+    try {
+      bingxData({ msg: "secret text", data: {} }, "uid");
+    } catch (e) {
+      thrown = e;
+    }
+    expect(errorDiagnostics(thrown)).toBe("ExchangeError [uid code undefined fields msg,data]");
   });
 });
