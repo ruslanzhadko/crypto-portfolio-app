@@ -97,6 +97,17 @@ export class ExchangeError extends Error {
     this.name = "ExchangeError";
   }
 }
+/**
+ * What a log may say about a provider failure: the error class and the exchange's numeric code.
+ * Never the message itself, which can contain signed URLs or headers.
+ */
+export function errorDiagnostics(error: unknown): string {
+  const name = error instanceof Error ? error.name : typeof error;
+  const message = error instanceof Error ? error.message : "";
+  const code = /"(?:code|retCode|ret_code)"\s*:\s*"?(-?\d{1,9})"?/.exec(message)?.[1];
+  return code ? `${name} code ${code}` : name;
+}
+
 // Never forward provider messages: they can contain signed URLs or headers.
 export function safeError(error: unknown): ErrorCode {
   if (error instanceof ExchangeError) return error.code;

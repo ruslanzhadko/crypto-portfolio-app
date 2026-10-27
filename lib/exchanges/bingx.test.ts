@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { BingxAdapter, bingxData } from "./bingx";
+import { errorDiagnostics } from "./types";
 import { bingx } from "ccxt";
 const key = {
   enableReading: true,
@@ -191,5 +192,14 @@ describe("BingX spot and perpetuals", () => {
         expect(error).toMatchObject({ code: expected, message: expected });
       }
     }
+  });
+});
+
+describe("errorDiagnostics", () => {
+  it("keeps the class and numeric code but never the provider message", () => {
+    const error = new Error('bingx {"code":100421,"msg":"timestamp https://signed?url"}');
+    error.name = "InvalidNonce";
+    expect(errorDiagnostics(error)).toBe("InvalidNonce code 100421");
+    expect(errorDiagnostics(new TypeError("fetch failed https://x"))).toBe("TypeError");
   });
 });

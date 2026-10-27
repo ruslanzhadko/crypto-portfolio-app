@@ -26,6 +26,7 @@ import { settlementPrices } from "./pricing";
 import { claimJob, enqueue, retryDelay } from "./queue";
 import {
   ExchangeError,
+  errorDiagnostics,
   safeError,
   type ExchangeAdapter,
   type SyncResult,
@@ -510,6 +511,9 @@ export async function runOneJob(
       error.code === "P2002"
         ? "DUPLICATE_ACCOUNT"
         : safeError(error);
+    console.warn(
+      `[exchange-worker] ${c.exchange} sync failed: ${code} (${errorDiagnostics(error)})`,
+    );
     const terminal = [
       "INVALID_KEY",
       "UNSAFE_KEY",

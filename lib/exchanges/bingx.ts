@@ -4,6 +4,7 @@ import { D, decimal, multiply, requiredDecimal as rd, sum } from "./decimal";
 import { positive, textField, timestamp } from "./provider-utils";
 import {
   ExchangeError,
+  errorDiagnostics,
   safeError,
   type AccountBalance,
   type ExchangeAdapter,
@@ -233,22 +234,21 @@ export class BingxAdapter implements ExchangeAdapter {
       try {
         result.accounts.push(await this.spot(rates));
       } catch (error) {
-        result.failedAccounts.push({
-          accountKey: "spot",
-          kind: "spot",
-          errorCode: safeError(error),
-        });
+        result.failedAccounts.push(failure("spot", "spot", error));
       }
     }
     try {
       result.accounts.push(await this.futures(rates));
     } catch (error) {
-      result.failedAccounts.push({
-        accountKey: "futures:usdt",
-        kind: "futures",
-        errorCode: safeError(error),
-      });
+      result.failedAccounts.push(failure("futures:usdt", "futures", error));
     }
     return result;
   }
+}
+
+/** A failed account read; the log keeps the provider's class and code for diagnosis. */
+function failure(accountKey: string, kind: "spot" | "futures", error: unknown) {
+  const errorCode = safeError(error);
+  console.warn(`[bingx] ${accountKey} read failed: ${errorCode} (${errorDiagnostics(error)})`);
+  return { accountKey, kind, errorCode };
 }
