@@ -5,7 +5,8 @@ const IDS = [
   ["USDT", "tether"],
   ["USDC", "usd-coin"],
 ] as const;
-const FRESH_MS = 120_000;
+/** Stablecoin quotes: every 30 minutes is plenty and keeps CoinGecko inside its monthly budget. */
+const FRESH_MS = 30 * 60_000;
 /** Stablecoin quotes barely move; a recent verified quote beats an unknown equity. */
 const FALLBACK_MS = 6 * 3600_000;
 

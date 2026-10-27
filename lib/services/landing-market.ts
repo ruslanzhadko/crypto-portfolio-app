@@ -16,10 +16,14 @@ export async function fetchLandingMarket(): Promise<LandingCoin[]> {
   url.searchParams.set('ids', LANDING_COIN_IDS.join(','));
   url.searchParams.set('sparkline', 'false');
   const key = process.env.COINGECKO_API_KEY;
-  const response = await fetch(url, {
-    headers: { accept: 'application/json', ...(key ? { 'x-cg-demo-api-key': key } : {}) },
-    next: { revalidate: 60 }, signal: AbortSignal.timeout(8000),
-  });
+  const request = (withKey: boolean) =>
+    fetch(url, {
+      headers: { accept: 'application/json', ...(withKey && key ? { 'x-cg-demo-api-key': key } : {}) },
+      next: { revalidate: 300 }, signal: AbortSignal.timeout(8000),
+    });
+  let response = await request(true);
+  // A spent Demo key: the keyless public API has no monthly cap.
+  if (key && [401, 403, 429].includes(response.status)) response = await request(false);
   if (!response.ok) throw new Error('Market data unavailable');
   const coins = z.array(coinSchema).parse(await response.json());
   return LANDING_COIN_IDS.map((id) => {

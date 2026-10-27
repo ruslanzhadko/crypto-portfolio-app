@@ -257,3 +257,15 @@ describe("errorDiagnostics", () => {
     );
   });
 });
+
+describe("BingX UID", () => {
+  it("accepts the UID as a JSON number", async () => {
+    const request = vi.fn(async (path: string) =>
+      path === "account/apiPermissions"
+        ? { apiKey: "masked", permissions: [2], ipAddresses: ["203.0.113.10"] }
+        : { code: 0, data: { uid: 1234567890 } },
+    );
+    const adapter = new BingxAdapter(request, async () => new Map());
+    expect(await adapter.verify()).toEqual({ externalAccountId: "1234567890" });
+  });
+});

@@ -1,22 +1,47 @@
 import axios, { AxiosError, type AxiosInstance } from 'axios';
 
 let client: AxiosInstance | null = null;
+let publicClient: AxiosInstance | null = null;
+/** Until then requests go to the keyless public API: the Demo key ran out of monthly credits. */
+let keylessUntil = 0;
+const KEYLESS_MS = 60 * 60_000;
+
+const baseURL = () =>
+  process.env.COINGECKO_BASE_URL?.replace(/\/$/, '') ?? 'https://api.coingecko.com/api/v3';
 
 function getClient(): AxiosInstance {
-  if (client) return client;
-  const baseURL =
-    process.env.COINGECKO_BASE_URL?.replace(/\/$/, '') ??
-    'https://api.coingecko.com/api/v3';
   const apiKey = process.env.COINGECKO_API_KEY;
-  client = axios.create({
-    baseURL,
+  if (!apiKey || Date.now() < keylessUntil) {
+    publicClient ??= axios.create({
+      baseURL: baseURL(),
+      timeout: 15000,
+      headers: { accept: 'application/json' },
+    });
+    return publicClient;
+  }
+  client ??= axios.create({
+    baseURL: baseURL(),
     timeout: 15000,
-    headers: {
-      accept: 'application/json',
-      ...(apiKey ? { 'x-cg-demo-api-key': apiKey } : {}),
-    },
+    headers: { accept: 'application/json', 'x-cg-demo-api-key': apiKey },
   });
   return client;
+}
+
+/**
+ * A Demo key answers 401/403/429 once its monthly credits are spent. The keyless public API has
+ * no monthly cap (only a per-minute limit), so the key is set aside for an hour instead of failing.
+ */
+function setKeyAsideIfSpent(status: number | undefined): boolean {
+  if (!process.env.COINGECKO_API_KEY || Date.now() < keylessUntil) return false;
+  if (status !== 401 && status !== 403 && status !== 429) return false;
+  keylessUntil = Date.now() + KEYLESS_MS;
+  console.warn(`[coingecko] Demo key refused (HTTP ${status}); using the public API for an hour`);
+  return true;
+}
+
+/** Test hook: forget the keyless period. */
+export function resetCoinGeckoKeyState() {
+  keylessUntil = 0;
 }
 
 export class CoinGeckoError extends Error {
@@ -37,6 +62,11 @@ async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
       lastErr = err;
       const status =
         err instanceof AxiosError ? err.response?.status : undefined;
+      // Switch to the public API and repeat at once; this attempt is not counted.
+      if (setKeyAsideIfSpent(status)) {
+        i--;
+        continue;
+      }
       if (status && status >= 400 && status < 500 && status !== 429) {
         throw new CoinGeckoError(err instanceof Error ? err.message : 'Помилка', status);
       }

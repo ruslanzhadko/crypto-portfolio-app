@@ -82,8 +82,17 @@ export class BingxAdapter implements ExchangeAdapter {
     const identity = record(
       bingxData(await this.request("uid", "account:v1:private"), "uid"),
     );
-    const uid = textField(identity.uid);
-    if (!/^\d+$/.test(uid)) throw new ExchangeError("INVALID_RESPONSE");
+    // BingX returns the UID as a JSON number; a string is accepted too.
+    const uid = Number.isSafeInteger(identity.uid)
+      ? String(identity.uid)
+      : typeof identity.uid === "string"
+        ? identity.uid
+        : "";
+    if (!/^\d+$/.test(uid))
+      throw new ExchangeError(
+        "INVALID_RESPONSE",
+        `uid type ${typeof identity.uid}`,
+      );
     this.verified = true;
     return { externalAccountId: uid };
   }

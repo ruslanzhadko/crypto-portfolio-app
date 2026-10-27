@@ -14,7 +14,7 @@ describe('landing market', () => {
     const url = fetchMock.mock.calls[0]![0] as URL;
     expect(url.searchParams.get('ids')).toContain('zcash');
     expect(url.searchParams.get('ids')).not.toContain('usd-coin');
-    expect(fetchMock.mock.calls[0]![1].next.revalidate).toBe(60);
+    expect(fetchMock.mock.calls[0]![1].next.revalidate).toBe(300);
   });
   it('reports upstream failure instead of returning made-up prices', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));

@@ -5,7 +5,7 @@ import { fetchTopMarkets, CoinGeckoError, type MarketCoin } from '@/lib/services
 import { Card, CardContent } from '@/components/ui/card';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default async function MarketPage() {
   const t = await getTranslations('Market');

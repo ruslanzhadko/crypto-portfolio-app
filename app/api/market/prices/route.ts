@@ -6,7 +6,7 @@ import { apiError, handleUnknown, ok } from '@/lib/api/response';
 import { fetchTopMarkets, CoinGeckoError } from '@/lib/services/coingecko';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 60;
+export const revalidate = 300;
 
 const querySchema = z.object({
   page: z.coerce.number().int().positive().default(1),

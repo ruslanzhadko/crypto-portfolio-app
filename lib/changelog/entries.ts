@@ -15,19 +15,22 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-27",
     title: {
-      ru: "BingX снова подключается",
-      uk: "BingX знову підключається",
-      en: "BingX connects again",
+      ru: "BingX подключается, суммы бирж не пропадают",
+      uk: "BingX підключається, суми бірж не зникають",
+      en: "BingX connects, exchange totals stay visible",
     },
     items: {
       ru: [
         "Ключи BingX больше не застревают на «Биржа временно недоступна»: проверка прав понимает формат, в котором их сейчас отдаёт BingX.",
+        "Суммы по биржам и PnL позиций больше не превращаются в «—», когда заканчивается месячный лимит сервиса цен.",
       ],
       uk: [
         "Ключі BingX більше не зависають на «Біржа тимчасово недоступна»: перевірка прав розуміє формат, у якому їх зараз віддає BingX.",
+        "Суми по біржах і PnL позицій більше не перетворюються на «—», коли закінчується місячний ліміт сервісу цін.",
       ],
       en: [
         "BingX keys no longer get stuck on “The exchange is temporarily unavailable”: the permission check understands the format BingX now returns.",
+        "Exchange totals and position PnL no longer turn into “—” when the price service runs out of its monthly quota.",
       ],
     },
   },
