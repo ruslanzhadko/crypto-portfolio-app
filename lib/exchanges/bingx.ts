@@ -61,7 +61,10 @@ export function assertBingxReadOnly(value: unknown) {
   if (!ips.length) throw new ExchangeError("IP_RESTRICTED");
 }
 
-/** Spot and USDT perpetuals use separate equity pools. All requests are GET. */
+/** Margin assets of BingX perpetuals that have a verified USD rate. */
+const MARGIN_ASSETS = ["USDT", "USDC"];
+
+/** Spot and perpetuals use separate equity pools. All requests are GET. */
 export class BingxAdapter implements ExchangeAdapter {
   private verified = false;
   private history = new CycleHistoryReader("bingx", (...args) =>
@@ -163,8 +166,19 @@ export class BingxAdapter implements ExchangeAdapter {
         "user/balance",
       ),
     );
-    if (!wallets.length || wallets.some((wallet) => wallet.asset !== "USDT"))
-      throw new ExchangeError("UNSUPPORTED_ACCOUNT");
+    // Perpetual margin wallets: USDT and USDC are valued at their rates; an empty wallet of any
+    // other asset is skipped, a funded one leaves the account incomplete instead of failing it.
+    const funded = wallets.filter(
+      (wallet) =>
+        wallet.asset === "USDT" ||
+        !new D(decimal(wallet.balance) ?? "0").isZero() ||
+        !new D(decimal(wallet.equity) ?? "0").isZero(),
+    );
+    if (!funded.length)
+      throw new ExchangeError(
+        "UNSUPPORTED_ACCOUNT",
+        `user/balance assets ${wallets.map((w) => String(w.asset)).join(",") || "none"}`,
+      );
     const rows = records(
       bingxData(
         await this.request("user/positions", "swap:v2:private"),
@@ -184,16 +198,23 @@ export class BingxAdapter implements ExchangeAdapter {
     } catch {
       /* Positions remain available without optional market estimates. */
     }
-    const rate = rates.get("USDT") ?? null;
+    const rateOf = (asset: string) =>
+      MARGIN_ASSETS.includes(asset) ? (rates.get(asset) ?? null) : null;
     const positions: OpenPosition[] = rows.flatMap((row) => {
       const size = new D(rd(row.positionAmt)).abs();
       if (size.isZero()) return [];
       const symbol = textField(row.symbol);
+      const settle = symbol.slice(symbol.lastIndexOf("-") + 1);
       if (
-        !symbol.endsWith("-USDT") ||
-        (row.currency !== undefined && row.currency !== "USDT")
+        !symbol.includes("-") ||
+        !MARGIN_ASSETS.includes(settle) ||
+        (row.currency !== undefined && row.currency !== settle)
       )
-        throw new ExchangeError("UNSUPPORTED_ACCOUNT");
+        throw new ExchangeError(
+          "UNSUPPORTED_ACCOUNT",
+          `user/positions quote ${settle} currency ${String(row.currency)}`,
+        );
+      const rate = rateOf(settle);
       if (
         !["LONG", "SHORT"].includes(String(row.positionSide)) ||
         typeof row.isolated !== "boolean"
@@ -206,8 +227,8 @@ export class BingxAdapter implements ExchangeAdapter {
         {
           positionKey: textField(row.positionId),
           symbol,
-          base: symbol.slice(0, -5),
-          settle: "USDT",
+          base: symbol.slice(0, symbol.lastIndexOf("-")),
+          settle,
           side: row.positionSide === "SHORT" ? "short" : "long",
           contracts: size.toFixed(),
           contractSize: "1",
@@ -244,28 +265,19 @@ export class BingxAdapter implements ExchangeAdapter {
     )
       throw new ExchangeError("INVALID_RESPONSE");
     await this.history.enrich(positions);
-    const total = sum(wallets.map((wallet) => rd(wallet.balance))),
-      free = sum(wallets.map((wallet) => rd(wallet.availableMargin)));
-    const complete = rate !== null;
-    return {
-      accountKey: "futures:usdt",
-      kind: "futures",
-      mode: "perpetual",
-      equityUsd: multiply(
-        sum(wallets.map((wallet) => rd(wallet.equity))),
+    const valued = funded.map((wallet) => {
+      const symbol = textField(wallet.asset),
+        rate = rateOf(symbol),
+        total = rd(wallet.balance),
+        free = rd(wallet.availableMargin);
+      return {
         rate,
-      ),
-      availableUsd: multiply(free, rate),
-      unrealizedPnlUsd: multiply(
-        sum(wallets.map((wallet) => rd(wallet.unrealizedProfit))),
-        rate,
-      ),
-      complete,
-      errorCode: complete ? null : "UNPRICED_ASSETS",
-      balances: [
-        {
-          assetId: "bingx:USDT",
-          symbol: "USDT",
+        equityUsd: multiply(rd(wallet.equity), rate),
+        availableUsd: multiply(free, rate),
+        unrealizedPnlUsd: multiply(rd(wallet.unrealizedProfit), rate),
+        balance: {
+          assetId: `bingx:${symbol}`,
+          symbol,
           total,
           free,
           locked: null,
@@ -273,7 +285,25 @@ export class BingxAdapter implements ExchangeAdapter {
           priceUsd: rate,
           usdValue: multiply(total, rate),
         },
-      ],
+      };
+    });
+    const complete = valued.every((wallet) => wallet.rate !== null);
+    // Without any rate the totals are unknown, not zero.
+    const priced = valued.some((wallet) => wallet.rate !== null);
+    return {
+      accountKey: "futures:usdt",
+      kind: "futures",
+      mode: "perpetual",
+      equityUsd: priced ? sum(valued.map((wallet) => wallet.equityUsd)) : null,
+      availableUsd: complete
+        ? sum(valued.map((wallet) => wallet.availableUsd))
+        : null,
+      unrealizedPnlUsd: priced
+        ? sum(valued.map((wallet) => wallet.unrealizedPnlUsd))
+        : null,
+      complete,
+      errorCode: complete ? null : "UNPRICED_ASSETS",
+      balances: valued.map((wallet) => wallet.balance),
       positions,
     };
   }

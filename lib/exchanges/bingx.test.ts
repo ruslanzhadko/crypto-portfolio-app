@@ -269,3 +269,100 @@ describe("BingX UID", () => {
     expect(await adapter.verify()).toEqual({ externalAccountId: "1234567890" });
   });
 });
+
+describe("BingX perpetual margin assets", () => {
+  it("values USDC margin and positions, skips empty wallets and never fails on them", async () => {
+    const f = fixture();
+    f.data["user/balance"] = [
+      {
+        asset: "USDT",
+        balance: "100",
+        equity: "110",
+        unrealizedProfit: "10",
+        availableMargin: "50",
+      },
+      {
+        asset: "USDC",
+        balance: "20",
+        equity: "20",
+        unrealizedProfit: "0",
+        availableMargin: "20",
+      },
+      {
+        asset: "VST",
+        balance: "0",
+        equity: "0",
+        unrealizedProfit: "0",
+        availableMargin: "0",
+      },
+    ];
+    f.data["user/positions"] = [
+      {
+        positionId: "1",
+        symbol: "ETH-USDC",
+        currency: "USDC",
+        positionAmt: "1",
+        positionSide: "LONG",
+        isolated: true,
+        avgPrice: "3000",
+        unrealizedProfit: "5",
+        leverage: "2",
+      },
+    ];
+    const adapter = new BingxAdapter(
+      f.request,
+      async () =>
+        new Map([
+          ["USDT", "1"],
+          ["USDC", "1"],
+        ]),
+    );
+    await adapter.verify();
+    const result = await adapter.fetch(false);
+    expect(result.failedAccounts).toEqual([]);
+    const futures = result.accounts[0]!;
+    expect(futures.balances.map((b) => b.symbol)).toEqual(["USDT", "USDC"]);
+    expect(futures.equityUsd).toBe("130");
+    expect(futures.complete).toBe(true);
+    expect(futures.positions?.[0]).toMatchObject({
+      base: "ETH",
+      settle: "USDC",
+      unrealizedPnlUsd: "5",
+    });
+  });
+
+  it("marks a funded unknown asset incomplete and keeps totals unknown without rates", async () => {
+    const f = fixture();
+    f.data["user/balance"] = [
+      {
+        asset: "USDT",
+        balance: "1",
+        equity: "1",
+        unrealizedProfit: "0",
+        availableMargin: "1",
+      },
+      {
+        asset: "XYZ",
+        balance: "5",
+        equity: "5",
+        unrealizedProfit: "0",
+        availableMargin: "5",
+      },
+    ];
+    f.data["user/positions"] = [];
+    const priced = new BingxAdapter(
+      f.request,
+      async () => new Map([["USDT", "1"]]),
+    );
+    await priced.verify();
+    const account = (await priced.fetch(false)).accounts[0]!;
+    expect(account).toMatchObject({
+      complete: false,
+      errorCode: "UNPRICED_ASSETS",
+      equityUsd: "1",
+    });
+    const unpriced = new BingxAdapter(f.request, async () => new Map());
+    await unpriced.verify();
+    expect((await unpriced.fetch(false)).accounts[0]!.equityUsd).toBeNull();
+  });
+});
