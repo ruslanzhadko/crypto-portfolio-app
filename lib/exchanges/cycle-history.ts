@@ -12,6 +12,8 @@ import { errorDiagnostics, type OpenPosition } from "./types";
 type Row = Record<string, unknown>;
 const WEEK = 7 * 86400_000;
 const LOOKBACK = 90 * 86400_000;
+/** Orders filled inside a window but placed before it that may be looked up one by one. */
+const MAX_ORDER_LOOKUPS = 20;
 function time(value: unknown) {
   const n =
     typeof value === "string" && !/^\d+$/.test(value)
@@ -53,7 +55,9 @@ export class CycleHistoryReader {
               error instanceof Error && error.name === "Error"
                 ? error.message
                 : errorDiagnostics(error);
-            console.warn(`[cycle-history] ${this.venue} ${p.symbol} unavailable: ${reason}`);
+            console.warn(
+              `[cycle-history] ${this.venue} ${p.symbol} unavailable: ${reason}`,
+            );
             summary = {
               amount: null,
               realizedPnl: null,
@@ -85,7 +89,7 @@ export class CycleHistoryReader {
     positions: OpenPosition[],
   ): Promise<FundingSummary> {
     // Aster needs up to 26 weekly windows each for fills, commissions and funding.
-    let budget = this.venue === "aster" ? 98 : 30;
+    let budget = this.venue === "aster" ? 98 : 80;
     const get = async (path: string, params: Row = {}, weight = 1) => {
       if (--budget < 0) throw new Error("History budget exhausted");
       const response = await this.request(
@@ -137,17 +141,51 @@ export class CycleHistoryReader {
         // Reconcile fills with executed orders: some API revisions silently cap
         // fill lists without a cursor. An incomplete list must never become a total.
         {
-          const orders = await get("trade/allOrders", {
-            currency: p.settle,
-            startTime: start,
-            endTime: end,
-            limit: 1000,
-          });
-          const list = records(
-            Array.isArray(orders) ? orders : record(orders).orders,
-          );
-          if (list.length >= 1000) throw new Error("Truncated order history");
+          const ordersBetween = async (from: number, to: number) => {
+            const orders = await get("trade/allOrders", {
+              currency: p.settle,
+              startTime: from,
+              endTime: to,
+              limit: 1000,
+            });
+            const list = records(
+              Array.isArray(orders) ? orders : record(orders).orders,
+            );
+            if (list.length >= 1000) throw new Error("Truncated order history");
+            return list;
+          };
+          const list = await ordersBetween(start, end);
           const byId = new Map(list.map((r) => [String(r.orderId), r]));
+          // allOrders filters by creation time: an order placed before the window (a limit, TP/SL or
+          // algo order) can fill inside it. Look one week further back, then ask for the rest by ID.
+          const unknown = () =>
+            [...new Set(batch.map((r) => String(r.orderId)))].filter(
+              (id) => id !== "undefined" && !byId.has(id),
+            );
+          if (unknown().length)
+            for (const r of await ordersBetween(start - WEEK, start - 1))
+              byId.set(String(r.orderId), r);
+          const missing = unknown();
+          if (missing.length > MAX_ORDER_LOOKUPS)
+            throw new Error("Too many unresolved fill orders");
+          // Fills carry no symbol: an order not found under this symbol belongs to another market.
+          const foreign = new Set<string>();
+          for (const id of missing) {
+            const found = await get("trade/order", {
+              symbol: p.symbol,
+              orderId: id,
+            }).catch(() => null);
+            const order =
+              found == null ? null : record(record(found).order ?? found);
+            if (
+              order &&
+              String(order.orderId) === id &&
+              order.symbol === p.symbol
+            )
+              byId.set(id, order);
+            else foreign.add(id);
+          }
+          batch = batch.filter((r) => !foreign.has(String(r.orderId)));
           const quantities = new Map<string, InstanceType<typeof D>>();
           for (const r of batch) {
             if (r.orderId == null)

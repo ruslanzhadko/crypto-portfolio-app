@@ -345,6 +345,70 @@ describe("current cycle funding and fees", () => {
     await f.reader.enrich([f.p]);
     expect(f.p.funding?.amount).toBe("0.18");
   });
+  it("resolves BingX fills of orders placed before the window and drops other markets", async () => {
+    const f = fixture();
+    const original = f.request.getMockImplementation()!;
+    const bare = (r: (typeof f.fills)[number]) => {
+      const { side: _s, symbol: _y, positionSide: _p, ...rest } = r;
+      return rest;
+    };
+    // A fill of another market's order inside the same window.
+    const foreignFill = {
+      ...bare(f.fills[1]!),
+      id: "9",
+      tradeId: "9",
+      orderId: "9",
+      time: opening + 2000,
+    };
+    f.request.mockImplementation(async (path, api, params = {}) => {
+      if (path === "trade/allFillOrders")
+        return {
+          code: 0,
+          data: { fill_orders: [...f.fills.map(bare), foreignFill] },
+        };
+      // Order 1 was placed long before: neither allOrders window lists it.
+      if (path === "trade/allOrders")
+        return {
+          code: 0,
+          data: f.fills
+            .filter((r) => r.orderId !== "1")
+            .map((r) => ({
+              orderId: r.orderId,
+              side: r.side,
+              symbol: r.symbol,
+              positionSide: r.positionSide,
+              executedQty: r.qty,
+            })),
+        };
+      if (path === "trade/order") {
+        if (params.orderId === "1") {
+          const r = f.fills[0]!;
+          return {
+            code: 0,
+            data: {
+              order: {
+                orderId: "1",
+                side: r.side,
+                symbol: r.symbol,
+                positionSide: r.positionSide,
+                executedQty: r.qty,
+              },
+            },
+          };
+        }
+        throw new Error("order not exist");
+      }
+      return original(path, api, params);
+    });
+    await f.reader.enrich([f.p]);
+    expect(f.p.funding).toMatchObject({
+      status: "complete",
+      realizedPnl: "50",
+    });
+    expect(
+      f.request.mock.calls.filter(([path]) => path === "trade/order"),
+    ).toHaveLength(2);
+  });
   it("reads legacy BingX realized cashflow from income when fills omit it", async () => {
     const f = fixture(),
       original = f.request.getMockImplementation()!;
