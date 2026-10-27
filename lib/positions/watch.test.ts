@@ -95,15 +95,25 @@ describe("PositionWatch", () => {
 
   it("reports the PnL sign only after leaving the band around zero", () => {
     const watch = new PositionWatch();
-    // Band: 0.5% of a $700 margin = $3.50.
+    // Band: 5% of a $700 margin = $35.
     const pnl = (usd: string) => futures(position({ unrealizedPnlUsd: usd }));
-    watch.observe("c1", pnl("10"), all, 0);
-    expect(watch.observe("c1", pnl("-2"), all, 1)).toEqual([]);
-    const minus = watch.observe("c1", pnl("-5"), all, 2);
-    expect(minus).toEqual([expect.objectContaining({ kind: "pnlSign", positive: false, pnlUsd: -5 })]);
+    watch.observe("c1", pnl("100"), all, 0);
+    expect(watch.observe("c1", pnl("-20"), all, 1)).toEqual([]);
+    const minus = watch.observe("c1", pnl("-50"), all, 2);
+    expect(minus).toEqual([expect.objectContaining({ kind: "pnlSign", positive: false, pnlUsd: -50 })]);
     // Within five minutes the same rule stays quiet, but the sign is still tracked.
-    expect(watch.observe("c1", pnl("8"), all, 3)).toEqual([]);
-    expect(watch.observe("c1", pnl("-8"), all, MIN_REPEAT_MS + 10).map((e) => e.kind)).toEqual(["pnlSign"]);
+    expect(watch.observe("c1", pnl("80"), all, 3)).toEqual([]);
+    expect(watch.observe("c1", pnl("-80"), all, MIN_REPEAT_MS + 10).map((e) => e.kind)).toEqual(["pnlSign"]);
+  });
+
+  it("uses the position size when the margin is unknown", () => {
+    const watch = new PositionWatch();
+    // 0.5% of a $28.60 position = $0.143: cents of noise stay quiet.
+    const zec = (usd: string) =>
+      futures(position({ margin: null, notionalUsd: "28.6", unrealizedPnlUsd: usd }));
+    watch.observe("c1", zec("0.2"), all, 0);
+    expect(watch.observe("c1", zec("-0.03"), all, 1)).toEqual([]);
+    expect(watch.observe("c1", zec("-0.2"), all, 2).map((e) => e.kind)).toEqual(["pnlSign"]);
   });
 
   it("emits only the kinds that are switched on", () => {

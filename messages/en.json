@@ -1174,7 +1174,8 @@
       "pnlMinus": "Position in loss",
       "pnlApprox": "PnL ≈ {value}",
       "pnl": "PnL {value}",
-      "distance": "{value}% to liquidation"
+      "distance": "{value}% to liquidation",
+      "size": "position size"
     }
   }
 }

@@ -33,8 +33,13 @@ export type PositionEvent =
 
 /** A liquidation alert fires again only after the distance grows this much past the threshold. */
 export const LIQUIDATION_REARM_PERCENT = 3;
-/** The PnL sign changes only after moving this share of the margin away from zero. */
-export const PNL_SIGN_BAND = 0.005;
+/**
+ * The PnL sign changes only after moving this share of the margin away from zero (about a 0.5%
+ * price move at 10x), so cents of noise on a small position do not flip it back and forth.
+ */
+export const PNL_SIGN_BAND = 0.05;
+/** Without a known margin: this share of the position size. */
+export const PNL_SIGN_NOTIONAL_BAND = 0.005;
 /** One rule fires at most once per this interval for the same position. */
 export const MIN_REPEAT_MS = 5 * 60_000;
 
@@ -63,8 +68,14 @@ export function liquidationDistance(p: WatchedPosition): number | null {
 export function pnlSign(p: WatchedPosition): -1 | 0 | 1 {
   const pnl = num(p.unrealizedPnlUsd);
   if (pnl === null) return 0;
-  const margin = num(p.margin);
-  const band = margin !== null && margin > 0 ? margin * PNL_SIGN_BAND : 0;
+  const margin = num(p.margin),
+    notional = num(p.notionalUsd);
+  const band =
+    margin !== null && margin > 0
+      ? margin * PNL_SIGN_BAND
+      : notional !== null
+        ? Math.abs(notional) * PNL_SIGN_NOTIONAL_BAND
+        : 0;
   return pnl > band ? 1 : pnl < -band ? -1 : 0;
 }
 

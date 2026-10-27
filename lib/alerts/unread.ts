@@ -8,7 +8,8 @@ import { useEffect, useState } from "react";
  * lives in localStorage, like the changelog dot.
  */
 const SEEN_KEY = "alerts-seen";
-const POLL_MS = 60_000;
+/** Also how soon a new alert pops up on an open page (AlertToasts); reads only the Runtime Cache. */
+const POLL_MS = 20_000;
 
 let latestAt: number | null | undefined;
 let timer: ReturnType<typeof setInterval> | undefined;

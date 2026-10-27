@@ -258,7 +258,7 @@ function PositionLogRow({
   const t = useTranslations('Alerts');
   const tp = useTranslations('PositionAlerts.log');
   const d = (log.details ?? {}) as Partial<PositionLogDetails>;
-  const signedUsd = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatUsd(Math.abs(value))}`;
+  const signedUsd = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatUsd(Math.abs(value), { minimumFractionDigits: 2 })}`;
   const kind = log.kind ?? '';
   const positive = kind === 'pnlSign' ? d.positive === true : kind === 'closed' ? (d.pnlUsd ?? 0) >= 0 : null;
   const tone =
@@ -311,7 +311,10 @@ function PositionLogRow({
         {detail && <p className="truncate text-sm text-text-muted">{detail}</p>}
       </div>
 
-      <p className="hidden text-base tabular-nums sm:block">{size ?? ''}</p>
+      <div className="hidden sm:block">
+        <p className="text-base tabular-nums">{size ?? '—'}</p>
+        <p className="text-xs text-text-muted">{tp('size')}</p>
+      </div>
 
       <div className="text-right">
         <p className="text-sm tabular-nums text-text-muted sm:text-base sm:text-text" title={relative}>

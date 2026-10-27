@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Navbar } from "@/components/layout/navbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { exchangesEnabled } from "@/lib/exchanges/config";
+import { AlertToasts } from "@/components/alerts/alert-toasts";
 
 export default async function DashboardLayout({
   children,
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
           {children}
         </main>
       </div>
+      <AlertToasts />
       <MobileNav
         userRole={session!.user.role}
         exchangesEnabled={exchangesEnabled(session!.user.id)}

@@ -15,20 +15,26 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-28",
     title: {
-      ru: "PnL и безубыток BingX, продажи токенов как свопы",
-      uk: "PnL і беззбиток BingX, продажі токенів як свопи",
-      en: "BingX PnL and break-even, token sales as swaps",
+      ru: "Уведомления на сайте, PnL и безубыток BingX",
+      uk: "Сповіщення на сайті, PnL і беззбиток BingX",
+      en: "On-site alerts, BingX PnL and break-even",
     },
     items: {
       ru: [
+        "Сработавшие триггеры и уведомления по позициям всплывают справа на открытой странице сайта, рядом с сообщением в Telegram.",
+        "Уведомление «плюс / минус» больше не дёргается от колебаний PnL в центы; в журнале у позиций подписан объём.",
         "У позиций BingX появились реализованный PnL и цена безубытка, в том числе когда ордер выставлен заранее или исполнялся несколько недель.",
         "Продажа токена за ETH показывается как своп («ZC → ETH»), даже если сделка старая или прошла через агрегатор.",
       ],
       uk: [
+        "Спрацьовані тригери та сповіщення по позиціях спливають праворуч на відкритій сторінці сайту, поруч із повідомленням у Telegram.",
+        "Сповіщення «плюс / мінус» більше не смикається від коливань PnL у центи; у журналі в позицій підписано обсяг.",
         "У позицій BingX з'явилися реалізований PnL і ціна беззбитку, зокрема коли ордер виставлено заздалегідь або він виконувався кілька тижнів.",
         "Продаж токена за ETH показується як своп («ZC → ETH»), навіть якщо угода давня або пройшла через агрегатор.",
       ],
       en: [
+        "Fired triggers and position alerts pop up on the right of any open page of the site, next to the Telegram message.",
+        "The profit / loss alert no longer flips on cents of PnL noise; position rows in the log label their size.",
         "BingX positions now show realized PnL and the break-even price, including orders placed in advance or filled over several weeks.",
         "Selling a token for ETH shows as a swap (“ZC → ETH”), even for older trades or ones routed through an aggregator.",
       ],

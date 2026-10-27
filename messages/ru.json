@@ -1174,7 +1174,8 @@
       "pnlMinus": "Позиция ушла в минус",
       "pnlApprox": "PnL ≈ {value}",
       "pnl": "PnL {value}",
-      "distance": "до ликвидации {value}%"
+      "distance": "до ликвидации {value}%",
+      "size": "объём позиции"
     }
   }
 }
