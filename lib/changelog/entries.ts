@@ -15,6 +15,31 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-27",
     title: {
+      ru: "Уведомления по позициям на биржах",
+      uk: "Сповіщення по позиціях на біржах",
+      en: "Notifications for exchange positions",
+    },
+    items: {
+      ru: [
+        "В настройках появился раздел «Уведомления по позициям»: открытие и закрытие позиции, близкая ликвидация, переход позиции в плюс или минус.",
+        "Позиции проверяются примерно раз в 15 секунд, даже когда сайт закрыт. Сообщения приходят в Telegram и в журнал алертов.",
+        "Порог ликвидации выбирается (5–20%), а любой счёт можно исключить.",
+      ],
+      uk: [
+        "У налаштуваннях з'явився розділ «Сповіщення по позиціях»: відкриття й закриття позиції, близька ліквідація, перехід позиції в плюс або мінус.",
+        "Позиції перевіряються приблизно раз на 15 секунд, навіть коли сайт закрито. Повідомлення надходять у Telegram і в журнал алертів.",
+        "Поріг ліквідації можна вибрати (5–20%), а будь-який рахунок — виключити.",
+      ],
+      en: [
+        "Settings now have Position notifications: a position opened or closed, liquidation getting close, a position going into profit or loss.",
+        "Positions are checked about every 15 seconds, even when the site is closed. Alerts arrive in Telegram and in the alert log.",
+        "The liquidation threshold is adjustable (5–20%), and any account can be excluded.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-27",
+    title: {
       ru: "Единый вид обзора для кошельков и бирж",
       uk: "Єдиний вигляд огляду для гаманців і бірж",
       en: "One overview layout for wallets and exchanges",

@@ -133,14 +133,13 @@ PostgreSQL, число строк всех 27 таблиц совпало).
 Порядок как в §4b, колонка добавлена до пуша в `main` (worker читает подключение целиком). После деплоя каждое
 подключение один раз читает переводы за 365 дней; если биржа отказывает, — за 90 дней (`lib/exchanges/transfer-store.ts`).
 
-## 4d. Уведомления по позициям — **не применена**
+## 4d. Уведомления по позициям — применена 27.10.2026
 
-Только добавление (`prisma/position-alerts.sql`): `User.positionAlerts` (JSON настроек) и `NotificationLog.kind`,
-`NotificationLog.details`. Применить **до** пуша в `main`: сайт и worker читают эти колонки. Порядок как в §4b:
-резервная копия → SQL → `prisma migrate diff --exit-code` = 0.
-
-Worker на VM отправляет сообщения сам: в `exchange-production.env` нужен `TELEGRAM_BOT_TOKEN` (тот же, что в
-`price-triggers.env`), затем пересоздать контейнер. Без него события пишутся только в журнал на сайте.
+Резервная копия: `<локальная папка бэкапов>/prod-before-position-alerts-20261027-2156.dump` (восстановлена, число строк
+всех 29 таблиц совпало, кроме записей, появившихся после дампа). Только добавление (`prisma/position-alerts.sql`):
+`User.positionAlerts`, `NotificationLog.kind`, `NotificationLog.details`. После неё diff с production содержит только
+`DROP TABLE "PortfolioCapitalSnapshot_backup_…"` — резервная таблица чистки капитала 23.10, её не трогать.
+Worker отправляет сообщения сам: `TELEGRAM_BOT_TOKEN` добавлен в `exchange-production.env` 27.10.
 
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 
@@ -346,6 +345,7 @@ IP остаётся в whitelist до конца проверки.
 | 23.10 | Таблицы лидеров роста (§4b) |
 | 24.10 | `update-prices` с VM (§5b), обе задачи cron-job.org выключены |
 | 25.10 | Render удалён; `PriceHistory` удалена; история переводов бирж за год (§4c) |
+| 27.10 | Уведомления по позициям (§4d) |
 | 28–31 октября | Снять графики Neon, решить Free/Launch |
 | 1 ноября | Смена тарифа Neon (если решено) |
 | Ноябрь | Уведомления по позициям (этап 1), затем живой канал |
