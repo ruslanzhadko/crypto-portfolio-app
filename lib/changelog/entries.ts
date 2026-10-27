@@ -23,14 +23,17 @@ export const CHANGELOG: ChangelogEntry[] = [
       ru: [
         "Ключи BingX больше не застревают на «Биржа временно недоступна»: проверка прав понимает формат, в котором их сейчас отдаёт BingX.",
         "Суммы по биржам и PnL позиций больше не превращаются в «—», когда заканчивается месячный лимит сервиса цен.",
+        "Позиции можно сгруппировать по биржам: блок на каждую биржу с объёмом и PnL. BingX появился в фильтре бирж.",
       ],
       uk: [
         "Ключі BingX більше не зависають на «Біржа тимчасово недоступна»: перевірка прав розуміє формат, у якому їх зараз віддає BingX.",
         "Суми по біржах і PnL позицій більше не перетворюються на «—», коли закінчується місячний ліміт сервісу цін.",
+        "Позиції можна згрупувати за біржами: блок на кожну біржу з обсягом і PnL. BingX з'явився у фільтрі бірж.",
       ],
       en: [
         "BingX keys no longer get stuck on “The exchange is temporarily unavailable”: the permission check understands the format BingX now returns.",
         "Exchange totals and position PnL no longer turn into “—” when the price service runs out of its monthly quota.",
+        "Positions can be grouped by exchange: one block per exchange with its size and PnL. BingX is now in the exchange filter.",
       ],
     },
   },

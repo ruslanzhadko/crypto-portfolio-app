@@ -1,6 +1,6 @@
 "use client";
 import { ExchangeTokenLogo } from "./token-logo";
-import { ExchangeLogo, exchangeName } from "./exchange-logo";
+import { EXCHANGE_NAMES, ExchangeLogo, exchangeName } from "./exchange-logo";
 import { useEffect, useState, type SelectHTMLAttributes } from "react";
 import { ChevronDown, Info, SlidersHorizontal, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
@@ -167,6 +167,21 @@ function PositionSelect({
 }
 
 // Positions on one coin across accounts are shown together; the server order of first appearance is kept.
+const GROUPING_KEY = "positions-grouping";
+
+/** One block per exchange, largest total size first; each keeps the API order inside. */
+function groupByExchange(positions: PositionDto[]): PositionDto[][] {
+  const blocks = new Map<string, PositionDto[]>();
+  for (const p of positions) {
+    const block = blocks.get(p.connection.exchange);
+    if (block) block.push(p);
+    else blocks.set(p.connection.exchange, [p]);
+  }
+  const size = (block: PositionDto[]) =>
+    block.reduce((total, p) => total + Math.abs(Number(p.notionalUsd ?? 0)), 0);
+  return [...blocks.values()].sort((a, b) => size(b) - size(a));
+}
+
 function groupByBase(
   positions: PositionDto[],
 ): [PositionDto, ...PositionDto[]][] {
@@ -224,6 +239,26 @@ export function PositionsPage({
     );
   }
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // Coin groups (default) or one block per exchange; remembered in this browser.
+  const [grouping, setGrouping] = useState<"coin" | "exchange">("coin");
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(GROUPING_KEY) === "exchange")
+        setGrouping("exchange");
+    } catch {
+      /* Storage unavailable: keep the default. */
+    }
+  }, []);
+  function chooseGrouping(value: "coin" | "exchange") {
+    setGrouping(value);
+    setPage(1);
+    try {
+      localStorage.setItem(GROUPING_KEY, value);
+    } catch {
+      /* Not remembered; the choice still applies now. */
+    }
+  }
+  const byExchange = grouping === "exchange" && !compact && !connectionId;
   const activeFilters = [
     exchange,
     connectionId ? "" : account,
@@ -233,7 +268,7 @@ export function PositionsPage({
   ].filter(Boolean).length;
   const qs = new URLSearchParams({
     page: String(page),
-    limit: compact ? "5" : "25",
+    limit: compact ? "5" : byExchange ? "100" : "25",
     sort,
   });
   if (exchange) qs.set("exchange", exchange);
@@ -264,7 +299,13 @@ export function PositionsPage({
   }>(`/api/positions?${qs}`, 15_000, true);
   // Unfiltered and fully priced, the page's totals are fresher than the header pill's: share them.
   const unfiltered =
-    !compact && !connectionId && !exchange && !account && !searchCoin && !side && !pnlResult;
+    !compact &&
+    !connectionId &&
+    !exchange &&
+    !account &&
+    !searchCoin &&
+    !side &&
+    !pnlResult;
   const unrealizedTotal = result.data?.summary?.unrealized;
   useEffect(() => {
     if (
@@ -306,6 +347,517 @@ export function PositionsPage({
     setSort("size");
     setPage(1);
   }
+  function renderCoinGroup(group: [PositionDto, ...PositionDto[]]) {
+    const rows = group.map((p) => {
+      const netRealized = realizedWithFunding(p);
+      const displayedRealized = netRealized;
+      const breakEven = p.funding?.breakEvenPrice ?? null;
+      const closedAfterFees =
+        p.funding?.realizedPnl != null && p.funding.tradingFees != null
+          ? String(
+              Number(p.funding.realizedPnl) - Number(p.funding.tradingFees),
+            )
+          : null;
+      const distance = liquidationDistance(p);
+      const displayedClosed = closedAfterFees ?? p.funding?.realizedPnl ?? null;
+      const shield = p.funding?.shield;
+      const key = `${p.connection.id}:${p.positionKey}`;
+      return {
+        key,
+        node: (
+          <details
+            key={key}
+            className="group"
+            open={expanded[`${p.connection.id}:${p.positionKey}`] ?? false}
+            onToggle={(event) => {
+              const open = event.currentTarget.open;
+              const key = `${p.connection.id}:${p.positionKey}`;
+              setExpanded((previous) =>
+                previous[key] === open
+                  ? previous
+                  : { ...previous, [key]: open },
+              );
+            }}
+          >
+            <summary
+              onClick={(event) => {
+                // Closing is animated: keep the element open until the content has folded away.
+                if (!(expanded[key] ?? false)) return;
+                event.preventDefault();
+                if (!closing[key]) collapse(key);
+              }}
+              className="grid cursor-pointer list-none grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 [&>div>p+p]:mt-0.5 sm:px-4 lg:grid-cols-6 lg:items-center lg:gap-x-6 lg:gap-y-2 lg:px-5 lg:py-3 lg:[&>div>p+p]:mt-1 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [&>div]:min-w-0"
+            >
+              {/* Phones: coin and account on the left with PnL beside them, then size, prices and realized PnL in one row. */}
+              <div className="order-1 col-span-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 lg:order-none lg:col-span-1 lg:block">
+                {/* A div: the logo fallback is a div, which a paragraph may not contain (hydration error). */}
+                <div className="flex min-w-0 items-center gap-2 text-sm font-semibold lg:gap-3 lg:text-base">
+                  <ExchangeTokenLogo symbol={p.base} size={24} />
+                  <span className="truncate">{displaySymbol(p.symbol)}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:mt-1">
+                  <span
+                    className={`text-xs font-medium lg:text-sm ${p.side === "long" ? "text-success" : "text-danger"}`}
+                  >
+                    {p.side === "long" ? "Long" : "Short"}
+                  </span>
+                  <span
+                    className="text-xs text-text-muted lg:text-sm"
+                    title={t("leverage")}
+                  >
+                    <Quantity value={p.leverage} maximumFractionDigits={4} />
+                    {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
+                  </span>
+                  {shield && (
+                    <span
+                      className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary lg:px-2 lg:text-xs"
+                      title={t("shieldDescription")}
+                    >
+                      Aster Shield
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="order-4 flex flex-col lg:order-none lg:block">
+                <p className="truncate text-[11px] text-text-muted lg:text-xs">
+                  {t("size")}
+                </p>
+                <p className="order-2 break-words text-[11px] tabular-nums text-text-muted lg:text-sm lg:font-medium lg:text-text">
+                  <Quantity value={p.baseSize} maximumFractionDigits={4} />{" "}
+                  {p.base}
+                </p>
+                <p className="order-1 text-[13px] font-medium lg:text-xs lg:font-normal lg:text-text-muted">
+                  <Money value={p.notionalUsd} />
+                </p>
+              </div>
+              <div className="order-5 lg:order-none">
+                <p className="truncate text-[11px] text-text-muted lg:text-xs">
+                  <span className="lg:hidden">{t("entryMarkShort")}</span>
+                  <span className="hidden lg:inline">{t("entryMark")}</span>
+                </p>
+                <p className="break-words text-[13px] font-medium tabular-nums lg:text-sm">
+                  <Quantity value={p.entryPrice} maximumFractionDigits={4} />
+                  <span className="hidden lg:inline"> / </span>
+                  <span className="block text-[11px] font-normal text-text-muted lg:inline lg:text-sm lg:font-medium lg:text-text">
+                    <Quantity value={p.markPrice} maximumFractionDigits={4} />
+                  </span>
+                </p>
+                <p className="hidden text-xs text-text-muted lg:block">
+                  {p.settle}
+                </p>
+              </div>
+              {shield ? (
+                <div className="order-6 text-right lg:order-none lg:text-left">
+                  <p className="truncate text-[11px] text-text-muted lg:text-xs">
+                    {t("margin")}
+                  </p>
+                  <p className="break-words text-[13px] font-medium tabular-nums lg:text-sm">
+                    <Quantity value={p.margin} maximumFractionDigits={4} />{" "}
+                    {p.settle}
+                  </p>
+                  <p className="text-[11px] text-text-muted tabular-nums lg:text-xs">
+                    TP{" "}
+                    <Quantity
+                      value={shield.takeProfit}
+                      maximumFractionDigits={4}
+                    />{" "}
+                    · SL{" "}
+                    <Quantity
+                      value={shield.stopLoss}
+                      maximumFractionDigits={4}
+                    />
+                  </p>
+                </div>
+              ) : (
+                <div className="order-6 text-right lg:order-none lg:text-left">
+                  <p
+                    className="truncate text-[11px] text-text-muted lg:text-xs"
+                    title={t("realizedPnlDescription")}
+                  >
+                    <span className="lg:hidden">{t("realizedPnlShort")}</span>
+                    <span className="hidden lg:inline">{t("realizedPnl")}</span>
+                  </p>
+                  <p
+                    className={`break-words text-[13px] font-medium tabular-nums lg:text-sm ${displayedRealized == null ? "text-text-muted" : Number(displayedRealized) > 0 ? "text-success" : Number(displayedRealized) < 0 ? "text-danger" : ""}`}
+                  >
+                    {displayedRealized != null && Number(displayedRealized) > 0
+                      ? "+"
+                      : ""}
+                    <Quantity
+                      value={displayedRealized}
+                      maximumFractionDigits={4}
+                    />{" "}
+                    {p.settle}
+                  </p>
+                </div>
+              )}
+              <div className="order-3 col-span-2 flex flex-wrap items-center gap-x-2 lg:order-none lg:col-span-1 lg:block">
+                <p className="break-words text-xs font-medium lg:text-sm">
+                  {p.connection.label}
+                </p>
+                <p className="flex items-center gap-1.5 text-[11px] text-text-muted lg:text-xs">
+                  <ExchangeLogo exchange={p.connection.exchange} size={14} />
+                  {exchangeName(p.connection.exchange)}
+                </p>
+              </div>
+              <div className="order-2 row-span-2 text-right lg:order-none lg:row-span-1">
+                <p className="truncate text-[11px] text-text-muted lg:text-xs">
+                  <span className="lg:hidden">{t("unrealizedPnlShort")}</span>
+                  <span className="hidden lg:inline">{t("unrealizedPnl")}</span>
+                </p>
+                <p
+                  className={`text-base font-semibold lg:text-lg ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
+                >
+                  <Money value={p.unrealizedPnlUsd} signed />
+                </p>
+                <p
+                  className="text-xs text-text-muted lg:text-sm"
+                  title={t("returnOnMargin") + ": " + t("returnFormula")}
+                >
+                  <Percent fraction={marginReturn(p)} signed />
+                </p>
+                {p.stale && (
+                  <p className="text-[11px] text-warning lg:text-xs">
+                    {t("stale")}
+                  </p>
+                )}
+              </div>
+            </summary>
+            {/* Mounted only while open so the reveal plays every time; rows below slide down instead of jumping. */}
+            {(expanded[key] ?? false) && (
+              <div
+                className={`grid motion-reduce:animate-none ${closing[key] ? "animate-fold" : "animate-expand"}`}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  <div className="border-t border-border bg-background/40 px-3 py-3 duration-300 animate-in slide-in-from-top-2 motion-reduce:animate-none sm:px-4 lg:px-5 lg:py-3">
+                    {shield ? (
+                      <dl className={DETAILS_GRID}>
+                        <div>
+                          <dt className="text-text-muted">
+                            {t("liquidation")}
+                          </dt>
+                          <dd>
+                            <Quantity
+                              value={p.liquidationPrice}
+                              maximumFractionDigits={4}
+                            />{" "}
+                            {p.settle}
+                          </dd>
+                          <p
+                            className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
+                            title={t("liquidationDistanceDescription")}
+                          >
+                            {t("liquidationDistance")}:{" "}
+                            {distance == null
+                              ? "—"
+                              : new Intl.NumberFormat(locale, {
+                                  style: "percent",
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                }).format(distance)}
+                          </p>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">TP / SL</dt>
+                          <dd>
+                            <Quantity
+                              value={shield.takeProfit}
+                              maximumFractionDigits={4}
+                            />{" "}
+                            /{" "}
+                            <Quantity
+                              value={shield.stopLoss}
+                              maximumFractionDigits={4}
+                            />
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">
+                            {t("shieldFeeMode")}
+                          </dt>
+                          <dd>
+                            {shield.feeMode === "PROFIT"
+                              ? t("shieldFeeFromProfit")
+                              : (shield.feeMode ?? "—")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">
+                            {t("shieldOpenedAt")}
+                          </dt>
+                          <dd>
+                            {shield.openedAt
+                              ? new Intl.DateTimeFormat(locale, {
+                                  dateStyle: "short",
+                                  timeStyle: "short",
+                                }).format(shield.openedAt)
+                              : "—"}
+                          </dd>
+                          <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
+                            {t("updated")}{" "}
+                            <PositionUpdated value={p.updatedAt} />
+                          </p>
+                        </div>
+                        <div className="lg:col-start-6 lg:text-right">
+                          <dt className="text-text-muted">
+                            {t("nextFunding")}
+                          </dt>
+                          <NextFunding p={p} />
+                        </div>
+                      </dl>
+                    ) : (
+                      <dl className={DETAILS_GRID}>
+                        <div>
+                          <dt
+                            className="text-text-muted"
+                            title={t("breakEvenDescription")}
+                          >
+                            {t("breakEven")}
+                          </dt>
+                          <dd>
+                            <Quantity
+                              value={breakEven}
+                              maximumFractionDigits={4}
+                            />{" "}
+                            {p.settle}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">{t("margin")}</dt>
+                          <dd>
+                            <Quantity
+                              value={p.margin}
+                              maximumFractionDigits={4}
+                            />{" "}
+                            {p.settle}
+                          </dd>
+                          <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
+                            {t("updated")}{" "}
+                            <PositionUpdated value={p.updatedAt} />
+                          </p>
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">
+                            {t("liquidation")}
+                          </dt>
+                          <dd>
+                            <Quantity
+                              value={p.liquidationPrice}
+                              maximumFractionDigits={4}
+                            />{" "}
+                            {p.settle}
+                          </dd>
+                          <p
+                            className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
+                            title={t("liquidationDistanceDescription")}
+                          >
+                            {t("liquidationDistance")}:{" "}
+                            {distance == null
+                              ? "—"
+                              : new Intl.NumberFormat(locale, {
+                                  style: "percent",
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                }).format(distance)}
+                          </p>
+                        </div>
+                        <div>
+                          <dt
+                            className="text-text-muted"
+                            title={
+                              closedAfterFees == null
+                                ? undefined
+                                : t("closedAfterFeesDescription")
+                            }
+                          >
+                            {t(
+                              closedAfterFees == null
+                                ? "closedPnl"
+                                : "closedAfterFees",
+                            )}
+                          </dt>
+                          <dd
+                            className={
+                              displayedClosed == null
+                                ? "text-text-muted"
+                                : Number(displayedClosed) > 0
+                                  ? "text-success"
+                                  : Number(displayedClosed) < 0
+                                    ? "text-danger"
+                                    : undefined
+                            }
+                          >
+                            <Quantity
+                              value={displayedClosed}
+                              maximumFractionDigits={4}
+                            />{" "}
+                            {p.settle}
+                          </dd>
+                          {closedAfterFees == null &&
+                            p.funding?.tradingFeesByAsset && (
+                              <div className="mt-1 text-[11px] text-text-muted lg:mt-2 lg:text-xs">
+                                <p>{t("tradingFees")}</p>
+                                {Object.entries(
+                                  p.funding.tradingFeesByAsset,
+                                ).map(([asset, fee]) => (
+                                  <p key={asset}>
+                                    <Quantity
+                                      value={fee}
+                                      maximumFractionDigits={8}
+                                    />{" "}
+                                    {asset}
+                                  </p>
+                                ))}
+                              </div>
+                            )}
+                        </div>
+                        <div>
+                          <dt className="text-text-muted">{t("funding")}</dt>
+                          <dd
+                            className={
+                              p.funding?.amount == null
+                                ? "text-text-muted"
+                                : Number(p.funding.amount) > 0
+                                  ? "text-success"
+                                  : Number(p.funding.amount) < 0
+                                    ? "text-danger"
+                                    : undefined
+                            }
+                          >
+                            <Quantity
+                              value={
+                                p.funding?.status === "complete"
+                                  ? p.funding.amount
+                                  : null
+                              }
+                              maximumFractionDigits={4}
+                            />{" "}
+                            {p.settle}
+                          </dd>
+                        </div>
+                        <div className="lg:col-start-6 lg:text-right">
+                          <dt className="text-text-muted">
+                            {t("nextFunding")}
+                          </dt>
+                          <NextFunding p={p} />
+                        </div>
+                      </dl>
+                    )}
+
+                    {p.errorCode && (
+                      <div className="mt-3">
+                        <ExchangeErrorNotice code={p.errorCode} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </details>
+        ),
+      };
+    });
+    const single = rows[0];
+    if (group.length === 1 && single)
+      return (
+        <div
+          key={single.key}
+          className="overflow-hidden rounded-xl border border-border bg-surface"
+        >
+          {single.node}
+        </div>
+      );
+    const notional = group.every((p) => p.notionalUsd != null)
+      ? group.reduce((sum, p) => sum + Number(p.notionalUsd), 0)
+      : null;
+    const pnl = group.every((p) => p.unrealizedPnlUsd != null)
+      ? group.reduce((sum, p) => sum + Number(p.unrealizedPnlUsd), 0)
+      : null;
+    return (
+      <div
+        key={`group:${group[0].base}`}
+        className="overflow-hidden rounded-xl border border-primary/30 bg-surface"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 border-b border-border bg-surface-2/60 px-3 py-2 text-xs sm:px-4 lg:gap-x-6 lg:px-5 lg:py-2 lg:text-sm">
+          <span className="font-semibold">
+            {group[0].base} · {t("positionGroup", { count: group.length })}
+          </span>
+          <span className="flex gap-x-3 text-text-muted lg:gap-x-5">
+            <span>
+              <span className="lg:hidden">{t("positionVolumeShort")}</span>
+              <span className="hidden lg:inline">{t("size")}</span>:{" "}
+              <Money value={notional == null ? null : String(notional)} />
+            </span>
+            <span
+              className={
+                pnl == null || pnl === 0
+                  ? ""
+                  : pnl > 0
+                    ? "text-success"
+                    : "text-danger"
+              }
+            >
+              <span className="lg:hidden">{t("unrealizedPnlShort")}</span>
+              <span className="hidden lg:inline">{t("unrealizedPnl")}</span>
+              : <Money value={pnl == null ? null : String(pnl)} signed />
+            </span>
+          </span>
+        </div>
+        <div className="divide-y divide-border">
+          {rows.map((row) => (
+            <div key={row.key}>{row.node}</div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  function renderExchange(block: PositionDto[]) {
+    const first = block[0]!;
+    const notional = block.every((p) => p.notionalUsd != null)
+      ? block.reduce((total, p) => total + Number(p.notionalUsd), 0)
+      : null;
+    const pnl = block.every((p) => p.unrealizedPnlUsd != null)
+      ? block.reduce((total, p) => total + Number(p.unrealizedPnlUsd), 0)
+      : null;
+    return (
+      <section
+        key={`exchange:${first.connection.exchange}`}
+        aria-label={exchangeName(first.connection.exchange)}
+        className="space-y-2 rounded-2xl border border-border bg-surface/40 p-2 sm:p-3"
+      >
+        <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-1 text-sm">
+          <span className="flex items-center gap-2 font-semibold">
+            <ExchangeLogo exchange={first.connection.exchange} size={20} />
+            {exchangeName(first.connection.exchange)}
+            <span className="font-normal text-text-muted">
+              · {t("positionGroup", { count: block.length })}
+            </span>
+          </span>
+          <span className="flex gap-x-3 text-xs text-text-muted sm:gap-x-5 sm:text-sm">
+            <span>
+              {t("positionVolumeShort")}:{" "}
+              <Money value={notional == null ? null : String(notional)} />
+            </span>
+            <span
+              className={
+                pnl == null || pnl === 0
+                  ? ""
+                  : pnl > 0
+                    ? "text-success"
+                    : "text-danger"
+              }
+            >
+              {t("unrealizedPnlShort")}:{" "}
+              <Money value={pnl == null ? null : String(pnl)} signed />
+            </span>
+          </span>
+        </header>
+        <div className="space-y-3">
+          {groupByBase(block).map(renderCoinGroup)}
+        </div>
+      </section>
+    );
+  }
   const updating =
     !!result.data && (result.loading || coin.trim() !== searchCoin);
   return (
@@ -322,6 +874,25 @@ export function PositionsPage({
           <Link href="/positions" className="text-sm text-primary">
             {t("viewAll")}
           </Link>
+        )}
+        {!compact && !connectionId && (
+          <div
+            role="group"
+            aria-label={t("groupBy")}
+            className="flex rounded-lg border border-border bg-surface p-0.5 text-xs sm:text-sm"
+          >
+            {(["coin", "exchange"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={grouping === value}
+                onClick={() => chooseGrouping(value)}
+                className={`rounded-md px-2.5 py-1 transition-colors sm:px-3 ${grouping === value ? "bg-primary text-white" : "text-text-muted hover:text-text"}`}
+              >
+                {t(value === "coin" ? "groupByCoin" : "groupByExchange")}
+              </button>
+            ))}
+          </div>
         )}
       </div>
       <div
@@ -444,13 +1015,11 @@ export function PositionsPage({
                     onChange={(e) => chooseExchange(e.target.value)}
                   >
                     <option value="">{t("allExchanges")}</option>
-                    <option value="binance">Binance</option>
-                    <option value="bybit">Bybit</option>
-                    <option value="gate">Gate</option>
-                    <option value="okx">OKX</option>
-                    <option value="bitget">Bitget</option>
-                    <option value="hyperliquid">Hyperliquid</option>
-                    <option value="aster">Aster</option>
+                    {Object.entries(EXCHANGE_NAMES).map(([id, name]) => (
+                      <option key={id} value={id}>
+                        {name}
+                      </option>
+                    ))}
                   </PositionSelect>
                   <PositionSelect
                     lead
@@ -541,514 +1110,9 @@ export function PositionsPage({
         </p>
       )}
       <div className="space-y-3">
-        {groupByBase(result.data?.positions ?? []).map((group) => {
-          const rows = group.map((p) => {
-            const netRealized = realizedWithFunding(p);
-            const displayedRealized = netRealized;
-            const breakEven = p.funding?.breakEvenPrice ?? null;
-            const closedAfterFees =
-              p.funding?.realizedPnl != null && p.funding.tradingFees != null
-                ? String(
-                    Number(p.funding.realizedPnl) -
-                      Number(p.funding.tradingFees),
-                  )
-                : null;
-            const distance = liquidationDistance(p);
-            const displayedClosed =
-              closedAfterFees ?? p.funding?.realizedPnl ?? null;
-            const shield = p.funding?.shield;
-            const key = `${p.connection.id}:${p.positionKey}`;
-            return {
-              key,
-              node: (
-                <details
-                  key={key}
-                  className="group"
-                  open={
-                    expanded[`${p.connection.id}:${p.positionKey}`] ?? false
-                  }
-                  onToggle={(event) => {
-                    const open = event.currentTarget.open;
-                    const key = `${p.connection.id}:${p.positionKey}`;
-                    setExpanded((previous) =>
-                      previous[key] === open
-                        ? previous
-                        : { ...previous, [key]: open },
-                    );
-                  }}
-                >
-                  <summary
-                    onClick={(event) => {
-                      // Closing is animated: keep the element open until the content has folded away.
-                      if (!(expanded[key] ?? false)) return;
-                      event.preventDefault();
-                      if (!closing[key]) collapse(key);
-                    }}
-                    className="grid cursor-pointer list-none grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1fr)] items-start gap-x-3 gap-y-2 px-3 py-3 [&>div>p+p]:mt-0.5 sm:px-4 lg:grid-cols-6 lg:items-center lg:gap-x-6 lg:gap-y-2 lg:px-5 lg:py-3 lg:[&>div>p+p]:mt-1 hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary [&>div]:min-w-0"
-                  >
-                    {/* Phones: coin and account on the left with PnL beside them, then size, prices and realized PnL in one row. */}
-                    <div className="order-1 col-span-2 flex flex-wrap items-center gap-x-2 gap-y-0.5 lg:order-none lg:col-span-1 lg:block">
-                      {/* A div: the logo fallback is a div, which a paragraph may not contain (hydration error). */}
-                      <div className="flex min-w-0 items-center gap-2 text-sm font-semibold lg:gap-3 lg:text-base">
-                        <ExchangeTokenLogo symbol={p.base} size={24} />
-                        <span className="truncate">
-                          {displaySymbol(p.symbol)}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 lg:mt-1">
-                        <span
-                          className={`text-xs font-medium lg:text-sm ${p.side === "long" ? "text-success" : "text-danger"}`}
-                        >
-                          {p.side === "long" ? "Long" : "Short"}
-                        </span>
-                        <span
-                          className="text-xs text-text-muted lg:text-sm"
-                          title={t("leverage")}
-                        >
-                          <Quantity
-                            value={p.leverage}
-                            maximumFractionDigits={4}
-                          />
-                          {p.leverage ? "×" : ""} · {p.marginMode ?? "—"}
-                        </span>
-                        {shield && (
-                          <span
-                            className="rounded-full border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[11px] font-medium text-primary lg:px-2 lg:text-xs"
-                            title={t("shieldDescription")}
-                          >
-                            Aster Shield
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="order-4 flex flex-col lg:order-none lg:block">
-                      <p className="truncate text-[11px] text-text-muted lg:text-xs">
-                        {t("size")}
-                      </p>
-                      <p className="order-2 break-words text-[11px] tabular-nums text-text-muted lg:text-sm lg:font-medium lg:text-text">
-                        <Quantity
-                          value={p.baseSize}
-                          maximumFractionDigits={4}
-                        />{" "}
-                        {p.base}
-                      </p>
-                      <p className="order-1 text-[13px] font-medium lg:text-xs lg:font-normal lg:text-text-muted">
-                        <Money value={p.notionalUsd} />
-                      </p>
-                    </div>
-                    <div className="order-5 lg:order-none">
-                      <p className="truncate text-[11px] text-text-muted lg:text-xs">
-                        <span className="lg:hidden">{t("entryMarkShort")}</span>
-                        <span className="hidden lg:inline">
-                          {t("entryMark")}
-                        </span>
-                      </p>
-                      <p className="break-words text-[13px] font-medium tabular-nums lg:text-sm">
-                        <Quantity
-                          value={p.entryPrice}
-                          maximumFractionDigits={4}
-                        />
-                        <span className="hidden lg:inline"> / </span>
-                        <span className="block text-[11px] font-normal text-text-muted lg:inline lg:text-sm lg:font-medium lg:text-text">
-                          <Quantity
-                            value={p.markPrice}
-                            maximumFractionDigits={4}
-                          />
-                        </span>
-                      </p>
-                      <p className="hidden text-xs text-text-muted lg:block">
-                        {p.settle}
-                      </p>
-                    </div>
-                    {shield ? (
-                      <div className="order-6 text-right lg:order-none lg:text-left">
-                        <p className="truncate text-[11px] text-text-muted lg:text-xs">
-                          {t("margin")}
-                        </p>
-                        <p className="break-words text-[13px] font-medium tabular-nums lg:text-sm">
-                          <Quantity
-                            value={p.margin}
-                            maximumFractionDigits={4}
-                          />{" "}
-                          {p.settle}
-                        </p>
-                        <p className="text-[11px] text-text-muted tabular-nums lg:text-xs">
-                          TP{" "}
-                          <Quantity
-                            value={shield.takeProfit}
-                            maximumFractionDigits={4}
-                          />{" "}
-                          · SL{" "}
-                          <Quantity
-                            value={shield.stopLoss}
-                            maximumFractionDigits={4}
-                          />
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="order-6 text-right lg:order-none lg:text-left">
-                        <p
-                          className="truncate text-[11px] text-text-muted lg:text-xs"
-                          title={t("realizedPnlDescription")}
-                        >
-                          <span className="lg:hidden">
-                            {t("realizedPnlShort")}
-                          </span>
-                          <span className="hidden lg:inline">
-                            {t("realizedPnl")}
-                          </span>
-                        </p>
-                        <p
-                          className={`break-words text-[13px] font-medium tabular-nums lg:text-sm ${displayedRealized == null ? "text-text-muted" : Number(displayedRealized) > 0 ? "text-success" : Number(displayedRealized) < 0 ? "text-danger" : ""}`}
-                        >
-                          {displayedRealized != null &&
-                          Number(displayedRealized) > 0
-                            ? "+"
-                            : ""}
-                          <Quantity
-                            value={displayedRealized}
-                            maximumFractionDigits={4}
-                          />{" "}
-                          {p.settle}
-                        </p>
-                      </div>
-                    )}
-                    <div className="order-3 col-span-2 flex flex-wrap items-center gap-x-2 lg:order-none lg:col-span-1 lg:block">
-                      <p className="break-words text-xs font-medium lg:text-sm">
-                        {p.connection.label}
-                      </p>
-                      <p className="flex items-center gap-1.5 text-[11px] text-text-muted lg:text-xs">
-                        <ExchangeLogo
-                          exchange={p.connection.exchange}
-                          size={14}
-                        />
-                        {exchangeName(p.connection.exchange)}
-                      </p>
-                    </div>
-                    <div className="order-2 row-span-2 text-right lg:order-none lg:row-span-1">
-                      <p className="truncate text-[11px] text-text-muted lg:text-xs">
-                        <span className="lg:hidden">
-                          {t("unrealizedPnlShort")}
-                        </span>
-                        <span className="hidden lg:inline">
-                          {t("unrealizedPnl")}
-                        </span>
-                      </p>
-                      <p
-                        className={`text-base font-semibold lg:text-lg ${Number(p.unrealizedPnlUsd ?? 0) >= 0 ? "text-success" : "text-danger"}`}
-                      >
-                        <Money value={p.unrealizedPnlUsd} signed />
-                      </p>
-                      <p
-                        className="text-xs text-text-muted lg:text-sm"
-                        title={t("returnOnMargin") + ": " + t("returnFormula")}
-                      >
-                        <Percent fraction={marginReturn(p)} signed />
-                      </p>
-                      {p.stale && (
-                        <p className="text-[11px] text-warning lg:text-xs">
-                          {t("stale")}
-                        </p>
-                      )}
-                    </div>
-                  </summary>
-                  {/* Mounted only while open so the reveal plays every time; rows below slide down instead of jumping. */}
-                  {(expanded[key] ?? false) && (
-                    <div
-                      className={`grid motion-reduce:animate-none ${closing[key] ? "animate-fold" : "animate-expand"}`}
-                    >
-                      <div className="min-h-0 overflow-hidden">
-                        <div className="border-t border-border bg-background/40 px-3 py-3 duration-300 animate-in slide-in-from-top-2 motion-reduce:animate-none sm:px-4 lg:px-5 lg:py-3">
-                          {shield ? (
-                            <dl className={DETAILS_GRID}>
-                              <div>
-                                <dt className="text-text-muted">
-                                  {t("liquidation")}
-                                </dt>
-                                <dd>
-                                  <Quantity
-                                    value={p.liquidationPrice}
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  {p.settle}
-                                </dd>
-                                <p
-                                  className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
-                                  title={t("liquidationDistanceDescription")}
-                                >
-                                  {t("liquidationDistance")}:{" "}
-                                  {distance == null
-                                    ? "—"
-                                    : new Intl.NumberFormat(locale, {
-                                        style: "percent",
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                      }).format(distance)}
-                                </p>
-                              </div>
-                              <div>
-                                <dt className="text-text-muted">TP / SL</dt>
-                                <dd>
-                                  <Quantity
-                                    value={shield.takeProfit}
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  /{" "}
-                                  <Quantity
-                                    value={shield.stopLoss}
-                                    maximumFractionDigits={4}
-                                  />
-                                </dd>
-                              </div>
-                              <div>
-                                <dt className="text-text-muted">
-                                  {t("shieldFeeMode")}
-                                </dt>
-                                <dd>
-                                  {shield.feeMode === "PROFIT"
-                                    ? t("shieldFeeFromProfit")
-                                    : (shield.feeMode ?? "—")}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt className="text-text-muted">
-                                  {t("shieldOpenedAt")}
-                                </dt>
-                                <dd>
-                                  {shield.openedAt
-                                    ? new Intl.DateTimeFormat(locale, {
-                                        dateStyle: "short",
-                                        timeStyle: "short",
-                                      }).format(shield.openedAt)
-                                    : "—"}
-                                </dd>
-                                <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
-                                  {t("updated")}{" "}
-                                  <PositionUpdated value={p.updatedAt} />
-                                </p>
-                              </div>
-                              <div className="lg:col-start-6 lg:text-right">
-                                <dt className="text-text-muted">
-                                  {t("nextFunding")}
-                                </dt>
-                                <NextFunding p={p} />
-                              </div>
-                            </dl>
-                          ) : (
-                            <dl className={DETAILS_GRID}>
-                              <div>
-                                <dt
-                                  className="text-text-muted"
-                                  title={t("breakEvenDescription")}
-                                >
-                                  {t("breakEven")}
-                                </dt>
-                                <dd>
-                                  <Quantity
-                                    value={breakEven}
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  {p.settle}
-                                </dd>
-                              </div>
-                              <div>
-                                <dt className="text-text-muted">
-                                  {t("margin")}
-                                </dt>
-                                <dd>
-                                  <Quantity
-                                    value={p.margin}
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  {p.settle}
-                                </dd>
-                                <p className="mt-0.5 text-[11px] font-normal text-text-muted lg:mt-1 lg:text-xs">
-                                  {t("updated")}{" "}
-                                  <PositionUpdated value={p.updatedAt} />
-                                </p>
-                              </div>
-                              <div>
-                                <dt className="text-text-muted">
-                                  {t("liquidation")}
-                                </dt>
-                                <dd>
-                                  <Quantity
-                                    value={p.liquidationPrice}
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  {p.settle}
-                                </dd>
-                                <p
-                                  className="mt-0.5 text-[11px] text-text-muted lg:mt-1 lg:text-xs"
-                                  title={t("liquidationDistanceDescription")}
-                                >
-                                  {t("liquidationDistance")}:{" "}
-                                  {distance == null
-                                    ? "—"
-                                    : new Intl.NumberFormat(locale, {
-                                        style: "percent",
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2,
-                                      }).format(distance)}
-                                </p>
-                              </div>
-                              <div>
-                                <dt
-                                  className="text-text-muted"
-                                  title={
-                                    closedAfterFees == null
-                                      ? undefined
-                                      : t("closedAfterFeesDescription")
-                                  }
-                                >
-                                  {t(
-                                    closedAfterFees == null
-                                      ? "closedPnl"
-                                      : "closedAfterFees",
-                                  )}
-                                </dt>
-                                <dd
-                                  className={
-                                    displayedClosed == null
-                                      ? "text-text-muted"
-                                      : Number(displayedClosed) > 0
-                                        ? "text-success"
-                                        : Number(displayedClosed) < 0
-                                          ? "text-danger"
-                                          : undefined
-                                  }
-                                >
-                                  <Quantity
-                                    value={displayedClosed}
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  {p.settle}
-                                </dd>
-                                {closedAfterFees == null &&
-                                  p.funding?.tradingFeesByAsset && (
-                                    <div className="mt-1 text-[11px] text-text-muted lg:mt-2 lg:text-xs">
-                                      <p>{t("tradingFees")}</p>
-                                      {Object.entries(
-                                        p.funding.tradingFeesByAsset,
-                                      ).map(([asset, fee]) => (
-                                        <p key={asset}>
-                                          <Quantity
-                                            value={fee}
-                                            maximumFractionDigits={8}
-                                          />{" "}
-                                          {asset}
-                                        </p>
-                                      ))}
-                                    </div>
-                                  )}
-                              </div>
-                              <div>
-                                <dt className="text-text-muted">
-                                  {t("funding")}
-                                </dt>
-                                <dd
-                                  className={
-                                    p.funding?.amount == null
-                                      ? "text-text-muted"
-                                      : Number(p.funding.amount) > 0
-                                        ? "text-success"
-                                        : Number(p.funding.amount) < 0
-                                          ? "text-danger"
-                                          : undefined
-                                  }
-                                >
-                                  <Quantity
-                                    value={
-                                      p.funding?.status === "complete"
-                                        ? p.funding.amount
-                                        : null
-                                    }
-                                    maximumFractionDigits={4}
-                                  />{" "}
-                                  {p.settle}
-                                </dd>
-                              </div>
-                              <div className="lg:col-start-6 lg:text-right">
-                                <dt className="text-text-muted">
-                                  {t("nextFunding")}
-                                </dt>
-                                <NextFunding p={p} />
-                              </div>
-                            </dl>
-                          )}
-
-                          {p.errorCode && (
-                            <div className="mt-3">
-                              <ExchangeErrorNotice code={p.errorCode} />
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </details>
-              ),
-            };
-          });
-          const single = rows[0];
-          if (group.length === 1 && single)
-            return (
-              <div
-                key={single.key}
-                className="overflow-hidden rounded-xl border border-border bg-surface"
-              >
-                {single.node}
-              </div>
-            );
-          const notional = group.every((p) => p.notionalUsd != null)
-            ? group.reduce((sum, p) => sum + Number(p.notionalUsd), 0)
-            : null;
-          const pnl = group.every((p) => p.unrealizedPnlUsd != null)
-            ? group.reduce((sum, p) => sum + Number(p.unrealizedPnlUsd), 0)
-            : null;
-          return (
-            <div
-              key={`group:${group[0].base}`}
-              className="overflow-hidden rounded-xl border border-primary/30 bg-surface"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5 border-b border-border bg-surface-2/60 px-3 py-2 text-xs sm:px-4 lg:gap-x-6 lg:px-5 lg:py-2 lg:text-sm">
-                <span className="font-semibold">
-                  {group[0].base} ·{" "}
-                  {t("positionGroup", { count: group.length })}
-                </span>
-                <span className="flex gap-x-3 text-text-muted lg:gap-x-5">
-                  <span>
-                    <span className="lg:hidden">
-                      {t("positionVolumeShort")}
-                    </span>
-                    <span className="hidden lg:inline">{t("size")}</span>:{" "}
-                    <Money value={notional == null ? null : String(notional)} />
-                  </span>
-                  <span
-                    className={
-                      pnl == null || pnl === 0
-                        ? ""
-                        : pnl > 0
-                          ? "text-success"
-                          : "text-danger"
-                    }
-                  >
-                    <span className="lg:hidden">{t("unrealizedPnlShort")}</span>
-                    <span className="hidden lg:inline">
-                      {t("unrealizedPnl")}
-                    </span>
-                    : <Money value={pnl == null ? null : String(pnl)} signed />
-                  </span>
-                </span>
-              </div>
-              <div className="divide-y divide-border">
-                {rows.map((row) => (
-                  <div key={row.key}>{row.node}</div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
+        {byExchange
+          ? groupByExchange(result.data?.positions ?? []).map(renderExchange)
+          : groupByBase(result.data?.positions ?? []).map(renderCoinGroup)}
       </div>
       {!compact && result.data && result.data.total > result.data.limit && (
         <div className="flex items-center justify-end gap-3">

@@ -1123,7 +1123,10 @@
     "asterSigner": "Адреса API Wallet (signer)",
     "asterSignerSecret": "Ключ API Wallet",
     "asterApiInstructions": "В Aster створи окремий API Wallet лише для читання: canRead увімкнено, торгівля спотом і фʼючерсами та виведення вимкнені. Додай IP worker. Вкажи адресу цього API Wallet та його ключ, а не приватний ключ основного гаманця. Підключення доповнить поточний акаунт фʼючерсів; спот поки не включено.",
-    "openOnExchange": "Відкрити на {exchange}"
+    "openOnExchange": "Відкрити на {exchange}",
+    "groupBy": "Групування",
+    "groupByCoin": "За монетами",
+    "groupByExchange": "За біржами"
   },
   "TradeDirection": {
     "openLong": "Відкриття лонга",

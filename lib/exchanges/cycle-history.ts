@@ -7,7 +7,7 @@ import {
   type FundingSummary,
 } from "./funding";
 import type { Request } from "./transport";
-import type { OpenPosition } from "./types";
+import { errorDiagnostics, type OpenPosition } from "./types";
 
 type Row = Record<string, unknown>;
 const WEEK = 7 * 86400_000;
@@ -47,7 +47,13 @@ export class CycleHistoryReader {
           refreshed = true;
           try {
             summary = await this.read(p, positions);
-          } catch {
+          } catch (error) {
+            // Own checks throw plain Errors with fixed texts; provider errors show class and code only.
+            const reason =
+              error instanceof Error && error.name === "Error"
+                ? error.message
+                : errorDiagnostics(error);
+            console.warn(`[cycle-history] ${this.venue} ${p.symbol} unavailable: ${reason}`);
             summary = {
               amount: null,
               realizedPnl: null,
