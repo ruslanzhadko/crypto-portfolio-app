@@ -23,7 +23,13 @@ vi.mock('next-intl/server', () => ({
         text = text.replace(`{${k}}`, v);
       return text;
     },
+  getFormatter: async () => ({ dateTime: () => 'January 1, 2026' }),
 }));
+vi.mock('@/i18n/navigation', () => ({
+  Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) =>
+    React.createElement('a', { href, ...rest }, children),
+}));
+vi.mock('@/lib/exchanges/config', () => ({ exchangesEnabled: () => true }));
 vi.mock('next-intl', () => ({
   useLocale: () => 'en',
   useTranslations: () => (key: keyof typeof messages.Settings) =>
@@ -44,7 +50,7 @@ function preview(name: string, html: string) {
 }
 beforeEach(() => vi.clearAllMocks());
 it('shows Telegram identity without synthetic email or password controls', async () => {
-  db.findUnique.mockResolvedValue({
+  db.findUnique.mockResolvedValue({ triggers: [], createdAt: new Date(0), 
     name: 'Telegram user',
     email: 'telegram-sub@telegram.invalid',
     role: 'USER',
@@ -59,7 +65,7 @@ it('shows Telegram identity without synthetic email or password controls', async
   preview('telegram-settings', html);
 });
 it('offers linking while retaining email and password settings for the main account', async () => {
-  db.findUnique.mockResolvedValue({
+  db.findUnique.mockResolvedValue({ triggers: [], createdAt: new Date(0), 
     name: 'Main',
     email: 'main@example.com',
     role: 'USER',
@@ -74,7 +80,7 @@ it('offers linking while retaining email and password settings for the main acco
 });
 
 it('keeps legacy notifications in the unified Telegram block without an editable chat ID', async () => {
-  db.findUnique.mockResolvedValue({ name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: 'hash', accounts: [{ provider: 'telegram' }], telegramChatId: '999', telegramUserId: '1234', telegramBotAccess: true, telegramNotificationsEnabled: true });
+  db.findUnique.mockResolvedValue({ triggers: [], createdAt: new Date(0),  name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: 'hash', accounts: [{ provider: 'telegram' }], telegramChatId: '999', telegramUserId: '1234', telegramBotAccess: true, telegramNotificationsEnabled: true });
   const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).not.toContain('id="chatId"');
   expect(html).not.toContain('Telegram Chat ID');
@@ -83,9 +89,16 @@ it('keeps legacy notifications in the unified Telegram block without an editable
   preview('legacy-settings', html);
 });
 it('shows permission renewal for a previously connected login', async () => {
-  db.findUnique.mockResolvedValue({ name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: null, accounts: [{ provider: 'telegram' }], telegramChatId: null, telegramUserId: null, telegramBotAccess: false, telegramNotificationsEnabled: true });
+  db.findUnique.mockResolvedValue({ triggers: [], createdAt: new Date(0),  name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: null, accounts: [{ provider: 'telegram' }], telegramChatId: null, telegramUserId: null, telegramBotAccess: false, telegramNotificationsEnabled: true });
   const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('Allow bot messages');
   expect(html).toContain('Telegram notifications');
   preview('permission-settings', html);
+});
+it('summarizes notifications and links to their settings', async () => {
+  db.findUnique.mockResolvedValue({ triggers: [{ isActive: true }, { isActive: false }], createdAt: new Date(0), name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: 'hash', accounts: [], positionAlerts: { opened: true, closed: true, liquidation: false, pnlSign: false, liquidationPercent: 10, excludedConnections: [] } });
+  const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
+  expect(html).toContain('1 of 2 active');
+  expect(html).toContain('2 of 4 on');
+  expect(html).toContain('href="/alerts?tab=positions"');
 });
