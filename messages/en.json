@@ -299,7 +299,7 @@
   },
   "Alerts": {
     "pageTitle": "Alerts",
-    "pageDescription": "Price triggers and notification log.",
+    "pageDescription": "Price triggers, exchange positions and the notification log.",
     "createTriggerButton": "Create trigger",
     "telegramWarningTitle": "Telegram not configured",
     "telegramWarningDescription": "Connect Telegram and enable notifications in settings to receive alerts.",
@@ -322,7 +322,8 @@
     "logWindowHours": "in {hours} h",
     "logTargetHit": "Target {price} reached",
     "logNew": "New",
-    "logNotDelivered": "Not delivered to Telegram"
+    "logNotDelivered": "Not delivered to Telegram",
+    "tabPositions": "Positions"
   },
   "NewAlert": {
     "backToTriggers": "Back to triggers",
@@ -443,7 +444,7 @@
     "telegramLoginConflict": "This Telegram belongs to another account, or this profile already has a different Telegram linked. No accounts were merged.",
     "socialNoPassword": "This account has no password. Use your connected provider to sign in.",
     "pageTitle": "Settings",
-    "pageDescription": "Profile, Telegram integration and security.",
+    "pageDescription": "Profile, security, Telegram and notifications.",
     "profileCardTitle": "Profile",
     "profileCardDescription": "Email: {email} · Role: {role}",
     "securityCardTitle": "Security",
@@ -479,7 +480,20 @@
     "telegramRecipientConflict": "This recipient is already connected to another profile. Open your main account or contact support.",
     "telegramBotTestRecovery": "The bot could not deliver the message. Open the bot, press Start and unblock it if necessary, then retry.",
     "telegramBotUnavailable": "Bot notifications are temporarily unavailable. Your Telegram sign-in remains connected.",
-    "passwordSessionHint": "Changing your password signs you out on all devices."
+    "passwordSessionHint": "Changing your password signs you out on all devices.",
+    "profileCardHint": "Only you see your name.",
+    "profileRole": "Role",
+    "profileLogin": "Sign-in",
+    "profileSince": "Member since",
+    "loginPassword": "Password",
+    "notificationsCardTitle": "Notifications",
+    "notificationsCardDescription": "What to send and when is set on the Notifications page.",
+    "notificationsTriggers": "Price triggers",
+    "notificationsTriggersStatus": "{active} of {total} active",
+    "notificationsTriggersNone": "No triggers yet",
+    "notificationsPositions": "Exchange positions",
+    "notificationsPositionsOn": "{count} of 4 on",
+    "notificationsOff": "Off"
   },
   "Admin": {
     "pageTitle": "Administration",
@@ -1147,7 +1161,6 @@
     "liquidationThreshold": "Threshold:",
     "accountsTitle": "Accounts",
     "accountsDescription": "Untick an account to stop notifications for it.",
-    "telegramOff": "Telegram is not connected or its notifications are off: events will appear only in the alert log.",
     "note": "Changes apply within a minute.",
     "saveFailed": "Could not save. Please try again.",
     "log": {

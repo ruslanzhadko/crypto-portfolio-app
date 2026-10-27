@@ -14,15 +14,13 @@ import {
 type Kind = 'opened' | 'closed' | 'liquidation' | 'pnlSign';
 const KINDS: Kind[] = ['opened', 'closed', 'liquidation', 'pnlSign'];
 
-/** Settings → position notifications: one switch per kind, for every connected account. */
+/** Notifications → Positions: one switch per kind, for every connected account. */
 export function PositionAlertsCard({
   initial,
   connections,
-  telegramReady,
 }: {
   initial: PositionAlertSettings;
   connections: { id: string; label: string; exchange: string }[];
-  telegramReady: boolean;
 }) {
   const t = useTranslations('PositionAlerts');
   const [settings, setSettings] = useState(initial);
@@ -49,15 +47,8 @@ export function PositionAlertsCard({
     }
   }
 
-  const anyOn = KINDS.some((k) => settings[k]);
-
   return (
     <div className="space-y-5">
-      {!telegramReady && anyOn && (
-        <p className="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
-          {t('telegramOff')}
-        </p>
-      )}
       <ul className="divide-y divide-border rounded-xl border border-border">
         {KINDS.map((kind) => (
           <li key={kind} className="flex items-center justify-between gap-4 px-4 py-3">

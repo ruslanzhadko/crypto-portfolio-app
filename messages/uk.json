@@ -299,7 +299,7 @@
   },
   "Alerts": {
     "pageTitle": "Сповіщення",
-    "pageDescription": "Цінові тригери та журнал повідомлень.",
+    "pageDescription": "Цінові тригери, позиції на біржах і журнал сповіщень.",
     "createTriggerButton": "Створити тригер",
     "telegramWarningTitle": "Telegram не налаштовано",
     "telegramWarningDescription": "Підключіть Telegram та увімкніть сповіщення в налаштуваннях, щоб отримувати оповіщення.",
@@ -322,7 +322,8 @@
     "logWindowHours": "за {hours} год",
     "logTargetHit": "Ціль {price} досягнута",
     "logNew": "Нове",
-    "logNotDelivered": "Не доставлено в Telegram"
+    "logNotDelivered": "Не доставлено в Telegram",
+    "tabPositions": "Позиції"
   },
   "NewAlert": {
     "backToTriggers": "До списку тригерів",
@@ -443,7 +444,7 @@
     "telegramLoginConflict": "Цей Telegram уже пов’язано з іншим акаунтом або до вашого профілю підключено інший Telegram. Акаунти не об’єднано.",
     "socialNoPassword": "Цей акаунт не має пароля. Для входу використовуйте підключений сервіс.",
     "pageTitle": "Налаштування",
-    "pageDescription": "Профіль, Telegram інтеграція та безпека.",
+    "pageDescription": "Профіль, безпека, Telegram і сповіщення.",
     "profileCardTitle": "Профіль",
     "profileCardDescription": "Email: {email} · Роль: {role}",
     "securityCardTitle": "Безпека",
@@ -479,7 +480,20 @@
     "telegramRecipientConflict": "Цей отримувач уже підключений до іншого профілю. Відкрийте основний акаунт або зверніться до підтримки.",
     "telegramBotTestRecovery": "Бот не зміг доставити повідомлення. Відкрийте бота, натисніть «Старт» і розблокуйте його за потреби, потім повторіть тест.",
     "telegramBotUnavailable": "Сповіщення бота тимчасово недоступні. Вхід через Telegram залишається підключеним.",
-    "passwordSessionHint": "Після зміни пароля потрібно буде увійти знову на всіх пристроях."
+    "passwordSessionHint": "Після зміни пароля потрібно буде увійти знову на всіх пристроях.",
+    "profileCardHint": "Ім’я бачите лише ви.",
+    "profileRole": "Роль",
+    "profileLogin": "Вхід",
+    "profileSince": "З нами з",
+    "loginPassword": "Пароль",
+    "notificationsCardTitle": "Сповіщення",
+    "notificationsCardDescription": "Що й коли надсилати, налаштовується на сторінці «Сповіщення».",
+    "notificationsTriggers": "Цінові тригери",
+    "notificationsTriggersStatus": "Активно {active} з {total}",
+    "notificationsTriggersNone": "Поки немає тригерів",
+    "notificationsPositions": "Позиції на біржах",
+    "notificationsPositionsOn": "Увімкнено {count} з 4",
+    "notificationsOff": "Вимкнено"
   },
   "Admin": {
     "pageTitle": "Адміністрування",
@@ -1147,7 +1161,6 @@
     "liquidationThreshold": "Поріг:",
     "accountsTitle": "Рахунки",
     "accountsDescription": "Зніміть позначку, щоб не отримувати сповіщення по цьому підключенню.",
-    "telegramOff": "Telegram не підключено або сповіщення в ньому вимкнено — події будуть лише в журналі алертів.",
     "note": "Зміни застосовуються протягом хвилини.",
     "saveFailed": "Не вдалося зберегти. Спробуйте ще раз.",
     "log": {

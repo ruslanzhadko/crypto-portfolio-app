@@ -21,19 +21,19 @@ export const CHANGELOG: ChangelogEntry[] = [
     },
     items: {
       ru: [
-        "В настройках появился раздел «Уведомления по позициям»: открытие и закрытие позиции, близкая ликвидация, переход позиции в плюс или минус.",
+        "На странице «Уведомления» появилась вкладка «Позиции»: открытие и закрытие позиции, близкая ликвидация, переход позиции в плюс или минус.",
         "Позиции проверяются примерно раз в 15 секунд, даже когда сайт закрыт. Сообщения приходят в Telegram и в журнал алертов.",
-        "Порог ликвидации выбирается (5–20%), а любой счёт можно исключить.",
+        "Порог ликвидации выбирается (5–20%), а любой счёт можно исключить. Страница настроек стала компактнее: две колонки и сводка уведомлений.",
       ],
       uk: [
-        "У налаштуваннях з'явився розділ «Сповіщення по позиціях»: відкриття й закриття позиції, близька ліквідація, перехід позиції в плюс або мінус.",
+        "На сторінці «Сповіщення» з'явилася вкладка «Позиції»: відкриття й закриття позиції, близька ліквідація, перехід позиції в плюс або мінус.",
         "Позиції перевіряються приблизно раз на 15 секунд, навіть коли сайт закрито. Повідомлення надходять у Telegram і в журнал алертів.",
-        "Поріг ліквідації можна вибрати (5–20%), а будь-який рахунок — виключити.",
+        "Поріг ліквідації можна вибрати (5–20%), а будь-який рахунок — виключити. Сторінка налаштувань стала компактнішою: дві колонки й зведення сповіщень.",
       ],
       en: [
-        "Settings now have Position notifications: a position opened or closed, liquidation getting close, a position going into profit or loss.",
+        "The Notifications page has a new Positions tab: a position opened or closed, liquidation getting close, a position going into profit or loss.",
         "Positions are checked about every 15 seconds, even when the site is closed. Alerts arrive in Telegram and in the alert log.",
-        "The liquidation threshold is adjustable (5–20%), and any account can be excluded.",
+        "The liquidation threshold is adjustable (5–20%), and any account can be excluded. Settings are more compact: two columns and a notifications summary.",
       ],
     },
   },

@@ -7,26 +7,47 @@ import { Button } from '@/components/ui/button';
 import { TriggerCard } from '@/components/alerts/trigger-card';
 import { AlertsTabs } from '@/components/alerts/alerts-tabs';
 import { EmptyState } from '@/components/common/empty-state';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PositionAlertsCard } from '@/components/alerts/position-alerts-card';
+import { exchangesEnabled } from '@/lib/exchanges/config';
+import { readPositionAlertSettings } from '@/lib/positions/alert-settings';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AlertsPage() {
+const TABS = ['triggers', 'positions', 'logs'] as const;
+
+export default async function AlertsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) return null;
 
   const t = await getTranslations('Alerts');
+  const tp = await getTranslations('PositionAlerts');
+  const positionAlerts = exchangesEnabled(session.user.id);
 
-  const [triggers, user] = await Promise.all([
+  const [triggers, user, connections] = await Promise.all([
     prisma.priceTrigger.findMany({
       where: { userId: session.user.id },
       orderBy: { createdAt: 'desc' },
     }),
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { telegramChatId: true, telegramNotificationsEnabled: true },
+      select: { telegramChatId: true, telegramNotificationsEnabled: true, positionAlerts: true },
     }),
+    positionAlerts
+      ? prisma.exchangeConnection.findMany({
+          where: { userId: session.user.id, status: { in: ['PENDING', 'ACTIVE', 'PARTIAL', 'ERROR'] } },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, label: true, exchange: true },
+        })
+      : [],
   ]);
+  const telegramReady = !!user?.telegramChatId && !!user.telegramNotificationsEnabled;
+  const initialTab = TABS.find((name) => name === tab && (name !== 'positions' || positionAlerts));
 
   const priceTargetIds = triggers
     .filter((tr) => tr.triggerType === 'PRICE_TARGET')
@@ -55,7 +76,7 @@ export default async function AlertsPage() {
         </Button>
       </div>
 
-      {(!user?.telegramChatId || !user.telegramNotificationsEnabled) && (
+      {!telegramReady && (
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="flex flex-wrap items-start gap-3 p-4 pt-4 sm:p-4 sm:pt-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
@@ -72,6 +93,23 @@ export default async function AlertsPage() {
 
       <AlertsTabs
         triggerCount={triggers.length}
+        initialTab={initialTab}
+        positions={
+          positionAlerts ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>{tp('cardTitle')}</CardTitle>
+                <CardDescription>{tp('cardDescription')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PositionAlertsCard
+                  initial={readPositionAlertSettings(user?.positionAlerts ?? null)}
+                  connections={connections}
+                />
+              </CardContent>
+            </Card>
+          ) : undefined
+        }
         triggers={
           triggers.length === 0 ? (
             <EmptyState
