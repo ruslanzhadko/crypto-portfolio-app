@@ -15,7 +15,8 @@ interface NetworkAllocationProps {
   title?: string;
 }
 
-const MIN_CHAIN_USD = 0.05;
+// Networks and exchanges holding under a dollar in total are left out of the bars.
+const MIN_CHAIN_USD = 1;
 
 export function NetworkAllocationChart({ chains, title }: NetworkAllocationProps) {
   const t = useTranslations('NetworkAllocationChart');
