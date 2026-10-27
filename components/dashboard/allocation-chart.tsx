@@ -9,6 +9,8 @@ import { formatUsd } from '@/lib/utils/format';
 import { EmptyState } from '@/components/common/empty-state';
 import { PieChart as PieIcon } from 'lucide-react';
 
+const MIN_NAMED_SHARE = 0.1;
+
 const COLORS = ['#6c63ff', '#a855f7', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#14f195', '#f3ba2f'];
 
 export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
@@ -16,8 +18,10 @@ export function AllocationChart({ tokens }: { tokens: AggregatedToken[] }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const top = tokens.slice(0, 7);
-  const rest = tokens.slice(7);
+  // Slices under 0.1% are invisible on the donut: they go to "Others" instead of a legend line each.
+  const top = tokens.filter((tok) => tok.share >= MIN_NAMED_SHARE).slice(0, 7);
+  const named = new Set(top);
+  const rest = tokens.filter((tok) => !named.has(tok));
   const restUsd = rest.reduce((s, tok) => s + tok.totalUsd, 0);
   const restShare = rest.reduce((s, tok) => s + tok.share, 0);
 
