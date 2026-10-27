@@ -49,7 +49,7 @@ export class PositionAlertService {
   /** Reloads settings once per window and when the site signals a change. */
   async maybeReload(version: number | null, now = Date.now()) {
     const window = Math.floor(now / WINDOW_MS);
-    const changed = version !== null && this.version !== null && version !== this.version;
+    const changed = version !== null && version !== this.version;
     if (version !== null) this.version = version;
     if (window === this.loadedWindow && !changed) return false;
     this.loadedWindow = window;

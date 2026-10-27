@@ -132,4 +132,10 @@ describe("PositionAlertService", () => {
     expect(await service.maybeReload(6, 2000)).toBe(true);
     expect(service.size).toBe(0);
   });
+
+  it("treats the first signal as a change when none existed at startup", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    expect(await service.maybeReload(7, 1000)).toBe(true);
+  });
 });
