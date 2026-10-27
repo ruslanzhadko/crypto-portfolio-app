@@ -14,7 +14,7 @@ import { readPositionAlertSettings } from '@/lib/positions/alert-settings';
 
 export const dynamic = 'force-dynamic';
 
-const TABS = ['triggers', 'positions', 'logs'] as const;
+const TABS = ['logs', 'triggers', 'positions'] as const;
 
 export default async function AlertsPage({
   searchParams,
@@ -93,6 +93,12 @@ export default async function AlertsPage({
 
       <AlertsTabs
         triggerCount={triggers.length}
+        activeTriggers={triggers.filter((tr) => tr.isActive).length}
+        positionKinds={
+          (['opened', 'closed', 'liquidation', 'pnlSign'] as const).filter(
+            (kind) => readPositionAlertSettings(user?.positionAlerts ?? null)[kind],
+          ).length
+        }
         initialTab={initialTab}
         positions={
           positionAlerts ? (

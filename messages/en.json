@@ -304,7 +304,6 @@
     "telegramWarningTitle": "Telegram not configured",
     "telegramWarningDescription": "Connect Telegram and enable notifications in settings to receive alerts.",
     "telegramSetupButton": "Set up",
-    "tabTriggers": "Triggers ({count})",
     "tabLogs": "Log",
     "emptyTriggersTitle": "No triggers",
     "emptyTriggersDescription": "Create a trigger to get notified about price anomalies.",
@@ -323,7 +322,18 @@
     "logTargetHit": "Target {price} reached",
     "logNew": "New",
     "logNotDelivered": "Not delivered to Telegram",
-    "tabPositions": "Positions"
+    "tabLogsHint": "Every alert that fired",
+    "tabLogsNew": "New alerts",
+    "tabTriggersTitle": "Price triggers",
+    "tabTriggersHint": "Rules on coin prices",
+    "tabTriggersStatus": "{active} of {total} active",
+    "tabTriggersNone": "None yet",
+    "tabPositionsTitle": "Exchange positions",
+    "tabPositionsHint": "Open, close, liquidation, PnL",
+    "tabPositionsOn": "{count} of 4 on",
+    "tabPositionsOff": "Off",
+    "tabTriggersShort": "Triggers",
+    "tabPositionsShort": "Positions"
   },
   "NewAlert": {
     "backToTriggers": "Back to triggers",
@@ -1161,7 +1171,7 @@
         "description": "Position PnL crossed zero: the position went into profit or into loss."
       }
     },
-    "liquidationThreshold": "Threshold:",
+    "liquidationThreshold": "Threshold, %:",
     "accountsTitle": "Accounts",
     "accountsDescription": "Untick an account to stop notifications for it.",
     "note": "Changes apply within a minute.",
@@ -1176,6 +1186,7 @@
       "pnl": "PnL {value}",
       "distance": "{value}% to liquidation",
       "size": "position size"
-    }
+    },
+    "liquidationCustom": "Your own threshold, 1 to 50%"
   }
 }

@@ -4,7 +4,10 @@ import { z } from "zod";
  * Position notification settings (Settings → Notifications). Stored as JSON on the user;
  * they apply to every position of every connected account except the excluded connections.
  */
+/** Quick choices for the liquidation threshold; any value in the range below is allowed. */
 export const LIQUIDATION_PERCENTS = [5, 10, 15, 20] as const;
+export const LIQUIDATION_MIN = 1;
+export const LIQUIDATION_MAX = 50;
 
 export const positionAlertSettingsSchema = z
   .object({
@@ -12,9 +15,12 @@ export const positionAlertSettingsSchema = z
     closed: z.boolean(),
     pnlSign: z.boolean(),
     liquidation: z.boolean(),
+    // Whole or half percent between 1% and 50%.
     liquidationPercent: z
       .number()
-      .refine((n) => (LIQUIDATION_PERCENTS as readonly number[]).includes(n)),
+      .min(LIQUIDATION_MIN)
+      .max(LIQUIDATION_MAX)
+      .refine((n) => Number.isInteger(n * 2)),
     excludedConnections: z.array(z.string().min(1).max(64)).max(50),
   })
   .strict();

@@ -1,15 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { ExchangeLogo } from '@/components/exchanges/exchange-logo';
 import {
+  LIQUIDATION_MAX,
+  LIQUIDATION_MIN,
   LIQUIDATION_PERCENTS,
   type PositionAlertSettings,
 } from '@/lib/positions/alert-settings';
+import { POSITION_KINDS_EVENT } from './alerts-tabs';
 
 type Kind = 'opened' | 'closed' | 'liquidation' | 'pnlSign';
 const KINDS: Kind[] = ['opened', 'closed', 'liquidation', 'pnlSign'];
@@ -26,6 +29,23 @@ export function PositionAlertsCard({
   const [settings, setSettings] = useState(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  // Typed threshold; saved on Enter or when the field loses focus.
+  const [threshold, setThreshold] = useState(String(initial.liquidationPercent));
+  const kindsOn = KINDS.filter((kind) => settings[kind]).length;
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(POSITION_KINDS_EVENT, { detail: kindsOn }));
+  }, [kindsOn]);
+
+  function saveThreshold(raw: string) {
+    // Half-percent steps within the allowed range; anything else snaps back.
+    const value = Math.round(Number(raw.replace(',', '.')) * 2) / 2;
+    if (!Number.isFinite(value) || value < LIQUIDATION_MIN || value > LIQUIDATION_MAX) {
+      setThreshold(String(settings.liquidationPercent));
+      return;
+    }
+    setThreshold(String(value));
+    if (value !== settings.liquidationPercent) void save({ ...settings, liquidationPercent: value });
+  }
 
   async function save(next: PositionAlertSettings) {
     const previous = settings;
@@ -41,6 +61,7 @@ export function PositionAlertsCard({
       if (!res.ok) throw new Error('save failed');
     } catch {
       setSettings(previous);
+      setThreshold(String(previous.liquidationPercent));
       setError(true);
     } finally {
       setSaving(false);
@@ -58,23 +79,37 @@ export function PositionAlertsCard({
               </Label>
               <p className="text-xs text-text-muted">{t(`kinds.${kind}.description`)}</p>
               {kind === 'liquidation' && (
-                <label className="mt-2 flex items-center gap-2 text-xs text-text-muted">
-                  {t('liquidationThreshold')}
-                  <select
-                    className="h-8 rounded-md border border-border bg-surface-2 px-2 text-sm text-text"
-                    value={settings.liquidationPercent}
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-text-muted">
+                  <span>{t('liquidationThreshold')}</span>
+                  {LIQUIDATION_PERCENTS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      disabled={saving}
+                      aria-pressed={settings.liquidationPercent === p}
+                      onClick={() => saveThreshold(String(p))}
+                      className={`h-7 rounded-md border px-2 tabular-nums transition-colors ${settings.liquidationPercent === p ? 'border-primary bg-primary/15 text-text' : 'border-border hover:border-primary/40'}`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    min={LIQUIDATION_MIN}
+                    max={LIQUIDATION_MAX}
+                    step={0.5}
+                    aria-label={t('liquidationCustom')}
+                    title={t('liquidationCustom')}
                     disabled={saving}
-                    onChange={(e) =>
-                      void save({ ...settings, liquidationPercent: Number(e.target.value) })
-                    }
-                  >
-                    {LIQUIDATION_PERCENTS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}%
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    value={threshold}
+                    onChange={(e) => setThreshold(e.target.value)}
+                    onBlur={(e) => saveThreshold(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                    className={`h-7 w-16 rounded-md border bg-surface-2 px-2 text-sm tabular-nums text-text ${(LIQUIDATION_PERCENTS as readonly number[]).includes(settings.liquidationPercent) ? 'border-border' : 'border-primary'}`}
+                  />
+                  <span>%</span>
+                </div>
               )}
             </div>
             <Switch

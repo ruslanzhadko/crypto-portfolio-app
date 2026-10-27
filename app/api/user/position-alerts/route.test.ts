@@ -40,8 +40,12 @@ it('saves settings, keeps only own excluded connections and signals the worker',
   });
   expect(signal).toHaveBeenCalled();
 });
-it('rejects unknown thresholds and foreign origins', async () => {
-  expect((await PUT(request({ ...settings, liquidationPercent: 7 }))).status).toBe(400);
+it('accepts half-percent thresholds from 1 to 50 and rejects others and foreign origins', async () => {
+  expect((await PUT(request({ ...settings, liquidationPercent: 7.5 }))).status).toBe(200);
+  expect((await PUT(request({ ...settings, liquidationPercent: 0.5 }))).status).toBe(400);
+  expect((await PUT(request({ ...settings, liquidationPercent: 60 }))).status).toBe(400);
+  expect((await PUT(request({ ...settings, liquidationPercent: 7.3 }))).status).toBe(400);
+  db.user.update.mockClear();
   expect((await PUT(request(settings, 'https://evil.example'))).status).toBe(403);
   expect(db.user.update).not.toHaveBeenCalled();
 });

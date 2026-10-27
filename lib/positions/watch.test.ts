@@ -136,7 +136,8 @@ describe("liquidationDistance", () => {
 describe("readPositionAlertSettings", () => {
   it("falls back to defaults for broken values and keeps valid ones", () => {
     expect(readPositionAlertSettings(null)).toEqual(DEFAULT_POSITION_ALERTS);
-    expect(readPositionAlertSettings({ liquidationPercent: 7 })).toEqual(DEFAULT_POSITION_ALERTS);
+    expect(readPositionAlertSettings({ liquidationPercent: 70 })).toEqual(DEFAULT_POSITION_ALERTS);
+    expect(readPositionAlertSettings({ liquidationPercent: 7.5 }).liquidationPercent).toBe(7.5);
     expect(readPositionAlertSettings({ closed: true })).toEqual({ ...DEFAULT_POSITION_ALERTS, closed: true });
   });
 });

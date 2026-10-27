@@ -304,7 +304,6 @@
     "telegramWarningTitle": "Telegram не настроен",
     "telegramWarningDescription": "Подключите Telegram и включите уведомления в настройках, чтобы получать оповещения.",
     "telegramSetupButton": "Настроить",
-    "tabTriggers": "Триггеры ({count})",
     "tabLogs": "Журнал",
     "emptyTriggersTitle": "Триггеров нет",
     "emptyTriggersDescription": "Создайте триггер, чтобы получать уведомления о ценовых аномалиях.",
@@ -323,7 +322,18 @@
     "logTargetHit": "Цель {price} достигнута",
     "logNew": "Новое",
     "logNotDelivered": "Не доставлено в Telegram",
-    "tabPositions": "Позиции"
+    "tabLogsHint": "Все сработавшие уведомления",
+    "tabLogsNew": "Есть новые",
+    "tabTriggersTitle": "Ценовые триггеры",
+    "tabTriggersHint": "Правила по ценам монет",
+    "tabTriggersStatus": "Активно {active} из {total}",
+    "tabTriggersNone": "Пока нет",
+    "tabPositionsTitle": "Позиции на биржах",
+    "tabPositionsHint": "Открытие, закрытие, ликвидация, PnL",
+    "tabPositionsOn": "Включено {count} из 4",
+    "tabPositionsOff": "Выключены",
+    "tabTriggersShort": "Триггеры",
+    "tabPositionsShort": "Позиции"
   },
   "NewAlert": {
     "backToTriggers": "К списку триггеров",
@@ -1161,7 +1171,7 @@
         "description": "PnL позиции перешёл через ноль: позиция ушла в плюс или в минус."
       }
     },
-    "liquidationThreshold": "Порог:",
+    "liquidationThreshold": "Порог, %:",
     "accountsTitle": "Счета",
     "accountsDescription": "Снимите отметку, чтобы не получать уведомления по этому подключению.",
     "note": "Изменения применяются в течение минуты.",
@@ -1176,6 +1186,7 @@
       "pnl": "PnL {value}",
       "distance": "до ликвидации {value}%",
       "size": "объём позиции"
-    }
+    },
+    "liquidationCustom": "Свой порог, от 1 до 50%"
   }
 }
