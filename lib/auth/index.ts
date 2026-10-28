@@ -34,6 +34,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let target: string | undefined;
         try {
           target = await telegramLinkTarget();
+          if (isDemoUser(target)) target = undefined;
           const telegramId =
             typeof profile?.id === "number" && Number.isSafeInteger(profile.id)
               ? String(profile.id)

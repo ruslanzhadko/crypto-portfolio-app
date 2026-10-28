@@ -44,3 +44,26 @@ test('a fresh visitor opens the demo in one step and cannot change anything', as
   await expect(page.getByText('Alerts are for registered users').first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Create trigger' })).toHaveCount(0);
 });
+
+test('sign-up from the demo keeps the demo on Back and replaces it after registering', async ({ page }) => {
+  const email = 'from-demo-e2e@test.local';
+  // Registration is rate-limited per address; reruns must start from zero.
+  await prisma.authRateLimit.deleteMany({});
+  await prisma.user.deleteMany({ where: { email } });
+  await page.goto('/en/demo');
+  await expect(page).toHaveURL(/\/en\/dashboard/, { timeout: 30_000 });
+  await page.goto('/en/alerts');
+  await page.getByRole('link', { name: 'Create an account' }).first().click();
+  await expect(page).toHaveURL(/\/en\/auth\/register/);
+  await page.goBack();
+  await expect(page).toHaveURL(/\/en\/alerts/);
+  await expect(page.getByText('Demo mode')).toBeVisible();
+
+  await page.getByRole('link', { name: 'Create an account' }).first().click();
+  await page.getByLabel('Email', { exact: true }).fill(email);
+  await page.getByLabel('Password', { exact: true }).fill('FromDemoPassword123!');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
+  await expect(page.getByText('Demo mode')).toHaveCount(0);
+  await prisma.user.deleteMany({ where: { email } });
+});

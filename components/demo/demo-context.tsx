@@ -1,8 +1,8 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { signOut } from "next-auth/react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
@@ -27,7 +27,10 @@ export function useIsDemo() {
   return useContext(DemoContext);
 }
 
-/** Leaves the demo for the sign-up page. */
+/**
+ * Opens sign-up without leaving the demo: Back returns to it, and a new account's sign-in simply
+ * replaces the demo session.
+ */
 export function DemoSignUpButton({
   size = "sm",
   className,
@@ -36,14 +39,9 @@ export function DemoSignUpButton({
   className?: string;
 }) {
   const t = useTranslations("Demo");
-  const locale = useLocale();
   return (
-    <Button
-      size={size}
-      className={className}
-      onClick={() => void signOut({ redirectTo: `/${locale}/auth/register` })}
-    >
-      {t("createAccount")}
+    <Button asChild size={size} className={className}>
+      <Link href="/auth/register">{t("createAccount")}</Link>
     </Button>
   );
 }

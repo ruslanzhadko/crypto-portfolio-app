@@ -22,10 +22,10 @@ function stripLocalePrefix(pathname: string): {
   return { path: pathname, locale: null };
 }
 
-/** The demo account may only read: every change request of it is refused here, in one place. */
-async function demoWriteRefused(req: NextRequest) {
+/** Whether the request carries the read-only demo account's session. */
+async function isDemoSession(req: NextRequest) {
   const demo = demoUserId();
-  if (!demo || !isWriteRequest(req.method, req.nextUrl.pathname)) return false;
+  if (!demo) return false;
   const secure = req.nextUrl.protocol === "https:";
   const token = await getToken({
     req,
@@ -34,6 +34,12 @@ async function demoWriteRefused(req: NextRequest) {
     salt: secure ? "__Secure-authjs.session-token" : "authjs.session-token",
   }).catch(() => null);
   return token?.id === demo;
+}
+
+/** The demo account may only read: every change request of it is refused here, in one place. */
+async function demoWriteRefused(req: NextRequest) {
+  if (!demoUserId() || !isWriteRequest(req.method, req.nextUrl.pathname)) return false;
+  return isDemoSession(req);
 }
 
 export default async function middleware(req: NextRequest) {
@@ -47,8 +53,8 @@ export default async function middleware(req: NextRequest) {
     req.cookies.get("authjs.session-token") ??
     req.cookies.get("__Secure-authjs.session-token");
 
-  // Redirect logged-in users away from the landing page
-  if (path === "/" && sessionCookie) {
+  // Redirect logged-in users away from the landing page (the demo may still see it)
+  if (path === "/" && sessionCookie && !(await isDemoSession(req))) {
     const dashboardPath = locale ? `/${locale}/dashboard` : "/en/dashboard";
     return NextResponse.redirect(new URL(dashboardPath, req.url));
   }

@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { getLocale, getTranslations } from 'next-intl/server';
 import { ArrowLeft, Wallet, Bell, Newspaper, ShieldCheck } from 'lucide-react';
 import { auth } from '@/lib/auth';
+import { isDemoUser } from '@/lib/demo/config';
 import { redirect, Link } from '@/i18n/navigation';
 import { LocaleSwitcher } from '@/components/common/locale-switcher';
 
@@ -11,7 +12,12 @@ export default async function AuthLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (session?.user?.id && !session.user.isBlocked && !session.user.sessionExpired) {
+  if (
+    session?.user?.id &&
+    !session.user.isBlocked &&
+    !session.user.sessionExpired &&
+    !isDemoUser(session.user.id)
+  ) {
     const locale = await getLocale();
     redirect({ href: '/dashboard', locale });
   }
