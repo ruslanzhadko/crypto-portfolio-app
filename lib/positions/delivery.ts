@@ -7,6 +7,7 @@ import {
   TelegramError,
 } from "@/lib/services/telegram";
 import type { PositionEvent } from "./watch";
+import { formatDurationRu } from "./duration";
 
 /** Where an event happened: the connection's label and exchange. */
 export type EventSource = { label: string; exchange: string };
@@ -20,17 +21,24 @@ export type PositionLogDetails = {
   leverage: string | null;
   sizeUsd: string | null;
   pnlUsd?: number | null;
-  /** Closed PnL from the last poll, not from the exchange history. */
+  /** Closed PnL: last poll plus the cycle's realized costs, not the exchange's final figure. */
   approximate?: boolean;
+  /** Closed PnL includes realized PnL, funding and fees of the cycle. */
+  includesCosts?: boolean;
+  /** How long the closed position was open. */
+  durationMs?: number | null;
   distancePercent?: number;
   positive?: boolean;
 };
 
 const usd = (value: number) =>
-  `${value < 0 ? "−" : value > 0 ? "+" : ""}$${Math.abs(value).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
+  `${value < 0 ? "−" : value > 0 ? "+" : ""}$${Math.abs(value).toLocaleString(
+    "en-US",
+    {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    },
+  )}`;
 
 const plainUsd = (value: string | null) =>
   value === null
@@ -50,18 +58,30 @@ export function formatPositionEvent(e: SourcedEvent): string {
   switch (e.kind) {
     case "opened":
       return [
-        `🟢 <b>Позиция открыта: ${title(e)}</b>`,
-        [where, plainUsd(p.notionalUsd), p.entryPrice && `вход ${Number(p.entryPrice)}`]
+        `🔵 <b>Позиция открыта: ${title(e)}</b>`,
+        [
+          where,
+          plainUsd(p.notionalUsd),
+          p.entryPrice && `вход ${Number(p.entryPrice)}`,
+        ]
           .filter(Boolean)
           .join(" · "),
       ].join("\n");
-    case "closed":
-      return [
-        `⚪️ <b>Позиция закрыта: ${title(e)}</b>`,
+    case "closed": {
+      // Green or red by the result; white when it is unknown.
+      const icon = e.pnlUsd === null ? "⚪️" : e.pnlUsd >= 0 ? "🟢" : "🔴";
+      const result =
         e.pnlUsd === null
-          ? where
-          : `${where} · PnL ≈ <b>${usd(e.pnlUsd)}</b> (по последнему опросу)`,
+          ? null
+          : `итог ≈ <b>${usd(e.pnlUsd)}</b>${e.includesCosts ? " с фандингом и комиссиями" : ""}`;
+      const lasted =
+        e.durationMs === null ? null : `⏳ ${formatDurationRu(e.durationMs)}`;
+      return [
+        `${icon} <b>Позиция закрыта: ${title(e)}</b>`,
+        [where, result].filter(Boolean).join(" · "),
+        ...(lasted ? [lasted] : []),
       ].join("\n");
+    }
     case "liquidation":
       return [
         `⚠️ <b>Близко к ликвидации: ${title(e)}</b>`,
@@ -76,8 +96,13 @@ export function formatPositionEvent(e: SourcedEvent): string {
 }
 
 /** Several events from one poll go out as one message. */
-export function formatPositionMessage(events: SourcedEvent[], at = new Date()): string {
-  return [...events.map(formatPositionEvent), `⏱ ${formatKyivTime(at)}`].join("\n\n");
+export function formatPositionMessage(
+  events: SourcedEvent[],
+  at = new Date(),
+): string {
+  return [...events.map(formatPositionEvent), `⏱ ${formatKyivTime(at)}`].join(
+    "\n\n",
+  );
 }
 
 function logDetails(e: SourcedEvent): PositionLogDetails {
@@ -88,7 +113,14 @@ function logDetails(e: SourcedEvent): PositionLogDetails {
     side: p.side,
     leverage: p.leverage,
     sizeUsd: p.notionalUsd,
-    ...(e.kind === "closed" ? { pnlUsd: e.pnlUsd, approximate: true } : {}),
+    ...(e.kind === "closed"
+      ? {
+          pnlUsd: e.pnlUsd,
+          approximate: true,
+          includesCosts: e.includesCosts,
+          durationMs: e.durationMs,
+        }
+      : {}),
     ...(e.kind === "pnlSign" ? { pnlUsd: e.pnlUsd, positive: e.positive } : {}),
     ...(e.kind === "liquidation" ? { distancePercent: e.distancePercent } : {}),
   };
@@ -107,18 +139,30 @@ export async function deliverPositionEvents(
 ): Promise<PositionDelivery> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { telegramChatId: true, isBlocked: true, telegramNotificationsEnabled: true },
+    select: {
+      telegramChatId: true,
+      isBlocked: true,
+      telegramNotificationsEnabled: true,
+    },
   });
   if (!user || user.isBlocked) return "site";
   let status: PositionDelivery = "site";
   let failure: string | null = null;
-  if (user.telegramChatId && user.telegramNotificationsEnabled && process.env.TELEGRAM_BOT_TOKEN) {
+  if (
+    user.telegramChatId &&
+    user.telegramNotificationsEnabled &&
+    process.env.TELEGRAM_BOT_TOKEN
+  ) {
     try {
-      await sendTelegramHtml(user.telegramChatId, formatPositionMessage(events, now));
+      await sendTelegramHtml(
+        user.telegramChatId,
+        formatPositionMessage(events, now),
+      );
       status = "sent";
     } catch (error) {
       status = "failed";
-      failure = error instanceof TelegramError ? error.message : "Ошибка отправки";
+      failure =
+        error instanceof TelegramError ? error.message : "Ошибка отправки";
     }
   }
   await prisma.notificationLog.createMany({

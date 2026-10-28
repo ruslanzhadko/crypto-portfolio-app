@@ -11,6 +11,13 @@ import { EmptyState } from '@/components/common/empty-state';
 import { formatRelative, formatUsd } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
 import type { PositionLogDetails } from '@/lib/positions/delivery';
+import { durationParts } from '@/lib/positions/duration';
+
+/** "3 h 12 min" in the viewer's language, two largest units. */
+export function formatDuration(ms: number, tp: (key: string, values?: Record<string, number>) => string) {
+  const { d, h, m } = durationParts(ms);
+  return d ? tp('durationDH', { d, h }) : h ? tp('durationHM', { h, m }) : tp('durationM', { m });
+}
 import { exchangeName } from '@/components/exchanges/exchange-logo';
 
 type LogWithTrigger = Omit<NotificationLogModel, 'sentAt'> & {
@@ -267,12 +274,15 @@ function PositionLogRow({
     kind === 'liquidation' ? TriangleAlert : kind === 'closed' ? CircleOff : kind === 'opened' ? CircleDot : positive ? ArrowUpRight : ArrowDownRight;
   const event =
     kind === 'pnlSign' ? tp(d.positive ? 'pnlPlus' : 'pnlMinus') : ['opened', 'closed', 'liquidation'].includes(kind) ? tp(kind) : kind;
+  const lasted = kind === 'closed' && d.durationMs != null ? formatDuration(d.durationMs, tp) : null;
   const detail =
     kind === 'liquidation' && d.distancePercent != null
       ? tp('distance', { value: d.distancePercent.toFixed(1) })
       : d.pnlUsd != null
-        ? tp(d.approximate ? 'pnlApprox' : 'pnl', { value: signedUsd(d.pnlUsd) })
-        : null;
+        ? [tp(d.approximate ? 'pnlApprox' : 'pnl', { value: signedUsd(d.pnlUsd) }), lasted]
+            .filter(Boolean)
+            .join(' · ')
+        : lasted;
   const side = d.side ? `${d.side === 'long' ? 'LONG' : 'SHORT'}${d.leverage ? ` ×${Number(d.leverage)}` : ''}` : null;
   const where = [d.label ?? (d.exchange ? exchangeName(d.exchange) : null), side].filter(Boolean).join(' · ');
   const size = d.sizeUsd != null && Number.isFinite(Number(d.sizeUsd)) ? formatUsd(Number(d.sizeUsd)) : null;

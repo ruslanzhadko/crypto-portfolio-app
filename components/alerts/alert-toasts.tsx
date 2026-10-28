@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLatestAlertAt } from "@/lib/alerts/unread";
 import { formatUsd } from "@/lib/utils/format";
 import type { PositionLogDetails } from "@/lib/positions/delivery";
+import { formatDuration } from "./notification-log";
 
 type LogEntry = {
   id: string;
@@ -91,7 +92,14 @@ function describe(
           : null;
     return {
       title: `${event} · ${log.tokenSymbol}`,
-      description: [d.label, side, detail].filter(Boolean).join(" · "),
+      description: [
+        d.label,
+        side,
+        detail,
+        log.kind === "closed" && d.durationMs != null ? formatDuration(d.durationMs, tp) : null,
+      ]
+        .filter(Boolean)
+        .join(" · "),
     };
   }
   const target = log.trigger?.triggerType === "PRICE_TARGET";

@@ -1185,7 +1185,10 @@
       "pnlApprox": "PnL ≈ {value}",
       "pnl": "PnL {value}",
       "distance": "до ликвидации {value}%",
-      "size": "объём позиции"
+      "size": "объём позиции",
+      "durationDH": "{d} д {h} ч",
+      "durationHM": "{h} ч {m} мин",
+      "durationM": "{m} мин"
     },
     "liquidationCustom": "Свой порог, от 1 до 50%"
   }

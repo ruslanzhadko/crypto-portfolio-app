@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { OpenPosition } from "@/lib/exchanges/types";
-import { DEFAULT_POSITION_ALERTS, readPositionAlertSettings } from "./alert-settings";
+import {
+  DEFAULT_POSITION_ALERTS,
+  readPositionAlertSettings,
+} from "./alert-settings";
 import { MIN_REPEAT_MS, PositionWatch, liquidationDistance } from "./watch";
 
 const all = {
@@ -34,54 +37,82 @@ function position(over: Partial<OpenPosition> = {}): OpenPosition {
   };
 }
 
-const futures = (...positions: OpenPosition[]) => [{ accountKey: "futures", positions }];
+const futures = (...positions: OpenPosition[]) => [
+  { accountKey: "futures", positions },
+];
 
 describe("PositionWatch", () => {
   it("uses the first poll as a base, then reports opened and closed positions", () => {
     const watch = new PositionWatch();
     expect(watch.observe("c1", futures(position()), all, 0)).toEqual([]);
-    const eth = position({ positionKey: "ETHUSDT:BOTH", symbol: "ETHUSDT", base: "ETH" });
+    const eth = position({
+      positionKey: "ETHUSDT:BOTH",
+      symbol: "ETHUSDT",
+      base: "ETH",
+    });
     const opened = watch.observe("c1", futures(position(), eth), all, 1000);
-    expect(opened.map((e) => [e.kind, e.position.base])).toEqual([["opened", "ETH"]]);
+    expect(opened.map((e) => [e.kind, e.position.base])).toEqual([
+      ["opened", "ETH"],
+    ]);
     const closed = watch.observe("c1", futures(eth), all, 2000);
     expect(closed).toEqual([
-      expect.objectContaining({ kind: "closed", pnlUsd: 10, position: expect.objectContaining({ base: "BTC" }) }),
+      expect.objectContaining({
+        kind: "closed",
+        pnlUsd: 10,
+        position: expect.objectContaining({ base: "BTC" }),
+      }),
     ]);
   });
 
   it("never reports a close for an account that was not read", () => {
     const watch = new PositionWatch();
     watch.observe("c1", futures(position()), all, 0);
-    expect(watch.observe("c1", [{ accountKey: "futures" }], all, 1000)).toEqual([]);
+    expect(watch.observe("c1", [{ accountKey: "futures" }], all, 1000)).toEqual(
+      [],
+    );
     expect(watch.observe("c1", [], all, 2000)).toEqual([]);
-    expect(watch.observe("c1", futures(), all, 3000).map((e) => e.kind)).toEqual(["closed"]);
+    expect(
+      watch.observe("c1", futures(), all, 3000).map((e) => e.kind),
+    ).toEqual(["closed"]);
   });
 
   it("treats a side flip under the same key as a close and an open", () => {
     const watch = new PositionWatch();
     watch.observe("c1", futures(position()), all, 0);
-    const events = watch.observe("c1", futures(position({ side: "short" })), all, 1000);
+    const events = watch.observe(
+      "c1",
+      futures(position({ side: "short" })),
+      all,
+      1000,
+    );
     expect(events.map((e) => e.kind).sort()).toEqual(["closed", "opened"]);
   });
 
   it("alerts near liquidation once, then again only after moving away with a margin", () => {
     const watch = new PositionWatch();
-    const at = (mark: string) => futures(position({ markPrice: mark, liquidationPrice: "100" }));
+    const at = (mark: string) =>
+      futures(position({ markPrice: mark, liquidationPrice: "100" }));
     watch.observe("c1", at("200"), all, 0);
     const near = watch.observe("c1", at("108"), all, 1);
     expect(near).toEqual([expect.objectContaining({ kind: "liquidation" })]);
-    expect((near[0] as { distancePercent: number }).distancePercent).toBeCloseTo(7.41, 1);
+    expect(
+      (near[0] as { distancePercent: number }).distancePercent,
+    ).toBeCloseTo(7.41, 1);
     // Hovering around the threshold: no repeat.
     expect(watch.observe("c1", at("112"), all, MIN_REPEAT_MS * 2)).toEqual([]);
     expect(watch.observe("c1", at("108"), all, MIN_REPEAT_MS * 3)).toEqual([]);
     // Back above 13% (10% + 3%), then close again.
     watch.observe("c1", at("120"), all, MIN_REPEAT_MS * 4);
-    expect(watch.observe("c1", at("105"), all, MIN_REPEAT_MS * 5).map((e) => e.kind)).toEqual(["liquidation"]);
+    expect(
+      watch.observe("c1", at("105"), all, MIN_REPEAT_MS * 5).map((e) => e.kind),
+    ).toEqual(["liquidation"]);
   });
 
   it("does not alert for a position already near liquidation in the base", () => {
     const watch = new PositionWatch();
-    const near = futures(position({ markPrice: "105", liquidationPrice: "100" }));
+    const near = futures(
+      position({ markPrice: "105", liquidationPrice: "100" }),
+    );
     watch.observe("c1", near, all, 0);
     expect(watch.observe("c1", near, all, 1000)).toEqual([]);
   });
@@ -89,7 +120,12 @@ describe("PositionWatch", () => {
   it("alerts a new position that opens inside the liquidation threshold", () => {
     const watch = new PositionWatch();
     watch.observe("c1", futures(), all, 0);
-    const events = watch.observe("c1", futures(position({ markPrice: "105", liquidationPrice: "100" })), all, 1);
+    const events = watch.observe(
+      "c1",
+      futures(position({ markPrice: "105", liquidationPrice: "100" })),
+      all,
+      1,
+    );
     expect(events.map((e) => e.kind)).toEqual(["opened", "liquidation"]);
   });
 
@@ -100,20 +136,34 @@ describe("PositionWatch", () => {
     watch.observe("c1", pnl("100"), all, 0);
     expect(watch.observe("c1", pnl("-20"), all, 1)).toEqual([]);
     const minus = watch.observe("c1", pnl("-50"), all, 2);
-    expect(minus).toEqual([expect.objectContaining({ kind: "pnlSign", positive: false, pnlUsd: -50 })]);
+    expect(minus).toEqual([
+      expect.objectContaining({
+        kind: "pnlSign",
+        positive: false,
+        pnlUsd: -50,
+      }),
+    ]);
     // Within five minutes the same rule stays quiet, but the sign is still tracked.
     expect(watch.observe("c1", pnl("80"), all, 3)).toEqual([]);
-    expect(watch.observe("c1", pnl("-80"), all, MIN_REPEAT_MS + 10).map((e) => e.kind)).toEqual(["pnlSign"]);
+    expect(
+      watch
+        .observe("c1", pnl("-80"), all, MIN_REPEAT_MS + 10)
+        .map((e) => e.kind),
+    ).toEqual(["pnlSign"]);
   });
 
   it("uses the position size when the margin is unknown", () => {
     const watch = new PositionWatch();
     // 0.5% of a $28.60 position = $0.143: cents of noise stay quiet.
     const zec = (usd: string) =>
-      futures(position({ margin: null, notionalUsd: "28.6", unrealizedPnlUsd: usd }));
+      futures(
+        position({ margin: null, notionalUsd: "28.6", unrealizedPnlUsd: usd }),
+      );
     watch.observe("c1", zec("0.2"), all, 0);
     expect(watch.observe("c1", zec("-0.03"), all, 1)).toEqual([]);
-    expect(watch.observe("c1", zec("-0.2"), all, 2).map((e) => e.kind)).toEqual(["pnlSign"]);
+    expect(watch.observe("c1", zec("-0.2"), all, 2).map((e) => e.kind)).toEqual(
+      ["pnlSign"],
+    );
   });
 
   it("emits only the kinds that are switched on", () => {
@@ -121,23 +171,92 @@ describe("PositionWatch", () => {
     const onlyClosed = { ...DEFAULT_POSITION_ALERTS, closed: true };
     watch.observe("c1", futures(position()), onlyClosed, 0);
     const eth = position({ positionKey: "ETHUSDT:BOTH", base: "ETH" });
-    expect(watch.observe("c1", futures(position(), eth), onlyClosed, 1)).toEqual([]);
-    expect(watch.observe("c1", futures(eth), onlyClosed, 2).map((e) => e.kind)).toEqual(["closed"]);
+    expect(
+      watch.observe("c1", futures(position(), eth), onlyClosed, 1),
+    ).toEqual([]);
+    expect(
+      watch.observe("c1", futures(eth), onlyClosed, 2).map((e) => e.kind),
+    ).toEqual(["closed"]);
+  });
+});
+
+describe("closed position result", () => {
+  it("adds realized PnL, funding and fees of a complete cycle and reports how long it lasted", () => {
+    const watch = new PositionWatch();
+    const opened = Date.UTC(2026, 9, 28, 9, 0);
+    const funding = {
+      amount: "-1.5",
+      realizedPnl: "4",
+      tradingFees: "0.5",
+      since: opened,
+      updatedAt: opened,
+      status: "complete" as const,
+    };
+    // PnL rate 0.99 USD per USDT: 10 USDT unrealized = $9.90.
+    watch.observe(
+      "c1",
+      futures(
+        position({ unrealizedPnl: "10", unrealizedPnlUsd: "9.9", funding }),
+      ),
+      all,
+      opened + 1,
+    );
+    const [closed] = watch.observe(
+      "c1",
+      futures(),
+      all,
+      opened + 3 * 3600_000 + 12 * 60_000,
+    );
+    expect(closed).toMatchObject({
+      kind: "closed",
+      includesCosts: true,
+      durationMs: 3 * 3600_000 + 12 * 60_000,
+    });
+    // 9.9 + (4 - 1.5 - 0.5) * 0.99 = 11.88
+    expect((closed as { pnlUsd: number }).pnlUsd).toBeCloseTo(11.88, 6);
+  });
+
+  it("falls back to the unrealized PnL and the first sighting without exchange history", () => {
+    const watch = new PositionWatch();
+    watch.observe("c1", futures(), all, 0);
+    watch.observe("c1", futures(position()), all, 60_000);
+    const [closed] = watch.observe("c1", futures(), all, 60_000 + 45 * 60_000);
+    expect(closed).toMatchObject({
+      kind: "closed",
+      pnlUsd: 10,
+      includesCosts: false,
+      durationMs: 45 * 60_000,
+    });
   });
 });
 
 describe("liquidationDistance", () => {
   it("is unknown without prices", () => {
-    expect(liquidationDistance({ ...position(), accountKey: "f", liquidationPrice: null })).toBeNull();
-    expect(liquidationDistance({ ...position(), accountKey: "f", markPrice: "0" })).toBeNull();
+    expect(
+      liquidationDistance({
+        ...position(),
+        accountKey: "f",
+        liquidationPrice: null,
+      }),
+    ).toBeNull();
+    expect(
+      liquidationDistance({ ...position(), accountKey: "f", markPrice: "0" }),
+    ).toBeNull();
   });
 });
 
 describe("readPositionAlertSettings", () => {
   it("falls back to defaults for broken values and keeps valid ones", () => {
     expect(readPositionAlertSettings(null)).toEqual(DEFAULT_POSITION_ALERTS);
-    expect(readPositionAlertSettings({ liquidationPercent: 70 })).toEqual(DEFAULT_POSITION_ALERTS);
-    expect(readPositionAlertSettings({ liquidationPercent: 7.5 }).liquidationPercent).toBe(7.5);
-    expect(readPositionAlertSettings({ closed: true })).toEqual({ ...DEFAULT_POSITION_ALERTS, closed: true });
+    expect(readPositionAlertSettings({ liquidationPercent: 70 })).toEqual(
+      DEFAULT_POSITION_ALERTS,
+    );
+    expect(
+      readPositionAlertSettings({ liquidationPercent: 7.5 }).liquidationPercent,
+    ).toBe(7.5);
+    expect(readPositionAlertSettings({ closed: true })).toEqual({
+      ...DEFAULT_POSITION_ALERTS,
+      closed: true,
+    });
   });
 });

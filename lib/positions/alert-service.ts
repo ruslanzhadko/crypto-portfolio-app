@@ -20,12 +20,15 @@ const RATE_LIMIT_PAUSE_MS = 5 * 60_000;
 const FRESH_MS = 12_000;
 const WINDOW_MS = 30 * 60_000;
 
-type Connection = Prisma.ExchangeConnectionGetPayload<{ include: { wallet: true } }>;
+type Connection = Prisma.ExchangeConnectionGetPayload<{
+  include: { wallet: true };
+}>;
 type Watched = { row: Connection; nextAt: number; observedAt: number };
 
 const WATCHED_STATUSES = ["PENDING", "ACTIVE", "PARTIAL", "ERROR"];
 
-const text = (value: { toString(): string } | null) => (value === null ? null : value.toString());
+const text = (value: { toString(): string } | null) =>
+  value === null ? null : value.toString();
 
 /**
  * Background position polling for users with position alerts on. Runs inside the exchange worker
@@ -39,6 +42,8 @@ export class PositionAlertService {
   private slowUntil = new Map<string, number>();
   private verified = new WeakSet<object>();
   private pending = new Map<string, SourcedEvent[]>();
+  /** Key version each connection's base was read with. */
+  private versions = new Map<string, number>();
   private loadedWindow = -1;
   private version: number | null = null;
 
@@ -64,12 +69,17 @@ export class PositionAlertService {
     });
     this.settings = new Map(
       users
-        .map((u) => [u.id, readPositionAlertSettings(u.positionAlerts)] as const)
+        .map(
+          (u) => [u.id, readPositionAlertSettings(u.positionAlerts)] as const,
+        )
         .filter(([id, s]) => anyPositionAlert(s) && exchangesEnabled(id)),
     );
     const rows = this.settings.size
       ? await prisma.exchangeConnection.findMany({
-          where: { userId: { in: [...this.settings.keys()] }, status: { in: WATCHED_STATUSES } },
+          where: {
+            userId: { in: [...this.settings.keys()] },
+            status: { in: WATCHED_STATUSES },
+          },
           include: { wallet: true },
         })
       : [];
@@ -87,7 +97,9 @@ export class PositionAlertService {
     if (fresh.length) {
       const stored = await prisma.exchangePosition.findMany({
         where: { account: { connectionId: { in: fresh.map((r) => r.id) } } },
-        include: { account: { select: { connectionId: true, accountKey: true } } },
+        include: {
+          account: { select: { connectionId: true, accountKey: true } },
+        },
       });
       for (const r of fresh) {
         const positions: WatchedPosition[] = stored
@@ -108,7 +120,11 @@ export class PositionAlertService {
             margin: text(p.margin),
             unrealizedPnlUsd: text(p.unrealizedPnlUsd),
           }));
-        this.watch.baseline(r.id, positions, this.settings.get(r.userId)!.liquidationPercent);
+        this.watch.baseline(
+          r.id,
+          positions,
+          this.settings.get(r.userId)!.liquidationPercent,
+        );
       }
     }
     for (const row of wanted) {
@@ -125,10 +141,22 @@ export class PositionAlertService {
   }
 
   /** Called with every result the worker reads, from the sync jobs and from this poller. */
-  observe(c: { id: string; userId: string }, result: SyncResult, at = Date.now()) {
+  observe(
+    c: { id: string; userId: string; credentialVersion?: number },
+    result: SyncResult,
+    at = Date.now(),
+  ) {
     const watched = this.connections.get(c.id);
     const settings = this.settings.get(c.userId);
     if (!watched || !settings) return;
+    // A replaced key can read the same positions under other IDs (Aster: wallet RPC → API):
+    // start a fresh base instead of reporting every position closed and opened again.
+    if (c.credentialVersion !== undefined) {
+      const known = this.versions.get(c.id);
+      this.versions.set(c.id, c.credentialVersion);
+      if (known !== undefined && known !== c.credentialVersion)
+        this.watch.forget(c.id);
+    }
     watched.observedAt = at;
     const events = this.watch.observe(c.id, result.accounts, settings, at);
     if (!events.length) return;
@@ -147,7 +175,9 @@ export class PositionAlertService {
       const slow = (this.slowUntil.get(exchange) ?? 0) > now;
       const interval = slow ? SLOW_POLL_MS : ALERT_POLL_MS;
       // The key was replaced since the last load: reload the row before using it.
-      if ((clientVersion(watched.row.id) ?? 0) > watched.row.credentialVersion) {
+      if (
+        (clientVersion(watched.row.id) ?? 0) > watched.row.credentialVersion
+      ) {
         this.loadedWindow = -1;
         continue;
       }
@@ -165,7 +195,9 @@ export class PositionAlertService {
         }
         const result = await client.adapter.fetch(false);
         this.observe(watched.row, result);
-        const limited = result.failedAccounts.some((a) => a.errorCode === "RATE_LIMIT");
+        const limited = result.failedAccounts.some(
+          (a) => a.errorCode === "RATE_LIMIT",
+        );
         if (limited) this.rateLimited(exchange, now);
         watched.nextAt = Date.now() + (limited ? SLOW_POLL_MS : interval);
       } catch (error) {
@@ -178,7 +210,9 @@ export class PositionAlertService {
 
   private rateLimited(exchange: string, now: number) {
     if ((this.slowUntil.get(exchange) ?? 0) <= now)
-      console.warn(`[position-alerts] ${exchange} rate limit; polling every 60 s for 5 minutes`);
+      console.warn(
+        `[position-alerts] ${exchange} rate limit; polling every 60 s for 5 minutes`,
+      );
     this.slowUntil.set(exchange, now + RATE_LIMIT_PAUSE_MS);
   }
 
@@ -191,7 +225,9 @@ export class PositionAlertService {
       try {
         const status = await deliverPositionEvents(userId, events);
         delivered.push(userId);
-        console.log(`[position-alerts] ${events.map((e) => e.kind).join(",")} ${status}`);
+        console.log(
+          `[position-alerts] ${events.map((e) => e.kind).join(",")} ${status}`,
+        );
       } catch {
         console.error("[position-alerts] delivery failed; events dropped");
       }

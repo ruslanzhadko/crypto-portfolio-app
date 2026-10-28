@@ -22,14 +22,34 @@ export type WatchedPosition = Pick<
   | "leverage"
   | "margin"
   | "unrealizedPnlUsd"
-> & { accountKey: string };
+> & {
+  accountKey: string;
+  /** Settle-currency PnL and cycle accounting, when the poll has them (not stored rows). */
+  unrealizedPnl?: string | null;
+  funding?: OpenPosition["funding"];
+};
 
 export type PositionEvent =
   | { kind: "opened"; position: WatchedPosition }
-  /** `pnlUsd` is the last observed unrealized PnL: an estimate of the closed result. */
-  | { kind: "closed"; position: WatchedPosition; pnlUsd: number | null }
+  /**
+   * `pnlUsd`: the last observed unrealized PnL plus what the cycle already realized (partial closes,
+   * funding, fees) when the exchange history is complete (`includesCosts`). Only the last seconds
+   * before the close and its own fee are missing. `durationMs` is null when the opening is unknown.
+   */
+  | {
+      kind: "closed";
+      position: WatchedPosition;
+      pnlUsd: number | null;
+      includesCosts: boolean;
+      durationMs: number | null;
+    }
   | { kind: "liquidation"; position: WatchedPosition; distancePercent: number }
-  | { kind: "pnlSign"; position: WatchedPosition; positive: boolean; pnlUsd: number };
+  | {
+      kind: "pnlSign";
+      position: WatchedPosition;
+      positive: boolean;
+      pnlUsd: number;
+    };
 
 /** A liquidation alert fires again only after the distance grows this much past the threshold. */
 export const LIQUIDATION_REARM_PERCENT = 3;
@@ -48,7 +68,44 @@ type Tracked = {
   liquidationArmed: boolean;
   sign: -1 | 0 | 1;
   firedAt: Partial<Record<PositionEvent["kind"], number>>;
+  /** When the position opened: the exchange's cycle start, else the poll that first saw it. */
+  openedAt: number | null;
 };
+
+/** Cycle start reported by the exchange history, when known. */
+const cycleStart = (p: WatchedPosition) =>
+  typeof p.funding?.since === "number" && p.funding.since > 0
+    ? p.funding.since
+    : null;
+
+/**
+ * Closed result in USD: unrealized PnL plus the cycle's realized PnL, funding and fees when the
+ * history is complete. Settle-currency amounts use the position's own PnL rate (else 1:1).
+ */
+export function closedResult(p: WatchedPosition): {
+  pnlUsd: number | null;
+  includesCosts: boolean;
+} {
+  const unrealized = num(p.unrealizedPnlUsd);
+  if (unrealized === null) return { pnlUsd: null, includesCosts: false };
+  const f = p.funding;
+  const realized = num(f?.realizedPnl),
+    funding = num(f?.amount),
+    fees = num(f?.tradingFees);
+  if (
+    f?.status !== "complete" ||
+    realized === null ||
+    funding === null ||
+    fees === null
+  )
+    return { pnlUsd: unrealized, includesCosts: false };
+  const native = num(p.unrealizedPnl);
+  const rate = native !== null && native !== 0 ? unrealized / native : 1;
+  return {
+    pnlUsd: unrealized + (realized + funding - fees) * rate,
+    includesCosts: true,
+  };
+}
 
 const num = (value: string | null | undefined) => {
   if (value == null) return null;
@@ -60,7 +117,8 @@ const num = (value: string | null | undefined) => {
 export function liquidationDistance(p: WatchedPosition): number | null {
   const mark = num(p.markPrice),
     liquidation = num(p.liquidationPrice);
-  if (mark === null || liquidation === null || mark <= 0 || liquidation <= 0) return null;
+  if (mark === null || liquidation === null || mark <= 0 || liquidation <= 0)
+    return null;
   return (Math.abs(mark - liquidation) / mark) * 100;
 }
 
@@ -80,7 +138,8 @@ export function pnlSign(p: WatchedPosition): -1 | 0 | 1 {
 }
 
 /** Same position key but the other side (one-way mode flip): a close and a new open. */
-const identity = (p: WatchedPosition) => `${p.accountKey}:${p.positionKey}:${p.side}`;
+const identity = (p: WatchedPosition) =>
+  `${p.accountKey}:${p.positionKey}:${p.side}`;
 
 export class PositionWatch {
   private connections = new Map<string, Map<string, Tracked>>();
@@ -94,7 +153,11 @@ export class PositionWatch {
    * Sets the base without events: positions stored before a restart, or the first poll. A position
    * already near liquidation at this point does not alert until it moves away and back.
    */
-  baseline(connectionId: string, positions: WatchedPosition[], liquidationPercent: number) {
+  baseline(
+    connectionId: string,
+    positions: WatchedPosition[],
+    liquidationPercent: number,
+  ) {
     const tracked = new Map<string, Tracked>();
     for (const position of positions) {
       const distance = liquidationDistance(position);
@@ -103,6 +166,7 @@ export class PositionWatch {
         liquidationArmed: distance === null || distance >= liquidationPercent,
         sign: pnlSign(position),
         firedAt: {},
+        openedAt: cycleStart(position),
       });
     }
     this.connections.set(connectionId, tracked);
@@ -124,7 +188,9 @@ export class PositionWatch {
   ): PositionEvent[] {
     const read = accounts.filter((a) => a.positions !== undefined);
     const current = read.flatMap((a) =>
-      a.positions!.map((p): WatchedPosition => ({ ...p, accountKey: a.accountKey })),
+      a.positions!.map(
+        (p): WatchedPosition => ({ ...p, accountKey: a.accountKey }),
+      ),
     );
     const previous = this.connections.get(connectionId);
     if (!previous) {
@@ -136,7 +202,8 @@ export class PositionWatch {
     const next = new Map<string, Tracked>();
     // Accounts that were not read this time keep their previous positions untouched.
     for (const [key, tracked] of previous)
-      if (!readAccounts.has(tracked.position.accountKey)) next.set(key, tracked);
+      if (!readAccounts.has(tracked.position.accountKey))
+        next.set(key, tracked);
 
     for (const position of current) {
       const key = identity(position);
@@ -145,29 +212,51 @@ export class PositionWatch {
       const sign = pnlSign(position);
       if (!before) {
         if (settings.opened) events.push({ kind: "opened", position });
-        next.set(key, { position, liquidationArmed: true, sign, firedAt: {} });
+        next.set(key, {
+          position,
+          liquidationArmed: true,
+          sign,
+          firedAt: {},
+          openedAt: cycleStart(position) ?? now,
+        });
         // A position opened already inside the liquidation threshold is worth a message too.
         if (distance === null) continue;
       }
       const tracked = before ?? next.get(key)!;
       tracked.position = position;
+      tracked.openedAt ??= cycleStart(position);
       next.set(key, tracked);
       const allowed = (kind: PositionEvent["kind"]) =>
         now - (tracked.firedAt[kind] ?? -Infinity) >= MIN_REPEAT_MS;
 
       if (distance !== null) {
-        if (distance < settings.liquidationPercent && tracked.liquidationArmed) {
+        if (
+          distance < settings.liquidationPercent &&
+          tracked.liquidationArmed
+        ) {
           if (settings.liquidation && allowed("liquidation")) {
-            events.push({ kind: "liquidation", position, distancePercent: distance });
+            events.push({
+              kind: "liquidation",
+              position,
+              distancePercent: distance,
+            });
             tracked.firedAt.liquidation = now;
           }
           tracked.liquidationArmed = false;
-        } else if (distance >= settings.liquidationPercent + LIQUIDATION_REARM_PERCENT)
+        } else if (
+          distance >=
+          settings.liquidationPercent + LIQUIDATION_REARM_PERCENT
+        )
           tracked.liquidationArmed = true;
       }
 
       if (sign !== 0 && sign !== tracked.sign) {
-        if (before && tracked.sign !== 0 && settings.pnlSign && allowed("pnlSign")) {
+        if (
+          before &&
+          tracked.sign !== 0 &&
+          settings.pnlSign &&
+          allowed("pnlSign")
+        ) {
           events.push({
             kind: "pnlSign",
             position,
@@ -181,11 +270,19 @@ export class PositionWatch {
     }
 
     for (const [key, tracked] of previous)
-      if (readAccounts.has(tracked.position.accountKey) && !next.has(key) && settings.closed)
+      if (
+        readAccounts.has(tracked.position.accountKey) &&
+        !next.has(key) &&
+        settings.closed
+      )
         events.push({
           kind: "closed",
           position: tracked.position,
-          pnlUsd: num(tracked.position.unrealizedPnlUsd),
+          ...closedResult(tracked.position),
+          durationMs:
+            tracked.openedAt === null
+              ? null
+              : Math.max(0, now - tracked.openedAt),
         });
 
     this.connections.set(connectionId, next);

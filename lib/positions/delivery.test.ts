@@ -25,17 +25,33 @@ describe("formatPositionMessage", () => {
   it("puts several events into one message with escaped labels", () => {
     const events: SourcedEvent[] = [
       { kind: "opened", position, source },
-      { kind: "closed", position, pnlUsd: -12.5, source },
+      {
+        kind: "closed",
+        position,
+        pnlUsd: -12.5,
+        includesCosts: true,
+        durationMs: 3 * 3600_000 + 12 * 60_000,
+        source,
+      },
       { kind: "liquidation", position, distancePercent: 7.41, source },
       { kind: "pnlSign", position, positive: true, pnlUsd: 4, source },
     ];
-    const text = formatPositionMessage(events, new Date("2026-10-27T12:00:00Z"));
+    const text = formatPositionMessage(
+      events,
+      new Date("2026-10-27T12:00:00Z"),
+    );
     expect(text).toContain("Позиция открыта: BTC LONG ×10");
     expect(text).toContain("Binance &lt;Main&gt; · $7,000 · вход 70000");
-    expect(text).toContain("PnL ≈ <b>−$12.50</b> (по последнему опросу)");
-    expect(text).toContain("до ликвидации <b>7.4%</b> (цена 54000, ликвидация 50000)");
+    expect(text).toContain("🔴 <b>Позиция закрыта: BTC LONG ×10</b>");
+    expect(text).toContain("итог ≈ <b>−$12.50</b> с фандингом и комиссиями");
+    expect(text).toContain("⏳ 3 ч 12 мин");
+    expect(text).toContain("🔵 <b>Позиция открыта");
+    expect(text).toContain(
+      "до ликвидации <b>7.4%</b> (цена 54000, ликвидация 50000)",
+    );
     expect(text).toContain("Позиция ушла в плюс: BTC LONG ×10");
     expect(text).toContain("PnL <b>+$4.00</b>");
     expect(text.split("\n\n")).toHaveLength(5);
+    expect(text).not.toContain("по последнему опросу");
   });
 });

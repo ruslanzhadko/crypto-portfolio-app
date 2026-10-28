@@ -23,6 +23,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       ru: [
         "Сработавшие триггеры и уведомления по позициям всплывают справа на открытой странице сайта, рядом с сообщением в Telegram.",
         "Страница «Уведомления» открывается на журнале; триггеры и позиции — отдельные карточки с подписью и состоянием. Порог «ликвидация близко» можно задать свой, от 1 до 50%.",
+        "Сообщение о закрытии позиции зелёное или красное по итогу, учитывает фандинг, комиссии и частичные фиксации и показывает, сколько позиция была открыта. Замена API-ключа больше не присылает ложных «позиция закрыта».",
         "Уведомление «плюс / минус» больше не дёргается от колебаний PnL в центы; в журнале у позиций подписан объём.",
         "Позиция на монете премаркета больше не останавливает обновление всего счёта Bybit. У позиций Aster, подключённых по адресу кошелька, появились цены входа и маркировки.",
         "У позиций BingX появились реализованный PnL и цена безубытка, в том числе когда ордер выставлен заранее или исполнялся несколько недель.",
@@ -31,6 +32,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       uk: [
         "Спрацьовані тригери та сповіщення по позиціях спливають праворуч на відкритій сторінці сайту, поруч із повідомленням у Telegram.",
         "Сторінка «Сповіщення» відкривається на журналі; тригери й позиції — окремі картки з підписом і станом. Поріг «ліквідація близько» можна задати свій, від 1 до 50%.",
+        "Повідомлення про закриття позиції зелене або червоне за підсумком, враховує фандинг, комісії й часткові фіксації та показує, скільки позиція була відкрита. Заміна API-ключа більше не надсилає хибних «позицію закрито».",
         "Сповіщення «плюс / мінус» більше не смикається від коливань PnL у центи; у журналі в позицій підписано обсяг.",
         "Позиція на монеті премаркету більше не зупиняє оновлення всього рахунку Bybit. У позицій Aster, підключених за адресою гаманця, з'явилися ціни входу й маркування.",
         "У позицій BingX з'явилися реалізований PnL і ціна беззбитку, зокрема коли ордер виставлено заздалегідь або він виконувався кілька тижнів.",
@@ -39,6 +41,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       en: [
         "Fired triggers and position alerts pop up on the right of any open page of the site, next to the Telegram message.",
         "The Notifications page opens on the log; triggers and positions are separate cards with a caption and their state. The liquidation threshold can be any value from 1 to 50%.",
+        "The position closed message is green or red by its result, includes funding, fees and partial closes, and shows how long the position was open. Replacing an API key no longer sends false “position closed” alerts.",
         "The profit / loss alert no longer flips on cents of PnL noise; position rows in the log label their size.",
         "A pre-market position no longer stops the whole Bybit account from updating. Aster positions linked by wallet address now show entry and mark prices.",
         "BingX positions now show realized PnL and the break-even price, including orders placed in advance or filled over several weeks.",

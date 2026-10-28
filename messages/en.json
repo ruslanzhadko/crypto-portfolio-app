@@ -1185,7 +1185,10 @@
       "pnlApprox": "PnL ≈ {value}",
       "pnl": "PnL {value}",
       "distance": "{value}% to liquidation",
-      "size": "position size"
+      "size": "position size",
+      "durationDH": "{d}d {h}h",
+      "durationHM": "{h}h {m}m",
+      "durationM": "{m}m"
     },
     "liquidationCustom": "Your own threshold, 1 to 50%"
   }

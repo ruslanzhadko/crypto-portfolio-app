@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ExchangeError, type OpenPosition, type SyncResult } from "@/lib/exchanges/types";
+import {
+  ExchangeError,
+  type OpenPosition,
+  type SyncResult,
+} from "@/lib/exchanges/types";
 
 const db = vi.hoisted(() => ({
   user: { findMany: vi.fn() },
@@ -25,7 +29,13 @@ const settings = {
   liquidationPercent: 10,
   excludedConnections: ["skipped"],
 };
-const row = (id: string) => ({ id, userId: "u1", label: `Main ${id}`, exchange: "binance", credentialVersion: 1 });
+const row = (id: string) => ({
+  id,
+  userId: "u1",
+  label: `Main ${id}`,
+  exchange: "binance",
+  credentialVersion: 1,
+});
 const btc: OpenPosition = {
   positionKey: "BTCUSDT:BOTH",
   symbol: "BTCUSDT",
@@ -101,7 +111,11 @@ describe("PositionAlertService", () => {
     expect(adapter.fetch).toHaveBeenCalledWith(false);
     expect(await service.flush()).toEqual(["u1"]);
     expect(deliver).toHaveBeenCalledWith("u1", [
-      expect.objectContaining({ kind: "closed", pnlUsd: 25, source: { label: "Main c1", exchange: "binance" } }),
+      expect.objectContaining({
+        kind: "closed",
+        pnlUsd: 25,
+        source: { label: "Main c1", exchange: "binance" },
+      }),
     ]);
     expect(await service.flush()).toEqual([]);
   });
@@ -122,6 +136,27 @@ describe("PositionAlertService", () => {
     await service.pollDue(start);
     await service.pollDue(start + ALERT_POLL_MS + 1000);
     expect(adapter.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts a fresh base when the key is replaced instead of reporting positions closed", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    const old = { ...btc, positionKey: "98000003122518_BTCUSDT_LONG" };
+    service.observe(
+      { id: "c1", userId: "u1", credentialVersion: 1 },
+      result(old),
+      1000,
+    );
+    expect(await service.flush()).toEqual(["u1"]); // the stored base differs from the first poll
+    deliver.mockClear();
+    // Same position read through the API under another key after the key was replaced.
+    service.observe(
+      { id: "c1", userId: "u1", credentialVersion: 2 },
+      result(btc),
+      2000,
+    );
+    expect(await service.flush()).toEqual([]);
+    expect(deliver).not.toHaveBeenCalled();
   });
 
   it("reloads when the site signals a settings change", async () => {

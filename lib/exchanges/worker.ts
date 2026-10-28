@@ -17,7 +17,11 @@ import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
 import { BingxAdapter } from "./bingx";
 import { syncTransfers } from "./transfer-store";
-import { looksLikeDeposit, noteDeposit, stablecoinTotal } from "./deposit-watch";
+import {
+  looksLikeDeposit,
+  noteDeposit,
+  stablecoinTotal,
+} from "./deposit-watch";
 import { BitgetAdapter } from "./bitget";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
@@ -35,7 +39,11 @@ import { saveCapitalSnapshot } from "./portfolio";
 
 /** Sees every successful sync, so position alerts reuse the job's data instead of polling twice. */
 let positionObserver:
-  | ((c: { id: string; userId: string }, result: SyncResult, at: number) => void)
+  | ((
+      c: { id: string; userId: string; credentialVersion: number },
+      result: SyncResult,
+      at: number,
+    ) => void)
   | null = null;
 export function setPositionObserver(observer: typeof positionObserver) {
   positionObserver = observer;
@@ -238,7 +246,9 @@ export function commitResult(
             : {}),
         },
       });
-      const stableAfter = stablecoinTotal(result.accounts.flatMap((a) => a.balances));
+      const stableAfter = stablecoinTotal(
+        result.accounts.flatMap((a) => a.balances),
+      );
       if (stableBefore !== null && looksLikeDeposit(stableBefore, stableAfter))
         noteDeposit(c.userId, c.walletId);
       if (first)
@@ -367,13 +377,7 @@ export async function connectionClient(c: ConnectionWithWallet) {
         throw new ExchangeError("INVALID_KEY");
       const credentials = decryptCredentials(c.credentials, c.userId, c.id);
       const transport = createTransport(
-        c.exchange as
-          | "binance"
-          | "bybit"
-          | "gate"
-          | "okx"
-          | "bingx"
-          | "bitget",
+        c.exchange as "binance" | "bybit" | "gate" | "okx" | "bingx" | "bitget",
         credentials,
       );
       adapter =
