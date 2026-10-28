@@ -6,6 +6,13 @@ import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Link } from "@/i18n/navigation";
 import { ExchangeErrorNotice } from "./shared";
 import { exchangeAction } from "./use-exchange-data";
@@ -154,25 +161,24 @@ export function ConnectionForm({
       {walletBased ? (
         <div className="space-y-2">
           <Label htmlFor="aster-wallet">{t("wallet")}</Label>
-          <select
-            id="aster-wallet"
-            name="walletId"
-            required
-            defaultValue=""
-            className="h-10 w-full rounded-lg border border-border bg-surface-2 px-3 text-sm"
-          >
-            <option value="" disabled>
-              {t("selectWallet")}
-            </option>
-            {wallets.data?.wallets
-              .filter((w) => w.isActive && w.network === "EVM")
-              .map((w) => (
-                <option key={w.id} value={w.id}>
-                  {w.label ?? w.address} · {w.address.slice(0, 6)}…
-                  {w.address.slice(-4)}
-                </option>
-              ))}
-          </select>
+          {/* Not a native select: its popup ignores page zoom and was drawn clipped at 50% zoom. */}
+          <Select name="walletId" required>
+            <SelectTrigger id="aster-wallet">
+              <SelectValue placeholder={t("selectWallet")} />
+            </SelectTrigger>
+            <SelectContent>
+              {wallets.data?.wallets
+                .filter((w) => w.isActive && w.network === "EVM")
+                .map((w) => {
+                  const short = `${w.address.slice(0, 6)}…${w.address.slice(-4)}`;
+                  return (
+                    <SelectItem key={w.id} value={w.id}>
+                      {w.label ? `${w.label} · ${short}` : short}
+                    </SelectItem>
+                  );
+                })}
+            </SelectContent>
+          </Select>
           <ExchangeErrorNotice code={wallets.error} />
         </div>
       ) : (
