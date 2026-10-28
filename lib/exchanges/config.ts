@@ -1,3 +1,5 @@
+import { isDemoUser } from "@/lib/demo/config";
+
 /** Server-side rollout switch. No table access while disabled. */
 export function exchangesEnabled(userId?: string): boolean {
   if (process.env.EXCHANGES_ENABLED !== "true") return false;
@@ -5,7 +7,8 @@ export function exchangesEnabled(userId?: string): boolean {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);
-  return !pilot.length || (!!userId && pilot.includes(userId));
+  // The read-only demo account always shows its sample exchanges, pilot or not.
+  return !pilot.length || (!!userId && (pilot.includes(userId) || isDemoUser(userId)));
 }
 
 export const POSITION_INTERVAL_MS = 30_000;
