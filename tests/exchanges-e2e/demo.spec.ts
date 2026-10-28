@@ -38,9 +38,9 @@ test('a fresh visitor opens the demo in one step and cannot change anything', as
 
   // Nothing to set up in the demo: settings and alerts point to sign-up instead.
   await page.goto('/en/settings');
-  await expect(page.getByText('Settings come with your own account')).toBeVisible();
+  await expect(page.getByText('Settings come with your own account').first()).toBeVisible();
   await expect(page.getByLabel('Name')).toHaveCount(0);
   await page.goto('/en/alerts');
-  await expect(page.getByText('Alerts are for registered users')).toBeVisible();
+  await expect(page.getByText('Alerts are for registered users').first()).toBeVisible();
   await expect(page.getByRole('link', { name: 'Create trigger' })).toHaveCount(0);
 });
