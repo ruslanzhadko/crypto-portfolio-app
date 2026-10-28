@@ -7,6 +7,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { AlertToasts } from "@/components/alerts/alert-toasts";
 import { DemoBanner } from "@/components/demo/demo-banner";
+import { DemoProvider } from "@/components/demo/demo-context";
 import { isDemoUser } from "@/lib/demo/config";
 
 export default async function DashboardLayout({
@@ -24,28 +25,31 @@ export default async function DashboardLayout({
     redirect({ href: "/auth/error?error=AccessDenied", locale });
   }
 
+  const demo = isDemoUser(session!.user.id);
   return (
-    <div className="flex min-h-screen">
-      <Sidebar
-        userRole={session!.user.role}
-        exchangesEnabled={exchangesEnabled(session!.user.id)}
-      />
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col">
-        {isDemoUser(session!.user.id) && <DemoBanner />}
-        <Navbar
-          email={session!.user.email ?? ""}
-          name={session!.user.name}
-          role={session!.user.role}
+    <DemoProvider demo={demo}>
+      <div className="flex min-h-screen">
+        <Sidebar
+          userRole={session!.user.role}
+          exchangesEnabled={exchangesEnabled(session!.user.id)}
         />
-        <main className="min-w-0 flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6 md:px-8 md:pb-8">
-          {children}
-        </main>
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          {demo && <DemoBanner />}
+          <Navbar
+            email={session!.user.email ?? ""}
+            name={session!.user.name}
+            role={session!.user.role}
+          />
+          <main className="min-w-0 flex-1 px-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] pt-6 md:px-8 md:pb-8">
+            {children}
+          </main>
+        </div>
+        <AlertToasts />
+        <MobileNav
+          userRole={session!.user.role}
+          exchangesEnabled={exchangesEnabled(session!.user.id)}
+        />
       </div>
-      <AlertToasts />
-      <MobileNav
-        userRole={session!.user.role}
-        exchangesEnabled={exchangesEnabled(session!.user.id)}
-      />
-    </div>
+    </DemoProvider>
   );
 }

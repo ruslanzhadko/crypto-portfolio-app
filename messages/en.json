@@ -1211,6 +1211,11 @@
     "bannerDescription": "sample data, changes are disabled",
     "createAccount": "Create an account",
     "readOnlyTitle": "The demo is view-only",
-    "readOnlyDescription": "Create an account to add wallets, exchanges and alerts."
+    "readOnlyDescription": "Create an account to add wallets, exchanges and alerts.",
+    "settingsTitle": "Settings come with your own account",
+    "settingsDescription": "Profile, password and Telegram live in your own account. Signing up is free and takes a minute.",
+    "alertsTitle": "Alerts are for registered users",
+    "alertsDescription": "Create an account to get price and position alerts in Telegram and on the site. This is a sample log and setup.",
+    "readOnlyHint": "View only in the demo"
   }
 }

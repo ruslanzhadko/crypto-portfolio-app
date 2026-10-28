@@ -22,6 +22,7 @@ import { formatRelativeCompact, formatUsd, shortAddress } from '@/lib/utils/form
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
 import { runInBackground, useBackgroundTask } from '@/components/dashboard/background-tasks';
+import { useIsDemo } from "@/components/demo/demo-context";
 
 function tokenLabel(t: ReturnType<typeof useTranslations<'WalletCard'>>, count: number) {
   if (count === 1) return t('tokenWord1');
@@ -47,6 +48,7 @@ interface WalletCardProps {
 }
 
 export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
+  const demo = useIsDemo();
   const router = useRouter();
   const [isPending, startDelete] = useTransition();
   // Shared with the wallet page button: the sync keeps running while the user opens other pages.
@@ -209,6 +211,8 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
             </span>
             <span className="hidden sm:inline">{syncText}</span>
           </span>
+          {!demo && (
+          <>
           <Button
             variant="outline"
             size="icon"
@@ -252,6 +256,8 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          </>
+          )}
         </div>
       </CardContent>
     </Card>

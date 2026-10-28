@@ -4,6 +4,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/navigation';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useIsDemo } from "@/components/demo/demo-context";
 
 interface CreateTriggerButtonProps {
   tokenId: string;
@@ -17,7 +18,9 @@ export function CreateTriggerButton({
   tokenName,
 }: CreateTriggerButtonProps) {
   const t = useTranslations('Alerts');
+  const demo = useIsDemo();
   const params = new URLSearchParams({ tokenId, tokenSymbol, tokenName });
+  if (demo) return null;
   return (
     <Button asChild size="sm">
       <Link href={`/alerts/new?${params.toString()}`} aria-label={t('createTriggerButton')}>

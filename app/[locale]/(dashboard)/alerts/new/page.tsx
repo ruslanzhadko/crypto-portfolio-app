@@ -4,6 +4,9 @@ import { Link } from '@/i18n/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { TriggerForm } from '@/components/alerts/trigger-form';
+import { auth } from '@/lib/auth';
+import { isDemoUser } from '@/lib/demo/config';
+import { DemoNotice } from '@/components/demo/demo-context';
 
 interface NewAlertPageProps {
   searchParams: Promise<{
@@ -15,6 +18,8 @@ interface NewAlertPageProps {
 
 export default async function NewAlertPage({ searchParams }: NewAlertPageProps) {
   const t = await getTranslations('NewAlert');
+  const td = await getTranslations('Demo');
+  const demo = isDemoUser((await auth())?.user?.id);
   const params = await searchParams;
   const initial =
     params.tokenId && params.tokenSymbol && params.tokenName
@@ -41,7 +46,11 @@ export default async function NewAlertPage({ searchParams }: NewAlertPageProps) 
             <CardDescription>{t('cardDescription')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <TriggerForm initial={initial} />
+            {demo ? (
+              <DemoNotice title={td('alertsTitle')} description={td('alertsDescription')} />
+            ) : (
+              <TriggerForm initial={initial} />
+            )}
           </CardContent>
         </Card>
       </div>

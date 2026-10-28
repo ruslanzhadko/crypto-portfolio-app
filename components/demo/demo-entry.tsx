@@ -21,7 +21,10 @@ export function DemoEntry() {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         await getCsrfToken();
-        const result = await signIn("demo", { redirect: false, redirectTo: target });
+        const result = await signIn("demo", {
+          redirect: false,
+          redirectTo: target,
+        });
         if (result && !result.error) {
           window.location.assign(target);
           return;

@@ -12,6 +12,7 @@ import {
   LIQUIDATION_PERCENTS,
   type PositionAlertSettings,
 } from '@/lib/positions/alert-settings';
+import { useIsDemo } from "@/components/demo/demo-context";
 import { POSITION_KINDS_EVENT } from './alerts-tabs';
 
 type Kind = 'opened' | 'closed' | 'liquidation' | 'pnlSign';
@@ -25,6 +26,7 @@ export function PositionAlertsCard({
   initial: PositionAlertSettings;
   connections: { id: string; label: string; exchange: string }[];
 }) {
+  const demo = useIsDemo();
   const t = useTranslations('PositionAlerts');
   const [settings, setSettings] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -85,7 +87,7 @@ export function PositionAlertsCard({
                     <button
                       key={p}
                       type="button"
-                      disabled={saving}
+                      disabled={saving || demo}
                       aria-pressed={settings.liquidationPercent === p}
                       onClick={() => saveThreshold(String(p))}
                       className={`h-7 rounded-md border px-2 tabular-nums transition-colors ${settings.liquidationPercent === p ? 'border-primary bg-primary/15 text-text' : 'border-border hover:border-primary/40'}`}
@@ -101,7 +103,7 @@ export function PositionAlertsCard({
                     step={0.5}
                     aria-label={t('liquidationCustom')}
                     title={t('liquidationCustom')}
-                    disabled={saving}
+                    disabled={saving || demo}
                     value={threshold}
                     onChange={(e) => setThreshold(e.target.value)}
                     onBlur={(e) => saveThreshold(e.target.value)}
@@ -115,7 +117,7 @@ export function PositionAlertsCard({
             <Switch
               id={`position-alert-${kind}`}
               checked={settings[kind]}
-              disabled={saving}
+              disabled={saving || demo}
               onCheckedChange={(checked) => void save({ ...settings, [kind]: checked })}
             />
           </li>
@@ -136,7 +138,7 @@ export function PositionAlertsCard({
                       type="checkbox"
                       className="h-4 w-4 accent-[var(--primary,#6c63ff)]"
                       checked={watched}
-                      disabled={saving}
+                      disabled={saving || demo}
                       onChange={() =>
                         void save({
                           ...settings,

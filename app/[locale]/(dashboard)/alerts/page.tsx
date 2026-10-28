@@ -10,6 +10,8 @@ import { EmptyState } from '@/components/common/empty-state';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PositionAlertsCard } from '@/components/alerts/position-alerts-card';
 import { exchangesEnabled } from '@/lib/exchanges/config';
+import { isDemoUser } from '@/lib/demo/config';
+import { DemoNotice } from '@/components/demo/demo-context';
 import { readPositionAlertSettings } from '@/lib/positions/alert-settings';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,8 @@ export default async function AlertsPage({
   const t = await getTranslations('Alerts');
   const tp = await getTranslations('PositionAlerts');
   const positionAlerts = exchangesEnabled(session.user.id);
+  const demo = isDemoUser(session.user.id);
+  const td = await getTranslations('Demo');
 
   const [triggers, user, connections] = await Promise.all([
     prisma.priceTrigger.findMany({
@@ -68,15 +72,18 @@ export default async function AlertsPage({
           <h1 className="text-xl font-bold tracking-tight md:text-3xl">{t('pageTitle')}</h1>
           <p className="text-sm text-text-muted">{t('pageDescription')}</p>
         </div>
-        <Button asChild>
-          <Link href="/alerts/new">
-            <Plus className="h-4 w-4" />
-            {t('createTriggerButton')}
-          </Link>
-        </Button>
+        {!demo && (
+          <Button asChild>
+            <Link href="/alerts/new">
+              <Plus className="h-4 w-4" />
+              {t('createTriggerButton')}
+            </Link>
+          </Button>
+        )}
       </div>
 
-      {!telegramReady && (
+      {demo && <DemoNotice title={td('alertsTitle')} description={td('alertsDescription')} />}
+      {!demo && !telegramReady && (
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="flex flex-wrap items-start gap-3 p-4 pt-4 sm:p-4 sm:pt-4">
             <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
@@ -124,7 +131,7 @@ export default async function AlertsPage({
               description={t('emptyTriggersDescription')}
               action={
                 <Button asChild>
-                  <Link href="/alerts/new">{t('createFirstTrigger')}</Link>
+                  <Link href={demo ? '/demo' : '/alerts/new'}>{t('createFirstTrigger')}</Link>
                 </Button>
               }
             />

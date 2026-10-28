@@ -16,6 +16,8 @@ import { TelegramLogin } from '@/components/settings/telegram-login';
 import { publicEmail } from '@/lib/auth/public-email';
 import { socialAvailability, telegramBotReady } from '@/lib/auth/social';
 import { exchangesEnabled } from '@/lib/exchanges/config';
+import { isDemoUser } from '@/lib/demo/config';
+import { DemoNotice } from '@/components/demo/demo-context';
 import { readPositionAlertSettings } from '@/lib/positions/alert-settings';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +30,17 @@ export default async function SettingsPage({
   const { telegramError } = await searchParams;
   const session = await auth();
   if (!session?.user?.id) return null;
+  if (isDemoUser(session.user.id)) {
+    const td = await getTranslations('Demo');
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <h1 className="text-xl font-bold tracking-tight md:text-3xl">
+          {(await getTranslations('Settings'))('pageTitle')}
+        </h1>
+        <DemoNotice title={td('settingsTitle')} description={td('settingsDescription')} />
+      </div>
+    );
+  }
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },

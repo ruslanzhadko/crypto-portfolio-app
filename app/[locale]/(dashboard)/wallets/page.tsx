@@ -1,4 +1,5 @@
 import { Wallet } from "lucide-react";
+import { isDemoUser } from "@/lib/demo/config";
 import { getTranslations } from "next-intl/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
@@ -67,7 +68,7 @@ export default async function WalletsPage() {
   return (
     <div className="space-y-3 sm:space-y-4">
       <PageTitle title={t("pageTitle")} info={t("pageDescription")}>
-        <AddWalletDialog />
+        {!isDemoUser(session.user.id) && <AddWalletDialog />}
       </PageTitle>
 
       {migrated.length > 0 && (

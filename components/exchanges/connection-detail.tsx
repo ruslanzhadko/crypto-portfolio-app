@@ -16,6 +16,7 @@ import { ConnectionForm } from "./connection-form";
 import { BalanceTable } from "./balance-table";
 import { PositionsPage } from "./positions-page";
 import type { ConnectionDto } from "./exchanges-page";
+import { useIsDemo } from "@/components/demo/demo-context";
 
 type Detail = ConnectionDto & {
   runs: {
@@ -26,6 +27,7 @@ type Detail = ConnectionDto & {
   }[];
 };
 export function ConnectionDetail({ id }: { id: string }) {
+  const demo = useIsDemo();
   const t = useTranslations("Exchanges");
   const detail = useExchangeData<{ connection: Detail }>(
     `/api/exchanges/${id}`,
@@ -85,7 +87,7 @@ export function ConnectionDetail({ id }: { id: string }) {
               {t("asterWalletInstructions")}
             </p>
           )}
-          {c.status !== "DISCONNECTED" && (
+          {c.status !== "DISCONNECTED" && !demo && (
             <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"

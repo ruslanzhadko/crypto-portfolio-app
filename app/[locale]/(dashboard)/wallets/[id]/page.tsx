@@ -1,3 +1,4 @@
+import { isDemoUser } from "@/lib/demo/config";
 import {
   migratedWalletIds,
   isMigratedHypercore,
@@ -89,10 +90,12 @@ export default async function WalletDetailPage({
                     })
                   : t("notSynced")}
               </p>
-              <WalletSyncButton
-                walletId={wallet.id}
-                className="h-9 shrink-0 px-3"
-              />
+              {!isDemoUser(session.user.id) && (
+                <WalletSyncButton
+                  walletId={wallet.id}
+                  className="h-9 shrink-0 px-3"
+                />
+              )}
             </div>
           </div>
         </CardContent>

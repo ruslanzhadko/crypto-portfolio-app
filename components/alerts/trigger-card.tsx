@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { formatRelativeCompact, formatUsd } from '@/lib/utils/format';
 import { cn } from '@/lib/utils/cn';
+import { useIsDemo } from "@/components/demo/demo-context";
 import { useToast } from '@/hooks/use-toast';
 
 interface TriggerCardProps {
@@ -131,6 +132,7 @@ function TriggerShell({
   onToggle: (v: boolean) => void;
   onDelete: () => void;
 }) {
+  const demo = useIsDemo();
   const t = useTranslations('TriggerCard');
   const locale = useLocale();
   return (
@@ -145,8 +147,8 @@ function TriggerShell({
             </p>
             <p className="truncate text-sm">{summary}</p>
           </div>
-          <Switch checked={trigger.isActive} disabled={isPending} onCheckedChange={onToggle} />
-          <TriggerMenu isPending={isPending} onDelete={onDelete} />
+          <Switch checked={trigger.isActive} disabled={isPending || demo} onCheckedChange={onToggle} />
+          {!demo && <TriggerMenu isPending={isPending} onDelete={onDelete} />}
         </div>
         <div className="mt-2 flex items-center justify-between gap-2 pl-12 text-xs text-text-muted">
           <span className={cn('inline-flex items-center gap-1.5 font-medium', statusTone)}>

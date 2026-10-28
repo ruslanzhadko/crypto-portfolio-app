@@ -56,6 +56,7 @@ import {
   runInBackground,
   useBackgroundTask,
 } from "@/components/dashboard/background-tasks";
+import { useIsDemo } from "@/components/demo/demo-context";
 
 export function CapitalDashboard({
   walletAssets,
@@ -76,6 +77,7 @@ export function CapitalDashboard({
   /** Overview blocks the user chose to show; every tab honours them. */
   sections?: { topMovers: boolean; allocation: boolean; networkAllocation: boolean };
 }) {
+  const demo = useIsDemo();
   const tooltip = useTouchTooltip();
   const t = useTranslations("Exchanges"),
     tm = useTranslations("TopMovers"),
@@ -218,7 +220,7 @@ export function CapitalDashboard({
               </div>
             </div>
           ))}
-        {overview.connectionCount === 0 && scope !== "wallets" && (
+        {overview.connectionCount === 0 && scope !== "wallets" && !demo && (
           <Link href="/exchanges" className="block p-4 text-sm text-primary">
             {t("connectExchange")} →
           </Link>
@@ -322,7 +324,7 @@ export function CapitalDashboard({
                 variant="outline"
                 size="sm"
                 className="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-auto sm:px-3"
-                disabled={refreshing}
+                disabled={refreshing || demo}
                 aria-label={refreshLabel}
                 title={refreshLabel}
                 onClick={refreshScope}

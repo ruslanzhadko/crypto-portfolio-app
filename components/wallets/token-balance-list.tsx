@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils/cn';
 import { getTokenPageUrl } from '@/lib/utils/token-links';
 import { getGroupedTokenName, getTokenGroupingKey } from '@/lib/utils/token-grouping';
 import { getChainDisplayName } from '@/lib/utils/networks';
+import { useIsDemo } from "@/components/demo/demo-context";
 
 interface TokenBalanceListProps {
   walletId: string;
@@ -621,6 +622,7 @@ function RowDropdown({
   onToggleHide: () => void;
   compact?: boolean;
 }) {
+  const demo = useIsDemo();
   const t = useTranslations('TokenBalanceList');
   const { toast } = useToast();
   const explorer = explorerUrl(token);
@@ -631,6 +633,7 @@ function RowDropdown({
     toast({ title: t('contractCopied'), description: token.tokenAddress });
   }
 
+  if (demo) return null;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

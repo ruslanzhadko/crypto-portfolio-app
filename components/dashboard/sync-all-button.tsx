@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils/cn';
 import { getChainDisplayName } from '@/lib/utils/networks';
+import { useIsDemo } from "@/components/demo/demo-context";
 import { runInBackground, useBackgroundTask } from './background-tasks';
 
 interface SyncResponse {
@@ -102,13 +103,14 @@ export function SyncAllButton({
   autoSyncStaleMinutes = 10,
   oldestSyncAt = null,
 }: SyncAllButtonProps) {
+  const demo = useIsDemo();
   const { runSync, isPending } = useWalletSync();
   const autoTriggeredRef = useRef(false);
   const t = useTranslations('SyncAllButton');
 
   // Авто-sync у фоні якщо найстаріший гаманець давно не оновлювався
   useEffect(() => {
-    if (autoTriggeredRef.current) return;
+    if (autoTriggeredRef.current || demo) return;
     if (autoSyncStaleMinutes == null) return;
     if (!oldestSyncAt) return;
 

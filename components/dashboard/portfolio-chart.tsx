@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/empty-state';
 import { formatDate, formatUsd, formatPercent } from '@/lib/utils/format';
 import { ChevronDown, TrendingUp } from 'lucide-react';
+import { useIsDemo } from "@/components/demo/demo-context";
 import { cn } from '@/lib/utils/cn';
 
 interface SnapshotPoint {
@@ -34,6 +35,7 @@ export function PortfolioChart({
   hiddenTokensCount = 0,
   onVisibilityChange,
 }: PortfolioChartProps) {
+  const demo = useIsDemo();
   const t = useTranslations('PortfolioChart');
   const tooltip = useTouchTooltip();
   const [mounted, setMounted] = useState(false);
@@ -139,6 +141,7 @@ export function PortfolioChart({
                 <p className="text-xs text-text-muted" title={t('hiddenTokensNote', { count: hiddenTokensCount })}>
                   {t('hiddenTokensBrief', { count: hiddenTokensCount })}
                 </p>
+                {!demo && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -148,6 +151,7 @@ export function PortfolioChart({
                 >
                   {resetting ? t('resetting') : t('resetHistory')}
                 </Button>
+                )}
               </div>
             )}
           </div>

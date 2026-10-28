@@ -11,6 +11,7 @@ import type { CapitalOverview } from "@/lib/exchanges/portfolio";
 import { useExchangeData } from "./use-exchange-data";
 import { ConnectionForm } from "./connection-form";
 import { ConnectionStatus, ExchangeErrorNotice, Money } from "./shared";
+import { useIsDemo } from "@/components/demo/demo-context";
 
 /** Time only for today, otherwise a short date: the full timestamp is in the tooltip. */
 function shortTime(value: string | null, locale: string): string {
@@ -38,6 +39,7 @@ export interface ConnectionDto {
   walletId: string | null;
 }
 export function ExchangesPage() {
+  const demo = useIsDemo();
   const t = useTranslations("Exchanges"),
     locale = useLocale(),
     [adding, setAdding] = useState(false);
@@ -55,6 +57,7 @@ export function ExchangesPage() {
         info={t("subtitle")}
         details={`${t("supported")} ${t("hyperAuto")}`}
       >
+        {!demo && (
         <Button
           size="sm"
           className="h-8 gap-1.5 px-3 text-xs sm:h-9 sm:text-sm"
@@ -66,6 +69,7 @@ export function ExchangesPage() {
           <span className="sm:hidden">{t("connectShort")}</span>
           <span className="hidden sm:inline">{t("connectExchange")}</span>
         </Button>
+        )}
       </PageTitle>
       <ExchangeErrorNotice code={connections.error ?? capital.error} />
       {capital.data && !capital.data.overview.workerOnline && (
