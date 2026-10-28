@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/api/auth-guard";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { exchangeJson, failure, safeApiFailure } from "@/lib/exchanges/api";
-import { transferChain, transferExplorerUrl } from "@/lib/exchanges/transfer-networks";
+import { EXCHANGE_VAULTS, transferChain, transferExplorerUrl } from "@/lib/exchanges/transfer-networks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 
     const accounts = await prisma.exchangeConnection.findMany({
       where: { userId: guard.user.id, status: { not: "DISCONNECTED" } },
-      select: { id: true, exchange: true, label: true, transfersError: true },
+      select: { id: true, exchange: true, label: true, transfersError: true, walletId: true },
       orderBy: { createdAt: "desc" },
     });
     const rows = accounts.length
@@ -48,13 +48,18 @@ export async function GET(req: Request) {
     const byId = new Map(accounts.map((a) => [a.id, a]));
     // Every deposit address an account has used: a wallet send there is a move to that exchange,
     // even when the deposit itself is older than the loaded page.
-    const depositAddresses = accounts.length
-      ? await prisma.exchangeTransfer.findMany({
-          where: { connectionId: { in: accounts.map((a) => a.id) }, direction: "deposit", address: { not: null } },
-          distinct: ["connectionId", "address"],
-          select: { connectionId: true, address: true },
-        })
-      : [];
+    const depositAddresses: { connectionId: string; address: string | null; walletId?: string | null; vault?: boolean }[] =
+      accounts.length
+        ? await prisma.exchangeTransfer.findMany({
+            where: { connectionId: { in: accounts.map((a) => a.id) }, direction: "deposit", address: { not: null } },
+            distinct: ["connectionId", "address"],
+            select: { connectionId: true, address: true },
+          })
+        : [];
+    // A vault credits whoever sent the money: an account linked to a wallet takes that wallet's sends.
+    for (const account of accounts)
+      for (const address of EXCHANGE_VAULTS[account.exchange] ?? [])
+        depositAddresses.push({ connectionId: account.id, address, walletId: account.walletId ?? null, vault: true });
 
     return exchangeJson({
       transfers: rows.slice(0, limit).map((row) => {

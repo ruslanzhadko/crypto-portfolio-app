@@ -150,7 +150,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
   const [source, setSource] = useState<Source>(exchangesOnly ? 'exchanges' : 'all');
   const [transfers, setTransfers] = useState<ExchangeTransfer[]>([]);
   const [accounts, setAccounts] = useState<ExchangeAccount[]>([]);
-  const [depositAddresses, setDepositAddresses] = useState<{ connectionId: string; address: string | null }[]>([]);
+  const [depositAddresses, setDepositAddresses] = useState<{ connectionId: string; address: string | null; walletId?: string | null; vault?: boolean }[]>([]);
   const [unavailableAccounts, setUnavailableAccounts] = useState<string[]>([]);
   const [exchangeError, setExchangeError] = useState(false);
   const [exchangeLoaded, setExchangeLoaded] = useState(false);
@@ -180,7 +180,7 @@ export function RecentTransactions({ withExchanges: withExchangesProp = false, e
             if (!r.ok) throw new Error('Exchange transfers request failed');
             return await r.json() as {
               transfers: ExchangeTransfer[]; accounts: ExchangeAccount[]; unavailable: string[]; hasMore: boolean;
-              depositAddresses?: { connectionId: string; address: string | null }[];
+              depositAddresses?: { connectionId: string; address: string | null; walletId?: string | null; vault?: boolean }[];
             };
           })
           .catch(() => null)

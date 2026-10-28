@@ -70,6 +70,17 @@ describe("exchange transfers for the dashboard list", () => {
     expect(mocks.transfers.mock.calls[1]![0]).toMatchObject({ where: { direction: "deposit" }, distinct: ["connectionId", "address"] });
   });
 
+  it("adds the Aster vault for Aster accounts, tied to their wallet", async () => {
+    mocks.connections.mockResolvedValue([
+      { id: "aster-1", exchange: "aster", label: "Main EVM", transfersError: null, walletId: "w1" },
+    ]);
+    mocks.transfers.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const body = await (await GET(new Request("https://example.com/api/exchanges/transfers"))).json();
+    expect(body.depositAddresses).toEqual([
+      { connectionId: "aster-1", address: "0x128463a60784c4d3f46c23af3f65ed859ba87974", walletId: "w1", vault: true },
+    ]);
+  });
+
   it("is hidden from users outside the exchange pilot", async () => {
     mocks.exchangesEnabled.mockReturnValue(false);
     const res = await GET(new Request("https://example.com/api/exchanges/transfers"));

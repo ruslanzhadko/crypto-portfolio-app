@@ -54,6 +54,27 @@ describe("own transfers between wallets and exchanges", () => {
     expect(links.get("x1")).toEqual({ from: { kind: "exchange", id: "okx" }, to: { kind: "exchange", id: "binance" }, hidden: false });
   });
 
+  it("treats an exchange vault as the account linked to the sending wallet, both ways", () => {
+    const vault = "0xVault";
+    const links = linkOwnTransfers({
+      walletTxs: [
+        { key: "w1", walletId: "main", hash: "0x1", chainName: "bsc", type: "send", fromAddress: null, toAddress: vault },
+        { key: "w2", walletId: "binance-wallet", hash: "0x2", chainName: "bsc", type: "receive", fromAddress: vault, toAddress: null },
+        { key: "w3", walletId: "cold", hash: "0x3", chainName: "bsc", type: "send", fromAddress: null, toAddress: vault },
+      ],
+      transfers: [],
+      wallets,
+      exchangeAddresses: [
+        { connectionId: "aster-main", address: "0xvault", walletId: "main", vault: true },
+        { connectionId: "aster-bw", address: "0xvault", walletId: "binance-wallet", vault: true },
+      ],
+    });
+    expect(links.get("w1")).toEqual({ from: { kind: "wallet", id: "main" }, to: { kind: "exchange", id: "aster-main" }, hidden: false });
+    expect(links.get("w2")).toEqual({ from: { kind: "exchange", id: "aster-bw" }, to: { kind: "wallet", id: "binance-wallet" }, hidden: false });
+    // A wallet without its own Aster account deposits for nobody we track.
+    expect(links.has("w3")).toBe(false);
+  });
+
   it("uses the exchange leg found by hash in the whole history when that row is not loaded", () => {
     const links = linkOwnTransfers({
       walletTxs: [

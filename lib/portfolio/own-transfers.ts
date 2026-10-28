@@ -6,7 +6,8 @@
  * withdrawal and a wallet receive...). Such pairs collapse into one row, shown on the sending leg.
  * When only one leg is loaded, the counterparty is still recognised by address: a wallet send to
  * another own wallet or to a deposit address an own exchange account has used, an exchange
- * withdrawal to an own wallet or to another account's deposit address.
+ * withdrawal to an own wallet or to another account's deposit address. An exchange vault contract
+ * (Aster) works both ways and belongs to the account linked to the sending wallet.
  */
 
 export type Party =
@@ -59,23 +60,41 @@ export function linkOwnTransfers(input: {
   walletTxs: readonly WalletLegInput[];
   transfers: readonly ExchangeLegInput[];
   wallets: readonly { id: string; address: string }[];
-  /** Deposit addresses seen in each exchange account's history. */
-  exchangeAddresses?: readonly { connectionId: string; address: string | null }[];
+  /**
+   * Deposit addresses seen in each exchange account's history, plus exchange vault contracts. A
+   * vault entry with a wallet belongs to that wallet's moves only; one without serves any wallet.
+   */
+  exchangeAddresses?: readonly {
+    connectionId: string;
+    address: string | null;
+    walletId?: string | null;
+    vault?: boolean;
+  }[];
 }): Map<string, OwnTransfer> {
   const walletByAddress = new Map(input.wallets.map((w) => [w.address.toLowerCase(), w.id]));
-  const exchangeByAddress = new Map(
-    (input.exchangeAddresses ?? [])
-      .filter((entry): entry is { connectionId: string; address: string } => Boolean(entry.address))
-      .map((entry) => [entry.address.toLowerCase(), entry.connectionId]),
-  );
-  /** The own wallet or exchange account behind an address, if any. */
-  const ownerOf = (address: string | null): Party | null => {
+  const exchangeByAddress = new Map<string, { connectionId: string; walletId: string | null; vault: boolean }[]>();
+  for (const entry of input.exchangeAddresses ?? []) {
+    if (!entry.address) continue;
+    const key = entry.address.toLowerCase();
+    exchangeByAddress.set(key, [
+      ...(exchangeByAddress.get(key) ?? []),
+      { connectionId: entry.connectionId, walletId: entry.walletId ?? null, vault: entry.vault ?? false },
+    ]);
+  }
+  /** The own wallet or exchange account behind an address, if any, as seen from one wallet. */
+  const ownerOf = (address: string | null, walletId: string | null = null): Party | null => {
     if (!address) return null;
     const wallet = walletByAddress.get(address.toLowerCase());
     if (wallet) return { kind: "wallet", id: wallet };
-    const account = exchangeByAddress.get(address.toLowerCase());
-    return account ? { kind: "exchange", id: account } : null;
+    const entries = exchangeByAddress.get(address.toLowerCase()) ?? [];
+    const account =
+      entries.find((e) => walletId !== null && e.walletId === walletId) ??
+      entries.find((e) => e.walletId === null);
+    return account ? { kind: "exchange", id: account.connectionId } : null;
   };
+  /** Vaults pay withdrawals out of the same contract that takes deposits. */
+  const isVault = (address: string | null) =>
+    !!address && (exchangeByAddress.get(address.toLowerCase()) ?? []).some((e) => e.vault);
   const legs: Leg[] = [
     ...input.walletTxs
       .filter((tx) => tx.type === "send" || tx.type === "receive" || tx.type === "transfer")
@@ -121,9 +140,10 @@ export function linkOwnTransfers(input: {
       continue;
     }
     const other = tx.type === "send" ? tx.toAddress : tx.type === "receive" || tx.type === "transfer" ? tx.fromAddress : null;
-    // Money arriving from an exchange comes from its hot wallet, never from a deposit address.
-    const owner = ownerOf(other);
-    const counterpart = tx.type === "send" || owner?.kind === "wallet" ? owner : null;
+    // Money arriving from an exchange comes from its hot wallet, never from a deposit address,
+    // unless the exchange pays out of its vault.
+    const owner = ownerOf(other, tx.walletId);
+    const counterpart = tx.type === "send" || owner?.kind === "wallet" || isVault(other) ? owner : null;
     if (!counterpart || sameParty(counterpart, self)) continue;
     result.set(tx.key, tx.type === "send"
       ? { from: self, to: counterpart, hidden: false }

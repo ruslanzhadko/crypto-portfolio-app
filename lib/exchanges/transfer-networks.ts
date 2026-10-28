@@ -99,3 +99,13 @@ export function transferExplorerUrl(chain: string | null, txHash: string | null)
   if (!base || !/^(0x)?[0-9a-fA-F]{40,}$|^[1-9A-HJ-NP-Za-km-z]{60,90}$/.test(txHash)) return null;
   return `${base}${txHash}`;
 }
+
+/**
+ * Exchanges whose deposits are a call to their own vault contract rather than a send to a personal
+ * deposit address: a wallet send to the vault, or money coming back from it, is a move to or from
+ * that exchange. Addresses are lower case; add a chain once a real transaction confirms its vault.
+ */
+export const EXCHANGE_VAULTS: Record<string, readonly string[]> = {
+  // BSC; confirmed by a USDT deposit whose Deposit event credits the sender.
+  aster: ["0x128463a60784c4d3f46c23af3f65ed859ba87974"],
+};
