@@ -109,6 +109,30 @@ export class BybitAdapter implements ExchangeAdapter {
     } while (cursor);
     return all;
   }
+  /**
+   * The default instrument list holds only trading markets: a pre-market (PreLaunch) position's
+   * symbol is looked up by name, and as a last resort its base is the symbol without the settle coin.
+   */
+  private async instrument(symbol: string, settle: string) {
+    const known = this.instruments.get(symbol);
+    if (known) return known;
+    try {
+      const [row] = await this.pages("v5/market/instruments-info", "public", {
+        category: "linear",
+        symbol,
+      });
+      if (row && row.symbol === symbol) {
+        const market = { base: str(row.baseCoin), settle: str(row.settleCoin) };
+        this.instruments.set(symbol, market);
+        return market;
+      }
+    } catch {
+      /* Fall back to the symbol below. */
+    }
+    if (symbol.endsWith(settle) && symbol.length > settle.length)
+      return { base: symbol.slice(0, -settle.length), settle };
+    return undefined;
+  }
   async fetch(): Promise<SyncResult> {
     if (!this.mode) throw new ExchangeError("INVALID_RESPONSE");
     if (Date.now() - this.loadedAt > 3_600_000) {
@@ -182,13 +206,16 @@ export class BybitAdapter implements ExchangeAdapter {
         const size = rd(row.size);
         if (new D(size).isZero()) continue;
         const symbol = str(row.symbol),
-          market = this.instruments.get(symbol);
+          market = await this.instrument(symbol, settle);
         if (
           !market ||
           market.settle !== settle ||
           !["Buy", "Sell"].includes(String(row.side))
         )
-          throw new ExchangeError("INVALID_RESPONSE");
+          throw new ExchangeError(
+            "INVALID_RESPONSE",
+            `position/list ${market ? `settle ${market.settle}` : "unknown symbol"} side ${String(row.side)}`,
+          );
         const pnl = decimal(row.unrealisedPnl),
           mark = decimal(row.markPrice);
         positions.push({

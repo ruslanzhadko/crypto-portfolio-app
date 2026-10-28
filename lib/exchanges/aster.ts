@@ -46,9 +46,12 @@ export function asterPositionGroups(
 /** Public funding rates and mark prices of all Aster perpetuals. */
 async function readAsterPremium(): Promise<unknown> {
   await reserveRequest("aster");
-  const response = await fetch("https://fapi.asterdex.com/fapi/v3/premiumIndex", {
-    signal: AbortSignal.timeout(15_000),
-  });
+  const response = await fetch(
+    "https://fapi.asterdex.com/fapi/v3/premiumIndex",
+    {
+      signal: AbortSignal.timeout(15_000),
+    },
+  );
   if (!response.ok) throw new ExchangeError("UNAVAILABLE");
   return response.json();
 }
@@ -202,6 +205,35 @@ export class AsterAdapter implements ExchangeAdapter {
         }
       } catch {
         /* Optional market data must not erase positions. */
+      }
+    }
+    // The public RPC often omits prices of regular positions. The mark comes from the premium index
+    // (else notional / size); the entry follows exactly from mark, PnL and size. Leverage, margin
+    // mode and liquidation stay unknown: only an API key exposes them.
+    for (const p of positions) {
+      const size = new D(p.baseSize);
+      if (size.isZero()) continue;
+      p.markPrice ??=
+        this.market.get(p.symbol)?.mark ??
+        (p.notionalUsd !== null && (rates.get(p.settle) ?? null) !== null
+          ? decimal(
+              new D(p.notionalUsd)
+                .div(rates.get(p.settle)!)
+                .div(size)
+                .toFixed(18),
+            )
+          : null);
+      if (
+        p.entryPrice === null &&
+        p.markPrice !== null &&
+        p.unrealizedPnl !== null
+      ) {
+        const perUnit = new D(p.unrealizedPnl).div(size);
+        const entry =
+          p.side === "long"
+            ? new D(p.markPrice).minus(perUnit)
+            : new D(p.markPrice).plus(perUnit);
+        p.entryPrice = entry.isPositive() ? decimal(entry.toFixed(18)) : null;
       }
     }
     // Opening a Shield position moves its margin out of the wallet balance

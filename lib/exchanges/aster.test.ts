@@ -37,6 +37,45 @@ function response() {
 }
 const prices = async () => new Map([["USDT", "0.99"]]);
 describe("Aster public wallet adapter", () => {
+  it("fills a short's mark from the premium index and derives its entry", async () => {
+    const raw = {
+      result: {
+        address,
+        accountPrivacy: "disabled",
+        perpAssets: [{ asset: "USDT", walletBalance: "100" }],
+        positions: [
+          {
+            tradingProduct: "perps",
+            positions: [
+              {
+                id: "1_PREDICTUSDT_SHORT",
+                symbol: "PREDICTUSDT",
+                positionAmount: "-1100",
+                positionSide: "SHORT",
+                notionalValue: "1535.41",
+                unrealizedProfit: "-16.5",
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const result = await new AsterAdapter(
+      address,
+      async () => new Map([["USDT", "1"]]),
+      async () => raw,
+      async () => [
+        { symbol: "PREDICTUSDT", markPrice: "1.4", lastFundingRate: "0.0001" },
+      ],
+    ).fetch();
+    // Short: entry = mark + PnL per unit = 1.4 + (-16.5 / 1100) = 1.385.
+    expect(result.accounts[0]!.positions![0]).toMatchObject({
+      side: "short",
+      markPrice: "1.4",
+      entryPrice: "1.385",
+      leverage: null,
+    });
+  });
   it("accepts the reduced live RPC response for positions opened before linking", async () => {
     const raw = {
       result: {
@@ -74,8 +113,9 @@ describe("Aster public wallet adapter", () => {
       baseSize: "1.09",
       notionalUsd: "2697.0197",
       unrealizedPnl: "927.1213",
-      entryPrice: null,
-      markPrice: null,
+      // Mark from notional / size (no premium index here); entry from mark, PnL and size.
+      entryPrice: "1623.76",
+      markPrice: "2474.33",
       leverage: null,
       marginMode: null,
       margin: null,
@@ -277,8 +317,15 @@ describe("Aster public wallet adapter", () => {
   });
   it("keeps syncing known data when Aster adds an unknown product", async () => {
     const raw = response();
-    raw.result.positions.push({ tradingProduct: "future-product", positions: [] });
-    const result = await new AsterAdapter(address, prices, async () => raw).fetch();
+    raw.result.positions.push({
+      tradingProduct: "future-product",
+      positions: [],
+    });
+    const result = await new AsterAdapter(
+      address,
+      prices,
+      async () => raw,
+    ).fetch();
     expect(result.accounts[0]!).toMatchObject({
       complete: false,
       errorCode: "UNSUPPORTED_ACCOUNT",

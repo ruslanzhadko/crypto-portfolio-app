@@ -102,6 +102,56 @@ describe("Bybit normalization", () => {
     expect(a.positions![0]!.positionKey).not.toBe(a.positions![1]!.positionKey);
     expect(a.unrealizedPnlUsd).toBe("0.99"); // NOT added again to equity
   });
+  it("keeps the account when a pre-market symbol is missing from the trading instrument list", async () => {
+    const base = bybitMock();
+    const premarket = {
+      symbol: "PREDICTUSDT",
+      positionIdx: 0,
+      side: "Sell",
+      size: "1100",
+      avgPrice: "1.40",
+      markPrice: "1.396",
+      unrealisedPnl: "-16.2",
+      liqPrice: "",
+      leverage: "3",
+      positionIM: "500",
+    };
+    const request = vi.fn(
+      async (
+        path: string,
+        api: string,
+        params: Record<string, unknown> = {},
+      ) => {
+        if (path === "v5/position/list" && params.settleCoin === "USDT")
+          return ok({ list: [premarket] });
+        // PreLaunch instruments only come back when asked for by name.
+        if (
+          path === "v5/market/instruments-info" &&
+          params.symbol === "PREDICTUSDT"
+        )
+          return ok({
+            list: [
+              {
+                symbol: "PREDICTUSDT",
+                baseCoin: "PREDICT",
+                settleCoin: "USDT",
+                status: "PreLaunch",
+              },
+            ],
+          });
+        return base(path, api, params);
+      },
+    ) as Request;
+    const adapter = new BybitAdapter(request, rates);
+    await adapter.verify();
+    const { accounts } = await adapter.fetch();
+    expect(accounts[0]!.positions![0]).toMatchObject({
+      base: "PREDICT",
+      side: "short",
+      baseSize: "1100",
+    });
+    expect(accounts[0]!.balances[0]!.symbol).toBe("USDT");
+  });
   it("treats missing FX as incomplete, never assumes a stablecoin peg", async () => {
     const adapter = new BybitAdapter(bybitMock(), async () => new Map());
     await adapter.verify();
