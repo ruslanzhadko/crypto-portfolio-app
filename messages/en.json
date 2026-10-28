@@ -926,7 +926,15 @@
     "moreNetworksSoon": "More networks to come",
     "guideTitle": "Connect an exchange in minutes",
     "guideSubtitle": "A read-only key: no trading, no withdrawals. A step-by-step guide for each exchange: where to create the key and which permissions to enable.",
-    "guideCta": "Open the guide"
+    "guideCta": "Open the guide",
+    "heroDemo": "See the demo",
+    "demoTitle": "See what it looks like",
+    "demoSubtitle": "The demo opens at once, no sign-up: a sample portfolio with wallets, exchanges and positions at live prices.",
+    "demoPoint1": "Capital, history and allocation across wallets and exchanges",
+    "demoPoint2": "Positions with PnL, break-even and liquidation",
+    "demoPoint3": "Price triggers, alerts and the crypto feed",
+    "demoCta": "Open the demo",
+    "demoImageAlt": "CryptoPortfolio dashboard in demo mode"
   },
   "Exchanges": {
     "updatingPositions": "Updating positions…",

@@ -4,6 +4,7 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  Eye,
   Newspaper,
   Plus,
   Radio,
@@ -131,6 +132,12 @@ export default async function LandingPage({
             <Button asChild variant="outline" size="lg" className="min-w-32">
               <Link href="/auth/login">{t("heroSignIn")}</Link>
             </Button>
+            <Button asChild variant="ghost" size="lg" className="gap-2">
+              <Link href="/demo">
+                <Eye className="h-4 w-4" aria-hidden="true" />
+                {t("heroDemo")}
+              </Link>
+            </Button>
           </div>
         </div>
         <div
@@ -184,6 +191,55 @@ export default async function LandingPage({
                 </li>
               ))}
             </ol>
+          </div>
+        </ScrollReveal>
+      </section>
+
+      {/* ── Demo ── */}
+      <section className="container py-12 md:py-20">
+        <ScrollReveal variant="left">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 overflow-hidden rounded-2xl bg-surface p-6 shadow-[0_28px_80px_rgba(0,0,0,0.28)] ring-1 ring-white/[0.06] sm:p-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14 lg:p-12">
+            <div>
+              <h2 className="landing-heading max-w-[14ch] font-bold">
+                {t("demoTitle")}
+              </h2>
+              <p className="landing-copy mt-5 text-text-muted">
+                {t("demoSubtitle")}
+              </p>
+              <ul className="mt-6 space-y-2 text-[15px] text-text-muted">
+                {(["demoPoint1", "demoPoint2", "demoPoint3"] as const).map(
+                  (key) => (
+                    <li key={key} className="flex items-start gap-2">
+                      <span
+                        className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
+                        aria-hidden
+                      />
+                      {t(key)}
+                    </li>
+                  ),
+                )}
+              </ul>
+              <Button asChild size="lg" className="mt-8 gap-2">
+                <Link href="/demo">
+                  {t("demoCta")}
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </Button>
+            </div>
+            <Link
+              href="/demo"
+              aria-label={t("demoCta")}
+              className="group block overflow-hidden rounded-xl ring-1 ring-white/[0.08] transition-transform duration-300 hover:-translate-y-1"
+            >
+              <Image
+                src={`/landing/demo-${["ru", "uk", "en"].includes(locale) ? locale : "en"}.png`}
+                alt={t("demoImageAlt")}
+                width={2160}
+                height={1350}
+                sizes="(min-width: 1024px) 640px, 100vw"
+                className="h-auto w-full"
+              />
+            </Link>
           </div>
         </ScrollReveal>
       </section>
@@ -312,7 +368,9 @@ export default async function LandingPage({
             </p>
           </div>
           <div className="mx-auto grid max-w-6xl grid-cols-2 gap-px overflow-hidden rounded-2xl bg-border ring-1 ring-border sm:grid-cols-4 lg:grid-cols-6">
-            {ALL_CHAINS.filter((chain) => !chain.chainName.startsWith("hypercore")).map((chain) => (
+            {ALL_CHAINS.filter(
+              (chain) => !chain.chainName.startsWith("hypercore"),
+            ).map((chain) => (
               <div
                 key={chain.chainName}
                 className="flex min-h-28 flex-col items-center justify-center gap-3 bg-surface p-4 text-center transition-colors duration-200 hover:bg-surface-2"

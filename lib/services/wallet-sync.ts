@@ -79,6 +79,7 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   if (!wallet) throw new Error("Гаманець не знайдено");
   // Demo wallets hold made-up coins: never ask a chain, keep the stored balances (live prices).
   if (isDemoUser(wallet.userId)) {
+    await prisma.wallet.update({ where: { id: walletId }, data: { lastSyncAt: new Date() } });
     const stored = await prisma.tokenBalance.findMany({
       where: { walletId, isHidden: false },
       select: { usdValue: true },
