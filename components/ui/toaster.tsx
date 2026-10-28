@@ -15,14 +15,25 @@ export function Toaster() {
 
   return (
     <ToastProvider>
-      {toasts.map(({ id, title, description, action, ...props }) => (
+      {toasts.map(({ id, title, description, action, icon, ...props }) => (
         <Toast key={id} {...props}>
-          <div className="grid gap-1">
-            {title && <ToastTitle>{title}</ToastTitle>}
-            {description && <ToastDescription>{description}</ToastDescription>}
+          <div className="flex min-w-0 items-start gap-3">
+            {icon}
+            <div className="grid min-w-0 gap-1">
+              {title && <ToastTitle>{title}</ToastTitle>}
+              {description && <ToastDescription>{description}</ToastDescription>}
+            </div>
           </div>
           {action}
           <ToastClose />
+          {/* Time left before the toast hides; stops while hovered, as the toast itself does. */}
+          {icon && props.duration && (
+            <span
+              aria-hidden
+              className="absolute bottom-0 left-0 !ml-0 h-0.5 w-full origin-left animate-[toast-timer_linear_forwards] bg-text-muted/40 group-hover:[animation-play-state:paused]"
+              style={{ animationDuration: `${props.duration}ms` }}
+            />
+          )}
         </Toast>
       ))}
       <ToastViewport />

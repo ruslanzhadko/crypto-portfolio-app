@@ -6,11 +6,13 @@ import type { ToastActionElement, ToastProps } from '@/components/ui/toast';
 const TOAST_LIMIT = 5;
 const TOAST_REMOVE_DELAY = 4000;
 
-type ToasterToast = ToastProps & {
+type ToasterToast = Omit<ToastProps, 'title'> & {
   id: string;
   title?: React.ReactNode;
   description?: React.ReactNode;
   action?: ToastActionElement;
+  /** Shown on the left, before the title. */
+  icon?: React.ReactNode;
 };
 
 let count = 0;

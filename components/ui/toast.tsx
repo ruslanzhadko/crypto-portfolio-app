@@ -32,6 +32,14 @@ const toastVariants = cva(
         destructive:
           'destructive group border-danger/50 bg-danger/10 text-danger',
         success: 'border-success/50 bg-success/10 text-success',
+        // Alert tones: neutral text on a tinted card with a coloured stripe on the left.
+        positive:
+          'border-success/30 bg-surface bg-[linear-gradient(100deg,rgba(34,197,94,0.14),transparent_55%)] text-text before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-success',
+        negative:
+          'border-danger/30 bg-surface bg-[linear-gradient(100deg,rgba(239,68,68,0.14),transparent_55%)] text-text before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-danger',
+        warning:
+          'border-warning/40 bg-surface bg-[linear-gradient(100deg,rgba(245,158,11,0.16),transparent_55%)] text-text before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-warning',
+        info: 'border-primary/30 bg-surface bg-[linear-gradient(100deg,rgba(108,99,255,0.16),transparent_55%)] text-text before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-primary',
       },
     },
     defaultVariants: { variant: 'default' },
@@ -73,7 +81,7 @@ const ToastClose = React.forwardRef<
   <ToastPrimitives.Close
     ref={ref}
     className={cn(
-      'absolute right-1 top-1 rounded-md p-1 text-text-muted opacity-0 transition-opacity hover:text-text focus:opacity-100 focus:outline-none focus:ring-1 group-hover:opacity-100',
+      'absolute right-2 top-2 rounded-md p-1 text-text-muted/70 transition-colors hover:bg-surface-2 hover:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
       className,
     )}
     toast-close=""

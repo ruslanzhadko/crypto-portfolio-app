@@ -103,6 +103,10 @@ const config: Config = {
           from: { gridTemplateRows: '1fr', opacity: '1' },
           to: { gridTemplateRows: '0fr', opacity: '0' },
         },
+        'toast-timer': {
+          from: { transform: 'scaleX(1)' },
+          to: { transform: 'scaleX(0)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
