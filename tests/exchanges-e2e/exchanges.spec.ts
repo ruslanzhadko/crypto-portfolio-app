@@ -344,7 +344,9 @@ test("Aster links an existing wallet without keys and coexists with Hyperliquid"
   await page.getByLabel("Exchange", { exact: true }).selectOption("aster");
   await expect(page.getByLabel("API key", { exact: true })).toHaveCount(0);
   await page.getByLabel("Account name").fill("Main Aster");
-  await page.getByLabel("Wallet", { exact: true }).selectOption(wallet.id);
+  // The wallet picker is the app Select (a native popup ignores page zoom).
+  await page.getByRole("combobox", { name: "Wallet", exact: true }).click();
+  await page.getByRole("option", { name: `Aster wallet · 0xdddd…dddd` }).click();
   for (const width of [390, 768, 1440]) {
     await page.setViewportSize({ width, height: 960 });
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
