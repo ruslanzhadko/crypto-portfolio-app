@@ -50,6 +50,8 @@ export default defineConfig({
       EXCHANGE_FINGERPRINT_KEY:
         "exchange-test-fingerprint-at-least-32-characters",
       EXCHANGE_WORKER_PUBLIC_IP: "203.0.113.10",
+      // Fixed id of the demo user created by tests/exchanges-e2e/demo.spec.ts.
+      DEMO_USER_ID: "e2e-demo-user",
     },
     timeout: 60_000,
   },
