@@ -5,6 +5,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { D, sum } from "./decimal";
 import { exchangesEnabled, HYPERCORE_CHAINS, staleLimits } from "./config";
+import { STABLECOINS } from "./deposit-watch";
+import { markTransfers, type TransferInput } from "@/lib/portfolio/capital-transfers";
 
 export async function migratedWalletIds(
   userId: string,
@@ -291,7 +293,7 @@ export async function getCapitalHistory(userId: string, days: number) {
   const since = new Date(Date.now() - days * 86400_000);
   // Thin the five-minute observations in SQL, so only chart points leave the
   // database. First, last and source-set changes are always kept.
-  const [snapshots, events] = await Promise.all([
+  const [snapshots, events, transfers] = await Promise.all([
     prisma.$queryRaw<HistoryRow[]>`
       SELECT bucket, "totalUsd", "walletsUsd", "exchangesUsd", complete, "sourceSet",
              "allComplete", "oneSourceSet", n
@@ -315,6 +317,7 @@ export async function getCapitalHistory(userId: string, days: number) {
       orderBy: { createdAt: "asc" },
       select: { kind: true, label: true, createdAt: true },
     }),
+    historyTransfers(userId, since),
   ]);
   const first = snapshots[0],
     last = snapshots.at(-1);
@@ -324,8 +327,8 @@ export async function getCapitalHistory(userId: string, days: number) {
     Number(first.n) >= 2 &&
     first.allComplete &&
     first.oneSourceSet;
-  return {
-    points: snapshots.map((s) => ({
+  const marked = markTransfers(
+    snapshots.map((s) => ({
       timestamp: s.bucket.getTime(),
       totalUsd: s.totalUsd.toFixed(),
       walletsUsd: s.walletsUsd.toFixed(),
@@ -333,6 +336,12 @@ export async function getCapitalHistory(userId: string, days: number) {
       complete: s.complete,
       sourceSet: s.sourceSet,
     })),
+    transfers.rows,
+    transfers.wallets,
+  );
+  return {
+    points: marked.points,
+    transfers: marked.transfers,
     events: events.map((e) => ({ ...e, createdAt: e.createdAt.toISOString() })),
     changeUsd:
       comparable && first && last
@@ -348,5 +357,89 @@ export async function getCapitalHistory(userId: string, days: number) {
             .mul(100)
             .toFixed()
         : null,
+  };
+}
+
+/**
+ * Completed exchange deposits and withdrawals of the period, valued at today's price (stablecoins at
+ * $1, other coins at the price of the user's own holdings), with the wallets that may be their
+ * other side.
+ */
+async function historyTransfers(userId: string, since: Date) {
+  const [rows, wallets] = await Promise.all([
+    prisma.exchangeTransfer.findMany({
+      where: {
+        connection: { userId, status: { not: "DISCONNECTED" } },
+        status: "completed",
+        occurredAt: { gte: since },
+      },
+      orderBy: { occurredAt: "asc" },
+      take: 500,
+      select: {
+        connectionId: true,
+        direction: true,
+        asset: true,
+        amount: true,
+        txHash: true,
+        address: true,
+        occurredAt: true,
+        connection: { select: { label: true } },
+      },
+    }),
+    prisma.wallet.findMany({
+      where: { userId },
+      select: { address: true, label: true },
+    }),
+  ]);
+  const priced = [
+    ...new Set(
+      rows.map((r) => r.asset.toUpperCase()).filter((a) => !STABLECOINS.has(a)),
+    ),
+  ];
+  const prices = new Map<string, number>();
+  if (priced.length) {
+    const [exchange, wallet] = await Promise.all([
+      prisma.exchangeBalance.findMany({
+        where: {
+          account: { connection: { userId } },
+          symbol: { in: priced, mode: "insensitive" },
+          priceUsd: { gt: 0 },
+        },
+        select: { symbol: true, priceUsd: true },
+      }),
+      prisma.tokenBalance.findMany({
+        where: {
+          wallet: { userId },
+          tokenSymbol: { in: priced, mode: "insensitive" },
+          priceUsd: { gt: 0 },
+          isSpam: false,
+        },
+        select: { tokenSymbol: true, priceUsd: true },
+      }),
+    ]);
+    for (const b of wallet) prices.set(b.tokenSymbol.toUpperCase(), b.priceUsd);
+    for (const b of exchange)
+      if (b.priceUsd) prices.set(b.symbol.toUpperCase(), Number(b.priceUsd.toFixed()));
+  }
+  return {
+    rows: rows.map((r): TransferInput => {
+      const asset = r.asset.toUpperCase();
+      const price = STABLECOINS.has(asset) ? 1 : prices.get(asset);
+      return {
+        connectionId: r.connectionId,
+        label: r.connection.label,
+        direction: r.direction === "withdrawal" ? "withdrawal" : "deposit",
+        asset: r.asset,
+        amount: r.amount.toFixed(),
+        usd: price === undefined ? null : Number(r.amount.toFixed()) * price,
+        txHash: r.txHash,
+        address: r.address,
+        occurredAt: r.occurredAt.getTime(),
+      };
+    }),
+    wallets: wallets.map((w) => ({
+      address: w.address,
+      label: w.label ?? `${w.address.slice(0, 6)}…${w.address.slice(-4)}`,
+    })),
   };
 }

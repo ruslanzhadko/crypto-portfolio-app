@@ -30,6 +30,7 @@ export const CHANGELOG: ChangelogEntry[] = [
         "Позиция на монете премаркета больше не останавливает обновление всего счёта Bybit. У позиций Aster, подключённых по адресу кошелька, появились цены входа и маркировки.",
         "У позиций BingX появились реализованный PnL и цена безубытка, в том числе когда ордер выставлен заранее или исполнялся несколько недель.",
         "Продажа токена за ETH показывается как своп («ZC → ETH»), даже если сделка старая или прошла через агрегатор.",
+        "Перевод между своим кошельком и биржей больше не рисует на графике капитала ложный скачок; вводы и выводы отмечены на графике точками.",
       ],
       uk: [
         "Спрацьовані тригери та сповіщення по позиціях спливають праворуч на відкритій сторінці сайту, поруч із повідомленням у Telegram.",
@@ -41,6 +42,7 @@ export const CHANGELOG: ChangelogEntry[] = [
         "Позиція на монеті премаркету більше не зупиняє оновлення всього рахунку Bybit. У позицій Aster, підключених за адресою гаманця, з'явилися ціни входу й маркування.",
         "У позицій BingX з'явилися реалізований PnL і ціна беззбитку, зокрема коли ордер виставлено заздалегідь або він виконувався кілька тижнів.",
         "Продаж токена за ETH показується як своп («ZC → ETH»), навіть якщо угода давня або пройшла через агрегатор.",
+        "Переказ між своїм гаманцем і біржею більше не малює на графіку капіталу хибний стрибок; внесення й виведення позначено на графіку точками.",
       ],
       en: [
         "Fired triggers and position alerts pop up on the right of any open page of the site, next to the Telegram message.",
@@ -52,6 +54,7 @@ export const CHANGELOG: ChangelogEntry[] = [
         "A pre-market position no longer stops the whole Bybit account from updating. Aster positions linked by wallet address now show entry and mark prices.",
         "BingX positions now show realized PnL and the break-even price, including orders placed in advance or filled over several weeks.",
         "Selling a token for ETH shows as a swap (“ZC → ETH”), even for older trades or ones routed through an aggregator.",
+        "Moving money between your own wallet and an exchange no longer draws a false jump on the capital chart; deposits and withdrawals are marked on it with dots.",
       ],
     },
   },

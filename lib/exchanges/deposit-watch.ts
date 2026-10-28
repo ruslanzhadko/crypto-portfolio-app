@@ -2,12 +2,14 @@
  * Money moved from a wallet to an exchange shows up on the exchange first (synced every 30 s to 30 min)
  * while the wallet keeps its old balance until its own sync (up to 4 h): the capital is counted twice.
  * The worker spots likely deposits and asks the web app to sync the user's wallets right away.
+ * A withdrawal is the mirror case: the exchange drops the money at once, the wallet shows it later.
  *
- * Signals: a new deposit in the exchange history, or the stablecoin amount on a connection growing
- * (prices do not move stablecoin amounts; transfers between accounts of one connection cancel out).
+ * Signals: a new deposit or a newly completed withdrawal in the exchange history, or the stablecoin
+ * amount on a connection growing or shrinking (prices do not move stablecoin amounts; transfers
+ * between accounts of one connection cancel out).
  */
 
-const STABLECOINS = new Set([
+export const STABLECOINS = new Set([
   "USDT", "USDC", "USDE", "FDUSD", "DAI", "TUSD", "USDD", "PYUSD", "BUSD", "USD1", "RLUSD", "USDG",
 ]);
 /** A deposit worth checking: at least this many dollars ... */
@@ -34,21 +36,33 @@ export function looksLikeDeposit(before: number, after: number): boolean {
   return added >= MIN_DEPOSIT_USD && (before <= 0 || added / before >= MIN_DEPOSIT_SHARE);
 }
 
-/** Users waiting for a wallet sync; a linked wallet (Hyperliquid, Aster) narrows it to that wallet. */
-const pending = new Map<string, string | null>();
-const sentAt = new Map<string, number>();
-
-export function noteDeposit(userId: string, walletId: string | null) {
-  // Two signals for one user: a specific wallet only if both name the same one.
-  const known = pending.get(userId);
-  pending.set(userId, known === undefined || known === walletId ? walletId : null);
+/** The same thresholds the other way; a realized loss that large only costs one extra wallet sync. */
+export function looksLikeWithdrawal(before: number, after: number): boolean {
+  const removed = before - after;
+  return removed >= MIN_DEPOSIT_USD && before > 0 && removed / before >= MIN_DEPOSIT_SHARE;
 }
 
-/** Requests that are due now; the rest stay queued until the user's cooldown ends. */
+/** A withdrawal seen on the balance is still on its way: sync the wallet once it has likely landed. */
+export const WITHDRAWAL_ARRIVAL_MS = 5 * 60_000;
+
+/** Users waiting for a wallet sync; a linked wallet (Hyperliquid, Aster) narrows it to that wallet. */
+const pending = new Map<string, { walletId: string | null; dueAt: number }>();
+const sentAt = new Map<string, number>();
+
+export function noteDeposit(userId: string, walletId: string | null, delayMs = 0, now = Date.now()) {
+  // Two signals for one user: a specific wallet only if both name the same one, the earlier time.
+  const known = pending.get(userId);
+  pending.set(userId, {
+    walletId: known === undefined || known.walletId === walletId ? walletId : null,
+    dueAt: Math.min(known?.dueAt ?? Infinity, now + delayMs),
+  });
+}
+
+/** Requests that are due now; the rest stay queued until their time and the user's cooldown. */
 export function takeDueDeposits(now = Date.now()): { userId: string; walletId: string | null }[] {
   const due: { userId: string; walletId: string | null }[] = [];
-  for (const [userId, walletId] of pending) {
-    if (now - (sentAt.get(userId) ?? 0) < WALLET_SYNC_COOLDOWN_MS) continue;
+  for (const [userId, { walletId, dueAt }] of pending) {
+    if (now < dueAt || now - (sentAt.get(userId) ?? 0) < WALLET_SYNC_COOLDOWN_MS) continue;
     pending.delete(userId);
     sentAt.set(userId, now);
     due.push({ userId, walletId });

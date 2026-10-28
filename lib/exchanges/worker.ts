@@ -21,7 +21,9 @@ import { BingxAdapter } from "./bingx";
 import { syncTransfers } from "./transfer-store";
 import {
   looksLikeDeposit,
+  looksLikeWithdrawal,
   noteDeposit,
+  WITHDRAWAL_ARRIVAL_MS,
   stablecoinTotal,
 } from "./deposit-watch";
 import { BitgetAdapter } from "./bitget";
@@ -253,6 +255,8 @@ export function commitResult(
       );
       if (stableBefore !== null && looksLikeDeposit(stableBefore, stableAfter))
         noteDeposit(c.userId, c.walletId);
+      else if (stableBefore !== null && looksLikeWithdrawal(stableBefore, stableAfter))
+        noteDeposit(c.userId, c.walletId, WITHDRAWAL_ARRIVAL_MS);
       if (first)
         await tx.capitalEvent.create({
           data: {

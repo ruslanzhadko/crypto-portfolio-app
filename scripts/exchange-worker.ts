@@ -55,13 +55,13 @@ async function main() {
   const owner = newWorkerId();
   const activity = createActivityClient();
   const walletSync = createWalletSyncClient();
-  // A likely deposit from a wallet: have the web app sync wallets now, not in up to 4 hours.
+  // A likely deposit or withdrawal: have the web app sync wallets now, not in up to 4 hours.
   const requestWalletSyncs = async () => {
     if (!walletSync) return;
     for (const d of takeDueDeposits()) {
       const ok = await walletSync.request(d.userId, d.walletId);
       console.log(
-        `[exchange-worker] deposit suspected; wallet sync ${ok ? "requested" : "request failed"}`,
+        `[exchange-worker] transfer suspected; wallet sync ${ok ? "requested" : "request failed"}`,
       );
     }
   };

@@ -66,16 +66,17 @@ export async function syncTransfers(
         })
       ).map((row) => [`${row.direction}:${row.externalId}`, row]),
     );
-    // A deposit seen for the first time, made recently: its wallet may still show the money.
-    const fresh = rows.some(
-      (row) =>
-        row.direction === "deposit" &&
-        row.status !== "failed" &&
-        !stored.has(`${row.direction}:${row.externalId}`) &&
-        now - row.occurredAt.getTime() < RECENT_DEPOSIT_MS,
-    );
+    // A deposit seen for the first time, or a withdrawal that just completed, made recently: the
+    // wallet on the other side may still show the old balance.
+    const fresh = rows.some((row) => {
+      if (now - row.occurredAt.getTime() >= RECENT_DEPOSIT_MS) return false;
+      const known = stored.get(`${row.direction}:${row.externalId}`);
+      return row.direction === "deposit"
+        ? row.status !== "failed" && !known
+        : row.status === "completed" && known?.status !== "completed";
+    });
     if (fresh && connection.userId && connection.transfersAt)
-      noteDeposit(connection.userId, connection.walletId ?? null);
+      noteDeposit(connection.userId, connection.walletId ?? null, 0, now);
     const writes = rows
       .filter((row) => {
         const known = stored.get(`${row.direction}:${row.externalId}`);

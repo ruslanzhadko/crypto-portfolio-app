@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createWalletSyncClient,
   looksLikeDeposit,
+  looksLikeWithdrawal,
   noteDeposit,
   resetDepositWatch,
   stablecoinTotal,
   takeDueDeposits,
   WALLET_SYNC_COOLDOWN_MS,
+  WITHDRAWAL_ARRIVAL_MS,
 } from "./deposit-watch";
 
 afterEach(resetDepositWatch);
@@ -24,10 +26,29 @@ describe("deposit watch", () => {
     expect(looksLikeDeposit(1_000, 500)).toBe(false);
   });
 
+  it("treats a large stablecoin decrease as a withdrawal", () => {
+    expect(looksLikeWithdrawal(1_297, 87)).toBe(true);
+    expect(looksLikeWithdrawal(10_000, 9_960)).toBe(false); // below $50
+    expect(looksLikeWithdrawal(10_000, 9_850)).toBe(false); // 1.5% realized loss
+    expect(looksLikeWithdrawal(500, 1_000)).toBe(false);
+  });
+
+  it("waits for a withdrawal to land before asking for the wallet sync", () => {
+    noteDeposit("u3", null, WITHDRAWAL_ARRIVAL_MS, 1_000_000);
+    expect(takeDueDeposits(1_000_000 + 60_000)).toEqual([]);
+    expect(takeDueDeposits(1_000_000 + WITHDRAWAL_ARRIVAL_MS)).toEqual([{ userId: "u3", walletId: null }]);
+  });
+
+  it("a deposit signal does not wait behind an earlier withdrawal", () => {
+    noteDeposit("u4", "w1", WITHDRAWAL_ARRIVAL_MS, 1_000_000);
+    noteDeposit("u4", "w1", 0, 1_000_000);
+    expect(takeDueDeposits(1_000_000)).toEqual([{ userId: "u4", walletId: "w1" }]);
+  });
+
   it("asks for a sync at most once per cooldown and keeps later signals queued", () => {
-    noteDeposit("u1", "w1");
+    noteDeposit("u1", "w1", 0, 1_000_000);
     expect(takeDueDeposits(1_000_000)).toEqual([{ userId: "u1", walletId: "w1" }]);
-    noteDeposit("u1", "w1");
+    noteDeposit("u1", "w1", 0, 1_000_000);
     expect(takeDueDeposits(1_000_000 + 60_000)).toEqual([]);
     expect(takeDueDeposits(1_000_000 + WALLET_SYNC_COOLDOWN_MS)).toEqual([{ userId: "u1", walletId: "w1" }]);
   });

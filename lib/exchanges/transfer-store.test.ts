@@ -15,6 +15,7 @@ vi.mock("@/lib/db/prisma", () => ({
 }));
 
 import { syncTransfers } from "./transfer-store";
+import { resetDepositWatch, takeDueDeposits } from "./deposit-watch";
 import { ExchangeError, type ExchangeAdapter } from "./types";
 import type { Transfer } from "./transfers";
 
@@ -49,6 +50,7 @@ const adapter = (rows: Transfer[] | Error): ExchangeAdapter & { since?: number }
 beforeEach(() => {
   vi.clearAllMocks();
   db.stored = [];
+  resetDepositWatch();
 });
 
 describe("syncTransfers", () => {
@@ -111,6 +113,18 @@ describe("syncTransfers", () => {
       where: { id: "c3" },
       data: { transfersError: "INVALID_KEY" },
     });
+  });
+
+  it("asks for a wallet sync on a new deposit or a withdrawal that just completed", async () => {
+    const seen = { id: "c7", transfersAt: new Date(NOW - 3600_000), transfersFrom: new Date(0), userId: "u1" };
+    db.stored = [{ direction: "withdrawal", externalId: "w1", status: "pending", txHash: null, fee: null }];
+    await syncTransfers(seen, adapter([transfer({ direction: "withdrawal", externalId: "w1" })]), NOW);
+    expect(takeDueDeposits(NOW)).toEqual([{ userId: "u1", walletId: null }]);
+
+    resetDepositWatch();
+    db.stored = [{ direction: "withdrawal", externalId: "w1", status: "completed", txHash: "0x1", fee: null }];
+    await syncTransfers({ ...seen, id: "c8" }, adapter([transfer({ direction: "withdrawal", externalId: "w1" })]), NOW);
+    expect(takeDueDeposits(NOW)).toEqual([]);
   });
 
   it("skips exchanges without history support", async () => {

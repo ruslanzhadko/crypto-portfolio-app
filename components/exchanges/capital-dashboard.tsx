@@ -6,6 +6,7 @@ import {
   AreaChart,
   Area,
   Legend,
+  ReferenceDot,
   XAxis,
   YAxis,
   Tooltip,
@@ -49,6 +50,13 @@ import {
 } from "@/components/dashboard/use-ticker-changes";
 import { PositionsPage } from "./positions-page";
 import { capitalChartData } from "./capital-chart-data";
+import type { TransferMark } from "@/lib/portfolio/capital-transfers";
+
+/** Own moves are blue like a neutral note; money from or to the outside is green or red. */
+function transferColor(mark: TransferMark) {
+  if (mark.own) return "#60a5fa";
+  return mark.direction === "deposit" ? "#34d399" : "#f87171";
+}
 import { useDisplayPreference } from "./display-preferences";
 import { useWalletSync } from "@/components/dashboard/sync-all-button";
 import { useTouchTooltip } from "@/components/common/use-touch-tooltip";
@@ -143,6 +151,29 @@ export function CapitalDashboard({
         ? null
         : point.wallets + point.exchanges,
   }));
+  // Each transfer sits on the first chart point that already includes it.
+  const transfersByPoint = new Map<number, TransferMark[]>();
+  for (const mark of history?.transfers ?? []) {
+    const point =
+      chart.find((p) => p.timestamp >= mark.at) ?? chart[chart.length - 1];
+    if (!point) continue;
+    transfersByPoint.set(point.timestamp, [
+      ...(transfersByPoint.get(point.timestamp) ?? []),
+      mark,
+    ]);
+  }
+  const transferText = (mark: TransferMark) => {
+    const amount = `${new Intl.NumberFormat(locale, { maximumFractionDigits: 6 }).format(Number(mark.amount))} ${mark.asset}`;
+    const other = mark.counterpart ?? t("transfers.wallet");
+    const route = !mark.own
+      ? t(mark.direction === "deposit" ? "transfers.in" : "transfers.out", {
+          label: mark.label,
+        })
+      : mark.direction === "deposit"
+        ? `${other} → ${mark.label}`
+        : `${mark.label} → ${other}`;
+    return `${route} · ${amount}`;
+  };
   const shortHistory =
     chart.length > 0 &&
     chart[chart.length - 1]!.timestamp - chart[0]!.timestamp < 86400_000;
@@ -463,9 +494,20 @@ export function CapitalDashboard({
                       />
                       <Tooltip
                         active={tooltip.active}
-                        labelFormatter={(v) =>
-                          new Date(Number(v)).toLocaleString(locale)
-                        }
+                        labelFormatter={(v) => (
+                          <>
+                            {new Date(Number(v)).toLocaleString(locale)}
+                            {transfersByPoint.get(Number(v))?.map((m, i) => (
+                              <span
+                                key={i}
+                                className="block text-xs"
+                                style={{ color: transferColor(m) }}
+                              >
+                                {transferText(m)}
+                              </span>
+                            ))}
+                          </>
+                        )}
                         formatter={(v: number, name: string) => [
                           new Intl.NumberFormat(locale, {
                             style: "currency",
@@ -536,6 +578,27 @@ export function CapitalDashboard({
                           isAnimationActive={false}
                         />
                       )}
+                      {[...transfersByPoint].map(([timestamp, marks]) => {
+                        const point = chart.find(
+                          (p) => p.timestamp === timestamp,
+                        );
+                        const y =
+                          scope === "all" ? point?.total : point?.[scope];
+                        if (y == null) return null;
+                        const external = marks.find((m) => !m.own);
+                        return (
+                          <ReferenceDot
+                            key={timestamp}
+                            x={timestamp}
+                            y={y}
+                            r={4}
+                            fill={transferColor(external ?? marks[0]!)}
+                            stroke="var(--surface, #151c2c)"
+                            strokeWidth={1.5}
+                            ifOverflow="extendDomain"
+                          />
+                        );
+                      })}
                       {scope === "all" && (
                         <Legend
                           iconSize={10}
@@ -560,6 +623,31 @@ export function CapitalDashboard({
                     {t("valueChange")}: <Money value={history.changeUsd} />
                   </p>
                 )}
+              {history && history.transfers.length > 0 && (
+                <details className="mt-2 text-sm">
+                  <summary className="cursor-pointer text-text-muted">
+                    {t("transfers.title")} ({history.transfers.length})
+                  </summary>
+                  <p className="mt-2 text-xs text-text-muted">
+                    {t("transfers.hint")}
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {[...history.transfers].reverse().map((m, i) => (
+                      <li key={i} className="flex items-baseline gap-2">
+                        <span
+                          className="inline-block h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: transferColor(m) }}
+                          aria-hidden="true"
+                        />
+                        <span>
+                          <Updated value={new Date(m.at).toISOString()} /> ·{" "}
+                          {transferText(m)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
               {history && history.events.length > 0 && (
                 <details className="mt-2 text-sm">
                   <summary className="cursor-pointer text-text-muted">

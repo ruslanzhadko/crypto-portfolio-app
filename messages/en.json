@@ -1062,6 +1062,13 @@
     "historyNote": "Change in value includes deposits, withdrawals and connected accounts. It is not investment profit.",
     "valueChange": "Change in value",
     "sourceChanges": "Source changes",
+    "transfers": {
+      "title": "Transfers",
+      "wallet": "Wallet",
+      "in": "Deposit to {label}",
+      "out": "Withdrawal from {label}",
+      "hint": "Blue dots are moves between your own wallets and exchanges: they do not change total capital. Green and red are money in and out."
+    },
     "sources": "Capital sources",
     "assets": "Assets",
     "kinds": {
