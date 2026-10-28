@@ -2,6 +2,7 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import { telegramProvider } from "./telegram-provider";
+import { demoUserId, isDemoUser } from "@/lib/demo/config";
 import { telegramLinkTarget } from "./telegram-link";
 import {
   resolveTelegramIdentity,
@@ -22,6 +23,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async signIn({ user, account, profile }) {
       if (account?.provider === "credentials") return true;
+      // The demo provider only ever returns the configured demo account.
+      if (account?.provider === "demo") return isDemoUser(user.id);
       if (!account || !["google", "telegram"].includes(account.provider))
         return false;
       if (account.provider === "google" && profile?.email_verified !== true)
@@ -109,6 +112,33 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ]
       : []),
     ...(socialAvailability().telegram ? [telegramProvider()] : []),
+    // One click into the shared read-only demo account (DEMO_USER_ID); no credentials.
+    ...(demoUserId()
+      ? [
+          Credentials({
+            id: "demo",
+            name: "Demo",
+            credentials: {},
+            async authorize() {
+              const id = demoUserId();
+              if (!id) return null;
+              const user = await prisma.user.findUnique({
+                where: { id },
+                select: {
+                  id: true,
+                  email: true,
+                  name: true,
+                  role: true,
+                  isBlocked: true,
+                  sessionVersion: true,
+                },
+              });
+              if (!user || user.isBlocked || user.role !== "USER") return null;
+              return { ...user };
+            },
+          }),
+        ]
+      : []),
     Credentials({
       name: "Credentials",
       credentials: {

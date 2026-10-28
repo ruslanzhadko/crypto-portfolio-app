@@ -6,6 +6,8 @@ import { Navbar } from "@/components/layout/navbar";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { AlertToasts } from "@/components/alerts/alert-toasts";
+import { DemoBanner } from "@/components/demo/demo-banner";
+import { isDemoUser } from "@/lib/demo/config";
 
 export default async function DashboardLayout({
   children,
@@ -29,6 +31,7 @@ export default async function DashboardLayout({
         exchangesEnabled={exchangesEnabled(session!.user.id)}
       />
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        {isDemoUser(session!.user.id) && <DemoBanner />}
         <Navbar
           email={session!.user.email ?? ""}
           name={session!.user.name}

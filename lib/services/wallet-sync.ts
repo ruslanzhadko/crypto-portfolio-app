@@ -1,4 +1,5 @@
 import { Network } from "@prisma/client";
+import { isDemoUser } from "@/lib/demo/config";
 import axios from "axios";
 import { prisma } from "@/lib/db/prisma";
 import {
@@ -76,6 +77,21 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
     select: { id: true, address: true, network: true, userId: true },
   });
   if (!wallet) throw new Error("Гаманець не знайдено");
+  // Demo wallets hold made-up coins: never ask a chain, keep the stored balances (live prices).
+  if (isDemoUser(wallet.userId)) {
+    const stored = await prisma.tokenBalance.findMany({
+      where: { walletId, isHidden: false },
+      select: { usdValue: true },
+    });
+    return {
+      walletId,
+      tokensSynced: stored.length,
+      transactionsSynced: 0,
+      spamFiltered: 0,
+      totalUsd: stored.reduce((total, t) => total + t.usdValue, 0),
+      syncedAt: new Date(),
+    };
+  }
 
   // Транзакції більше не синхронізуються в БД — підтягуються live з Ankr при перегляді.
   const isEvm = wallet.network === Network.EVM;

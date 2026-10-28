@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isDemoUser } from "@/lib/demo/config";
+import { ensureDemoHistory } from "@/lib/demo/history";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { D, sum } from "./decimal";
@@ -27,10 +29,14 @@ export function isMigratedHypercore(
   return migrated.includes(walletId) && HYPERCORE_CHAINS.includes(chain);
 }
 export function sourceSetHash(sources: string[]): string {
-  return createHash("sha256")
-    // Code-unit order, as stored hashes were made with the default sort.
-    .update([...sources].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join("|"))
-    .digest("hex");
+  return (
+    createHash("sha256")
+      // Code-unit order, as stored hashes were made with the default sort.
+      .update(
+        [...sources].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join("|"),
+      )
+      .digest("hex")
+  );
 }
 
 export type OverviewOptions = {
@@ -264,6 +270,9 @@ export async function saveCapitalSnapshot(
     create: { userId, bucket, ...data },
     update: data,
   });
+  // The demo account gets a month of history once, shaped around its first real point.
+  if (isDemoUser(userId) && data.complete)
+    await ensureDemoHistory(userId, data);
 }
 type HistoryRow = {
   bucket: Date;

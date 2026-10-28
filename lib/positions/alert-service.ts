@@ -105,7 +105,11 @@ export class PositionAlertService {
         this.watch.forget(id);
       }
     // Positions stored before a restart are the base, so they are not reported as just opened.
-    const fresh = wanted.filter((r) => !this.watch.has(r.id));
+    // A connection never read successfully has no stored positions yet: its first read becomes the
+    // base (watch.observe without a base), so positions it already had are not reported as opened.
+    const fresh = wanted.filter(
+      (r) => !this.watch.has(r.id) && r.lastSuccessAt !== null,
+    );
     if (fresh.length) {
       const stored = await prisma.exchangePosition.findMany({
         where: { account: { connectionId: { in: fresh.map((r) => r.id) } } },

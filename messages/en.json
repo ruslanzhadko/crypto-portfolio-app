@@ -1191,5 +1191,18 @@
       "durationM": "{m}m"
     },
     "liquidationCustom": "Your own threshold, 1 to 50%"
+  },
+  "Demo": {
+    "title": "CryptoPortfolio demo",
+    "description": "See wallets, exchanges, positions, alerts and the crypto feed on sample data. No sign-up; the data is made up.",
+    "opening": "Opening the demo…",
+    "open": "Open the demo",
+    "failed": "Could not open the demo. Please try again.",
+    "unavailable": "The demo is unavailable right now.",
+    "bannerTitle": "Demo mode",
+    "bannerDescription": "sample data, changes are disabled",
+    "createAccount": "Create an account",
+    "readOnlyTitle": "The demo is view-only",
+    "readOnlyDescription": "Create an account to add wallets, exchanges and alerts."
   }
 }

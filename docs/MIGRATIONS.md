@@ -35,10 +35,10 @@
 | Место | Что там | Кто читает |
 | --- | --- | --- |
 | Vercel → Environment Variables | БД (`DATABASE_URL`, `DIRECT_URL`), авторизация, API-ключи провайдеров, бот Telegram, `CRON_SECRET`, биржевые `EXCHANGE*`. Полная таблица — INFRASTRUCTURE.md §6a | Сайт и API |
-| VM: `~/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko, `TELEGRAM_BOT_TOKEN` (уведомления по позициям) | Контейнер `cryptoportfolio-worker-production` |
+| VM: `~/.config/cryptoportfolio/exchange-production.env` (600) | Production БД, `EXCHANGES_ENABLED`, пилот, keyring шифрования, fingerprint, IP, `EXCHANGE_WORKER_SIGNAL_SECRET`, `EXCHANGE_ACTIVITY_URL` (production), CoinGecko, `TELEGRAM_BOT_TOKEN` (уведомления по позициям), `DEMO_USER_ID` | Контейнер `cryptoportfolio-worker-production` |
 | VM: `/etc/cryptoportfolio-worker-deploy.conf` (root, 600) | `branch=main`, state `/var/lib/cryptoportfolio-worker-production-deploy`, env-файл, имя контейнера | Root-скрипт деплоя |
 | VM: `~/.config/cryptoportfolio/telegram-feed.env` (600) | `DATABASE_URL`, `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_USER_SESSION`, `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET` (значения без кавычек) | Контейнер `cryptoportfolio-listener-production` |
-| VM: `~/.config/cryptoportfolio/price-triggers.env` (600) | `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `COINGECKO_API_KEY` (и `COINGECKO_BASE_URL`, если есть), `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET`, `CRON_SECRET` (как в Vercel) | Контейнер `cryptoportfolio-triggers-production` |
+| VM: `~/.config/cryptoportfolio/price-triggers.env` (600) | `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`, `COINGECKO_API_KEY` (и `COINGECKO_BASE_URL`, если есть), `EXCHANGE_ACTIVITY_URL`, `EXCHANGE_WORKER_SIGNAL_SECRET`, `CRON_SECRET` (как в Vercel), `DEMO_USER_ID` | Контейнер `cryptoportfolio-triggers-production` |
 | GitHub → Environment `worker-preview` | SSH-ключ деплоя, known_hosts, `WORKER_HOST`, `WORKER_USER` для этой VM; с 20.10 используется для деплоя из `main` (`worker-production` не нужен, пока VM одна) | GitHub Actions |
 | Neon | Строки подключения веток | — |
 
@@ -140,6 +140,18 @@ PostgreSQL, число строк всех 27 таблиц совпало).
 `User.positionAlerts`, `NotificationLog.kind`, `NotificationLog.details`. После неё diff с production содержит только
 `DROP TABLE "PortfolioCapitalSnapshot_backup_…"` — резервная таблица чистки капитала 23.10, её не трогать.
 Worker отправляет сообщения сам: `TELEGRAM_BOT_TOKEN` добавлен в `exchange-production.env` 27.10.
+
+## 4e. Демо-аккаунт (28.10)
+
+Общий аккаунт «только просмотр» (`/demo` → вход одним кликом). Данные создаёт `scripts/demo-seed.ts --yes`
+(идемпотентно, только записи демо-пользователя `demo@cryptoportfolio.demo`): два вымышленных кошелька с монетами
+по живым ценам, Binance/Bybit/OKX без ключей, триггеры, примеры уведомлений. Скрипт печатает `DEMO_USER_ID`;
+его нужно добавить **везде сразу**: Vercel (Production), `exchange-production.env`, `price-triggers.env`.
+Без него на VM `update-prices` попробует синхронизировать демо-адреса с блокчейном и сотрёт их балансы.
+Как работает: middleware отклоняет любые POST/PUT/PATCH/DELETE демо-аккаунта (`DEMO_READ_ONLY`), кошельки не
+ходят в блокчейн (`syncWallet`), транзакции — пример из `lib/demo/wallets.ts`, биржи читает
+`DemoExchangeAdapter` (цены — публичный `premiumIndex` Binance), историю капитала за 30 дней worker дорисовывает
+один раз вокруг первого снимка. Выключить демо: убрать `DEMO_USER_ID`.
 
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 

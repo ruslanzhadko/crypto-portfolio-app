@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { isDemoUser } from "@/lib/demo/config";
+import { DemoExchangeAdapter } from "@/lib/demo/exchange";
 import { prisma } from "@/lib/db/prisma";
 import { decryptCredentials, encryptCredentials } from "./crypto";
 import {
@@ -340,7 +342,11 @@ type ConnectionWithWallet = Prisma.ExchangeConnectionGetPayload<{
 
 /** The cached exchange client of a connection, created (and its key re-encrypted) on first use. */
 export async function connectionClient(c: ConnectionWithWallet) {
-  if (["hyperliquid", "aster"].includes(c.exchange) && !c.wallet?.isActive)
+  if (
+    !isDemoUser(c.userId) &&
+    ["hyperliquid", "aster"].includes(c.exchange) &&
+    !c.wallet?.isActive
+  )
     throw new ExchangeError("UNSUPPORTED_ACCOUNT");
   let cached = clients.get(c.id);
   if (cached && cached.version !== c.credentialVersion) {
@@ -350,7 +356,10 @@ export async function connectionClient(c: ConnectionWithWallet) {
   }
   if (!cached) {
     let adapter: ExchangeAdapter;
-    if (["hyperliquid", "aster"].includes(c.exchange)) {
+    // The read-only demo account has no keys: sample accounts at live public prices.
+    if (isDemoUser(c.userId))
+      adapter = new DemoExchangeAdapter(c.exchange, settlementPrices);
+    else if (["hyperliquid", "aster"].includes(c.exchange)) {
       if (!c.wallet?.isActive) throw new ExchangeError("UNSUPPORTED_ACCOUNT");
       if (c.exchange === "aster" && c.credentials) {
         const credentials = decryptCredentials(c.credentials, c.userId, c.id);

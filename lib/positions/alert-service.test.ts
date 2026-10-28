@@ -33,12 +33,13 @@ const settings = {
   liquidationPercent: 10,
   excludedConnections: ["skipped"],
 };
-const row = (id: string) => ({
+const row = (id: string, lastSuccessAt: Date | null = new Date(0)) => ({
   id,
   userId: "u1",
   label: `Main ${id}`,
   exchange: "binance",
   credentialVersion: 1,
+  lastSuccessAt,
 });
 const btc: OpenPosition = {
   positionKey: "BTCUSDT:BOTH",
@@ -237,6 +238,15 @@ describe("PositionAlertService", () => {
       pnlUsd: 0,
     });
     expect(deliver.mock.calls[0]![1][0].exact).toBeUndefined();
+  });
+
+  it("treats the first read of a never-synced connection as the base, not as opened positions", async () => {
+    db.exchangeConnection.findMany.mockResolvedValue([row("c1", null)]);
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    service.observe({ id: "c1", userId: "u1" }, result(btc), 1000);
+    expect(await service.flush()).toEqual([]);
+    expect(db.exchangePosition.findMany).not.toHaveBeenCalled();
   });
 
   it("reloads when the site signals a settings change", async () => {

@@ -4,6 +4,7 @@ export function isPublicPath(path: string): boolean {
     path === '/feed' ||
     path === '/changelog' ||
     path === '/guide' ||
+    path === '/demo' ||
     path === '/api/feed' ||
     path.startsWith('/api/feed/media/') ||
     path === '/api/public/market' ||

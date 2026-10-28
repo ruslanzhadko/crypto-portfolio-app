@@ -1,4 +1,6 @@
 import { NextRequest } from 'next/server';
+import { isDemoUser } from '@/lib/demo/config';
+import { demoTransactionPage } from '@/lib/demo/wallets';
 import { prisma } from '@/lib/db/prisma';
 import { requireUser } from '@/lib/api/auth-guard';
 import { apiError, handleUnknown, ok } from '@/lib/api/response';
@@ -595,6 +597,9 @@ export async function GET(
     });
     if (!wallet) return apiError('NOT_FOUND', 'Гаманець не знайдено');
     if (chain && wallet.network !== 'EVM') return apiError('BAD_REQUEST', 'Потрібен EVM-гаманець');
+    // Demo wallets have made-up addresses: a sample history instead of a chain lookup.
+    if (isDemoUser(guard.user.id))
+      return ok(chain || pageToken ? { transactions: [], hasMore: false } : demoTransactionPage(wallet));
 
     return ok(await getWalletTransactionsPayload(wallet, pageToken, chain, pageSize));
   } catch (err) {

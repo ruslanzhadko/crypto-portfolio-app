@@ -23,6 +23,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       ru: [
         "Сработавшие триггеры и уведомления по позициям всплывают справа на открытой странице сайта, рядом с сообщением в Telegram.",
         "Страница «Уведомления» открывается на журнале; триггеры и позиции — отдельные карточки с подписью и состоянием. Порог «ликвидация близко» можно задать свой, от 1 до 50%.",
+        "Появилось демо: страница /demo открывает пример портфеля с кошельками, биржами, позициями и уведомлениями — без регистрации, только просмотр.",
         "На Binance, Bybit, BingX и Aster с API-ключом итог закрытой позиции берётся из истории биржи — точная цифра вместо оценки.",
         "Сообщение о закрытии позиции зелёное или красное по итогу, учитывает фандинг, комиссии и частичные фиксации и показывает, сколько позиция была открыта. Замена API-ключа больше не присылает ложных «позиция закрыта».",
         "Уведомление «плюс / минус» больше не дёргается от колебаний PnL в центы; в журнале у позиций подписан объём.",
@@ -33,6 +34,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       uk: [
         "Спрацьовані тригери та сповіщення по позиціях спливають праворуч на відкритій сторінці сайту, поруч із повідомленням у Telegram.",
         "Сторінка «Сповіщення» відкривається на журналі; тригери й позиції — окремі картки з підписом і станом. Поріг «ліквідація близько» можна задати свій, від 1 до 50%.",
+        "З'явилося демо: сторінка /demo відкриває приклад портфеля з гаманцями, біржами, позиціями та сповіщеннями — без реєстрації, лише перегляд.",
         "На Binance, Bybit, BingX та Aster з API-ключем підсумок закритої позиції береться з історії біржі — точна цифра замість оцінки.",
         "Повідомлення про закриття позиції зелене або червоне за підсумком, враховує фандинг, комісії й часткові фіксації та показує, скільки позиція була відкрита. Заміна API-ключа більше не надсилає хибних «позицію закрито».",
         "Сповіщення «плюс / мінус» більше не смикається від коливань PnL у центи; у журналі в позицій підписано обсяг.",
@@ -43,6 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       en: [
         "Fired triggers and position alerts pop up on the right of any open page of the site, next to the Telegram message.",
         "The Notifications page opens on the log; triggers and positions are separate cards with a caption and their state. The liquidation threshold can be any value from 1 to 50%.",
+        "A demo is here: /demo opens a sample portfolio with wallets, exchanges, positions and alerts, no sign-up, view only.",
         "On Binance, Bybit, BingX and Aster with an API key the result of a closed position comes from the exchange history: an exact figure instead of an estimate.",
         "The position closed message is green or red by its result, includes funding, fees and partial closes, and shows how long the position was open. Replacing an API key no longer sends false “position closed” alerts.",
         "The profit / loss alert no longer flips on cents of PnL noise; position rows in the log label their size.",
