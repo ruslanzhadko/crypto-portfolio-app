@@ -2,6 +2,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { safeError, type SyncResult } from "@/lib/exchanges/types";
+import type { ClosedInput } from "@/lib/exchanges/closed-result";
 import { clientVersion, connectionClient } from "@/lib/exchanges/worker";
 import {
   anyPositionAlert,
@@ -19,6 +20,9 @@ const RATE_LIMIT_PAUSE_MS = 5 * 60_000;
 /** A sync job that just read the positions counts as this poll. */
 const FRESH_MS = 12_000;
 const WINDOW_MS = 30 * 60_000;
+/** The ledger is read this long after a close is seen, and again until the deadline. */
+const EXACT_DELAY_MS = 20_000;
+const EXACT_DEADLINE_MS = 2 * 60_000;
 
 type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
@@ -44,6 +48,14 @@ export class PositionAlertService {
   private pending = new Map<string, SourcedEvent[]>();
   /** Key version each connection's base was read with. */
   private versions = new Map<string, number>();
+  private closing: {
+    userId: string;
+    event: SourcedEvent;
+    row: Connection;
+    input: ClosedInput;
+    dueAt: number;
+    deadline: number;
+  }[] = [];
   private loadedWindow = -1;
   private version: number | null = null;
 
@@ -157,14 +169,94 @@ export class PositionAlertService {
       if (known !== undefined && known !== c.credentialVersion)
         this.watch.forget(c.id);
     }
+    const lastSeenAt = watched.observedAt;
     watched.observedAt = at;
     const events = this.watch.observe(c.id, result.accounts, settings, at);
     if (!events.length) return;
     const source = { label: watched.row.label, exchange: watched.row.exchange };
-    this.pending.set(c.userId, [
-      ...(this.pending.get(c.userId) ?? []),
-      ...events.map((e) => ({ ...e, source })),
-    ]);
+    const openSymbols = new Set(
+      result.accounts.flatMap((a) => (a.positions ?? []).map((p) => p.symbol)),
+    );
+    const now: SourcedEvent[] = [];
+    for (const event of events) {
+      const since = event.position.funding?.since;
+      // A close with a known cycle start waits for the exchange's own final figure.
+      if (
+        event.kind === "closed" &&
+        typeof since === "number" &&
+        since > 0 &&
+        lastSeenAt > 0
+      )
+        this.closing.push({
+          userId: c.userId,
+          event: { ...event, source },
+          row: watched.row,
+          input: {
+            symbol: event.position.symbol,
+            base: event.position.base,
+            settle: event.position.settle,
+            positionKey: event.position.positionKey,
+            since,
+            lastSeenAt,
+            otherLeg: openSymbols.has(event.position.symbol),
+          },
+          dueAt: at + EXACT_DELAY_MS,
+          deadline: at + EXACT_DEADLINE_MS,
+        });
+      else now.push({ ...event, source });
+    }
+    if (now.length)
+      this.pending.set(c.userId, [
+        ...(this.pending.get(c.userId) ?? []),
+        ...now,
+      ]);
+  }
+
+  /**
+   * Closed positions waiting for the exact result from the exchange ledger. Exchanges without a
+   * reader, an unattributable close or no answer by the deadline keep the estimate.
+   */
+  async resolveClosed(now = Date.now()) {
+    const waiting = this.closing;
+    this.closing = [];
+    for (const item of waiting) {
+      if (now < item.dueAt) {
+        this.closing.push(item);
+        continue;
+      }
+      let exact: string | null = null;
+      let supported = true;
+      try {
+        const client = await connectionClient(item.row);
+        if (client.adapter.closedResult)
+          exact = await client.adapter.closedResult(item.input);
+        else supported = false;
+      } catch {
+        // Treated as "not yet": retried until the deadline.
+      }
+      if (exact === null && supported && now < item.deadline) {
+        item.dueAt = now + EXACT_DELAY_MS;
+        this.closing.push(item);
+        continue;
+      }
+      const event = item.event;
+      if (exact !== null && event.kind === "closed") {
+        const p = event.position;
+        const usd = Number(p.unrealizedPnlUsd),
+          native = Number(p.unrealizedPnl);
+        const rate =
+          Number.isFinite(usd) && Number.isFinite(native) && native !== 0
+            ? usd / native
+            : 1;
+        event.pnlUsd = Number(exact) * rate;
+        event.includesCosts = true;
+        event.exact = true;
+      }
+      this.pending.set(item.userId, [
+        ...(this.pending.get(item.userId) ?? []),
+        event,
+      ]);
+    }
   }
 
   /** Reads positions of every connection that is due; one at a time, like the sync jobs. */

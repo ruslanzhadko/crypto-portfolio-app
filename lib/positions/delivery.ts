@@ -73,7 +73,7 @@ export function formatPositionEvent(e: SourcedEvent): string {
       const result =
         e.pnlUsd === null
           ? null
-          : `итог ≈ <b>${usd(e.pnlUsd)}</b>${e.includesCosts ? " с фандингом и комиссиями" : ""}`;
+          : `итог ${e.exact ? "" : "≈ "}<b>${usd(e.pnlUsd)}</b>${e.includesCosts ? " с фандингом и комиссиями" : ""}`;
       const lasted =
         e.durationMs === null ? null : `⏳ ${formatDurationRu(e.durationMs)}`;
       return [
@@ -116,7 +116,7 @@ function logDetails(e: SourcedEvent): PositionLogDetails {
     ...(e.kind === "closed"
       ? {
           pnlUsd: e.pnlUsd,
-          approximate: true,
+          approximate: !e.exact,
           includesCosts: e.includesCosts,
           durationMs: e.durationMs,
         }

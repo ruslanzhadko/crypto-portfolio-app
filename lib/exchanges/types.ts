@@ -88,6 +88,13 @@ export interface ExchangeAdapter {
   fetch(includeSpot: boolean): Promise<SyncResult>;
   /** Deposits and withdrawals since `since` (ms); absent where the exchange is not supported yet. */
   transfers?(since: number): Promise<import("./transfers").Transfer[]>;
+  /**
+   * Exact net result of a fully closed position from the exchange ledger (settle currency), or
+   * null when it is not available yet or cannot be attributed; absent where not supported.
+   */
+  closedResult?(
+    input: import("./closed-result").ClosedInput,
+  ): Promise<string | null>;
   close(): Promise<void>;
 }
 
@@ -108,8 +115,11 @@ export class ExchangeError extends Error {
 export function errorDiagnostics(error: unknown): string {
   const name = error instanceof Error ? error.name : typeof error;
   const message = error instanceof Error ? error.message : "";
-  const code = /"(?:code|retCode|ret_code)"\s*:\s*"?(-?\d{1,9})"?/.exec(message)?.[1];
-  const detail = error instanceof ExchangeError && error.detail ? ` [${error.detail}]` : "";
+  const code = /"(?:code|retCode|ret_code)"\s*:\s*"?(-?\d{1,9})"?/.exec(
+    message,
+  )?.[1];
+  const detail =
+    error instanceof ExchangeError && error.detail ? ` [${error.detail}]` : "";
   return (code ? `${name} code ${code}` : name) + detail;
 }
 

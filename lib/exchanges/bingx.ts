@@ -14,6 +14,7 @@ import {
 import type { Request } from "./transport";
 import { CycleHistoryReader } from "./cycle-history";
 import { bingxTransfers } from "./transfers";
+import { incomeLedgerResult, type ClosedInput } from "./closed-result";
 
 export function bingxData(value: unknown, endpoint = "?"): unknown {
   const envelope = record(value);
@@ -75,6 +76,21 @@ export class BingxAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  async closedResult(input: ClosedInput) {
+    return incomeLedgerResult(input, async (startTime, endTime) => {
+      const envelope = record(
+        await this.request("user/income", "swap:v2:private", {
+          symbol: input.symbol,
+          startTime,
+          endTime,
+          limit: 1000,
+        }),
+      );
+      if (String(envelope.code) !== "0") throw new ExchangeError("UNAVAILABLE");
+      // An empty page is `data: null`.
+      return envelope.data == null ? [] : records(envelope.data);
+    });
+  }
   transfers(since: number) {
     return bingxTransfers(this.request, bingxData, since);
   }

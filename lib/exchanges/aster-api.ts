@@ -6,6 +6,7 @@ import { positive, textField, timestamp } from "./provider-utils";
 import { reserveRequest } from "./rate-budget";
 import { CycleHistoryReader } from "./cycle-history";
 import { asterTransfers } from "./transfers";
+import { incomeLedgerResult, type ClosedInput } from "./closed-result";
 import {
   ExchangeError,
   type Credentials,
@@ -165,6 +166,18 @@ export class AsterApiAdapter implements ExchangeAdapter {
     assertAsterIpWhitelist(agent.ipWhitelist);
     this.verified = true;
     return { externalAccountId: this.user.toLowerCase() };
+  }
+  async closedResult(input: ClosedInput) {
+    return incomeLedgerResult(input, async (startTime, endTime) =>
+      records(
+        await this.request(
+          "v3/income",
+          "fapiPrivate",
+          { symbol: input.symbol, startTime, endTime, limit: 1000 },
+          30,
+        ),
+      ),
+    );
   }
   async transfers(since: number) {
     if (!this.verified) throw new ExchangeError("INVALID_KEY");

@@ -42,6 +42,8 @@ export type PositionEvent =
       pnlUsd: number | null;
       includesCosts: boolean;
       durationMs: number | null;
+      /** The figure came from the exchange's ledger after the close, not from the last poll. */
+      exact?: boolean;
     }
   | { kind: "liquidation"; position: WatchedPosition; distancePercent: number }
   | {

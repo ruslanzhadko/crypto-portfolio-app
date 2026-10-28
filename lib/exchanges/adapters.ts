@@ -12,6 +12,11 @@ import {
 } from "./types";
 import { assertBinanceReadOnly, assertBybitReadOnly } from "./permissions";
 import type { Request } from "./transport";
+import {
+  bybitLedgerResult,
+  incomeLedgerResult,
+  type ClosedInput,
+} from "./closed-result";
 import { binanceTransfers, bybitTransfers } from "./transfers";
 
 function kindOf(value: unknown) {
@@ -67,6 +72,19 @@ export class BybitAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  closedResult(input: ClosedInput) {
+    return bybitLedgerResult(input, (startTime, endTime) =>
+      this.pages("v5/account/transaction-log", "private", {
+        accountType: "UNIFIED",
+        category: "linear",
+        currency: input.settle,
+        baseCoin: input.base,
+        startTime,
+        endTime,
+        limit: 50,
+      }),
+    );
+  }
   transfers(since: number) {
     return bybitTransfers(this.request, since);
   }
@@ -292,6 +310,20 @@ export class BinanceAdapter implements ExchangeAdapter {
     private prices: () => Promise<Map<string, string>>,
     public close = async () => {},
   ) {}
+  async closedResult(input: ClosedInput) {
+    // Symbol-level income cannot be split between hedge legs.
+    if (!input.positionKey.endsWith(":BOTH")) return null;
+    return incomeLedgerResult(input, async (startTime, endTime) =>
+      records(
+        await this.request(
+          "income",
+          "fapiPrivate",
+          { symbol: input.symbol, startTime, endTime, limit: 1000 },
+          30,
+        ),
+      ),
+    );
+  }
   transfers(since: number) {
     return binanceTransfers(this.request, since);
   }

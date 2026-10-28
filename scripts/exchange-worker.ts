@@ -17,7 +17,10 @@ import { createAlertSignalClient } from "../lib/alerts/signal-client";
 import { sleep } from "../lib/exchanges/transport";
 import { prepareWalletConnections } from "../lib/exchanges/wallet-schema";
 import { createActivityClient } from "../lib/exchanges/activity-client";
-import { createWalletSyncClient, takeDueDeposits } from "../lib/exchanges/deposit-watch";
+import {
+  createWalletSyncClient,
+  takeDueDeposits,
+} from "../lib/exchanges/deposit-watch";
 import { ACTIVITY_POLL_MS, nextIdleSlot } from "../lib/exchanges/config";
 
 const ACTIVE_HEARTBEAT_MS = 20_000;
@@ -57,7 +60,9 @@ async function main() {
     if (!walletSync) return;
     for (const d of takeDueDeposits()) {
       const ok = await walletSync.request(d.userId, d.walletId);
-      console.log(`[exchange-worker] deposit suspected; wallet sync ${ok ? "requested" : "request failed"}`);
+      console.log(
+        `[exchange-worker] deposit suspected; wallet sync ${ok ? "requested" : "request failed"}`,
+      );
     }
   };
   const isActive = (userId: string) => !activity || activity.isActive(userId);
@@ -66,11 +71,16 @@ async function main() {
   const alertSignal = createAlertSignalClient();
   setPositionObserver((c, result, at) => alerts.observe(c, result, at));
   if (!process.env.TELEGRAM_BOT_TOKEN)
-    console.warn("[position-alerts] TELEGRAM_BOT_TOKEN not set: position alerts go to the site log only");
+    console.warn(
+      "[position-alerts] TELEGRAM_BOT_TOKEN not set: position alerts go to the site log only",
+    );
   const runAlerts = async (fast: boolean) => {
     try {
-      const reloaded = await alerts.maybeReload(activity?.positionAlertsVersion() ?? null);
+      const reloaded = await alerts.maybeReload(
+        activity?.positionAlertsVersion() ?? null,
+      );
       if (alerts.size) await alerts.pollDue();
+      await alerts.resolveClosed();
       const users = await alerts.flush();
       for (const userId of users) await alertSignal?.fired(userId, Date.now());
       // In idle mode nothing else keeps the database awake: close the pool after touching it.

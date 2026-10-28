@@ -10,7 +10,11 @@ const db = vi.hoisted(() => ({
   exchangeConnection: { findMany: vi.fn() },
   exchangePosition: { findMany: vi.fn() },
 }));
-const adapter = vi.hoisted(() => ({ verify: vi.fn(), fetch: vi.fn() }));
+const adapter = vi.hoisted(() => ({
+  verify: vi.fn(),
+  fetch: vi.fn(),
+  closedResult: vi.fn(),
+}));
 const deliver = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/db/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/exchanges/config", () => ({ exchangesEnabled: () => true }));
@@ -157,6 +161,82 @@ describe("PositionAlertService", () => {
     );
     expect(await service.flush()).toEqual([]);
     expect(deliver).not.toHaveBeenCalled();
+  });
+
+  it("waits for the exchange ledger and sends the exact closed result", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    const since = 1_000;
+    const open = {
+      ...btc,
+      unrealizedPnl: "10",
+      unrealizedPnlUsd: "9.9",
+      funding: {
+        amount: "0",
+        realizedPnl: "0",
+        tradingFees: "0",
+        since,
+        updatedAt: since,
+        status: "complete" as const,
+      },
+    };
+    service.observe({ id: "c1", userId: "u1" }, result(open), 100_000);
+    await service.flush();
+    deliver.mockClear();
+    service.observe({ id: "c1", userId: "u1" }, result(), 115_000);
+    // Nothing goes out before the ledger is read.
+    expect(await service.flush()).toEqual([]);
+    adapter.closedResult
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce("-21");
+    await service.resolveClosed(135_000); // not in the ledger yet
+    expect(await service.flush()).toEqual([]);
+    await service.resolveClosed(155_000);
+    expect(await service.flush()).toEqual(["u1"]);
+    expect(adapter.closedResult).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        symbol: "BTCUSDT",
+        since,
+        lastSeenAt: 100_000,
+        otherLeg: false,
+      }),
+    );
+    const [, events] = deliver.mock.calls[0]!;
+    // -21 USDT at the position's PnL rate 0.99.
+    expect(events[0]).toMatchObject({
+      kind: "closed",
+      exact: true,
+      includesCosts: true,
+    });
+    expect(events[0].pnlUsd).toBeCloseTo(-20.79, 6);
+  });
+
+  it("keeps the estimate when the ledger never confirms the close", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    const open = {
+      ...btc,
+      funding: {
+        amount: "0",
+        realizedPnl: "0",
+        tradingFees: "0",
+        since: 1_000,
+        updatedAt: 1_000,
+        status: "complete" as const,
+      },
+    };
+    service.observe({ id: "c1", userId: "u1" }, result(open), 100_000);
+    await service.flush();
+    deliver.mockClear();
+    service.observe({ id: "c1", userId: "u1" }, result(), 115_000);
+    adapter.closedResult.mockResolvedValue(null);
+    await service.resolveClosed(115_000 + 2 * 60_000);
+    expect(await service.flush()).toEqual(["u1"]);
+    expect(deliver.mock.calls[0]![1][0]).toMatchObject({
+      kind: "closed",
+      pnlUsd: 0,
+    });
+    expect(deliver.mock.calls[0]![1][0].exact).toBeUndefined();
   });
 
   it("reloads when the site signals a settings change", async () => {
