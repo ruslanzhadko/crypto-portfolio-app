@@ -526,6 +526,11 @@ const CHAIN_IDS: Record<string, number> = {
 /** Settled transactions never change, so their internal transfers are cached for the process. */
 const nativeInCache = new Map<string, number>();
 const MAX_INTERNAL_LOOKUPS = 12;
+const ETHERSCAN_CONCURRENCY = 3;
+/** Chains the Etherscan key's plan does not cover; not asked again in this process. */
+const refusedChains = new Set<string>();
+/** Stablecoin sends are almost always plain transfers, not sales for the native coin. */
+const STABLECOINS = new Set(['USDT', 'USDC', 'DAI', 'BUSD', 'FDUSD', 'TUSD', 'USDE', 'USD1', 'PYUSD']);
 
 /**
  * Native coin a wallet received inside its token sends (DEX sells), read from Etherscan's internal
@@ -538,23 +543,36 @@ async function fetchNativeIn(wallet: string, txs: NormalizedTransaction[], calls
   const key = process.env.ETHERSCAN_API_KEY?.trim();
   const own = new Set(calls.map((call) => call.hash.toLowerCase()));
   const candidates = txs
-    .filter((tx) => tx.type === 'send' && !!tx.tokenSymbol && CHAIN_IDS[tx.chainName])
+    .filter(
+      (tx) =>
+        tx.type === 'send' &&
+        !!tx.tokenSymbol &&
+        !STABLECOINS.has(tx.tokenSymbol.toUpperCase()) &&
+        CHAIN_IDS[tx.chainName] &&
+        !refusedChains.has(tx.chainName),
+    )
     .sort((a, b) => Number(own.has(b.hash.toLowerCase())) - Number(own.has(a.hash.toLowerCase())))
     .slice(0, MAX_INTERNAL_LOOKUPS);
-  await Promise.all(candidates.map(async (tx) => {
+  const lookup = async (tx: NormalizedTransaction) => {
     const hash = tx.hash.toLowerCase();
     const cached = nativeInCache.get(hash);
     if (cached !== undefined) { result.set(hash, cached); return; }
-    if (!key) return;
+    if (!key || refusedChains.has(tx.chainName)) return;
     try {
-      const { data } = await axios.get<{ status: string; result: { to?: string; value?: string; isError?: string }[] | string }>(
+      const { data } = await axios.get<{ status: string; message?: string; result: { to?: string; value?: string; isError?: string }[] | string }>(
         ETHERSCAN,
         { timeout: 8_000, params: { chainid: CHAIN_IDS[tx.chainName], module: 'account', action: 'txlistinternal', txhash: hash, apikey: key } },
       );
-      // "No transactions found" is a valid empty answer; anything else non-array is an error.
-      const rows = Array.isArray(data.result) ? data.result : [];
-      if (!Array.isArray(data.result) && data.status !== '0') return;
-      const wei = rows
+      // Only a list is an answer ("No transactions found" comes as an empty one). A string is an
+      // error, such as a rate limit or a chain outside the plan, and must never be cached as zero.
+      if (!Array.isArray(data.result)) {
+        if (/not supported|upgrade|plan/i.test(String(data.result))) {
+          refusedChains.add(tx.chainName);
+          console.warn(`[Etherscan] internal transfers unavailable on ${tx.chainName} for this key`);
+        }
+        return;
+      }
+      const wei = data.result
         .filter((row) => row.isError !== '1' && row.to?.toLowerCase() === wallet)
         .reduce((sum, row) => sum + Number(row.value ?? 0), 0);
       const value = Number.isFinite(wei) ? wei / 1e18 : 0;
@@ -563,7 +581,10 @@ async function fetchNativeIn(wallet: string, txs: NormalizedTransaction[], calls
     } catch (err) {
       console.warn('[Etherscan] internal transfers:', err instanceof Error ? err.message : err);
     }
-  }));
+  };
+  // A few at a time: the free plan allows only a handful of calls per second.
+  for (let i = 0; i < candidates.length; i += ETHERSCAN_CONCURRENCY)
+    await Promise.all(candidates.slice(i, i + ETHERSCAN_CONCURRENCY).map(lookup));
   return result;
 }
 
