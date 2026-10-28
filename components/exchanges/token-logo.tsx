@@ -45,6 +45,29 @@ const catalogIds: Record<string, string> = {
   COOL: "usdc-is-cool",
 };
 const resolved = new Map<string, string | null>();
+// Found logos survive page loads for a week; failed lookups are never stored, so they retry.
+const STORE_KEY = "token-logos:v1";
+const STORE_MS = 7 * 86400_000;
+function loadStore(): Record<string, { logo: string | null; at: number }> {
+  try {
+    return JSON.parse(localStorage.getItem(STORE_KEY) ?? "{}") ?? {};
+  } catch {
+    return {};
+  }
+}
+function remember(ticker: string, logo: string | null) {
+  try {
+    const store = loadStore();
+    store[ticker] = { logo, at: Date.now() };
+    localStorage.setItem(STORE_KEY, JSON.stringify(store));
+  } catch {
+    // Storage unavailable: the logo is kept for this page only.
+  }
+}
+function stored(ticker: string) {
+  const entry = loadStore()[ticker];
+  return entry && Date.now() - entry.at < STORE_MS ? entry : undefined;
+}
 const pending = new Map<string, Promise<string | null>>();
 let lookupQueue: Promise<unknown> = Promise.resolve();
 // Perp contracts quote multiples of a coin (1000PEPE, kBONK, 1MBABYDOGE); the logo belongs to the base coin.
@@ -86,6 +109,7 @@ function findLogo(ticker: string) {
         : (ranked[0] ?? (matches.length === 1 ? matches[0] : undefined));
       const logo = selected?.thumb ?? null;
       resolved.set(ticker, logo);
+      remember(ticker, logo);
       return logo;
     })
     .finally(() => pending.delete(ticker));
@@ -106,6 +130,8 @@ export function ExchangeTokenLogo({
     let cancelled = false;
     setMetadataLogo(null);
     if (!icons.has(ticker) && /^[A-Z0-9]{2,20}$/.test(ticker)) {
+      const saved = resolved.has(ticker) ? undefined : stored(ticker);
+      if (saved) resolved.set(ticker, saved.logo);
       if (resolved.has(ticker)) setMetadataLogo(resolved.get(ticker) ?? null);
       else
         void findLogo(ticker)
