@@ -392,3 +392,48 @@ export async function hyperliquidTransfers(
   }
   return result;
 }
+
+// ── KuCoin: /api/v1/deposits and /api/v1/withdrawals, paged, read a week at a time ──
+const KUCOIN_STATUS: Record<string, Transfer["status"]> = {
+  SUCCESS: "completed",
+  FAILURE: "failed",
+  PROCESSING: "pending",
+  WALLET_PROCESSING: "pending",
+  REVIEW: "pending",
+};
+const KUCOIN_PAGE = 100;
+export async function kucoinTransfers(
+  data: (path: string, params: Row) => Promise<unknown>,
+  since: number,
+  now = Date.now(),
+) {
+  const byId = new Map<string, Transfer>();
+  for (const direction of ["deposit", "withdrawal"] as const) {
+    const path = direction === "deposit" ? "deposits" : "withdrawals";
+    for (const [startAt, endAt] of windows(since, now, 7 * DAY)) {
+      for (let currentPage = 1; currentPage <= 50; currentPage++) {
+        const page = record(await data(path, { startAt, endAt, currentPage, pageSize: KUCOIN_PAGE }));
+        for (const row of records(page.items)) {
+          const asset = required(row.currency);
+          const amount = requiredDecimal(row.amount);
+          // Withdrawals carry no id; time, coin, amount and chain stay fixed while the hash may appear later.
+          const id = text(row.id) ?? `${required(row.createdAt)}:${asset}:${amount}:${text(row.chain) ?? ""}`;
+          byId.set(`${direction}:${id}`, {
+            direction,
+            asset,
+            network: text(row.chain),
+            amount,
+            fee: direction === "withdrawal" ? fee(row.fee) : null,
+            address: text(row.address),
+            txHash: text(row.walletTxId),
+            status: KUCOIN_STATUS[String(row.status).toUpperCase()] ?? "pending",
+            externalId: id,
+            occurredAt: time(row.createdAt),
+          });
+        }
+        if (currentPage >= Number(page.totalPage ?? 1)) break;
+      }
+    }
+  }
+  return [...byId.values()];
+}

@@ -16,6 +16,8 @@ const probes = [
   ["Gate", "https://api.gateio.ws/api/v4/spot/time"],
   ["BingX", "https://open-api.bingx.com/openApi/swap/v2/server/time"],
   ["Bitget", "https://api.bitget.com/api/v2/public/time"],
+  ["KuCoin", "https://api.kucoin.com/api/v1/timestamp"],
+  ["KuCoin Futures", "https://api-futures.kucoin.com/api/v1/timestamp"],
   ["MEXC spot", "https://api.mexc.com/api/v3/time"],
   ["MEXC futures", "https://contract.mexc.com/api/v1/contract/ping"],
   ["Aster futures", "https://fapi.asterdex.com/fapi/v1/time"],

@@ -222,6 +222,40 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
     },
   },
   {
+    id: "kucoin",
+    name: "KuCoin",
+    steps: {
+      ru: [
+        "Откройте профиль → «Управление API» и нажмите «Создать API».",
+        "Задайте название и passphrase — он понадобится в форме.",
+        "Права: только «General» (чтение). Торговлю, переводы и вывод не включайте.",
+        "Ограничьте ключ по IP из формы подключения, скопируйте ключ, Secret и passphrase в форму.",
+      ],
+      uk: [
+        "Відкрийте профіль → «Керування API» і натисніть «Створити API».",
+        "Задайте назву й passphrase — він знадобиться у формі.",
+        "Права: лише «General» (читання). Торгівлю, перекази й виведення не вмикайте.",
+        "Обмежте ключ за IP із форми підключення, скопіюйте ключ, Secret і passphrase у форму.",
+      ],
+      en: [
+        "Open your profile → API Management and click Create API.",
+        "Set a name and a passphrase: you need it in the form.",
+        "Permissions: General (read) only. Do not enable trading, transfers or withdrawals.",
+        "Restrict the key to the IP shown in the connection form, then copy the key, Secret and passphrase into the form.",
+      ],
+    },
+    permissions: {
+      ru: ["General — только чтение"],
+      uk: ["General — лише читання"],
+      en: ["General, read only"],
+    },
+    note: {
+      ru: "Читаются спот и USDT/USDC-фьючерсы. Unified-аккаунт, маржа, Earn и инверсные фьючерсы пока не поддерживаются.",
+      uk: "Читаються спот і USDT/USDC-ф'ючерси. Unified-акаунт, маржа, Earn та інверсні ф'ючерси поки не підтримуються.",
+      en: "Spot and USDT/USDC futures are read. The Unified account, margin, Earn and inverse futures are not supported yet.",
+    },
+  },
+  {
     id: "hyperliquid",
     name: "Hyperliquid",
     steps: {

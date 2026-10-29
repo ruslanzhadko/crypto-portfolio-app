@@ -62,7 +62,7 @@ export function ConnectionForm({
       : {
           apiKey: values.get("apiKey"),
           secret: values.get("secret"),
-          ...(["okx", "bitget"].includes(exchange)
+          ...(["okx", "bitget", "kucoin"].includes(exchange)
             ? { passphrase: values.get("passphrase") }
             : {}),
           ...(connectionId
@@ -138,6 +138,7 @@ export function ConnectionForm({
                 <option value="okx">OKX</option>
                 <option value="bingx">BingX</option>
                 <option value="bitget">Bitget</option>
+                <option value="kucoin">KuCoin</option>
                 <option value="aster">Aster</option>
               </select>
               <ChevronDown
@@ -217,7 +218,7 @@ export function ConnectionForm({
           </div>
         </div>
       )}
-      {["okx", "bitget"].includes(exchange) && (
+      {["okx", "bitget", "kucoin"].includes(exchange) && (
         <div className="max-w-sm space-y-2">
           <Label htmlFor="exchange-passphrase">API Passphrase</Label>
           <Input
@@ -243,6 +244,11 @@ export function ConnectionForm({
       {exchange === "bitget" && (
         <p className="text-sm leading-relaxed text-text-muted">
           {t("bitgetPermissionsHint")}
+        </p>
+      )}
+      {exchange === "kucoin" && (
+        <p className="text-sm leading-relaxed text-text-muted">
+          {t("kucoinPermissionsHint")}
         </p>
       )}
       {connectionId && (

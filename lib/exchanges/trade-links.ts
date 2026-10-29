@@ -11,6 +11,7 @@ const SPOT: Record<string, (base: string) => string> = {
   okx: (b) => `https://www.okx.com/trade-spot/${b.toLowerCase()}-usdt`,
   gate: (b) => `https://www.gate.com/trade/${b}_${QUOTE}`,
   bitget: (b) => `https://www.bitget.com/spot/${b}${QUOTE}`,
+  kucoin: (b) => `https://www.kucoin.com/trade/${b}-${QUOTE}`,
   bingx: (b) => `https://bingx.com/en/spot/${b}${QUOTE}/`,
 };
 
@@ -20,6 +21,7 @@ const FUTURES: Record<string, (base: string) => string> = {
   okx: (b) => `https://www.okx.com/trade-swap/${b.toLowerCase()}-usdt-swap`,
   gate: (b) => `https://www.gate.com/futures/${QUOTE}/${b}_${QUOTE}`,
   bitget: (b) => `https://www.bitget.com/futures/usdt/${b}${QUOTE}`,
+  kucoin: (b) => `https://www.kucoin.com/trade/futures/${b === "BTC" ? "XBT" : b}${QUOTE}M`,
   bingx: (b) => `https://bingx.com/en/perpetual/${b}-${QUOTE}/`,
   hyperliquid: (b) => `https://app.hyperliquid.xyz/trade/${b}`,
   aster: (b) => `https://www.asterdex.com/en/futures/v1/${b}${QUOTE}`,

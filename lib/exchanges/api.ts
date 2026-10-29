@@ -91,7 +91,7 @@ export async function readBody(req: NextRequest): Promise<unknown> {
 }
 const createSchema = credentialsSchema
   .extend({
-    exchange: z.enum(["bybit", "binance", "gate", "okx", "bingx", "bitget"]),
+    exchange: z.enum(["bybit", "binance", "gate", "okx", "bingx", "bitget", "kucoin"]),
     label: z.string().trim().min(1).max(80),
   })
   .strict();
@@ -195,13 +195,13 @@ export async function createConnection(req: NextRequest) {
     const { apiKey, secret, passphrase, exchange, label } = parsed.data,
       id = randomUUID(),
       userId = guard.user.id;
-    if (["okx", "bitget"].includes(exchange) && !passphrase)
+    if (["okx", "bitget", "kucoin"].includes(exchange) && !passphrase)
       return failure("BAD_REQUEST");
     const credentials = encryptCredentials(
       {
         apiKey,
         secret,
-        ...(["okx", "bitget"].includes(exchange) ? { passphrase } : {}),
+        ...(["okx", "bitget", "kucoin"].includes(exchange) ? { passphrase } : {}),
       },
       userId,
       id,
@@ -305,7 +305,7 @@ export async function changeConnection(
         .safeParse(await readBody(req));
       if (!parsed.success) return failure("BAD_REQUEST");
       if (
-        ["okx", "bitget"].includes(existing.exchange) &&
+        ["okx", "bitget", "kucoin"].includes(existing.exchange) &&
         !parsed.data.passphrase
       )
         return failure("BAD_REQUEST");
@@ -336,7 +336,7 @@ export async function changeConnection(
           {
             apiKey: parsed.data.apiKey,
             secret: parsed.data.secret,
-            ...(["okx", "bitget"].includes(existing.exchange)
+            ...(["okx", "bitget", "kucoin"].includes(existing.exchange)
               ? { passphrase: parsed.data.passphrase }
               : {}),
           },

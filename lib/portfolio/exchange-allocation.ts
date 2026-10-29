@@ -8,6 +8,7 @@ const EXCHANGE_COLORS: Record<string, string> = {
   okx: "#d4d4d8",
   bingx: "#2a5ada",
   bitget: "#00c8d7",
+  kucoin: "#23af91",
   hyperliquid: "#97fce4",
   aster: "#e8a95b",
 };

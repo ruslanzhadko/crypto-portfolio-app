@@ -14,6 +14,8 @@ const LOGOS: Record<string, string> = {
     "https://coin-images.coingecko.com/markets/images/812/small/YtFwQwJr_400x400.jpg?1706864837",
   bitget:
     "https://coin-images.coingecko.com/markets/images/540/small/2023-07-25_21.47.43.jpg?1706864507",
+  kucoin:
+    "https://coin-images.coingecko.com/markets/images/61/small/kucoin.png?1706864282",
   hyperliquid:
     "https://coin-images.coingecko.com/markets/images/1571/small/PFP.png?1714470912",
   aster:
@@ -27,6 +29,7 @@ export const EXCHANGE_NAMES: Record<string, string> = {
   okx: "OKX",
   bingx: "BingX",
   bitget: "Bitget",
+  kucoin: "KuCoin",
   hyperliquid: "Hyperliquid",
   aster: "Aster",
 };

@@ -27,6 +27,7 @@ import {
   stablecoinTotal,
 } from "./deposit-watch";
 import { BitgetAdapter } from "./bitget";
+import { KucoinAdapter } from "./kucoin";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
 import { AsterApiAdapter, createAsterTransport } from "./aster-api";
@@ -383,18 +384,20 @@ export async function connectionClient(c: ConnectionWithWallet) {
     } else {
       if (
         !c.credentials ||
-        !["binance", "bybit", "gate", "okx", "bingx", "bitget"].includes(
+        !["binance", "bybit", "gate", "okx", "bingx", "bitget", "kucoin"].includes(
           c.exchange,
         )
       )
         throw new ExchangeError("INVALID_KEY");
       const credentials = decryptCredentials(c.credentials, c.userId, c.id);
       const transport = createTransport(
-        c.exchange as "binance" | "bybit" | "gate" | "okx" | "bingx" | "bitget",
+        c.exchange as "binance" | "bybit" | "gate" | "okx" | "bingx" | "bitget" | "kucoin",
         credentials,
       );
       adapter =
-        c.exchange === "bitget"
+        c.exchange === "kucoin"
+          ? new KucoinAdapter(transport.request, settlementPrices, transport.close)
+          : c.exchange === "bitget"
           ? new BitgetAdapter(
               transport.request,
               settlementPrices,

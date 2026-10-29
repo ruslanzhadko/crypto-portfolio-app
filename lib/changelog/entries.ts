@@ -15,22 +15,25 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-29",
     title: {
-      ru: "Кошельки TON и депозиты в Aster",
-      uk: "Гаманці TON і депозити в Aster",
-      en: "TON wallets and Aster deposits",
+      ru: "KuCoin, кошельки TON и депозиты в Aster",
+      uk: "KuCoin, гаманці TON і депозити в Aster",
+      en: "KuCoin, TON wallets and Aster deposits",
     },
     items: {
       ru: [
+        "Поддержана биржа KuCoin: спот и USDT/USDC-фьючерсы с позициями, уведомления по позициям с точным итогом закрытия, депозиты и выводы.",
         "Можно добавить кошелёк TON: баланс Gram, джеттоны с ценами и история операций; поддельные джеттоны уходят в спам. Сеть TON видна на обзоре, в распределении по сетям и в фильтрах.",
         "Депозит из кошелька в Aster показывается как перевод на биржу, а не как обычная отправка.",
         "Уведомления на сайте закрываются, когда заканчивается полоска времени, даже если окно не в фокусе.",
       ],
       uk: [
+        "Підтримано біржу KuCoin: спот і USDT/USDC-ф'ючерси з позиціями, сповіщення по позиціях із точним підсумком закриття, депозити й виведення.",
         "Можна додати гаманець TON: баланс Gram, джеттони з цінами та історія операцій; підроблені джеттони йдуть у спам. Мережа TON видна в огляді, у розподілі за мережами та у фільтрах.",
         "Депозит із гаманця в Aster показується як переказ на біржу, а не як звичайне відправлення.",
         "Сповіщення на сайті закриваються, коли закінчується смужка часу, навіть якщо вікно не у фокусі.",
       ],
       en: [
+        "KuCoin is supported: spot and USDT/USDC futures with positions, position alerts with the exact close result, deposits and withdrawals.",
         "You can add a TON wallet: Gram balance, jettons with prices and transaction history; fake jettons go to spam. TON shows on the overview, in the network breakdown and in filters.",
         "A deposit from a wallet to Aster shows as a transfer to the exchange, not as a plain send.",
         "Site alerts close when their timer bar runs out, even if the window is not focused.",

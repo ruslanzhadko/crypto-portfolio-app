@@ -5,6 +5,7 @@ export type ExchangeId =
   | "okx"
   | "bingx"
   | "bitget"
+  | "kucoin"
   | "hyperliquid"
   | "aster";
 export type SyncStatus =
