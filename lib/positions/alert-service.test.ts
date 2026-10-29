@@ -24,9 +24,11 @@ vi.mock("@/lib/exchanges/worker", () => ({
 }));
 vi.mock("./delivery", () => ({ deliverPositionEvents: deliver }));
 const saveTrades = vi.hoisted(() => vi.fn());
+const importTrades = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/exchanges/closed-trades", () => ({
   HISTORY_EXCHANGES: new Set(["bybit", "gate", "bingx", "kucoin"]),
   saveClosedTrades: saveTrades,
+  syncClosedTrades: importTrades,
 }));
 import { ALERT_POLL_MS, PositionAlertService } from "./alert-service";
 
@@ -301,5 +303,18 @@ describe("PositionAlertService", () => {
     await Promise.resolve();
     expect(saveTrades).toHaveBeenCalledTimes(1);
     expect(await service.flush()).toEqual([]);
+  });
+
+  it("reads the position history a minute after a close on an exchange that has one", async () => {
+    db.exchangeConnection.findMany.mockResolvedValue([{ ...row("c1"), exchange: "bybit" }]);
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    service.observe({ id: "c1", userId: "u1" }, result(), 10_000);
+    await service.importClosed(30_000);
+    expect(importTrades).not.toHaveBeenCalled();
+    await service.importClosed(70_000);
+    expect(importTrades).toHaveBeenCalledWith(expect.objectContaining({ id: "c1" }), adapter, 70_000, true);
+    // Not recorded by the worker itself: the exchange history is the source there.
+    expect(saveTrades).not.toHaveBeenCalled();
   });
 });

@@ -172,9 +172,11 @@ export async function syncClosedTrades(
   connection: { id: string; userId: string; exchange: string; tradesAt: Date | null },
   adapter: ExchangeAdapter,
   now = Date.now(),
+  /** A close was just seen: read now instead of waiting for the 30-minute interval. */
+  force = false,
 ): Promise<"skipped" | "saved" | "failed"> {
   if (!adapter.closedTrades || !HISTORY_EXCHANGES.has(connection.exchange)) return "skipped";
-  if (now - (lastAttempt.get(connection.id) ?? 0) < INTERVAL_MS) return "skipped";
+  if (!force && now - (lastAttempt.get(connection.id) ?? 0) < INTERVAL_MS) return "skipped";
   lastAttempt.set(connection.id, now);
   const fresh = !connection.tradesAt || connection.tradesAt.getTime() < HISTORY_RULES_SINCE;
   const since = fresh ? now - HISTORY_DAYS * DAY_MS : connection.tradesAt!.getTime() - OVERLAP_MS;

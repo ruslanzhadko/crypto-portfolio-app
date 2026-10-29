@@ -83,6 +83,7 @@ async function main() {
       );
       if (alerts.size) await alerts.pollDue();
       await alerts.resolveClosed();
+      await alerts.importClosed();
       const users = await alerts.flush();
       for (const userId of users) await alertSignal?.fired(userId, Date.now());
       // Yesterday's trading summary, once right after midnight in Kyiv.

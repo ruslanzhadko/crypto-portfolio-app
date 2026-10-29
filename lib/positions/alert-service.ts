@@ -10,7 +10,7 @@ import {
   readPositionAlertSettings,
   type PositionAlertSettings,
 } from "./alert-settings";
-import { HISTORY_EXCHANGES, saveClosedTrades } from "@/lib/exchanges/closed-trades";
+import { HISTORY_EXCHANGES, saveClosedTrades, syncClosedTrades } from "@/lib/exchanges/closed-trades";
 import { deliverPositionEvents, type SourcedEvent } from "./delivery";
 import { PositionWatch, type WatchedPosition } from "./watch";
 
@@ -25,6 +25,8 @@ const WINDOW_MS = 30 * 60_000;
 /** The ledger is read this long after a close is seen, and again until the deadline. */
 const EXACT_DELAY_MS = 20_000;
 const EXACT_DEADLINE_MS = 2 * 60_000;
+/** The closing trade needs a moment to show up in the exchange's position history. */
+const IMPORT_DELAY_MS = 60_000;
 
 type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
@@ -75,6 +77,8 @@ export class PositionAlertService {
     dueAt: number;
     deadline: number;
   }[] = [];
+  /** Connections whose exchange history is read again soon after a close was seen there. */
+  private imports = new Map<string, { row: Connection; dueAt: number }>();
   private loadedWindow = -1;
   private version: number | null = null;
 
@@ -198,9 +202,8 @@ export class PositionAlertService {
       ? (this.settings.get(c.userId) ?? DEFAULT_POSITION_ALERTS)
       : DEFAULT_POSITION_ALERTS;
     // Closes are always tracked where they are recorded; whether they are sent is decided below.
-    const settings = watched.record
-      ? { ...userSettings, closed: true }
-      : userSettings;
+    // Closes are always tracked: they feed the statistics even when no alert is sent for them.
+    const settings = { ...userSettings, closed: true };
     // A replaced key can read the same positions under other IDs (Aster: wallet RPC → API):
     // start a fresh base instead of reporting every position closed and opened again.
     if (c.credentialVersion !== undefined) {
@@ -222,6 +225,9 @@ export class PositionAlertService {
       const since = event.position.funding?.since;
       const deliver = event.kind !== "closed" || userSettings.closed;
       const record = event.kind === "closed" && watched.record;
+      // Exchanges with a position history: read it a minute after the close, not at the next sync.
+      if (event.kind === "closed" && !watched.record)
+        this.imports.set(c.id, { row: watched.row, dueAt: at + IMPORT_DELAY_MS });
       if (!deliver && !record) continue;
       // A close with a known cycle start waits for the exchange's own final figure.
       if (
@@ -267,6 +273,20 @@ export class PositionAlertService {
    * Closed positions waiting for the exact result from the exchange ledger. Exchanges without a
    * reader, an unattributable close or no answer by the deadline keep the estimate.
    */
+  /** Reads the position history of connections where a close was seen a minute ago. */
+  async importClosed(now = Date.now()) {
+    for (const [id, item] of [...this.imports]) {
+      if (now < item.dueAt) continue;
+      this.imports.delete(id);
+      try {
+        const client = await connectionClient(item.row);
+        await syncClosedTrades(item.row, client.adapter, now, true);
+      } catch {
+        // The regular sync reads the history again within 30 minutes.
+      }
+    }
+  }
+
   async resolveClosed(now = Date.now()) {
     const waiting = this.closing;
     this.closing = [];
