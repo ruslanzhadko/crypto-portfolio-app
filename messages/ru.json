@@ -1300,6 +1300,10 @@
       "oldest": "Сначала старые",
       "count": "По числу сделок"
     },
-    "accountsCount": "{count, plural, one {# счёт} few {# счёта} other {# счетов}}"
+    "accountsCount": "{count, plural, one {# счёт} few {# счёта} other {# счетов}}",
+    "exclude": "Не учитывать в статистике",
+    "include": "Снова учитывать в статистике",
+    "excludedCount": "{count, plural, one {# не учитывается} other {# не учитываются}}",
+    "excludedHint": "Не учитывается в статистике"
   }
 }

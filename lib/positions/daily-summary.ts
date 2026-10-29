@@ -93,7 +93,7 @@ export async function sendDailySummaries(now = Date.now()): Promise<number> {
     });
     if (sent) continue;
     const rows = await prisma.closedTrade.findMany({
-      where: { userId: user.id, closedAt: { gte: new Date(from), lt: new Date(to) } },
+      where: { userId: user.id, excluded: false, closedAt: { gte: new Date(from), lt: new Date(to) } },
       select: { base: true, side: true, pnlUsd: true, exact: true, connection: { select: { exchange: true } } },
     });
     if (!rows.length) continue;

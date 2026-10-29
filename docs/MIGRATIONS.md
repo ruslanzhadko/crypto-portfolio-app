@@ -170,6 +170,9 @@ Worker отправляет сообщения сам: `TELEGRAM_BOT_TOKEN` до
 каждое подключение Bybit/Gate/BingX/KuCoin один раз читает историю закрытых позиций за 30 дней; BingX — по монетам из
 журнала доходов (медленно из-за лимита 1 запрос/с, один раз). Итог дня — `positionAlerts.dailySummary`, без миграции.
 
+**4g-2.** `prisma/closed-trade-excluded.sql` — колонка `ClosedTrade.excluded` (сделка вне статистики, например хедж).
+Только добавление, `IF NOT EXISTS`; применить **до пуша в `main`**: сайт и worker читают её сразу.
+
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 
 Как устроено: listener — второй контейнер того же образа (`Dockerfile.exchanges`); скрипт

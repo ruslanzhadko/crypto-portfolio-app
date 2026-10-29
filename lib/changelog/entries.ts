@@ -13,6 +13,25 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-30",
+    title: {
+      ru: "Хеджи вне статистики",
+      uk: "Хеджі поза статистикою",
+      en: "Hedges out of the statistics",
+    },
+    items: {
+      ru: [
+        "Закрытую сделку можно не учитывать в статистике — например, шорт, закрывающий покупку на споте. Кнопка с глазом в списке сделок; итог дня и бот её тоже не считают.",
+      ],
+      uk: [
+        "Закриту угоду можна не враховувати в статистиці — наприклад, шорт, що закриває купівлю на споті. Кнопка з оком у списку угод; підсумок дня й бот її теж не рахують.",
+      ],
+      en: [
+        "A closed trade can be left out of the statistics, such as a short hedging a spot buy. The eye button in the trade list; the daily summary and the bot skip it too.",
+      ],
+    },
+  },
+  {
     date: "2026-10-29",
     title: {
       ru: "Статистика торговли, KuCoin и кошельки TON",

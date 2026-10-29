@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState, type SelectHTMLAttributes } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Eye, EyeOff, SlidersHorizontal, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Bar,
@@ -12,7 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { useExchangeData } from "./use-exchange-data";
+import { exchangeAction, useExchangeData } from "./use-exchange-data";
 import { ExchangeLogo, exchangeName } from "./exchange-logo";
 import { Money } from "./shared";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -32,6 +32,7 @@ type StatsResponse = ReturnType<typeof tradeStats> & {
   period: StatsPeriod;
   trades: StatsTrade[];
   totalTrades: number;
+  excludedTrades: number;
   page: number;
   pageSize: number;
   truncated: boolean;
@@ -361,7 +362,20 @@ export function TradingStats() {
     side,
     page: String(page),
   });
-  const { data, loading } = useExchangeData<StatsResponse>(`/api/positions/stats?${query}`, 60_000, true);
+  const { data, loading, refresh } = useExchangeData<StatsResponse>(`/api/positions/stats?${query}`, 60_000, true);
+  // A trade being marked or unmarked: its button waits for the answer.
+  const [marking, setMarking] = useState<string | null>(null);
+  const toggleExcluded = async (trade: StatsTrade) => {
+    setMarking(trade.id);
+    try {
+      await exchangeAction(`/api/positions/stats/trades/${trade.id}`, "PATCH", { excluded: !trade.excluded });
+      refresh();
+    } catch {
+      // The row keeps its old state; the next poll shows the truth.
+    } finally {
+      setMarking(null);
+    }
+  };
   const s = data?.summary;
   const day = (value: string) =>
     new Date(`${value}T12:00:00Z`).toLocaleDateString(locale, { day: "numeric", month: "short" });
@@ -558,6 +572,11 @@ export function TradingStats() {
           <section className="min-w-0 rounded-xl border border-border bg-surface">
             <h3 className="px-3 pt-3 text-sm font-semibold sm:px-4 sm:pt-4 sm:text-base">
               {t("tradesTitle")} <span className="font-normal text-text-muted">({data.totalTrades})</span>
+              {data.excludedTrades > 0 && (
+                <span className="ml-2 text-xs font-normal text-text-muted">
+                  {t("excludedCount", { count: data.excludedTrades })}
+                </span>
+              )}
             </h3>
             <div className="overflow-x-auto">
               <table className="mt-2 w-full min-w-[640px] text-sm">
@@ -568,12 +587,15 @@ export function TradingStats() {
                     <th className="px-2 py-2 font-medium">{t("entryExit")}</th>
                     <th className="px-2 py-2 font-medium">{t("duration")}</th>
                     <th className="px-2 py-2 font-medium">{t("closed")}</th>
-                    <th className="px-3 py-2 text-right font-medium sm:px-4">{t("result")}</th>
+                    <th className="px-2 py-2 text-right font-medium">{t("result")}</th>
+                    <th className="w-10 pr-2 sm:pr-3">
+                      <span className="sr-only">{t("exclude")}</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {data.trades.map((trade) => (
-                    <tr key={trade.id}>
+                    <tr key={trade.id} className={trade.excluded ? "text-text-muted [&>td]:opacity-60" : undefined}>
                       <td className="px-3 py-2 sm:px-4">
                         <span className="font-medium">{trade.base}</span>{" "}
                         <span className={trade.side === "long" ? "text-success" : "text-danger"}>{t(trade.side)}</span>
@@ -591,9 +613,26 @@ export function TradingStats() {
                       <td className="px-2 py-2 text-text-muted">
                         {new Date(trade.closedAt).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
                       </td>
-                      <td className={`px-3 py-2 text-right font-medium sm:px-4 ${tone(trade.pnlUsd)}`}>
+                      <td
+                        className={`px-2 py-2 text-right font-medium ${trade.excluded ? "line-through" : tone(trade.pnlUsd)}`}
+                        title={trade.excluded ? t("excludedHint") : undefined}
+                      >
                         {!trade.exact && <span className="mr-0.5 text-text-muted" title={t("approximateHint")}>≈</span>}
                         <Money value={usd(trade.pnlUsd)} signed />
+                      </td>
+                      <td className="py-1 pr-2 text-right sm:pr-3">
+                        {/* One leg of a hedge is not a result: the owner can leave it out of the figures. */}
+                        <button
+                          type="button"
+                          disabled={marking === trade.id}
+                          aria-pressed={trade.excluded === true}
+                          aria-label={trade.excluded ? t("include") : t("exclude")}
+                          title={trade.excluded ? t("include") : t("exclude")}
+                          onClick={() => void toggleExcluded(trade)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text disabled:opacity-50"
+                        >
+                          {trade.excluded ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
                       </td>
                     </tr>
                   ))}

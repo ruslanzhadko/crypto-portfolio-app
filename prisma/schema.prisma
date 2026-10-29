@@ -588,6 +588,8 @@ model ClosedTrade {
   source String
   /// Stable per connection: exchange position id, or the close the worker saw.
   externalId String
+  /// Marked by the owner as not a real result (one leg of a hedge): left out of the statistics.
+  excluded Boolean @default(false)
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   connection ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)

@@ -1300,6 +1300,10 @@
       "oldest": "Спочатку старі",
       "count": "За кількістю угод"
     },
-    "accountsCount": "{count, plural, one {# рахунок} few {# рахунки} other {# рахунків}}"
+    "accountsCount": "{count, plural, one {# рахунок} few {# рахунки} other {# рахунків}}",
+    "exclude": "Не враховувати в статистиці",
+    "include": "Знову враховувати в статистиці",
+    "excludedCount": "{count, plural, one {# не враховується} other {# не враховуються}}",
+    "excludedHint": "Не враховується в статистиці"
   }
 }

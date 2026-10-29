@@ -20,6 +20,8 @@ export interface StatsTrade {
   closedAt: number;
   pnlUsd: number;
   exact: boolean;
+  /** Left out of the figures by the owner; still listed so the mark can be undone. */
+  excluded?: boolean;
 }
 
 export interface StatsGroup {

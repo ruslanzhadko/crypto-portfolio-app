@@ -383,6 +383,7 @@ export async function syncClosedTrades(
         where: {
           connectionId: connection.id,
           source: "history",
+          excluded: false,
           closedAt: { gte: new Date(since), ...(backfillUntil !== undefined ? { lt: new Date(backfillUntil) } : {}) },
           OR: [{ openedAt: null }, { openedAt: { gte: new Date(since) } }],
           externalId: { notIn: rows.map((r) => r.externalId) },

@@ -60,6 +60,7 @@ export async function GET(req: Request) {
         closedAt: true,
         pnlUsd: true,
         exact: true,
+        excluded: true,
         connection: { select: { exchange: true, label: true } },
       },
     });
@@ -78,6 +79,7 @@ export async function GET(req: Request) {
       closedAt: r.closedAt.getTime(),
       pnlUsd: Number(r.pnlUsd.toString()),
       exact: r.exact,
+      excluded: r.excluded,
     }));
     const list = (value?: string) => new Set((value ?? "").split(",").map((v) => v.trim()).filter(Boolean));
     const exchanges = list(exchange),
@@ -99,11 +101,13 @@ export async function GET(req: Request) {
     return exchangeJson({
       period,
       from,
-      ...tradeStats(trades, from, now),
+      // Trades the owner left out stay in the list but not in the figures.
+      ...tradeStats(trades.filter((t) => !t.excluded), from, now),
       trades: trades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
       page,
       pageSize: PAGE_SIZE,
       totalTrades: trades.length,
+      excludedTrades: trades.filter((t) => t.excluded).length,
       truncated: rows.length >= MAX_TRADES,
       options,
     });

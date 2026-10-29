@@ -161,7 +161,7 @@ export async function chatUser(chatId: number) {
 export async function statsMessage(userId: string, period: StatsPeriod, now = Date.now()) {
   const from = periodStart(period, now);
   const rows = await prisma.closedTrade.findMany({
-    where: { userId, ...(from !== null ? { closedAt: { gte: new Date(from) } } : {}) },
+    where: { userId, excluded: false, ...(from !== null ? { closedAt: { gte: new Date(from) } } : {}) },
     orderBy: { closedAt: "desc" },
     take: 5_000,
     select: {

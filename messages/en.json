@@ -1300,6 +1300,10 @@
       "oldest": "Oldest first",
       "count": "By trade count"
     },
-    "accountsCount": "{count, plural, one {# account} other {# accounts}}"
+    "accountsCount": "{count, plural, one {# account} other {# accounts}}",
+    "exclude": "Leave out of the statistics",
+    "include": "Count in the statistics again",
+    "excludedCount": "{count} left out",
+    "excludedHint": "Left out of the statistics"
   }
 }
