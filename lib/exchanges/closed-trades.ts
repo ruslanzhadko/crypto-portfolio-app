@@ -34,7 +34,13 @@ const INTERVAL_MS = 30 * 60_000;
 const OVERLAP_MS = 7 * DAY_MS;
 
 /** Exchanges whose own position history feeds the statistics; the worker's closes are skipped there. */
-export const HISTORY_EXCHANGES = new Set(["bybit", "gate", "bingx", "kucoin"]);
+export const HISTORY_EXCHANGES = new Set(["bybit", "gate", "kucoin"]);
+/**
+ * Exchanges whose closes the worker records itself, with the history read only for the past: trades
+ * closed before the moment the worker started recording them (no duplicates). BingX: its position
+ * history came back empty for a real account while the income ledger (exact close results) works.
+ */
+export const BACKFILL_UNTIL: Record<string, number> = { bingx: Date.UTC(2026, 9, 29, 16, 55) };
 
 const str = (value: unknown) =>
   typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
@@ -165,7 +171,7 @@ const lastAttempt = new Map<string, number>();
  * History read before this moment was grouped by an older rule: such connections read the whole
  * month again once, and the stale pieces of the window are replaced.
  */
-const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 16);
+const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 16, 55);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(
@@ -175,13 +181,17 @@ export async function syncClosedTrades(
   /** A close was just seen: read now instead of waiting for the 30-minute interval. */
   force = false,
 ): Promise<"skipped" | "saved" | "failed"> {
-  if (!adapter.closedTrades || !HISTORY_EXCHANGES.has(connection.exchange)) return "skipped";
+  const backfillUntil = BACKFILL_UNTIL[connection.exchange];
+  if (!adapter.closedTrades || (!HISTORY_EXCHANGES.has(connection.exchange) && backfillUntil === undefined))
+    return "skipped";
   if (!force && now - (lastAttempt.get(connection.id) ?? 0) < INTERVAL_MS) return "skipped";
   lastAttempt.set(connection.id, now);
   const fresh = !connection.tradesAt || connection.tradesAt.getTime() < HISTORY_RULES_SINCE;
   const since = fresh ? now - HISTORY_DAYS * DAY_MS : connection.tradesAt!.getTime() - OVERLAP_MS;
   try {
-    const rows = await adapter.closedTrades(since, now);
+    const rows = (await adapter.closedTrades(since, now)).filter(
+      (r) => backfillUntil === undefined || r.closedAt < backfillUntil,
+    );
     await saveClosedTrades(connection, rows, "history", true);
     // The exchange history is the truth for its window: rows it no longer lists (pieces of a trade
     // that is now grouped as one) go away.
@@ -189,7 +199,7 @@ export async function syncClosedTrades(
       where: {
         connectionId: connection.id,
         source: "history",
-        closedAt: { gte: new Date(since) },
+        closedAt: { gte: new Date(since), ...(backfillUntil !== undefined ? { lt: new Date(backfillUntil) } : {}) },
         externalId: { notIn: rows.map((r) => r.externalId) },
       },
     });

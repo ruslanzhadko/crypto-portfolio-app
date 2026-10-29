@@ -130,21 +130,26 @@ export class BingxAdapter implements ExchangeAdapter {
       }
       for (const r of rows) if (typeof r.symbol === "string" && r.symbol) symbols.add(r.symbol);
     }
-    const history = async (symbol: string, startTs: number, endTs: number) =>
-      records(
-        record(
-          bingxData(
-            await this.request("trade/positionHistory", "swap:v1:private", {
-              symbol,
-              startTs,
-              endTs,
-              pageIndex: 1,
-              pageSize: 100,
-            }),
-            "positionHistory",
-          ),
-        ).positionHistory ?? [],
+    let shape = "";
+    const history = async (symbol: string, startTs: number, endTs: number) => {
+      const data = bingxData(
+        await this.request("trade/positionHistory", "swap:v1:private", {
+          symbol,
+          startTs,
+          endTs,
+          pageIndex: 1,
+          pageSize: 100,
+        }),
+        "positionHistory",
       );
+      // The documented answer is {positionHistory: [...]}; a bare list is accepted too.
+      const list = Array.isArray(data) ? data : record(data).positionHistory;
+      if (!shape)
+        shape = Array.isArray(data)
+          ? `list of ${data.length}`
+          : `object {${Object.keys(record(data)).join(",")}}, positionHistory ${Array.isArray(list) ? `list of ${list.length}` : typeof list}`;
+      return Array.isArray(list) ? records(list) : [];
+    };
     const rows: Record<string, unknown>[] = [];
     for (const symbol of symbols) {
       let found: Record<string, unknown>[] = [];
@@ -163,7 +168,8 @@ export class BingxAdapter implements ExchangeAdapter {
     // Field names only, no values: enough to tell an empty history from an unexpected shape.
     console.log(
       `[closed-trades] bingx: ${symbols.size} coin(s) with realized PnL, ${rows.length} position row(s), ${trades.length} closed` +
-        (rows.length && !trades.length ? `; fields ${Object.keys(rows[0]!).join(",")}` : ""),
+        (rows.length && !trades.length ? `; fields ${Object.keys(rows[0]!).join(",")}` : "") +
+        (symbols.size && !rows.length ? `; answer ${shape}` : ""),
     );
     return trades;
   }
