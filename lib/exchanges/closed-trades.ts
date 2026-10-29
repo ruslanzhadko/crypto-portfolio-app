@@ -40,7 +40,12 @@ export const HISTORY_EXCHANGES = new Set(["bybit", "gate", "kucoin"]);
  * closed before the moment the worker started recording them (no duplicates). BingX: its position
  * history came back empty for a real account while the income ledger (exact close results) works.
  */
-export const BACKFILL_UNTIL: Record<string, number> = { bingx: Date.UTC(2026, 9, 29, 16, 44) };
+export const BACKFILL_UNTIL: Record<string, number> = {
+  bingx: Date.UTC(2026, 9, 29, 16, 44),
+  // The worker has recorded Binance and Aster closes since the statistics release.
+  binance: Date.UTC(2026, 9, 29, 14, 56),
+  aster: Date.UTC(2026, 9, 29, 14, 56),
+};
 
 const str = (value: unknown) =>
   typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
@@ -166,14 +171,33 @@ export function bingxClosedTrades(rows: Row[]): ClosedTradeRow[] {
   });
 }
 
+/** One executed order or trade fill, as the position rebuild needs it. */
+export interface Fill {
+  id: string;
+  symbol: string;
+  buy: boolean;
+  /** "LONG" / "SHORT" in hedge mode, "BOTH" in one-way mode. */
+  positionSide: string;
+  qty: number;
+  price: number;
+  /** Realized PnL booked by this fill (closing fills), settle currency. */
+  realizedPnl: number;
+  /** Trading fee paid, settle currency, positive. */
+  fee: number;
+  at: number;
+}
+
 /**
- * BingX positions rebuilt from its order history (`trade/allOrders`) when the position history comes
- * back empty: opening orders add to a position, closing orders reduce it, and when it is back at
- * zero the trade is complete. Result = realized `profit` of the closing orders minus every
- * commission of the cycle; funding is not part of it. A close of a position opened before the read
- * range has no known entry and is skipped.
+ * Positions rebuilt from executed orders or fills where an exchange has no position history:
+ * opening fills add to a position, closing fills reduce it, and when it is back at zero the trade is
+ * complete. Result = realized PnL of the closing fills minus every fee of the cycle; funding is not
+ * part of it. A close of a position opened before the read range has no known entry and is skipped.
  */
-export function bingxTradesFromOrders(orders: Row[]): ClosedTradeRow[] {
+export function tradesFromFills(
+  fills: Fill[],
+  prefix: string,
+  split: (symbol: string) => { base: string; settle: string },
+): ClosedTradeRow[] {
   type Cycle = {
     side: "long" | "short";
     qty: number;
@@ -186,59 +210,142 @@ export function bingxTradesFromOrders(orders: Row[]): ClosedTradeRow[] {
     openedAt: number;
     firstId: string;
   };
-  const filled = orders
-    .map((r) => ({ r, qty: Number(r.executedQty), price: Number(r.avgPrice) }))
-    .filter(({ qty, price }) => qty > 0 && price > 0)
-    .sort((a, b) => Number(a.r.updateTime ?? a.r.time) - Number(b.r.updateTime ?? b.r.time));
+  const sorted = fills.filter((f) => f.qty > 0 && f.price > 0 && f.symbol).sort((a, b) => a.at - b.at);
   const open = new Map<string, Cycle>();
   const trades: ClosedTradeRow[] = [];
-  for (const { r, qty, price } of filled) {
-    const symbol = str(r.symbol);
-    const at = timestamp(r.updateTime) ?? timestamp(r.time);
-    const buy = str(r.side).toUpperCase() === "BUY";
-    const positionSide = str(r.positionSide).toUpperCase();
-    if (!symbol || at === null) continue;
-    const key = `${symbol}:${positionSide === "BOTH" ? "both" : positionSide}`;
+  for (const f of sorted) {
+    const positionSide = f.positionSide.toUpperCase();
+    const key = `${f.symbol}:${positionSide === "LONG" || positionSide === "SHORT" ? positionSide : "BOTH"}`;
     let cycle = open.get(key);
     // Hedge mode names the side; one-way mode opens with whatever side the flat position takes.
     const side: "long" | "short" =
-      positionSide === "LONG" ? "long" : positionSide === "SHORT" ? "short" : (cycle?.side ?? (buy ? "long" : "short"));
-    const opening = (side === "long") === buy;
-    const fee = Math.abs(Number(r.commission) || 0);
-    if (opening) {
-      cycle ??= { side, qty: 0, opened: 0, entryValue: 0, closed: 0, exitValue: 0, profit: 0, fees: 0, openedAt: at, firstId: str(r.orderId) };
-      cycle.qty += qty;
-      cycle.opened += qty;
-      cycle.entryValue += qty * price;
-      cycle.fees += fee;
+      positionSide === "LONG" ? "long" : positionSide === "SHORT" ? "short" : (cycle?.side ?? (f.buy ? "long" : "short"));
+    if ((side === "long") === f.buy) {
+      cycle ??= { side, qty: 0, opened: 0, entryValue: 0, closed: 0, exitValue: 0, profit: 0, fees: 0, openedAt: f.at, firstId: f.id };
+      cycle.qty += f.qty;
+      cycle.opened += f.qty;
+      cycle.entryValue += f.qty * f.price;
+      cycle.fees += f.fee;
       open.set(key, cycle);
       continue;
     }
     if (!cycle) continue;
-    const closing = Math.min(qty, cycle.qty);
+    const closing = Math.min(f.qty, cycle.qty);
     cycle.qty -= closing;
     cycle.closed += closing;
-    cycle.exitValue += closing * price;
-    cycle.profit += Number(r.profit) || 0;
-    cycle.fees += fee;
+    cycle.exitValue += closing * f.price;
+    cycle.profit += f.realizedPnl;
+    cycle.fees += f.fee;
     if (cycle.qty > cycle.opened * 1e-9) continue;
     open.delete(key);
-    const [base, settle] = symbol.split("-");
     trades.push({
-      externalId: `bingx:order:${cycle.firstId}`,
-      symbol,
-      base: base ?? symbol,
-      settle: settle || "USDT",
+      externalId: `${prefix}:${cycle.firstId}`,
+      symbol: f.symbol,
+      ...split(f.symbol),
       side: cycle.side,
       size: new D(cycle.closed.toPrecision(15)).toFixed(),
       entryPrice: new D((cycle.entryValue / cycle.opened).toPrecision(12)).toFixed(),
       exitPrice: new D((cycle.exitValue / cycle.closed).toPrecision(12)).toFixed(),
       openedAt: cycle.openedAt,
-      closedAt: at,
+      closedAt: f.at,
       pnl: new D((cycle.profit - cycle.fees).toFixed(8)).toFixed(),
     });
   }
   return trades;
+}
+
+const bingxSplit = (symbol: string) => {
+  const [base, settle] = symbol.split("-");
+  return { base: base ?? symbol, settle: settle || "USDT" };
+};
+
+/** BingX order history (`trade/allOrders`) when its position history comes back empty. */
+export function bingxTradesFromOrders(orders: Row[]): ClosedTradeRow[] {
+  return tradesFromFills(
+    orders.flatMap((r) => {
+      const at = timestamp(r.updateTime) ?? timestamp(r.time);
+      return at === null
+        ? []
+        : [{
+            id: str(r.orderId),
+            symbol: str(r.symbol),
+            buy: str(r.side).toUpperCase() === "BUY",
+            positionSide: str(r.positionSide),
+            qty: Number(r.executedQty),
+            price: Number(r.avgPrice),
+            realizedPnl: Number(r.profit) || 0,
+            fee: Math.abs(Number(r.commission) || 0),
+            at,
+          }];
+    }),
+    "bingx:order",
+    bingxSplit,
+  );
+}
+
+/**
+ * Binance and Aster (`userTrades`): fills carry `realizedPnl` and a fee in `commissionAsset`; a fee
+ * in another coin (BNB) is valued with `rates`.
+ */
+export function binanceTradesFromFills(rows: Row[], prefix: string, rates: Map<string, string>): ClosedTradeRow[] {
+  return tradesFromFills(
+    rows.flatMap((r) => {
+      const at = timestamp(r.time);
+      if (at === null) return [];
+      const symbol = str(r.symbol);
+      const asset = str(r.commissionAsset).toUpperCase();
+      const settle = splitLinearSymbol(symbol).settle;
+      const rate = asset === settle || asset === "USDT" || asset === "USDC" ? 1 : Number(rates.get(asset) ?? 0);
+      return [{
+        id: str(r.orderId) || str(r.id),
+        symbol,
+        buy: str(r.side).toUpperCase() === "BUY",
+        positionSide: str(r.positionSide) || "BOTH",
+        qty: Number(r.qty),
+        price: Number(r.price),
+        realizedPnl: Number(r.realizedPnl) || 0,
+        fee: Math.abs(Number(r.commission) || 0) * rate,
+        at,
+      }];
+    }),
+    prefix,
+    splitLinearSymbol,
+  );
+}
+
+/**
+ * Reads a month of fills for the coins the income ledger shows realized PnL on, a week per query
+ * (both exchanges limit `userTrades` to seven days); a full page is split until it fits.
+ */
+export async function readFillHistory(
+  income: (startTime: number, endTime: number) => Promise<Row[]>,
+  fills: (symbol: string, startTime: number, endTime: number) => Promise<Row[]>,
+  since: number,
+  until: number,
+  limit = 1000,
+): Promise<{ symbols: number; rows: Row[] }> {
+  const WEEK = 7 * DAY_MS;
+  const pages = async (read: (a: number, b: number) => Promise<Row[]>, a: number, b: number, depth = 0): Promise<Row[]> => {
+    const rows = await read(a, b);
+    if (rows.length < limit || b - a < 60_000 || depth > 8) return rows;
+    const mid = Math.floor((a + b) / 2);
+    return [...(await pages(read, a, mid, depth + 1)), ...(await pages(read, mid + 1, b, depth + 1))];
+  };
+  const symbols = new Set<string>();
+  for (let start = since; start < until; start += WEEK)
+    for (const r of await pages(income, start, Math.min(until, start + WEEK - 1)))
+      if (typeof r.symbol === "string" && r.symbol) symbols.add(r.symbol);
+  const rows: Row[] = [];
+  const seen = new Set<string>();
+  for (const symbol of symbols)
+    for (let start = since; start < until; start += WEEK)
+      for (const r of await pages((a, b) => fills(symbol, a, b), start, Math.min(until, start + WEEK - 1))) {
+        const id = `${str(r.symbol)}:${str(r.id)}`;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        rows.push(r);
+      }
+  return { symbols: symbols.size, rows };
 }
 
 const lastAttempt = new Map<string, number>();

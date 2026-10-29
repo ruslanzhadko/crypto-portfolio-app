@@ -1,4 +1,4 @@
-import { bybitClosedTrades } from "./closed-trades";
+import { binanceTradesFromFills, bybitClosedTrades, readFillHistory } from "./closed-trades";
 import { NextFundingReader } from "./next-funding";
 import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
@@ -341,6 +341,37 @@ export class BinanceAdapter implements ExchangeAdapter {
   }
   transfers(since: number) {
     return binanceTransfers(this.request, since);
+  }
+  /** Past positions rebuilt from USD-M fills (no position history on Binance). */
+  async closedTrades(since: number, until: number) {
+    const rates = await this.prices().catch(() => new Map<string, string>());
+    const { symbols, rows } = await readFillHistory(
+      async (startTime, endTime) =>
+        records(
+          await this.request(
+            "income",
+            "fapiPrivate",
+            { incomeType: "REALIZED_PNL", startTime, endTime, limit: 1000 },
+            30,
+          ),
+        ),
+      async (symbol, startTime, endTime) =>
+        records(
+          await this.request(
+            "userTrades",
+            "fapiPrivate",
+            { symbol, startTime, endTime, limit: 1000 },
+            5,
+          ),
+        ),
+      since,
+      until,
+    );
+    const trades = binanceTradesFromFills(rows, "binance:order", rates);
+    console.log(
+      `[closed-trades] binance: ${symbols} coin(s) with realized PnL, ${rows.length} fill(s), ${trades.length} closed`,
+    );
+    return trades;
   }
   async verify() {
     assertBinanceReadOnly(

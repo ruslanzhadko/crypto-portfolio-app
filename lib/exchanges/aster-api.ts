@@ -7,6 +7,7 @@ import { reserveRequest } from "./rate-budget";
 import { CycleHistoryReader } from "./cycle-history";
 import { asterTransfers } from "./transfers";
 import { incomeLedgerResult, type ClosedInput } from "./closed-result";
+import { binanceTradesFromFills, readFillHistory } from "./closed-trades";
 import {
   ExchangeError,
   type Credentials,
@@ -182,6 +183,38 @@ export class AsterApiAdapter implements ExchangeAdapter {
   async transfers(since: number) {
     if (!this.verified) throw new ExchangeError("INVALID_KEY");
     return asterTransfers(this.request, TRANSFER_HISTORY_PATH, since);
+  }
+  /** Past positions rebuilt from fills, as on Binance (Aster has no position history). */
+  async closedTrades(since: number, until: number) {
+    if (!this.verified) throw new ExchangeError("INVALID_KEY");
+    const rates = await this.prices().catch(() => new Map<string, string>());
+    const { symbols, rows } = await readFillHistory(
+      async (startTime, endTime) =>
+        records(
+          await this.request(
+            "v3/income",
+            "fapiPrivate",
+            { incomeType: "REALIZED_PNL", startTime, endTime, limit: 1000 },
+            30,
+          ),
+        ),
+      async (symbol, startTime, endTime) =>
+        records(
+          await this.request(
+            "v3/userTrades",
+            "fapiPrivate",
+            { symbol, startTime, endTime, limit: 1000 },
+            5,
+          ),
+        ),
+      since,
+      until,
+    );
+    const trades = binanceTradesFromFills(rows, "aster:order", rates);
+    console.log(
+      `[closed-trades] aster: ${symbols} coin(s) with realized PnL, ${rows.length} fill(s), ${trades.length} closed`,
+    );
+    return trades;
   }
   async fetch(): Promise<SyncResult> {
     if (!this.verified) throw new ExchangeError("INVALID_KEY");

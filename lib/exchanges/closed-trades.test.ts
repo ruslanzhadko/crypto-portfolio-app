@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db/prisma", () => ({ prisma: {} }));
 vi.mock("./pricing", () => ({ settlementPrices: async () => new Map() }));
 import {
+  binanceTradesFromFills,
   bingxClosedTrades,
   bingxTradesFromOrders,
+  readFillHistory,
   bybitClosedTrades,
   gateClosedTrades,
   splitLinearSymbol,
@@ -73,5 +75,41 @@ describe("closed trades from exchange history", () => {
       expect.objectContaining({ externalId: "bingx:order:a1", side: "long", size: "0.02", entryPrice: "1310", exitPrice: "1350", openedAt: 1000, closedAt: 4000, pnl: "0.66" }),
       expect.objectContaining({ externalId: "bingx:order:b1", base: "HYPE", side: "short", entryPrice: "100", exitPrice: "95", pnl: "9.94" }),
     ]);
+  });
+
+  it("rebuilds Binance and Aster positions from fills, fees in BNB valued at its price", () => {
+    const f = (id: string, side: string, qty: string, price: string, time: number, realizedPnl = "0", commission = "0.1", commissionAsset = "USDT") =>
+      ({ id, orderId: `o${id}`, symbol: "SOLUSDT", side, positionSide: "BOTH", qty, price, realizedPnl, commission, commissionAsset, time });
+    const trades = binanceTradesFromFills(
+      [
+        f("1", "SELL", "2", "200", 1000),
+        f("2", "BUY", "1", "190", 2000, "10", "0.0001", "BNB"),
+        f("3", "BUY", "1", "180", 3000, "20"),
+      ],
+      "binance:order",
+      new Map([["BNB", "600"]]),
+    );
+    expect(trades).toEqual([
+      expect.objectContaining({
+        externalId: "binance:order:o1", base: "SOL", settle: "USDT", side: "short", size: "2",
+        entryPrice: "200", exitPrice: "185", openedAt: 1000, closedAt: 3000, pnl: "29.74",
+      }),
+    ]);
+  });
+
+  it("reads fills week by week for the coins with realized PnL and splits full pages", async () => {
+    const DAY = 86_400_000;
+    const income = async (a: number) => (a < 7 * DAY ? [{ symbol: "SOLUSDT" }, { symbol: "SOLUSDT" }] : [{ symbol: "ETHUSDT" }]);
+    const calls: [string, number, number][] = [];
+    const fills = async (symbol: string, a: number, b: number) => {
+      calls.push([symbol, a, b]);
+      // The first week of SOL is full at limit 2: it must be split, and repeated fills dropped.
+      if (symbol === "SOLUSDT" && a === 0 && b - a > 3 * DAY) return [{ symbol, id: "1" }, { symbol, id: "2" }];
+      return symbol === "SOLUSDT" && a < 7 * DAY ? [{ symbol, id: "2" }] : [];
+    };
+    const result = await readFillHistory(income, fills, 0, 10 * DAY, 2);
+    expect(result.symbols).toBe(2);
+    expect(result.rows.map((r) => r.id)).toEqual(["2"]);
+    expect(calls.filter(([s]) => s === "ETHUSDT")).toHaveLength(2);
   });
 });
