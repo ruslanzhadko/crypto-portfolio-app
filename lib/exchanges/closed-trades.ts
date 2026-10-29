@@ -353,7 +353,7 @@ const lastAttempt = new Map<string, number>();
  * History read before this moment was grouped by an older rule: such connections read the whole
  * month again once, and the stale pieces of the window are replaced.
  */
-const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 17, 20);
+const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 18, 45);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(
@@ -375,16 +375,19 @@ export async function syncClosedTrades(
       (r) => backfillUntil === undefined || r.closedAt < backfillUntil,
     );
     await saveClosedTrades(connection, rows, "history", true);
-    // The exchange history is the truth for its window: rows it no longer lists (pieces of a trade
-    // that is now grouped as one) go away.
-    await prisma.closedTrade.deleteMany({
-      where: {
-        connectionId: connection.id,
-        source: "history",
-        closedAt: { gte: new Date(since), ...(backfillUntil !== undefined ? { lt: new Date(backfillUntil) } : {}) },
-        externalId: { notIn: rows.map((r) => r.externalId) },
-      },
-    });
+    // A full month read is the truth for its window: rows it no longer lists (pieces of a trade now
+    // grouped as one) go away. Only then, and only trades that lie wholly inside the window: a weekly
+    // read cannot rebuild a position opened before its start and would drop it otherwise.
+    if (fresh)
+      await prisma.closedTrade.deleteMany({
+        where: {
+          connectionId: connection.id,
+          source: "history",
+          closedAt: { gte: new Date(since), ...(backfillUntil !== undefined ? { lt: new Date(backfillUntil) } : {}) },
+          OR: [{ openedAt: null }, { openedAt: { gte: new Date(since) } }],
+          externalId: { notIn: rows.map((r) => r.externalId) },
+        },
+      });
     await prisma.exchangeConnection.update({
       where: { id: connection.id },
       data: { tradesAt: new Date(now) },
