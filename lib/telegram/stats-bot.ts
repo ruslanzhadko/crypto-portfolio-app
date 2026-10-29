@@ -50,47 +50,88 @@ const money = (value: number) =>
 const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const exchange = (id: string) => EXCHANGE_NAMES[id] ?? escape(id);
 
+/** Rows shown inside a collapsed list; Telegram messages stop at 4096 characters. */
+const LIST_LIMIT = 25;
+
+const plural = (n: number) => {
+  const mod10 = n % 10,
+    mod100 = n % 100;
+  return mod10 === 1 && mod100 !== 11
+    ? "сделка"
+    : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
+      ? "сделки"
+      : "сделок";
+};
+
+const kyivTime = new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit" });
+const kyivDate = new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Kyiv", day: "2-digit", month: "2-digit" });
+
+/** A list that Telegram shows collapsed to a few lines; a tap opens all of it. */
+function collapsible(lines: string[], more: number): string {
+  const tail = more > 0 ? `\n…и ещё ${more}` : "";
+  return `<blockquote expandable>${lines.join("\n")}${tail}</blockquote>`;
+}
+
 export function formatStatsMessage(period: StatsPeriod, trades: StatsTrade[], now = Date.now()): string {
   const title = `📊 <b>Статистика торговли · ${PERIOD_TITLES[period]}</b>`;
   if (!trades.length) return `${title}\n\nЗакрытых сделок за этот период нет.`;
   const stats = tradeStats(trades, periodStart(period, now), now);
   const s = stats.summary;
-  const describe = (t: StatsTrade) =>
-    `${escape(t.base)} ${t.side === "short" ? "шорт" : "лонг"} ${money(t.pnlUsd)} (${exchange(t.exchange)})`;
-  const lines = [
-    title,
-    "",
-    `${s.totalUsd >= 0 ? "🟢" : "🔴"} Итог: <b>${money(s.totalUsd)}</b>`,
-    `Сделок: ${s.count} — ${s.wins} ✅ / ${s.losses} ❌${s.winRate == null ? "" : ` (${Math.round(s.winRate * 100)}%)`}`,
+  const side = (t: StatsTrade) => (t.side === "short" ? "шорт" : "лонг");
+  const sections: string[] = [title];
+
+  sections.push(
+    [
+      `${s.totalUsd >= 0 ? "🟢" : "🔴"} Итог: <b>${money(s.totalUsd)}</b>`,
+      `🔢 ${s.count} ${plural(s.count)}: ✅ ${s.wins} · ❌ ${s.losses}${s.winRate == null ? "" : ` · ${Math.round(s.winRate * 100)}% в плюсе`}`,
+      ...(s.avgWinUsd != null ? [`📈 Средняя прибыль: ${money(s.avgWinUsd)}`] : []),
+      ...(s.avgLossUsd != null ? [`📉 Средний убыток: ${money(s.avgLossUsd)}`] : []),
+    ].join("\n"),
+  );
+
+  const extremes = [
+    ...(s.best ? [`🏆 Лучшая: <b>${escape(s.best.base)}</b> ${side(s.best)} ${money(s.best.pnlUsd)} · ${exchange(s.best.exchange)}`] : []),
+    ...(s.worst ? [`💔 Худшая: <b>${escape(s.worst.base)}</b> ${side(s.worst)} ${money(s.worst.pnlUsd)} · ${exchange(s.worst.exchange)}`] : []),
   ];
-  if (s.avgWinUsd != null || s.avgLossUsd != null)
-    lines.push(
-      [
-        s.avgWinUsd != null ? `средняя прибыль ${money(s.avgWinUsd)}` : null,
-        s.avgLossUsd != null ? `средний убыток ${money(s.avgLossUsd)}` : null,
-      ]
-        .filter(Boolean)
-        .join(" · ")
-        .replace(/^./, (c) => c.toUpperCase()),
-    );
-  if (s.best) lines.push(`Лучшая: ${describe(s.best)}`);
-  if (s.worst) lines.push(`Худшая: ${describe(s.worst)}`);
+  if (extremes.length) sections.push(extremes.join("\n"));
+
   if (stats.byExchange.length > 1)
-    lines.push(
-      `По биржам: ${stats.byExchange
-        .slice(0, 5)
-        .map((g) => `${exchange(g.key)} ${money(g.pnlUsd)}`)
-        .join(" · ")}`,
+    sections.push(
+      [
+        "<b>По биржам</b>",
+        ...stats.byExchange.map((g) => `• ${exchange(g.key)}: ${money(g.pnlUsd)} · ${g.count} ${plural(g.count)}`),
+      ].join("\n"),
     );
-  if (stats.byCoin.length > 1)
-    lines.push(
-      `Монеты: ${stats.byCoin
-        .slice(0, 5)
-        .map((g) => `${escape(g.key)} ${money(g.pnlUsd)}`)
-        .join(" · ")}`,
-    );
-  if (s.approximate) lines.push(`≈ у ${s.approximate} из ${s.count} — оценка по последнему опросу`);
-  return lines.join("\n");
+
+  const coins = [...stats.byCoin].sort((a, b) => b.pnlUsd - a.pnlUsd);
+  sections.push(
+    `<b>По монетам</b> (${coins.length})\n` +
+      collapsible(
+        coins
+          .slice(0, LIST_LIMIT)
+          .map((g) => `${g.pnlUsd >= 0 ? "🟢" : "🔴"} ${escape(g.key)}: ${money(g.pnlUsd)} · ${g.count} ${plural(g.count)}`),
+        coins.length - LIST_LIMIT,
+      ),
+  );
+
+  // Newest first; within one day the time is enough, otherwise the date too.
+  const oneDay = period === "today";
+  const latest = [...trades].sort((a, b) => b.closedAt - a.closedAt);
+  sections.push(
+    `<b>Сделки</b> (${latest.length})\n` +
+      collapsible(
+        latest.slice(0, LIST_LIMIT).map((t) => {
+          const when = oneDay
+            ? kyivTime.format(t.closedAt)
+            : `${kyivDate.format(t.closedAt)} ${kyivTime.format(t.closedAt)}`;
+          return `${t.pnlUsd >= 0 ? "🟢" : "🔴"} ${when} ${escape(t.base)} ${side(t)} ${t.exact ? "" : "≈"}${money(t.pnlUsd)} · ${exchange(t.exchange)}`;
+        }),
+        latest.length - LIST_LIMIT,
+      ),
+  );
+
+  if (s.approximate) sections.push(`≈ у ${s.approximate} из ${s.count} — оценка по последнему опросу`);
+  return sections.join("\n\n");
 }
 
 export function statsKeyboard(active: StatsPeriod, siteUrl: string | null): InlineKeyboard {

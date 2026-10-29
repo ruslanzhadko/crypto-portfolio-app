@@ -19,22 +19,24 @@ describe("statistics in the bot", () => {
     expect(parseStatsCallback(undefined)).toBeNull();
   });
 
-  it("formats the period with result, wins, extremes and breakdowns", () => {
+  it("formats the period in sections with collapsible coin and trade lists", () => {
     const text = formatStatsMessage(
       "7d",
-      [trade({}), trade({ id: "b", base: "BULL", side: "long", exchange: "gate", pnlUsd: -12.3 })],
+      [trade({}), trade({ id: "b", base: "BULL", side: "long", exchange: "gate", pnlUsd: -12.3, closedAt: now - 86_400_000 })],
       now,
     );
-    expect(text.split("\n")).toEqual([
+    expect(text.split("\n\n")).toEqual([
       "📊 <b>Статистика торговли · 7 дней</b>",
-      "",
-      "🟢 Итог: <b>+92,37 $</b>",
-      "Сделок: 2 — 1 ✅ / 1 ❌ (50%)",
-      "Средняя прибыль +104,67 $ · средний убыток −12,30 $",
-      "Лучшая: AXIS шорт +104,67 $ (BingX)",
-      "Худшая: BULL лонг −12,30 $ (Gate)",
-      "По биржам: BingX +104,67 $ · Gate −12,30 $",
-      "Монеты: AXIS +104,67 $ · BULL −12,30 $",
+      [
+        "🟢 Итог: <b>+92,37 $</b>",
+        "🔢 2 сделки: ✅ 1 · ❌ 1 · 50% в плюсе",
+        "📈 Средняя прибыль: +104,67 $",
+        "📉 Средний убыток: −12,30 $",
+      ].join("\n"),
+      "🏆 Лучшая: <b>AXIS</b> шорт +104,67 $ · BingX\n💔 Худшая: <b>BULL</b> лонг −12,30 $ · Gate",
+      "<b>По биржам</b>\n• BingX: +104,67 $ · 1 сделка\n• Gate: −12,30 $ · 1 сделка",
+      "<b>По монетам</b> (2)\n<blockquote expandable>🟢 AXIS: +104,67 $ · 1 сделка\n🔴 BULL: −12,30 $ · 1 сделка</blockquote>",
+      "<b>Сделки</b> (2)\n<blockquote expandable>🟢 29.10 13:00 AXIS шорт +104,67 $ · BingX\n🔴 28.10 14:00 BULL лонг −12,30 $ · Gate</blockquote>",
     ]);
     expect(formatStatsMessage("today", [], now)).toContain("Закрытых сделок за этот период нет.");
   });
