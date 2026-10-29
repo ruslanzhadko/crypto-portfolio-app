@@ -40,7 +40,7 @@ export const HISTORY_EXCHANGES = new Set(["bybit", "gate", "kucoin"]);
  * closed before the moment the worker started recording them (no duplicates). BingX: its position
  * history came back empty for a real account while the income ledger (exact close results) works.
  */
-export const BACKFILL_UNTIL: Record<string, number> = { bingx: Date.UTC(2026, 9, 29, 16, 55) };
+export const BACKFILL_UNTIL: Record<string, number> = { bingx: Date.UTC(2026, 9, 29, 16, 44) };
 
 const str = (value: unknown) =>
   typeof value === "number" ? String(value) : typeof value === "string" ? value.trim() : "";
@@ -166,12 +166,87 @@ export function bingxClosedTrades(rows: Row[]): ClosedTradeRow[] {
   });
 }
 
+/**
+ * BingX positions rebuilt from its order history (`trade/allOrders`) when the position history comes
+ * back empty: opening orders add to a position, closing orders reduce it, and when it is back at
+ * zero the trade is complete. Result = realized `profit` of the closing orders minus every
+ * commission of the cycle; funding is not part of it. A close of a position opened before the read
+ * range has no known entry and is skipped.
+ */
+export function bingxTradesFromOrders(orders: Row[]): ClosedTradeRow[] {
+  type Cycle = {
+    side: "long" | "short";
+    qty: number;
+    opened: number;
+    entryValue: number;
+    closed: number;
+    exitValue: number;
+    profit: number;
+    fees: number;
+    openedAt: number;
+    firstId: string;
+  };
+  const filled = orders
+    .map((r) => ({ r, qty: Number(r.executedQty), price: Number(r.avgPrice) }))
+    .filter(({ qty, price }) => qty > 0 && price > 0)
+    .sort((a, b) => Number(a.r.updateTime ?? a.r.time) - Number(b.r.updateTime ?? b.r.time));
+  const open = new Map<string, Cycle>();
+  const trades: ClosedTradeRow[] = [];
+  for (const { r, qty, price } of filled) {
+    const symbol = str(r.symbol);
+    const at = timestamp(r.updateTime) ?? timestamp(r.time);
+    const buy = str(r.side).toUpperCase() === "BUY";
+    const positionSide = str(r.positionSide).toUpperCase();
+    if (!symbol || at === null) continue;
+    const key = `${symbol}:${positionSide === "BOTH" ? "both" : positionSide}`;
+    let cycle = open.get(key);
+    // Hedge mode names the side; one-way mode opens with whatever side the flat position takes.
+    const side: "long" | "short" =
+      positionSide === "LONG" ? "long" : positionSide === "SHORT" ? "short" : (cycle?.side ?? (buy ? "long" : "short"));
+    const opening = (side === "long") === buy;
+    const fee = Math.abs(Number(r.commission) || 0);
+    if (opening) {
+      cycle ??= { side, qty: 0, opened: 0, entryValue: 0, closed: 0, exitValue: 0, profit: 0, fees: 0, openedAt: at, firstId: str(r.orderId) };
+      cycle.qty += qty;
+      cycle.opened += qty;
+      cycle.entryValue += qty * price;
+      cycle.fees += fee;
+      open.set(key, cycle);
+      continue;
+    }
+    if (!cycle) continue;
+    const closing = Math.min(qty, cycle.qty);
+    cycle.qty -= closing;
+    cycle.closed += closing;
+    cycle.exitValue += closing * price;
+    cycle.profit += Number(r.profit) || 0;
+    cycle.fees += fee;
+    if (cycle.qty > cycle.opened * 1e-9) continue;
+    open.delete(key);
+    const [base, settle] = symbol.split("-");
+    trades.push({
+      externalId: `bingx:order:${cycle.firstId}`,
+      symbol,
+      base: base ?? symbol,
+      settle: settle || "USDT",
+      side: cycle.side,
+      size: new D(cycle.closed.toPrecision(15)).toFixed(),
+      entryPrice: new D((cycle.entryValue / cycle.opened).toPrecision(12)).toFixed(),
+      exitPrice: new D((cycle.exitValue / cycle.closed).toPrecision(12)).toFixed(),
+      openedAt: cycle.openedAt,
+      closedAt: at,
+      pnl: new D((cycle.profit - cycle.fees).toFixed(8)).toFixed(),
+    });
+  }
+  return trades;
+}
+
 const lastAttempt = new Map<string, number>();
 /**
  * History read before this moment was grouped by an older rule: such connections read the whole
  * month again once, and the stale pieces of the window are replaced.
  */
-const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 16, 55);
+const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 17, 20);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(

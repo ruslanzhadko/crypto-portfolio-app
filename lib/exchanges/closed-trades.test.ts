@@ -4,6 +4,7 @@ vi.mock("@/lib/db/prisma", () => ({ prisma: {} }));
 vi.mock("./pricing", () => ({ settlementPrices: async () => new Map() }));
 import {
   bingxClosedTrades,
+  bingxTradesFromOrders,
   bybitClosedTrades,
   gateClosedTrades,
   splitLinearSymbol,
@@ -49,6 +50,28 @@ describe("closed trades from exchange history", () => {
     ]);
     expect(trades).toEqual([
       expect.objectContaining({ externalId: "bingx:1", base: "LTC", settle: "USDT", side: "long", pnl: "99.63", size: "30" }),
+    ]);
+  });
+
+  it("rebuilds BingX positions from orders when the position history is empty", () => {
+    const o = (id: string, side: string, positionSide: string, qty: string, price: string, at: number, profit = "0", commission = "-0.01") =>
+      ({ orderId: id, symbol: "ZEC-USDT", side, positionSide, executedQty: qty, avgPrice: price, profit, commission, status: "FILLED", updateTime: at });
+    const trades = bingxTradesFromOrders([
+      // A close of a position opened before the range: no entry known, skipped.
+      o("x0", "SELL", "LONG", "1", "1300", 500, "5"),
+      o("a1", "BUY", "LONG", "0.01", "1300", 1000),
+      o("a2", "BUY", "LONG", "0.01", "1320", 2000),
+      o("a3", "SELL", "LONG", "0.01", "1340", 3000, "0.3"),
+      o("a4", "SELL", "LONG", "0.01", "1360", 4000, "0.4"),
+      // One-way short, closed in one order.
+      { ...o("b1", "SELL", "BOTH", "2", "100", 5000), symbol: "HYPE-USDT" },
+      { ...o("b2", "BUY", "BOTH", "2", "95", 6000, "10", "-0.05"), symbol: "HYPE-USDT" },
+      // Still open: not a trade yet.
+      o("c1", "BUY", "SHORT", "1", "1400", 7000),
+    ]);
+    expect(trades).toEqual([
+      expect.objectContaining({ externalId: "bingx:order:a1", side: "long", size: "0.02", entryPrice: "1310", exitPrice: "1350", openedAt: 1000, closedAt: 4000, pnl: "0.66" }),
+      expect.objectContaining({ externalId: "bingx:order:b1", base: "HYPE", side: "short", entryPrice: "100", exitPrice: "95", pnl: "9.94" }),
     ]);
   });
 });

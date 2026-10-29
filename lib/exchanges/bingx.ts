@@ -1,4 +1,4 @@
-import { bingxClosedTrades } from "./closed-trades";
+import { bingxClosedTrades, bingxTradesFromOrders } from "./closed-trades";
 import { record, records } from "./adapters";
 import { assertBinanceReadOnly } from "./permissions";
 import { D, decimal, multiply, requiredDecimal as rd, sum } from "./decimal";
@@ -164,10 +164,30 @@ export class BingxAdapter implements ExchangeAdapter {
           found.push(...(await history(symbol, start, Math.min(until, start + WEEK - 1))));
       rows.push(...found);
     }
-    const trades = bingxClosedTrades(rows);
+    let trades = bingxClosedTrades(rows);
+    // Some accounts get no position history at all: rebuild the positions from the order history.
+    let orders = 0;
+    if (!rows.length && symbols.size) {
+      const all: Record<string, unknown>[] = [];
+      for (const symbol of symbols)
+        for (let start = since; start < until; start += WEEK) {
+          const data = bingxData(
+            await this.request("trade/allOrders", "swap:v2:private", {
+              symbol,
+              startTime: start,
+              endTime: Math.min(until, start + WEEK - 1),
+              limit: 1000,
+            }),
+            "allOrders",
+          );
+          all.push(...records(Array.isArray(data) ? data : (record(data).orders ?? [])));
+        }
+      orders = all.length;
+      trades = bingxTradesFromOrders(all);
+    }
     // Field names only, no values: enough to tell an empty history from an unexpected shape.
     console.log(
-      `[closed-trades] bingx: ${symbols.size} coin(s) with realized PnL, ${rows.length} position row(s), ${trades.length} closed` +
+      `[closed-trades] bingx: ${symbols.size} coin(s) with realized PnL, ${rows.length} position row(s), ${orders} order(s), ${trades.length} closed` +
         (rows.length && !trades.length ? `; fields ${Object.keys(rows[0]!).join(",")}` : "") +
         (symbols.size && !rows.length ? `; answer ${shape}` : ""),
     );
