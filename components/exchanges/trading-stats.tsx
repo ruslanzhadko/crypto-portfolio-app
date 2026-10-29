@@ -17,6 +17,14 @@ import { ExchangeLogo, exchangeName } from "./exchange-logo";
 import { Money } from "./shared";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatDuration } from "@/components/alerts/notification-log";
 import type { StatsGroup, StatsPeriod, StatsTrade, tradeStats } from "@/lib/positions/trade-stats";
 
@@ -61,6 +69,93 @@ function StatsSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
+/** A filter with several values: "All …", one name, or "Name +2". Long lists get a search field. */
+function MultiFilter({
+  label,
+  all,
+  options,
+  selected,
+  onChange,
+}: {
+  label: string;
+  all: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const t = useTranslations("TradingStats");
+  const [search, setSearch] = useState("");
+  const chosen = new Set(selected);
+  const first = options.find((o) => o.value === selected[0])?.label ?? selected[0];
+  const text = !selected.length ? all : selected.length === 1 ? first : `${first} +${selected.length - 1}`;
+  const query = search.trim().toLowerCase();
+  const shown = query ? options.filter((o) => o.label.toLowerCase().includes(query)) : options;
+  const toggle = (value: string) =>
+    onChange(chosen.has(value) ? selected.filter((v) => v !== value) : [...selected, value]);
+  return (
+    <DropdownMenu onOpenChange={(open) => !open && setSearch("")}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={label}
+          className={`flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-lg border bg-surface-2 pl-3 pr-2.5 text-left text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto sm:min-w-36 sm:text-sm ${selected.length ? "border-primary/60" : "border-border"}`}
+        >
+          <span className="truncate">{text}</span>
+          <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-text-muted" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="max-h-80 w-60 overflow-y-auto">
+        {options.length > 8 && (
+          <div className="p-1">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              // Typing must reach the field, not the menu's own letter navigation.
+              onKeyDown={(e) => e.stopPropagation()}
+              placeholder={t("search")}
+              aria-label={t("search")}
+              className="h-8 text-sm"
+            />
+          </div>
+        )}
+        <DropdownMenuCheckboxItem
+          checked={!selected.length}
+          onCheckedChange={() => onChange([])}
+          onSelect={(event) => event.preventDefault()}
+        >
+          {all}
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        {shown.map((o) => (
+          <DropdownMenuCheckboxItem
+            key={o.value}
+            checked={chosen.has(o.value)}
+            onCheckedChange={() => toggle(o.value)}
+            onSelect={(event) => event.preventDefault()}
+          >
+            {o.label}
+          </DropdownMenuCheckboxItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+type GroupSort = "size" | "profit" | "loss" | "newest" | "oldest" | "count";
+const GROUP_SORTS: GroupSort[] = ["size", "profit", "loss", "newest", "oldest", "count"];
+
+function sortGroups(groups: StatsGroup[], sort: GroupSort): StatsGroup[] {
+  const by: Record<GroupSort, (a: StatsGroup, b: StatsGroup) => number> = {
+    size: (a, b) => Math.abs(b.pnlUsd) - Math.abs(a.pnlUsd),
+    profit: (a, b) => b.pnlUsd - a.pnlUsd,
+    loss: (a, b) => a.pnlUsd - b.pnlUsd,
+    newest: (a, b) => b.lastAt - a.lastAt,
+    oldest: (a, b) => a.lastAt - b.lastAt,
+    count: (a, b) => b.count - a.count || Math.abs(b.pnlUsd) - Math.abs(a.pnlUsd),
+  };
+  return [...groups].sort(by[sort]);
+}
+
 const BREAKDOWN_ROWS = 12;
 
 function Breakdown({
@@ -69,6 +164,7 @@ function Breakdown({
   exchangeLogos,
   columns = false,
   rows = BREAKDOWN_ROWS,
+  sortable = false,
 }: {
   title: string;
   groups: StatsGroup[];
@@ -77,16 +173,37 @@ function Breakdown({
   columns?: boolean;
   /** Rows that fit next to the neighbouring blocks; the rest opens with "show all". */
   rows?: number;
+  /** A sort choice in the block header (the coin list). */
+  sortable?: boolean;
 }) {
   const t = useTranslations("TradingStats");
   const [all, setAll] = useState(false);
+  const [sort, setSort] = useState<GroupSort>("size");
   if (!groups.length) return null;
+  if (sortable) groups = sortGroups(groups, sort);
   const twoColumns = columns && groups.length > rows;
   const limit = twoColumns ? rows * 2 : rows;
   const shown = all ? groups : groups.slice(0, limit);
   return (
     <section className="h-full min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
-      <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">{title}</h3>
+      <div className="mb-1 flex items-center justify-between gap-2 sm:mb-2">
+        <h3 className="text-sm font-semibold sm:text-base">{title}</h3>
+        {sortable && (
+          <div className="relative">
+            <select
+              aria-label={t("sortBy")}
+              value={sort}
+              onChange={(e) => setSort(e.target.value as GroupSort)}
+              className="h-8 appearance-none rounded-md border border-border bg-surface-2 pl-2.5 pr-7 text-xs text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:text-sm"
+            >
+              {GROUP_SORTS.map((value) => (
+                <option key={value} value={value}>{t(`sorts.${value}`)}</option>
+              ))}
+            </select>
+            <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2 top-2 h-4 w-4 text-text-muted" />
+          </div>
+        )}
+      </div>
       <ul className={twoColumns ? "grid sm:grid-cols-2 sm:gap-x-6" : ""}>
         {shown.map((g) => (
           <li key={g.key} className="flex items-center justify-between gap-3 border-b border-border py-1.5 text-sm last:border-b-0">
@@ -157,14 +274,22 @@ export function TradingStats() {
   const tp = useTranslations("PositionAlerts.log");
   const locale = useLocale();
   const [period, setPeriod] = useState<StatsPeriod>("30d");
-  const [exchange, setExchange] = useState("");
-  const [account, setAccount] = useState("");
-  const [coin, setCoin] = useState("");
+  const [exchanges, setExchanges] = useState<string[]>([]);
+  const [accounts, setAccounts] = useState<string[]>([]);
+  const [coins, setCoins] = useState<string[]>([]);
   const [side, setSide] = useState("");
   const [page, setPage] = useState(1);
+  const filterKey = [exchanges.join(), accounts.join(), coins.join(), side].join("|");
   // Another period or filter starts from the newest trades again.
-  useEffect(() => setPage(1), [period, exchange, account, coin, side]);
-  const query = new URLSearchParams({ period, exchange, connectionId: account, coin, side, page: String(page) });
+  useEffect(() => setPage(1), [period, filterKey]);
+  const query = new URLSearchParams({
+    period,
+    exchange: exchanges.join(","),
+    connectionId: accounts.join(","),
+    coin: coins.join(","),
+    side,
+    page: String(page),
+  });
   const { data, loading } = useExchangeData<StatsResponse>(`/api/positions/stats?${query}`, 60_000, true);
   const s = data?.summary;
   const day = (value: string) =>
@@ -173,12 +298,25 @@ export function TradingStats() {
     value == null ? "—" : new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 }).format(value);
   // On phones the filters open from a button, like on the open positions tab.
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const activeFilters = [exchange, account, coin, side].filter(Boolean).length;
+  const activeFilters = [exchanges.length, accounts.length, coins.length, side ? 1 : 0].filter(Boolean).length;
   const resetFilters = () => {
-    setExchange("");
-    setAccount("");
-    setCoin("");
+    setExchanges([]);
+    setAccounts([]);
+    setCoins([]);
     setSide("");
+  };
+  const accountOptions = (data?.options.accounts ?? []).filter(
+    (a) => !exchanges.length || exchanges.includes(a.exchange),
+  );
+  // Accounts of exchanges that are no longer chosen drop out of the selection.
+  const chooseExchanges = (next: string[]) => {
+    setExchanges(next);
+    setAccounts((current) =>
+      current.filter((id) => {
+        const owner = data?.options.accounts.find((a) => a.id === id)?.exchange;
+        return !next.length || (owner !== undefined && next.includes(owner));
+      }),
+    );
   };
 
   return (
@@ -233,20 +371,27 @@ export function TradingStats() {
         <div
           className={`${filtersOpen ? "grid animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none" : "hidden"} w-full grid-cols-2 gap-2 sm:contents`}
         >
-          <StatsSelect aria-label={t("exchange")} value={exchange} onChange={(e) => { setExchange(e.target.value); setAccount(""); }}>
-            <option value="">{t("allExchanges")}</option>
-            {data?.options.exchanges.map((e) => <option key={e} value={e}>{exchangeName(e)}</option>)}
-          </StatsSelect>
-          <StatsSelect aria-label={t("account")} value={account} onChange={(e) => setAccount(e.target.value)}>
-            <option value="">{t("allAccounts")}</option>
-            {data?.options.accounts
-              .filter((a) => !exchange || a.exchange === exchange)
-              .map((a) => <option key={a.id} value={a.id}>{`${exchangeName(a.exchange)} · ${a.label}`}</option>)}
-          </StatsSelect>
-          <StatsSelect aria-label={t("coin")} value={coin} onChange={(e) => setCoin(e.target.value)}>
-            <option value="">{t("allCoins")}</option>
-            {data?.options.coins.map((c) => <option key={c} value={c}>{c}</option>)}
-          </StatsSelect>
+          <MultiFilter
+            label={t("exchange")}
+            all={t("allExchanges")}
+            options={(data?.options.exchanges ?? []).map((e) => ({ value: e, label: exchangeName(e) }))}
+            selected={exchanges}
+            onChange={chooseExchanges}
+          />
+          <MultiFilter
+            label={t("account")}
+            all={t("allAccounts")}
+            options={accountOptions.map((a) => ({ value: a.id, label: `${exchangeName(a.exchange)} · ${a.label}` }))}
+            selected={accounts}
+            onChange={setAccounts}
+          />
+          <MultiFilter
+            label={t("coin")}
+            all={t("allCoins")}
+            options={(data?.options.coins ?? []).map((c) => ({ value: c, label: c }))}
+            selected={coins}
+            onChange={setCoins}
+          />
           <StatsSelect aria-label={t("side")} value={side} onChange={(e) => setSide(e.target.value)}>
             <option value="">{t("allSides")}</option>
             <option value="long">{t("long")}</option>
@@ -334,6 +479,7 @@ export function TradingStats() {
                 title={t("byCoin")}
                 groups={data.byCoin}
                 columns
+                sortable
                 rows={Math.max(6, data.byExchange.length + data.byAccount.length + 2)}
               />
             </div>

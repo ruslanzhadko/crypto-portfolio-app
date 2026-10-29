@@ -15,9 +15,10 @@ const PAGE_SIZE = 20;
 
 const querySchema = z.object({
   period: z.enum(["today", "7d", "30d", "all"]).default("30d"),
-  exchange: z.string().max(40).optional(),
-  connectionId: z.string().max(100).optional(),
-  coin: z.string().max(40).optional(),
+  // Several values separated by commas: any of them matches.
+  exchange: z.string().max(400).optional(),
+  connectionId: z.string().max(2_000).optional(),
+  coin: z.string().max(2_000).optional(),
   side: z.enum(["long", "short"]).optional(),
   page: z.coerce.number().int().min(1).max(1_000).default(1),
 });
@@ -78,11 +79,15 @@ export async function GET(req: Request) {
       pnlUsd: Number(r.pnlUsd.toString()),
       exact: r.exact,
     }));
+    const list = (value?: string) => new Set((value ?? "").split(",").map((v) => v.trim()).filter(Boolean));
+    const exchanges = list(exchange),
+      accounts = list(connectionId),
+      coins = new Set([...list(coin)].map((c) => c.toUpperCase()));
     const trades = all.filter(
       (t) =>
-        (!exchange || t.exchange === exchange) &&
-        (!connectionId || t.connectionId === connectionId) &&
-        (!coin || t.base.toUpperCase() === coin.toUpperCase()) &&
+        (!exchanges.size || exchanges.has(t.exchange)) &&
+        (!accounts.size || accounts.has(t.connectionId)) &&
+        (!coins.size || coins.has(t.base.toUpperCase())) &&
         (!side || t.side === side),
     );
     // Filter choices come from the whole period, so picking one never hides the others.

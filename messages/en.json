@@ -1289,6 +1289,16 @@
     "showLess": "Show less",
     "pages": "Trade pages",
     "prevPage": "Previous page",
-    "nextPage": "Next page"
+    "nextPage": "Next page",
+    "search": "Search",
+    "sortBy": "Sort",
+    "sorts": {
+      "size": "By result size",
+      "profit": "Profit first",
+      "loss": "Loss first",
+      "newest": "Newest first",
+      "oldest": "Oldest first",
+      "count": "By trade count"
+    }
   }
 }

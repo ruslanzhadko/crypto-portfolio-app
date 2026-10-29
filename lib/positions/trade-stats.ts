@@ -29,6 +29,8 @@ export interface StatsGroup {
   pnlUsd: number;
   count: number;
   wins: number;
+  /** Close time of the group's latest trade. */
+  lastAt: number;
 }
 
 const dayFormat = new Intl.DateTimeFormat("en-CA", {
@@ -85,7 +87,9 @@ function group(
       pnlUsd: 0,
       count: 0,
       wins: 0,
+      lastAt: 0,
     };
+    g.lastAt = Math.max(g.lastAt, t.closedAt);
     g.pnlUsd += t.pnlUsd;
     g.count += 1;
     if (t.pnlUsd > 0) g.wins += 1;
