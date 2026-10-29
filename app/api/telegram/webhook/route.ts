@@ -1,5 +1,19 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { replyToUpdate } from '@/lib/services/telegram';
+import {
+  answerCallback,
+  editWithKeyboard,
+  replyToUpdate,
+  sendWithKeyboard,
+} from '@/lib/services/telegram';
+import {
+  chatUser,
+  commandOf,
+  NOT_LINKED,
+  parseStatsCallback,
+  PERIOD_COMMANDS,
+  statsKeyboard,
+  statsMessage,
+} from '@/lib/telegram/stats-bot';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +25,15 @@ interface TelegramUpdate {
     from?: { first_name?: string };
     text?: string;
   };
+  /** A press on an inline button under one of the bot's messages. */
+  callback_query?: {
+    id: string;
+    data?: string;
+    message?: { chat: { id: number }; message_id: number };
+  };
 }
+
+const siteUrl = () => process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || null;
 
 function escapeHtml(text: string): string {
   return text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -40,6 +62,8 @@ function buildStartReply(chatId: number, firstName?: string): string {
     `\u{1F449} <a href="${settingsUrl}">${settingsUrl}</a>`,
     '',
     'После этого создайте ценовые триггеры на странице <b>Уведомления</b> и бот начнёт отправлять алерты сюда.',
+    '',
+    '\u{1F4CA} Статистика торговли — /stats',
   ].join('\n');
 }
 
@@ -59,6 +83,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   console.log(`[telegram/webhook] update_id=${update.update_id} has_message=${!!update.message}`);
 
+  // Period buttons under a statistics message: redraw it in place.
+  const callback = update.callback_query;
+  if (callback) {
+    const period = parseStatsCallback(callback.data);
+    const target = callback.message;
+    try {
+      const user = period && target ? await chatUser(target.chat.id) : null;
+      if (period && target && user)
+        await editWithKeyboard(
+          target.chat.id,
+          target.message_id,
+          await statsMessage(user.id, period),
+          statsKeyboard(period, siteUrl()),
+        );
+      await answerCallback(callback.id, period && target && !user ? NOT_LINKED.slice(0, 190) : undefined);
+    } catch (err) {
+      console.error('[telegram/webhook] callback failed', err);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   const message = update.message;
   if (!message?.chat?.id) return NextResponse.json({ ok: true });
 
@@ -66,6 +111,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const text = message.text?.trim() ?? '';
 
   console.log(`[telegram/webhook] chat_id=${chatId} text="${text}"`);
+
+  const period = PERIOD_COMMANDS[commandOf(text)];
+  if (period) {
+    try {
+      const user = await chatUser(chatId);
+      if (user) await sendWithKeyboard(chatId, await statsMessage(user.id, period), statsKeyboard(period, siteUrl()));
+      else await replyToUpdate(chatId, NOT_LINKED);
+    } catch (err) {
+      console.error(`[telegram/webhook] stats failed chat_id=${chatId}`, err);
+    }
+    return NextResponse.json({ ok: true });
+  }
 
   if (text === '/start' || text.startsWith('/start ')) {
     await replyToUpdate(chatId, buildStartReply(chatId, message.from?.first_name)).catch(
@@ -80,6 +137,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       chatId,
       [
         '\u{1F4D6} <b>Команды:</b>',
+        '/stats — статистика торговли (кнопки: сегодня, 7 дней, 30 дней, всё)',
+        '/today — итог закрытых сделок за сегодня',
+        '/week — за 7 дней',
+        '/month — за 30 дней',
+        '/all — за всё время',
         '/start — показать Chat ID и инструкцию',
         '/id — только ваш Chat ID',
       ].join('\n'),

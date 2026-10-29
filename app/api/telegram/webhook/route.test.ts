@@ -2,10 +2,20 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/lib/services/telegram', () => ({
   replyToUpdate: vi.fn().mockResolvedValue(undefined),
+  sendWithKeyboard: vi.fn().mockResolvedValue(undefined),
+  editWithKeyboard: vi.fn().mockResolvedValue(undefined),
+  answerCallback: vi.fn().mockResolvedValue(undefined),
 }));
+const stats = vi.hoisted(() => ({ user: vi.fn(), message: vi.fn() }));
+vi.mock('@/lib/telegram/stats-bot', async (original) => ({
+  ...(await original<typeof import('@/lib/telegram/stats-bot')>()),
+  chatUser: stats.user,
+  statsMessage: stats.message,
+}));
+vi.mock('@/lib/db/prisma', () => ({ prisma: {} }));
 
 import { POST } from './route';
-import { replyToUpdate } from '@/lib/services/telegram';
+import { answerCallback, editWithKeyboard, replyToUpdate, sendWithKeyboard } from '@/lib/services/telegram';
 
 const mockReply = vi.mocked(replyToUpdate);
 
@@ -239,5 +249,37 @@ describe('POST /api/telegram/webhook', () => {
       expect(text).toContain('/settings');
       expect(text).not.toContain('https://');
     });
+  });
+});
+
+describe('trading statistics commands', () => {
+  beforeEach(() => {
+    process.env.TELEGRAM_WEBHOOK_SECRET = VALID_SECRET;
+    stats.user.mockResolvedValue({ id: 'u1' });
+    stats.message.mockResolvedValue('stats text');
+  });
+
+  it('answers /week with the statistics and period buttons', async () => {
+    await POST(makeWebhookRequest(makeUpdate('/week'), VALID_SECRET) as never);
+    expect(stats.message).toHaveBeenCalledWith('u1', '7d');
+    expect(vi.mocked(sendWithKeyboard)).toHaveBeenCalledWith(12345, 'stats text', expect.any(Array));
+  });
+
+  it('tells an unlinked chat how to link it', async () => {
+    stats.user.mockResolvedValue(null);
+    await POST(makeWebhookRequest(makeUpdate('/stats'), VALID_SECRET) as never);
+    expect(vi.mocked(sendWithKeyboard)).not.toHaveBeenCalled();
+    expect(mockReply).toHaveBeenCalledWith(12345, expect.stringContaining('не привязан'));
+  });
+
+  it('redraws the message in place when a period button is pressed', async () => {
+    const update = {
+      update_id: 2,
+      callback_query: { id: 'cb1', data: 'stats:all', message: { chat: { id: 12345 }, message_id: 77 } },
+    };
+    await POST(makeWebhookRequest(update, VALID_SECRET) as never);
+    expect(stats.message).toHaveBeenCalledWith('u1', 'all');
+    expect(vi.mocked(editWithKeyboard)).toHaveBeenCalledWith(12345, 77, 'stats text', expect.any(Array));
+    expect(vi.mocked(answerCallback)).toHaveBeenCalledWith('cb1', undefined);
   });
 });

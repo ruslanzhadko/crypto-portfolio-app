@@ -181,12 +181,81 @@ export async function setWebhook(
     {
       url: webhookUrl,
       secret_token: secretToken,
-      allowed_updates: ['message'],
+      // Button presses under bot messages (statistics periods) arrive as callback queries.
+      allowed_updates: ['message', 'callback_query'],
     },
     { timeout: 10000 },
   );
   if (!data.ok)
     throw new TelegramError(data.description ?? 'setWebhook failed');
+  // The command menu next to the input field; a failure here does not undo the webhook.
+  await callBot('setMyCommands', { commands: BOT_COMMANDS }).catch(() => {});
+}
+
+/** Commands shown in the bot's menu. */
+export const BOT_COMMANDS = [
+  { command: 'stats', description: 'Статистика торговли с кнопками периодов' },
+  { command: 'today', description: 'Итог закрытых сделок за сегодня' },
+  { command: 'week', description: 'Статистика за 7 дней' },
+  { command: 'month', description: 'Статистика за 30 дней' },
+  { command: 'help', description: 'Список команд' },
+];
+
+export type InlineKeyboard = { text: string; callback_data?: string; url?: string }[][];
+
+/** Any Bot API method with a JSON body; the token never leaves this module, errors carry no config. */
+export async function callBot(method: string, body: Record<string, unknown>): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
+  let data: TelegramResponse;
+  try {
+    ({ data } = await axios.post<TelegramResponse>(`https://api.telegram.org/bot${token}/${method}`, body, {
+      timeout: 10000,
+    }));
+  } catch (error) {
+    const description = axios.isAxiosError(error)
+      ? (error.response?.data as TelegramResponse | undefined)?.description
+      : undefined;
+    throw new TelegramError(description ?? 'Telegram временно недоступен. Повторите попытку позже.');
+  }
+  if (!data.ok) throw new TelegramError(data.description ?? `${method} failed`);
+}
+
+export async function sendWithKeyboard(chatId: number, text: string, keyboard: InlineKeyboard): Promise<void> {
+  await callBot('sendMessage', {
+    chat_id: chatId,
+    text,
+    parse_mode: 'HTML',
+    disable_web_page_preview: true,
+    reply_markup: { inline_keyboard: keyboard },
+  });
+}
+
+/** Replaces a bot message in place; pressing the active button again is not an error. */
+export async function editWithKeyboard(
+  chatId: number,
+  messageId: number,
+  text: string,
+  keyboard: InlineKeyboard,
+): Promise<void> {
+  try {
+    await callBot('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+      reply_markup: { inline_keyboard: keyboard },
+    });
+  } catch (error) {
+    if (error instanceof TelegramError && /not modified/i.test(error.message)) return;
+    throw error;
+  }
+}
+
+/** Stops the loading clock on the pressed button. */
+export async function answerCallback(callbackQueryId: string, text?: string): Promise<void> {
+  await callBot('answerCallbackQuery', { callback_query_id: callbackQueryId, ...(text ? { text } : {}) });
 }
 
 export async function getWebhookInfo(): Promise<WebhookInfo> {
