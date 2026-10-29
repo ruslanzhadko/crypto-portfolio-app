@@ -406,7 +406,7 @@ export default async function LandingPage({
           >
             <div>
               <div className="mb-4 flex items-center gap-2">
-                {["binance", "bybit", "gate", "okx", "bitget", "bingx", "kucoin"].map(
+                {["binance", "bybit", "gate", "okx", "bitget", "bingx", "kucoin", "lighter"].map(
                   (id) => (
                     <ExchangeLogo key={id} exchange={id} size={28} />
                   ),

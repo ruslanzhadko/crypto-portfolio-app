@@ -952,7 +952,7 @@
     "keyInstructions": "Create a dedicated read-only key. Disable trading, withdrawals and transfers. Restrict it to the worker IP below. The key is encrypted and cannot be displayed again.",
     "workerIp": "Worker IP for allowlist",
     "ipNotConfigured": "Not configured — contact the operator",
-    "supported": "Supported: Binance Spot and USDⓈ-M, Bybit Unified, Gate classic Spot and USDT perpetuals, global OKX trading account (spot and linear USDT/USDC perpetuals), BingX Spot and USDT perpetuals, Bitget Classic and Unified (spot and USDT/USDC futures), KuCoin Classic (spot and USDT/USDC futures), Hyperliquid core perpetuals. Earn, funding wallets, options, inverse and portfolio margin are excluded.",
+    "supported": "Supported: Binance Spot and USDⓈ-M, Bybit Unified, Gate classic Spot and USDT perpetuals, global OKX trading account (spot and linear USDT/USDC perpetuals), BingX Spot and USDT perpetuals, Bitget Classic and Unified (spot and USDT/USDC futures), KuCoin Classic (spot and USDT/USDC futures), Hyperliquid core perpetuals, Lighter accounts (by wallet address). Earn, funding wallets, options, inverse and portfolio margin are excluded.",
     "passphraseHint": "API passphrase chosen when creating the OKX key, not your account password. Global OKX accounts only.",
     "gatePermissionsHint": "Gate: classic account (not Unified), API v4. Spot, Perpetual futures and Account: read-only, with the IP from the form. If you use Gate Earn (Simple Earn), also enable Earn, read-only, so it counts in the balance. Wallets, read-only, gives deposits and withdrawals. Earn and Wallets default to Read and write: switch them.",
     "guideLink": "Step-by-step connection guide",

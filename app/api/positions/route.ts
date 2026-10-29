@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
             "kucoin",
             "hyperliquid",
             "aster",
+            "lighter",
           ])
           .optional(),
         connectionId: z.string().max(100).optional(),

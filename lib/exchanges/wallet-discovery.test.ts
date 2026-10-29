@@ -7,12 +7,17 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(),
   create: vi.fn(),
   read: vi.fn(),
+  lighter: vi.fn(),
   enqueue: vi.fn(),
   lock: vi.fn(),
 }));
 vi.mock("./aster", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./aster")>()),
   readAsterBalance: mocks.read,
+}));
+vi.mock("./lighter", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./lighter")>()),
+  readLighterAccounts: mocks.lighter,
 }));
 vi.mock("./queue", () => ({ enqueue: mocks.enqueue }));
 vi.mock("@/lib/db/prisma", () => {
@@ -58,6 +63,8 @@ beforeEach(() => {
   mocks.existing.mockResolvedValue(null);
   mocks.count.mockResolvedValue(0);
   mocks.create.mockResolvedValue({ id: "aster" });
+  // No Lighter account unless a test says otherwise.
+  mocks.lighter.mockResolvedValue({ code: 21100, message: "account not found" });
   mocks.read.mockResolvedValue(publicAccount);
 });
 describe("wallet exchange discovery", () => {
@@ -171,5 +178,26 @@ describe("wallet exchange discovery", () => {
     await syncWalletExchanges("wallet");
     expect(mocks.read).not.toHaveBeenCalled();
     expect(mocks.connections).not.toHaveBeenCalled();
+  });
+
+  it("links a funded Lighter account, independently of Aster", async () => {
+    mocks.read.mockRejectedValue(new Error("aster down"));
+    mocks.lighter.mockResolvedValue({
+      code: 200,
+      accounts: [{ index: 1, account_type: 0, l1_address: address, total_asset_value: "120.5", positions: [] }],
+    });
+    await expect(syncWalletExchanges("wallet")).rejects.toThrow("aster down");
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(mocks.create.mock.calls[0]![0].data).toMatchObject({ exchange: "lighter", walletId: "wallet" });
+  });
+
+  it("does not link an empty Lighter account", async () => {
+    mocks.read.mockResolvedValue({ error: { message: "-40000005 account does not exist" } });
+    mocks.lighter.mockResolvedValue({
+      code: 200,
+      accounts: [{ index: 1, account_type: 0, l1_address: address, total_asset_value: "0", positions: [] }],
+    });
+    await syncWalletExchanges("wallet");
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });

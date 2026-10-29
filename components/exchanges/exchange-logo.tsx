@@ -20,6 +20,8 @@ const LOGOS: Record<string, string> = {
     "https://coin-images.coingecko.com/markets/images/1571/small/PFP.png?1714470912",
   aster:
     "https://coin-images.coingecko.com/markets/images/22102/small/_ASTER.png?1758244334",
+  lighter:
+    "https://coin-images.coingecko.com/markets/images/22097/small/lighter.jpg?1758003181",
 };
 
 export const EXCHANGE_NAMES: Record<string, string> = {
@@ -32,6 +34,7 @@ export const EXCHANGE_NAMES: Record<string, string> = {
   kucoin: "KuCoin",
   hyperliquid: "Hyperliquid",
   aster: "Aster",
+  lighter: "Lighter",
 };
 
 export function exchangeName(exchange: string) {

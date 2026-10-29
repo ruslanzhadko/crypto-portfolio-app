@@ -5,6 +5,7 @@ import { D, requiredDecimal } from "./decimal";
 import { exchangesEnabled, MAX_CONNECTIONS } from "./config";
 import { enqueue } from "./queue";
 import { ExchangeError } from "./types";
+import { lighterAccountState, readLighterAccounts } from "./lighter";
 
 export type AsterAccountState = "listed" | "private" | "absent";
 
@@ -84,12 +85,32 @@ export async function syncWalletExchanges(walletId: string) {
     if (connection.status !== "DISCONNECTED") await enqueue(connection.id);
   }
   // An explicit disconnect is an opt-out; do not recreate it on sync.
-  if (connections.some((connection) => connection.exchange === "aster")) return;
-  if (
-    asterAccountState(await readAsterBalance(wallet.address), wallet.address) ===
-    "absent"
-  )
-    return;
+  const has = (exchange: string) => connections.some((connection) => connection.exchange === exchange);
+  // Each venue is checked on its own: an Aster failure is reported after Lighter was looked at.
+  let asterError: unknown = null;
+  if (!has("aster")) {
+    try {
+      const state = asterAccountState(await readAsterBalance(wallet.address), wallet.address);
+      if (state !== "absent") await linkWalletExchange(wallet, "aster");
+    } catch (error) {
+      asterError = error;
+    }
+  }
+  if (!has("lighter")) {
+    const state = await readLighterAccounts(wallet.address)
+      .then(lighterAccountState)
+      .catch(() => "absent" as const);
+    if (state !== "absent") await linkWalletExchange(wallet, "lighter");
+  }
+  if (asterError) throw asterError;
+}
+
+/** Creates the connection of a wallet-linked exchange once, within the user's connection limit. */
+async function linkWalletExchange(
+  wallet: { id: string; userId: string; address: string; label: string | null },
+  exchange: "aster" | "lighter",
+) {
+  const walletId = wallet.id;
   await prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${wallet.userId} FOR UPDATE`;
     const active = await tx.wallet.findFirst({
@@ -102,7 +123,7 @@ export async function syncWalletExchanges(walletId: string) {
     });
     if (!active) return;
     const existing = await tx.exchangeConnection.findUnique({
-      where: { walletId_exchange: { walletId, exchange: "aster" } },
+      where: { walletId_exchange: { walletId, exchange } },
     });
     if (existing) return;
     const count = await tx.exchangeConnection.count({
@@ -117,7 +138,7 @@ export async function syncWalletExchanges(walletId: string) {
       data: {
         walletId,
         userId: wallet.userId,
-        exchange: "aster",
+        exchange,
         externalAccountId: wallet.address.toLowerCase(),
         label:
           wallet.label ??

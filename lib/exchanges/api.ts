@@ -298,7 +298,8 @@ export async function changeConnection(
       ({ label, paused } = parsed.data);
     }
     if (action === "credentials") {
-      if (existing.exchange === "hyperliquid") return failure("BAD_REQUEST");
+      // Public wallet-linked venues have no key to replace.
+      if (["hyperliquid", "lighter"].includes(existing.exchange)) return failure("BAD_REQUEST");
       const parsed = credentialsSchema
         .extend({ password: z.string().max(256).optional() })
         .strict()

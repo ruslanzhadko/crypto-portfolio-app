@@ -952,7 +952,7 @@
     "keyInstructions": "Создайте отдельный ключ только для чтения. Отключите торговлю, вывод и переводы. Ограничьте доступ IP-адресом worker ниже. Ключ хранится зашифрованным и больше не отображается.",
     "workerIp": "IP worker для белого списка",
     "ipNotConfigured": "Не настроен — обратитесь к оператору",
-    "supported": "Поддерживаются Binance Spot и USDⓈ-M, Bybit Unified, Gate Classic (спот и USDT-фьючерсы), глобальный OKX (торговый счёт, спот и линейные USDT/USDC-фьючерсы), BingX (спот и бессрочные USDT-фьючерсы), Bitget Classic и Unified (спот и USDT/USDC-фьючерсы), KuCoin Classic (спот и USDT/USDC-фьючерсы), основные perpetuals Hyperliquid. Earn, funding-счета, опционы, inverse и portfolio margin не включены.",
+    "supported": "Поддерживаются Binance Spot и USDⓈ-M, Bybit Unified, Gate Classic (спот и USDT-фьючерсы), глобальный OKX (торговый счёт, спот и линейные USDT/USDC-фьючерсы), BingX (спот и бессрочные USDT-фьючерсы), Bitget Classic и Unified (спот и USDT/USDC-фьючерсы), KuCoin Classic (спот и USDT/USDC-фьючерсы), основные perpetuals Hyperliquid, счета Lighter (по адресу кошелька). Earn, funding-счета, опционы, inverse и portfolio margin не включены.",
     "passphraseHint": "API Passphrase, заданный при создании ключа OKX. Это не пароль аккаунта. Поддерживается глобальный OKX.",
     "gatePermissionsHint": "Gate: классический аккаунт (не Unified), тип API v4. Spot, Perpetual futures и Account — только чтение, с IP из формы. Если у вас есть раздел Earn (Simple Earn), включите ещё Earn — только чтение, и тогда он попадёт в баланс. Wallets — только чтение: даёт депозиты и выводы. По умолчанию у Earn и Wallets стоит «Чтение и запись» — переключите.",
     "guideLink": "Пошаговая инструкция по подключению",

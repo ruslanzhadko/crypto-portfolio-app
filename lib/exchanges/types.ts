@@ -7,7 +7,8 @@ export type ExchangeId =
   | "bitget"
   | "kucoin"
   | "hyperliquid"
-  | "aster";
+  | "aster"
+  | "lighter";
 export type SyncStatus =
   | "PENDING"
   | "ACTIVE"

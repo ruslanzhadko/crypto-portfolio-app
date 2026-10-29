@@ -108,7 +108,7 @@ export function ConnectionDetail({ id }: { id: string }) {
               >
                 {t(c.status === "PAUSED" ? "resume" : "pause")}
               </Button>
-              {c.exchange !== "hyperliquid" && (
+              {!["hyperliquid", "lighter"].includes(c.exchange) && (
                 <Button
                   variant="outline"
                   disabled={busy}

@@ -256,6 +256,34 @@ export const EXCHANGE_GUIDES: ExchangeGuide[] = [
     },
   },
   {
+    id: "lighter",
+    name: "Lighter",
+    steps: {
+      ru: [
+        "Ключ не нужен: счета Lighter публичные.",
+        "Добавьте на сайте кошелёк (EVM-адрес), с которого вы входите в Lighter. Подключение появится само после синхронизации кошелька, если на адресе есть счёт.",
+      ],
+      uk: [
+        "Ключ не потрібен: рахунки Lighter публічні.",
+        "Додайте на сайті гаманець (EVM-адресу), з якого ви входите в Lighter. Підключення з'явиться саме після синхронізації гаманця, якщо на адресі є рахунок.",
+      ],
+      en: [
+        "No key is needed: Lighter accounts are public.",
+        "Add the wallet (EVM address) you sign in to Lighter with. The connection appears by itself after the wallet syncs, if the address has an account.",
+      ],
+    },
+    permissions: {
+      ru: ["Без ключа — по адресу кошелька"],
+      uk: ["Без ключа — за адресою гаманця"],
+      en: ["No key, by wallet address"],
+    },
+    note: {
+      ru: "Читаются основной счёт и субаккаунты: капитал, залог и бессрочные позиции. Фандинг по позициям пока не показывается.",
+      uk: "Читаються основний рахунок і субакаунти: капітал, застава й безстрокові позиції. Фандинг по позиціях поки не показується.",
+      en: "The main account and sub-accounts are read: equity, collateral and perpetual positions. Position funding is not shown yet.",
+    },
+  },
+  {
     id: "hyperliquid",
     name: "Hyperliquid",
     steps: {

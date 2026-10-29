@@ -29,6 +29,7 @@ import {
 } from "./deposit-watch";
 import { BitgetAdapter } from "./bitget";
 import { KucoinAdapter } from "./kucoin";
+import { LighterAdapter } from "./lighter";
 import { HyperliquidAdapter } from "./hyperliquid";
 import { AsterAdapter } from "./aster";
 import { AsterApiAdapter, createAsterTransport } from "./aster-api";
@@ -158,6 +159,8 @@ export function commitResult(
       if (
         result.failedAccounts.length === 0 &&
         (c.exchange === "hyperliquid" ||
+          // Lighter sub-accounts come and go; an emptied one is no longer returned.
+          c.exchange === "lighter" ||
           (c.exchange === "bitget" &&
             result.accounts.some((a) => a.kind !== "futures")))
       )
@@ -350,7 +353,7 @@ type ConnectionWithWallet = Prisma.ExchangeConnectionGetPayload<{
 export async function connectionClient(c: ConnectionWithWallet) {
   if (
     !isDemoUser(c.userId) &&
-    ["hyperliquid", "aster"].includes(c.exchange) &&
+    ["hyperliquid", "aster", "lighter"].includes(c.exchange) &&
     !c.wallet?.isActive
   )
     throw new ExchangeError("UNSUPPORTED_ACCOUNT");
@@ -365,7 +368,7 @@ export async function connectionClient(c: ConnectionWithWallet) {
     // The read-only demo account has no keys: sample accounts at live public prices.
     if (isDemoUser(c.userId))
       adapter = new DemoExchangeAdapter(c.exchange, settlementPrices);
-    else if (["hyperliquid", "aster"].includes(c.exchange)) {
+    else if (["hyperliquid", "aster", "lighter"].includes(c.exchange)) {
       if (!c.wallet?.isActive) throw new ExchangeError("UNSUPPORTED_ACCOUNT");
       if (c.exchange === "aster" && c.credentials) {
         const credentials = decryptCredentials(c.credentials, c.userId, c.id);
@@ -379,9 +382,11 @@ export async function connectionClient(c: ConnectionWithWallet) {
         );
       } else
         adapter =
-          c.exchange === "aster"
-            ? new AsterAdapter(c.wallet.address, settlementPrices)
-            : new HyperliquidAdapter(c.wallet.address, settlementPrices);
+          c.exchange === "lighter"
+            ? new LighterAdapter(c.wallet.address, settlementPrices)
+            : c.exchange === "aster"
+              ? new AsterAdapter(c.wallet.address, settlementPrices)
+              : new HyperliquidAdapter(c.wallet.address, settlementPrices);
     } else {
       if (
         !c.credentials ||

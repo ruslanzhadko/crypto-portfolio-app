@@ -19,6 +19,7 @@ Hyperliquid, worker, сводный капитал, дашборд и истор
 | BingX       | Spot и USDT perpetual                          | USDT perpetuals                   | Funding/PnL/комиссии текущего цикла из истории; неполная история → «—»                                                   |
 | Bitget      | Classic v2 (spot + USDT/USDC futures) или Unified v3, режим определяется автоматически | Linear USDT/USDC | Funding wallet, Earn, COIN-M не поддержаны; см. [docs/bitget.md](bitget.md) |
 | KuCoin      | Classic: spot (main + trade) и USDT/USDC futures (`api-futures.kucoin.com`) | Linear USDT/USDC, лоты × `multiplier`, XBT → BTC | Ключ только `General` + Passphrase; IP whitelist API не сообщает (не проверяется); точный итог закрытия — `history-positions.pnl`; Unified, margin, Earn, inverse не поддержаны; не проверено на живом ключе |
+| Lighter     | Основной счёт и субаккаунты по EVM-адресу (публично, без ключа); залог не в USDC добавляется к `total_asset_value` | Бессрочные, cross/isolated, плечо = 100 / IMF | Подключается само при синхронизации кошелька; фандинг позиций не показывается (знак `total_funding_paid_out` не документирован); итог закрытия — оценка |
 | Aster       | Фьючерсный счёт (по адресу кошелька или через API Wallet) | USDT perpetuals, Shield Mode (по адресу) | Spot не поддержан; полные funding/комиссии/безубыточность только через API Wallet; приватный аккаунт подключается с подсказкой; см. [docs/ASTER.md](ASTER.md) |
 
 Funding-счета, Earn, займы как отдельные продукты, история сделок и инвестиционная

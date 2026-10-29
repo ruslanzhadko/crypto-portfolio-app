@@ -25,6 +25,7 @@ const FUTURES: Record<string, (base: string) => string> = {
   bingx: (b) => `https://bingx.com/en/perpetual/${b}-${QUOTE}/`,
   hyperliquid: (b) => `https://app.hyperliquid.xyz/trade/${b}`,
   aster: (b) => `https://www.asterdex.com/en/futures/v1/${b}${QUOTE}`,
+  lighter: (b) => `https://app.lighter.xyz/trade/${b}`,
 };
 
 export function exchangeTradeUrl(exchange: string, symbol: string, kind?: string): string | null {
