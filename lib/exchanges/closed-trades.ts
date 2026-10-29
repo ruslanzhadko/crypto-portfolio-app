@@ -30,7 +30,8 @@ type Row = Record<string, unknown>;
 export const HISTORY_DAYS = 30;
 const DAY_MS = 86_400_000;
 const INTERVAL_MS = 30 * 60_000;
-const OVERLAP_MS = DAY_MS;
+/** Re-read a week: a position closed in parts over days must be read whole to stay one trade. */
+const OVERLAP_MS = 7 * DAY_MS;
 
 /** Exchanges whose own position history feeds the statistics; the worker's closes are skipped there. */
 export const HISTORY_EXCHANGES = new Set(["bybit", "gate", "bingx", "kucoin"]);
@@ -53,11 +54,15 @@ export function splitLinearSymbol(symbol: string): { base: string; settle: strin
 /**
  * Bybit `closed-pnl` has one row per closing order and no position id: rows of one symbol and side
  * with the same entry price follow each other until the position is gone, so they are one trade.
+ * The reported entry may differ in the last digits between partial closes, hence the tolerance.
  * `closedPnl` is already net of trading fees (as Bybit shows it); funding is not part of it.
  */
+const SAME_ENTRY = 0.001;
+const sameEntry = (a: string | null, b: string | null) =>
+  a === b || (a !== null && b !== null && Math.abs(Number(a) / Number(b) - 1) <= SAME_ENTRY);
 export function bybitClosedTrades(rows: Row[]): ClosedTradeRow[] {
   const sorted = [...rows].sort((a, b) => Number(a.updatedTime) - Number(b.updatedTime));
-  const trades: (ClosedTradeRow & { key: string; exitValue: InstanceType<typeof D> })[] = [];
+  const trades: (ClosedTradeRow & { exitValue: InstanceType<typeof D> })[] = [];
   /** The latest trade of each symbol and side: a partial close continues it while the entry matches. */
   const latest = new Map<string, (typeof trades)[number]>();
   for (const r of sorted) {
@@ -68,11 +73,10 @@ export function bybitClosedTrades(rows: Row[]): ClosedTradeRow[] {
     // The closing order sells a long and buys back a short.
     const side: "long" | "short" = str(r.side) === "Sell" ? "long" : "short";
     const entry = dec(r.avgEntryPrice);
-    const key = `${symbol}:${side}:${entry}`;
     const size = new D(dec(r.closedSize) ?? dec(r.qty) ?? "0");
     const exitValue = new D(dec(r.cumExitValue) ?? "0");
     const open = latest.get(`${symbol}:${side}`);
-    if (open && open.key === key) {
+    if (open && sameEntry(open.entryPrice, entry)) {
       open.size = new D(open.size ?? "0").plus(size).toFixed();
       open.exitValue = open.exitValue.plus(exitValue);
       open.exitPrice = new D(open.size).isZero() ? open.exitPrice : open.exitValue.div(open.size).toFixed();
@@ -81,7 +85,6 @@ export function bybitClosedTrades(rows: Row[]): ClosedTradeRow[] {
       continue;
     }
     const trade = {
-      key,
       exitValue,
       externalId: `bybit:${str(r.orderId)}`,
       symbol,
@@ -97,7 +100,7 @@ export function bybitClosedTrades(rows: Row[]): ClosedTradeRow[] {
     trades.push(trade);
     latest.set(`${symbol}:${side}`, trade);
   }
-  return trades.map(({ key: _key, exitValue: _value, ...trade }) => trade);
+  return trades.map(({ exitValue: _value, ...trade }) => trade);
 }
 
 /** Gate `position_close`: one row per closed position; `pnl` = price PnL + fees + funding. */
@@ -157,6 +160,11 @@ export function bingxClosedTrades(rows: Row[]): ClosedTradeRow[] {
 }
 
 const lastAttempt = new Map<string, number>();
+/**
+ * History read before this moment was grouped by an older rule: such connections read the whole
+ * month again once, and the stale pieces of the window are replaced.
+ */
+const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 18);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(
@@ -167,12 +175,21 @@ export async function syncClosedTrades(
   if (!adapter.closedTrades || !HISTORY_EXCHANGES.has(connection.exchange)) return "skipped";
   if (now - (lastAttempt.get(connection.id) ?? 0) < INTERVAL_MS) return "skipped";
   lastAttempt.set(connection.id, now);
-  const since = connection.tradesAt
-    ? connection.tradesAt.getTime() - OVERLAP_MS
-    : now - HISTORY_DAYS * DAY_MS;
+  const fresh = !connection.tradesAt || connection.tradesAt.getTime() < HISTORY_RULES_SINCE;
+  const since = fresh ? now - HISTORY_DAYS * DAY_MS : connection.tradesAt!.getTime() - OVERLAP_MS;
   try {
     const rows = await adapter.closedTrades(since, now);
     await saveClosedTrades(connection, rows, "history", true);
+    // The exchange history is the truth for its window: rows it no longer lists (pieces of a trade
+    // that is now grouped as one) go away.
+    await prisma.closedTrade.deleteMany({
+      where: {
+        connectionId: connection.id,
+        source: "history",
+        closedAt: { gte: new Date(since) },
+        externalId: { notIn: rows.map((r) => r.externalId) },
+      },
+    });
     await prisma.exchangeConnection.update({
       where: { id: connection.id },
       data: { tradesAt: new Date(now) },

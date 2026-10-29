@@ -1276,7 +1276,7 @@
     "byExchange": "За біржами",
     "byAccount": "За рахунками",
     "byCoin": "За монетами",
-    "winsOf": "{wins} з {count}",
+    "winsOf": "{wins} з {count} у плюсі",
     "tradesTitle": "Закриті угоди",
     "entryExit": "Вхід → вихід",
     "duration": "Тривалість",

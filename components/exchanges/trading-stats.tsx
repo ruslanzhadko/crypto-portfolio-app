@@ -55,9 +55,12 @@ function Breakdown({ title, groups, exchangeLogos }: { title: string; groups: St
           <li key={g.key} className="flex items-center justify-between gap-3 py-1.5 text-sm">
             <span className="flex min-w-0 items-center gap-2">
               {exchangeLogos && <ExchangeLogo exchange={g.exchange ?? g.key} size={16} />}
-              <span className="truncate">{exchangeLogos && !g.exchange ? exchangeName(g.key) : g.label}</span>
-              <span className="shrink-0 text-xs text-text-muted">
-                {t("winsOf", { wins: g.wins, count: g.count })}
+              {/* Name on top, trade count and winners under it, so a long name never hides the count. */}
+              <span className="min-w-0">
+                <span className="block truncate">{exchangeLogos && !g.exchange ? exchangeName(g.key) : g.label}</span>
+                <span className="block truncate text-xs text-text-muted">
+                  {t("winsOf", { wins: g.wins, count: g.count })}
+                </span>
               </span>
             </span>
             <span className={`shrink-0 font-medium ${tone(g.pnlUsd)}`}>
@@ -91,7 +94,7 @@ export function TradingStats() {
 
   return (
     <div className="min-w-0 space-y-3 sm:space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-2">
         <div role="group" aria-label={t("period")} className="flex rounded-lg border border-border bg-surface p-0.5 text-xs sm:text-sm">
           {PERIODS.map((value) => (
             <button
@@ -169,6 +172,8 @@ export function TradingStats() {
                         t("result"),
                       ]}
                       contentStyle={{ background: "var(--surface, #151c2c)", border: "1px solid #334155", borderRadius: 8 }}
+                      labelStyle={{ color: "#e2e8f0", fontWeight: 600 }}
+                      itemStyle={{ color: "#e2e8f0" }}
                     />
                     <Bar dataKey="pnlUsd" isAnimationActive={false} radius={[3, 3, 0, 0]}>
                       {data.days.map((d) => <Cell key={d.day} fill={d.pnlUsd >= 0 ? "#22c55e" : "#ef4444"} />)}

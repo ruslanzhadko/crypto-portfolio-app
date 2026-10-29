@@ -19,7 +19,7 @@ describe("closed trades from exchange history", () => {
     const trades = bybitClosedTrades([
       { symbol: "AXSUSDT", orderId: "a1", side: "Buy", closedSize: "100", avgEntryPrice: "0.21", avgExitPrice: "0.18", cumExitValue: "18", closedPnl: "2.9", updatedTime: "1000" },
       { symbol: "XRPUSDT", orderId: "x1", side: "Sell", closedSize: "3", avgEntryPrice: "0.6045", avgExitPrice: "0.605", cumExitValue: "1.815", closedPnl: "-0.00049568", updatedTime: "1500" },
-      { symbol: "AXSUSDT", orderId: "a2", side: "Buy", closedSize: "100", avgEntryPrice: "0.21", avgExitPrice: "0.16", cumExitValue: "16", closedPnl: "4.9", updatedTime: "2000" },
+      { symbol: "AXSUSDT", orderId: "a2", side: "Buy", closedSize: "100", avgEntryPrice: "0.2100004", avgExitPrice: "0.16", cumExitValue: "16", closedPnl: "4.9", updatedTime: "2000" },
       // A new position later at another entry price is a new trade.
       { symbol: "AXSUSDT", orderId: "a3", side: "Buy", closedSize: "50", avgEntryPrice: "0.17", avgExitPrice: "0.165", cumExitValue: "8.25", closedPnl: "0.2", updatedTime: "3000" },
     ]);

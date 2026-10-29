@@ -45,6 +45,8 @@ describe("formatPositionMessage", () => {
     expect(text).toContain("🔴 <b>Позиция закрыта: BTC LONG ×10</b>");
     expect(text).toContain("итог ≈ <b>−$12.50</b> с фандингом и комиссиями");
     expect(text).toContain("⏳ 3 ч 12 мин");
+    // Size and the price move from entry to the last mark.
+    expect(text).toContain("📏 $7,000 · цена 70000 → 54000 (−22.9%)");
     expect(text).toContain("🔵 <b>Позиция открыта");
     expect(text).toContain(
       "до ликвидации <b>7.4%</b> (цена 54000, ликвидация 50000)",

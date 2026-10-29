@@ -1276,7 +1276,7 @@
     "byExchange": "By exchange",
     "byAccount": "By account",
     "byCoin": "By coin",
-    "winsOf": "{wins} of {count}",
+    "winsOf": "{wins} of {count} in profit",
     "tradesTitle": "Closed trades",
     "entryExit": "Entry → exit",
     "duration": "Duration",

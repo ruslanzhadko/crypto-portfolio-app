@@ -1276,7 +1276,7 @@
     "byExchange": "По биржам",
     "byAccount": "По счетам",
     "byCoin": "По монетам",
-    "winsOf": "{wins} из {count}",
+    "winsOf": "{wins} из {count} в плюсе",
     "tradesTitle": "Закрытые сделки",
     "entryExit": "Вход → выход",
     "duration": "Длительность",
