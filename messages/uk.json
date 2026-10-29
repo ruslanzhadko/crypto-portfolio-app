@@ -335,7 +335,7 @@
     "tabTriggersNone": "Поки немає",
     "tabPositionsTitle": "Позиції на біржах",
     "tabPositionsHint": "Відкриття, закриття, ліквідація, PnL",
-    "tabPositionsOn": "Увімкнено {count} з 4",
+    "tabPositionsOn": "Увімкнено {count} з 5",
     "tabPositionsOff": "Вимкнено",
     "tabTriggersShort": "Тригери",
     "tabPositionsShort": "Позиції"
@@ -507,7 +507,7 @@
     "notificationsTriggersStatus": "Активно {active} з {total}",
     "notificationsTriggersNone": "Поки немає тригерів",
     "notificationsPositions": "Позиції на біржах",
-    "notificationsPositionsOn": "Увімкнено {count} з 4",
+    "notificationsPositionsOn": "Увімкнено {count} з 5",
     "notificationsOff": "Вимкнено"
   },
   "Admin": {
@@ -1191,6 +1191,10 @@
       "pnlSign": {
         "title": "Плюс / мінус",
         "description": "PnL позиції перейшов через нуль: позиція пішла в плюс або в мінус."
+      },
+      "dailySummary": {
+        "title": "Підсумок дня",
+        "description": "Одразу після півночі за Києвом — підсумок закритих за добу угод: сума, кількість угод, найкраща й найгірша. Немає угод — немає повідомлення."
       }
     },
     "liquidationThreshold": "Поріг, %:",
@@ -1210,7 +1214,9 @@
       "size": "обсяг позиції",
       "durationDH": "{d} д {h} год",
       "durationHM": "{h} год {m} хв",
-      "durationM": "{m} хв"
+      "durationM": "{m} хв",
+      "daily": "Підсумок дня",
+      "dailyTrades": "{count, plural, one {# угода} few {# угоди} other {# угод}}: {wins} ✅ / {losses} ❌"
     },
     "liquidationCustom": "Свій поріг, від 1 до 50%"
   },
@@ -1231,5 +1237,51 @@
     "alertsTitle": "Сповіщення — для зареєстрованих користувачів",
     "alertsDescription": "Створіть акаунт, щоб отримувати сигнали за цінами й позиціями в Telegram і на сайті. Тут показано приклад журналу й налаштувань.",
     "readOnlyHint": "У демо лише перегляд"
+  },
+  "TradingStats": {
+    "tabs": "Розділ позицій",
+    "tabOpen": "Відкриті",
+    "tabStats": "Статистика",
+    "period": "Період",
+    "periods": {
+      "today": "Сьогодні",
+      "7d": "7 днів",
+      "30d": "30 днів",
+      "all": "Усе"
+    },
+    "exchange": "Біржа",
+    "allExchanges": "Усі біржі",
+    "account": "Рахунок",
+    "allAccounts": "Усі рахунки",
+    "coin": "Монета",
+    "allCoins": "Усі монети",
+    "side": "Сторона",
+    "allSides": "Лонг і шорт",
+    "long": "лонг",
+    "short": "шорт",
+    "empty": "За цей період закритих угод немає.",
+    "total": "Підсумок",
+    "approximate": "≈ у {count} — оцінка",
+    "trades": "Угод",
+    "winsLosses": "{wins} ✅ / {losses} ❌",
+    "winRate": "Прибуткових",
+    "avgDuration": "Середня тривалість",
+    "avgWin": "Середній прибуток",
+    "avgLoss": "Середній збиток",
+    "best": "Найкраща угода",
+    "worst": "Найгірша угода",
+    "byDay": "Підсумок за днями",
+    "tradesCount": "{count, plural, one {# угода} few {# угоди} other {# угод}}",
+    "result": "Підсумок",
+    "byExchange": "За біржами",
+    "byAccount": "За рахунками",
+    "byCoin": "За монетами",
+    "winsOf": "{wins} з {count}",
+    "tradesTitle": "Закриті угоди",
+    "entryExit": "Вхід → вихід",
+    "duration": "Тривалість",
+    "closed": "Закрита",
+    "approximateHint": "Оцінка за останнім опитуванням: біржа не віддала точний підсумок.",
+    "sourceNote": "Bybit, Gate, BingX і KuCoin — з історії позицій біржі (з минулого місяця), підсумок із комісіями та фандингом (у Bybit — без фандингу). Інші біржі — з моменту, коли worker побачив закриття. Позиція, закрита частинами, — одна угода."
   }
 }

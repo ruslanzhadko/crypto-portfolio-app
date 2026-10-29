@@ -1,3 +1,4 @@
+import { bingxClosedTrades } from "./closed-trades";
 import { record, records } from "./adapters";
 import { assertBinanceReadOnly } from "./permissions";
 import { D, decimal, multiply, requiredDecimal as rd, sum } from "./decimal";
@@ -90,6 +91,43 @@ export class BingxAdapter implements ExchangeAdapter {
       // An empty page is `data: null`.
       return envelope.data == null ? [] : records(envelope.data);
     });
+  }
+  /**
+   * Position history needs a symbol: the coins come from the income ledger (realized PnL), then
+   * each coin's positions are read for the whole range at once.
+   */
+  async closedTrades(since: number, until: number) {
+    const symbols = new Set<string>();
+    for (let start = since; start < until; start += 7 * 86_400_000) {
+      const envelope = record(
+        await this.request("user/income", "swap:v2:private", {
+          incomeType: "REALIZED_PNL",
+          startTime: start,
+          endTime: Math.min(until, start + 7 * 86_400_000 - 1),
+          limit: 1000,
+        }),
+      );
+      if (String(envelope.code) !== "0") throw new ExchangeError("UNAVAILABLE");
+      for (const r of envelope.data == null ? [] : records(envelope.data))
+        if (typeof r.symbol === "string" && r.symbol) symbols.add(r.symbol);
+    }
+    const rows: Record<string, unknown>[] = [];
+    for (const symbol of symbols) {
+      const data = record(
+        bingxData(
+          await this.request("trade/positionHistory", "swap:v1:private", {
+            symbol,
+            startTs: since,
+            endTs: until,
+            pageIndex: 1,
+            pageSize: 100,
+          }),
+          "positionHistory",
+        ),
+      );
+      rows.push(...records(data.positionHistory ?? []));
+    }
+    return bingxClosedTrades(rows);
   }
   transfers(since: number) {
     return bingxTransfers(this.request, bingxData, since);

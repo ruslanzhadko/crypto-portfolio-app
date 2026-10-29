@@ -1,3 +1,4 @@
+import { DailySummary } from "../lib/positions/daily-summary";
 import { prisma } from "../lib/db/prisma";
 import { mkdir, writeFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
@@ -68,6 +69,7 @@ async function main() {
   const isActive = (userId: string) => !activity || activity.isActive(userId);
   // Position alerts: background polling for users who turned them on (POSITION_ALERTS.md).
   const alerts = new PositionAlertService();
+  const daily = new DailySummary();
   const alertSignal = createAlertSignalClient();
   setPositionObserver((c, result, at) => alerts.observe(c, result, at));
   if (!process.env.TELEGRAM_BOT_TOKEN)
@@ -83,8 +85,10 @@ async function main() {
       await alerts.resolveClosed();
       const users = await alerts.flush();
       for (const userId of users) await alertSignal?.fired(userId, Date.now());
+      // Yesterday's trading summary, once right after midnight in Kyiv.
+      const summarized = await daily.maybeRun();
       // In idle mode nothing else keeps the database awake: close the pool after touching it.
-      if (!fast && (reloaded || users.length)) await prisma.$disconnect();
+      if (!fast && (reloaded || users.length || summarized)) await prisma.$disconnect();
     } catch {
       console.error("[position-alerts] cycle failed; retrying next round");
     }

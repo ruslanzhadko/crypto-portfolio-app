@@ -1,3 +1,4 @@
+import { gateClosedTrades } from "./closed-trades";
 import { record, records } from "./adapters";
 import { D, decimal, multiply, requiredDecimal as rd, sum } from "./decimal";
 import {
@@ -35,6 +36,34 @@ export class GateAdapter implements ExchangeAdapter {
   ) {}
   transfers(since: number) {
     return gateTransfers(this.request, since);
+  }
+  /** USDT perpetual closes from `position_close` (seconds, offset paging). */
+  async closedTrades(since: number, until: number) {
+    if (!this.contracts.size) {
+      this.contracts = new Map(
+        records(await this.request("usdt/contracts", "public:futures")).map(
+          (r) => [textField(r.name), r],
+        ),
+      );
+      this.contractsAt = Date.now();
+    }
+    const multipliers = new Map(
+      [...this.contracts].map(([name, r]) => [name, String(r.quanto_multiplier ?? "")]),
+    );
+    const rows: Row[] = [];
+    for (let offset = 0; offset < 5_000; offset += 100) {
+      const page = records(
+        await this.request("usdt/position_close", "private:futures", {
+          from: Math.floor(since / 1000),
+          to: Math.floor(until / 1000),
+          limit: 100,
+          offset,
+        }),
+      );
+      rows.push(...page);
+      if (page.length < 100) break;
+    }
+    return gateClosedTrades(rows, multipliers);
   }
   async verify() {
     const detail = record(await this.request("detail", "private:account"));

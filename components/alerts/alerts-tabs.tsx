@@ -30,7 +30,7 @@ export function AlertsTabs({
   triggers: ReactNode;
   /** Position notification settings; absent while exchanges are off for the user. */
   positions?: ReactNode;
-  /** Position alert kinds switched on (of 4). */
+  /** Position alert kinds switched on (of 5, the daily summary included). */
   positionKinds?: number;
   initialTab?: AlertsTab;
 }) {

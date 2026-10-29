@@ -6,9 +6,11 @@ import type { ClosedInput } from "@/lib/exchanges/closed-result";
 import { clientVersion, connectionClient } from "@/lib/exchanges/worker";
 import {
   anyPositionAlert,
+  DEFAULT_POSITION_ALERTS,
   readPositionAlertSettings,
   type PositionAlertSettings,
 } from "./alert-settings";
+import { HISTORY_EXCHANGES, saveClosedTrades } from "@/lib/exchanges/closed-trades";
 import { deliverPositionEvents, type SourcedEvent } from "./delivery";
 import { PositionWatch, type WatchedPosition } from "./watch";
 
@@ -27,7 +29,17 @@ const EXACT_DEADLINE_MS = 2 * 60_000;
 type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
 }>;
-type Watched = { row: Connection; nextAt: number; observedAt: number };
+type Watched = {
+  row: Connection;
+  nextAt: number;
+  observedAt: number;
+  /** The user wants position alerts from this connection: it is polled every 15 s. */
+  alerts: boolean;
+  /** Closes are stored for trading statistics (exchanges without a position history). */
+  record: boolean;
+};
+
+type ClosedEvent = Extract<SourcedEvent, { kind: "closed" }>;
 
 const WATCHED_STATUSES = ["PENDING", "ACTIVE", "PARTIAL", "ERROR"];
 
@@ -37,7 +49,10 @@ const text = (value: { toString(): string } | null) =>
 /**
  * Background position polling for users with position alerts on. Runs inside the exchange worker
  * loop: positions are read from the exchanges and compared in memory; PostgreSQL is read when the
- * settings are (re)loaded and written only when an alert fires.
+ * settings are (re)loaded and written only when an alert fires or a position closes.
+ *
+ * Connections of exchanges without a position history are also watched for everyone, without
+ * extra polling (only what the sync jobs read), so their closes reach the trading statistics.
  */
 export class PositionAlertService {
   private watch = new PositionWatch();
@@ -53,14 +68,19 @@ export class PositionAlertService {
     event: SourcedEvent;
     row: Connection;
     input: ClosedInput;
+    accountKey: string;
+    closedAt: number;
+    deliver: boolean;
+    record: boolean;
     dueAt: number;
     deadline: number;
   }[] = [];
   private loadedWindow = -1;
   private version: number | null = null;
 
+  /** Connections polled for alerts; the record-only ones need no polling. */
   get size() {
-    return this.connections.size;
+    return [...this.connections.values()].filter((w) => w.alerts).length;
   }
 
   /** Reloads settings once per window and when the site signals a change. */
@@ -86,17 +106,24 @@ export class PositionAlertService {
         )
         .filter(([id, s]) => anyPositionAlert(s) && exchangesEnabled(id)),
     );
-    const rows = this.settings.size
-      ? await prisma.exchangeConnection.findMany({
-          where: {
-            userId: { in: [...this.settings.keys()] },
-            status: { in: WATCHED_STATUSES },
-          },
-          include: { wallet: true },
-        })
-      : [];
+    const rows = (
+      await prisma.exchangeConnection.findMany({
+        where: {
+          status: { in: WATCHED_STATUSES },
+          user: { isBlocked: false },
+          OR: [
+            { userId: { in: [...this.settings.keys()] } },
+            { exchange: { notIn: [...HISTORY_EXCHANGES] } },
+          ],
+        },
+        include: { wallet: true },
+      })
+    ).filter((r) => exchangesEnabled(r.userId));
+    const alertsOn = (r: Connection) =>
+      this.settings.has(r.userId) &&
+      !this.settings.get(r.userId)!.excludedConnections.includes(r.id);
     const wanted = rows.filter(
-      (r) => !this.settings.get(r.userId)!.excludedConnections.includes(r.id),
+      (r) => alertsOn(r) || !HISTORY_EXCHANGES.has(r.exchange),
     );
     const wantedIds = new Set(wanted.map((r) => r.id));
     for (const id of this.connections.keys())
@@ -139,7 +166,8 @@ export class PositionAlertService {
         this.watch.baseline(
           r.id,
           positions,
-          this.settings.get(r.userId)!.liquidationPercent,
+          (this.settings.get(r.userId) ?? DEFAULT_POSITION_ALERTS)
+            .liquidationPercent,
         );
       }
     }
@@ -149,10 +177,12 @@ export class PositionAlertService {
         row,
         nextAt: known?.nextAt ?? now,
         observedAt: known?.observedAt ?? Number.NEGATIVE_INFINITY,
+        alerts: alertsOn(row),
+        record: !HISTORY_EXCHANGES.has(row.exchange),
       });
     }
     console.log(
-      `[position-alerts] ${this.settings.size} user(s), ${this.connections.size} connection(s) watched`,
+      `[position-alerts] ${this.settings.size} user(s), ${this.size} connection(s) polled, ${this.connections.size} watched`,
     );
   }
 
@@ -163,8 +193,14 @@ export class PositionAlertService {
     at = Date.now(),
   ) {
     const watched = this.connections.get(c.id);
-    const settings = this.settings.get(c.userId);
-    if (!watched || !settings) return;
+    if (!watched) return;
+    const userSettings = watched.alerts
+      ? (this.settings.get(c.userId) ?? DEFAULT_POSITION_ALERTS)
+      : DEFAULT_POSITION_ALERTS;
+    // Closes are always tracked where they are recorded; whether they are sent is decided below.
+    const settings = watched.record
+      ? { ...userSettings, closed: true }
+      : userSettings;
     // A replaced key can read the same positions under other IDs (Aster: wallet RPC → API):
     // start a fresh base instead of reporting every position closed and opened again.
     if (c.credentialVersion !== undefined) {
@@ -184,6 +220,9 @@ export class PositionAlertService {
     const now: SourcedEvent[] = [];
     for (const event of events) {
       const since = event.position.funding?.since;
+      const deliver = event.kind !== "closed" || userSettings.closed;
+      const record = event.kind === "closed" && watched.record;
+      if (!deliver && !record) continue;
       // A close with a known cycle start waits for the exchange's own final figure.
       if (
         event.kind === "closed" &&
@@ -204,10 +243,18 @@ export class PositionAlertService {
             lastSeenAt,
             otherLeg: openSymbols.has(event.position.symbol),
           },
+          accountKey: event.position.accountKey,
+          closedAt: at,
+          deliver,
+          record,
           dueAt: at + EXACT_DELAY_MS,
           deadline: at + EXACT_DEADLINE_MS,
         });
-      else now.push({ ...event, source });
+      else {
+        if (record)
+          void this.record(watched.row, event as ClosedEvent, null, at);
+        if (deliver) now.push({ ...event, source });
+      }
     }
     if (now.length)
       this.pending.set(c.userId, [
@@ -256,17 +303,57 @@ export class PositionAlertService {
         event.includesCosts = true;
         event.exact = true;
       }
-      this.pending.set(item.userId, [
-        ...(this.pending.get(item.userId) ?? []),
-        event,
-      ]);
+      if (item.record && event.kind === "closed")
+        await this.record(item.row, event, exact, item.closedAt);
+      if (item.deliver)
+        this.pending.set(item.userId, [
+          ...(this.pending.get(item.userId) ?? []),
+          event,
+        ]);
     }
+  }
+
+  /** Stores a close the worker saw; the exchange's figure when it came, else the estimate. */
+  private async record(
+    row: Connection,
+    event: ClosedEvent,
+    exact: string | null,
+    closedAt: number,
+  ) {
+    const p = event.position;
+    const pnl = exact ?? (event.pnlUsd === null ? null : String(event.pnlUsd));
+    if (pnl === null || event.pnlUsd === null) return;
+    const pnlUsd = event.pnlUsd;
+    await saveClosedTrades(
+      row,
+      [
+        {
+          externalId: `watch:${p.accountKey}:${p.positionKey}:${closedAt}`,
+          symbol: p.symbol,
+          base: p.base,
+          settle: p.settle,
+          side: p.side,
+          size: p.baseSize,
+          entryPrice: p.entryPrice,
+          exitPrice: p.markPrice,
+          openedAt:
+            event.durationMs === null ? null : closedAt - event.durationMs,
+          closedAt,
+          pnl,
+        },
+      ],
+      "watch",
+      exact !== null,
+      () => pnlUsd,
+    ).catch(() => {
+      console.error("[position-alerts] closed trade not saved");
+    });
   }
 
   /** Reads positions of every connection that is due; one at a time, like the sync jobs. */
   async pollDue(now = Date.now()) {
     for (const watched of this.connections.values()) {
-      if (now < watched.nextAt) continue;
+      if (!watched.alerts || now < watched.nextAt) continue;
       const exchange = watched.row.exchange;
       const slow = (this.slowUntil.get(exchange) ?? 0) > now;
       const interval = slow ? SLOW_POLL_MS : ALERT_POLL_MS;

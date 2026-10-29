@@ -335,7 +335,7 @@
     "tabTriggersNone": "Пока нет",
     "tabPositionsTitle": "Позиции на биржах",
     "tabPositionsHint": "Открытие, закрытие, ликвидация, PnL",
-    "tabPositionsOn": "Включено {count} из 4",
+    "tabPositionsOn": "Включено {count} из 5",
     "tabPositionsOff": "Выключены",
     "tabTriggersShort": "Триггеры",
     "tabPositionsShort": "Позиции"
@@ -507,7 +507,7 @@
     "notificationsTriggersStatus": "Активно {active} из {total}",
     "notificationsTriggersNone": "Пока нет триггеров",
     "notificationsPositions": "Позиции на биржах",
-    "notificationsPositionsOn": "Включено {count} из 4",
+    "notificationsPositionsOn": "Включено {count} из 5",
     "notificationsOff": "Выключены"
   },
   "Admin": {
@@ -1191,6 +1191,10 @@
       "pnlSign": {
         "title": "Плюс / минус",
         "description": "PnL позиции перешёл через ноль: позиция ушла в плюс или в минус."
+      },
+      "dailySummary": {
+        "title": "Итог дня",
+        "description": "Сразу после полуночи по Киеву — итог закрытых за сутки сделок: сумма, число сделок, лучшая и худшая. Нет сделок — нет сообщения."
       }
     },
     "liquidationThreshold": "Порог, %:",
@@ -1210,7 +1214,9 @@
       "size": "объём позиции",
       "durationDH": "{d} д {h} ч",
       "durationHM": "{h} ч {m} мин",
-      "durationM": "{m} мин"
+      "durationM": "{m} мин",
+      "daily": "Итог дня",
+      "dailyTrades": "{count, plural, one {# сделка} few {# сделки} other {# сделок}}: {wins} ✅ / {losses} ❌"
     },
     "liquidationCustom": "Свой порог, от 1 до 50%"
   },
@@ -1231,5 +1237,51 @@
     "alertsTitle": "Уведомления — для зарегистрированных пользователей",
     "alertsDescription": "Создайте аккаунт, чтобы получать сигналы по ценам и позициям в Telegram и на сайте. Здесь показан пример журнала и настроек.",
     "readOnlyHint": "В демо только просмотр"
+  },
+  "TradingStats": {
+    "tabs": "Раздел позиций",
+    "tabOpen": "Открытые",
+    "tabStats": "Статистика",
+    "period": "Период",
+    "periods": {
+      "today": "Сегодня",
+      "7d": "7 дней",
+      "30d": "30 дней",
+      "all": "Всё"
+    },
+    "exchange": "Биржа",
+    "allExchanges": "Все биржи",
+    "account": "Счёт",
+    "allAccounts": "Все счета",
+    "coin": "Монета",
+    "allCoins": "Все монеты",
+    "side": "Сторона",
+    "allSides": "Лонг и шорт",
+    "long": "лонг",
+    "short": "шорт",
+    "empty": "За этот период закрытых сделок нет.",
+    "total": "Итог",
+    "approximate": "≈ у {count} — оценка",
+    "trades": "Сделок",
+    "winsLosses": "{wins} ✅ / {losses} ❌",
+    "winRate": "Прибыльных",
+    "avgDuration": "Средняя длительность",
+    "avgWin": "Средняя прибыль",
+    "avgLoss": "Средний убыток",
+    "best": "Лучшая сделка",
+    "worst": "Худшая сделка",
+    "byDay": "Итог по дням",
+    "tradesCount": "{count, plural, one {# сделка} few {# сделки} other {# сделок}}",
+    "result": "Итог",
+    "byExchange": "По биржам",
+    "byAccount": "По счетам",
+    "byCoin": "По монетам",
+    "winsOf": "{wins} из {count}",
+    "tradesTitle": "Закрытые сделки",
+    "entryExit": "Вход → выход",
+    "duration": "Длительность",
+    "closed": "Закрыта",
+    "approximateHint": "Оценка по последнему опросу: биржа не отдала точный итог.",
+    "sourceNote": "Bybit, Gate, BingX и KuCoin — из истории позиций биржи (с прошлого месяца), итог с комиссиями и фандингом (у Bybit — без фандинга). Остальные биржи — с момента, когда worker увидел закрытие. Позиция, закрытая частями, — одна сделка."
   }
 }

@@ -96,6 +96,11 @@ export interface ExchangeAdapter {
   closedResult?(
     input: import("./closed-result").ClosedInput,
   ): Promise<string | null>;
+  /** Fully closed positions between two moments (ms) from the exchange's own history. */
+  closedTrades?(
+    since: number,
+    until: number,
+  ): Promise<import("./closed-trades").ClosedTradeRow[]>;
   close(): Promise<void>;
 }
 

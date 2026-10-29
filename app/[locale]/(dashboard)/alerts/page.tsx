@@ -102,7 +102,7 @@ export default async function AlertsPage({
         triggerCount={triggers.length}
         activeTriggers={triggers.filter((tr) => tr.isActive).length}
         positionKinds={
-          (['opened', 'closed', 'liquidation', 'pnlSign'] as const).filter(
+          (['opened', 'closed', 'liquidation', 'pnlSign', 'dailySummary'] as const).filter(
             (kind) => readPositionAlertSettings(user?.positionAlerts ?? null)[kind],
           ).length
         }

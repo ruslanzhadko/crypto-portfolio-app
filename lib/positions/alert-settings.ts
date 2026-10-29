@@ -22,6 +22,8 @@ export const positionAlertSettingsSchema = z
       .max(LIQUIDATION_MAX)
       .refine((n) => Number.isInteger(n * 2)),
     excludedConnections: z.array(z.string().min(1).max(64)).max(50),
+    /** Yesterday's closed trades in Telegram after midnight (Kyiv); does not start polling. */
+    dailySummary: z.boolean().default(false),
   })
   .strict();
 
@@ -34,6 +36,7 @@ export const DEFAULT_POSITION_ALERTS: PositionAlertSettings = {
   liquidation: false,
   liquidationPercent: 10,
   excludedConnections: [],
+  dailySummary: false,
 };
 
 /** Stored JSON → settings; anything unknown or broken falls back to the defaults. */

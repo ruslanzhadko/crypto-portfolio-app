@@ -42,6 +42,7 @@ model User {
   exchangeConnections ExchangeConnection[]
   capitalSnapshots PortfolioCapitalSnapshot[]
   capitalEvents CapitalEvent[]
+  closedTrades ClosedTrade[]
   holdingSeries TokenHoldingSeries?
 
   @@index([email])
@@ -385,6 +386,8 @@ model ExchangeConnection {
   transfersError String?
   /// Oldest moment the stored transfer history covers (a year back, or 90 days where the exchange keeps less).
   transfersFrom DateTime?
+  /// Closed trades are imported from the exchange history up to this moment.
+  tradesAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -393,6 +396,7 @@ model ExchangeConnection {
   job ExchangeSyncJob?
   runs ExchangeSyncRun[]
   transfers ExchangeTransfer[]
+  closedTrades ClosedTrade[]
   @@unique([userId, exchange, keyFingerprint])
   @@unique([userId, exchange, externalAccountId])
   @@unique([walletId, exchange])
@@ -557,4 +561,36 @@ model TokenPriceSeries {
   id String @id
   data Json
   updatedAt DateTime @updatedAt
+}
+
+/// One fully closed futures position (partial closes add up into it), for trading statistics.
+model ClosedTrade {
+  id String @id @default(cuid())
+  userId String
+  connectionId String
+  symbol String
+  base String
+  settle String
+  /// "long" or "short"
+  side String
+  /// Closed size in coins; null when the source does not report it.
+  size Decimal? @db.Decimal(38, 18)
+  entryPrice Decimal? @db.Decimal(38, 18)
+  exitPrice Decimal? @db.Decimal(38, 18)
+  openedAt DateTime?
+  closedAt DateTime
+  /// Net result in the settle currency: price PnL, trading fees and funding.
+  pnl Decimal @db.Decimal(38, 18)
+  pnlUsd Decimal @db.Decimal(38, 18)
+  /// The exchange's own figure; false for an estimate from the last poll.
+  exact Boolean
+  /// "history" (read from the exchange) or "watch" (seen closing by the worker)
+  source String
+  /// Stable per connection: exchange position id, or the close the worker saw.
+  externalId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connection ExchangeConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  @@unique([connectionId, externalId])
+  @@index([userId, closedAt])
 }

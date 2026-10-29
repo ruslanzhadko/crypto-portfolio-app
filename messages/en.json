@@ -335,7 +335,7 @@
     "tabTriggersNone": "None yet",
     "tabPositionsTitle": "Exchange positions",
     "tabPositionsHint": "Open, close, liquidation, PnL",
-    "tabPositionsOn": "{count} of 4 on",
+    "tabPositionsOn": "{count} of 5 on",
     "tabPositionsOff": "Off",
     "tabTriggersShort": "Triggers",
     "tabPositionsShort": "Positions"
@@ -507,7 +507,7 @@
     "notificationsTriggersStatus": "{active} of {total} active",
     "notificationsTriggersNone": "No triggers yet",
     "notificationsPositions": "Exchange positions",
-    "notificationsPositionsOn": "{count} of 4 on",
+    "notificationsPositionsOn": "{count} of 5 on",
     "notificationsOff": "Off"
   },
   "Admin": {
@@ -1191,6 +1191,10 @@
       "pnlSign": {
         "title": "Profit / loss",
         "description": "Position PnL crossed zero: the position went into profit or into loss."
+      },
+      "dailySummary": {
+        "title": "Daily summary",
+        "description": "Right after midnight Kyiv time: the day's closed trades — result, number of trades, best and worst. No trades, no message."
       }
     },
     "liquidationThreshold": "Threshold, %:",
@@ -1210,7 +1214,9 @@
       "size": "position size",
       "durationDH": "{d}d {h}h",
       "durationHM": "{h}h {m}m",
-      "durationM": "{m}m"
+      "durationM": "{m}m",
+      "daily": "Daily summary",
+      "dailyTrades": "{count, plural, one {# trade} other {# trades}}: {wins} ✅ / {losses} ❌"
     },
     "liquidationCustom": "Your own threshold, 1 to 50%"
   },
@@ -1231,5 +1237,51 @@
     "alertsTitle": "Alerts are for registered users",
     "alertsDescription": "Create an account to get price and position alerts in Telegram and on the site. This is a sample log and setup.",
     "readOnlyHint": "View only in the demo"
+  },
+  "TradingStats": {
+    "tabs": "Positions section",
+    "tabOpen": "Open",
+    "tabStats": "Statistics",
+    "period": "Period",
+    "periods": {
+      "today": "Today",
+      "7d": "7 days",
+      "30d": "30 days",
+      "all": "All"
+    },
+    "exchange": "Exchange",
+    "allExchanges": "All exchanges",
+    "account": "Account",
+    "allAccounts": "All accounts",
+    "coin": "Coin",
+    "allCoins": "All coins",
+    "side": "Side",
+    "allSides": "Long and short",
+    "long": "long",
+    "short": "short",
+    "empty": "No closed trades in this period.",
+    "total": "Result",
+    "approximate": "≈ {count} estimated",
+    "trades": "Trades",
+    "winsLosses": "{wins} ✅ / {losses} ❌",
+    "winRate": "Win rate",
+    "avgDuration": "Average duration",
+    "avgWin": "Average win",
+    "avgLoss": "Average loss",
+    "best": "Best trade",
+    "worst": "Worst trade",
+    "byDay": "Result by day",
+    "tradesCount": "{count, plural, one {# trade} other {# trades}}",
+    "result": "Result",
+    "byExchange": "By exchange",
+    "byAccount": "By account",
+    "byCoin": "By coin",
+    "winsOf": "{wins} of {count}",
+    "tradesTitle": "Closed trades",
+    "entryExit": "Entry → exit",
+    "duration": "Duration",
+    "closed": "Closed",
+    "approximateHint": "Estimate from the last poll: the exchange did not return the exact result.",
+    "sourceNote": "Bybit, Gate, BingX and KuCoin come from the exchange position history (from last month), with fees and funding (Bybit without funding). Other exchanges start when the worker saw the close. A position closed in parts is one trade."
   }
 }

@@ -19,6 +19,7 @@ import { GateAdapter } from "./gate";
 import { OkxAdapter } from "./okx";
 import { BingxAdapter } from "./bingx";
 import { syncTransfers } from "./transfer-store";
+import { syncClosedTrades } from "./closed-trades";
 import {
   looksLikeDeposit,
   looksLikeWithdrawal,
@@ -522,6 +523,8 @@ export async function runOneJob(
       dirtySnapshots.add(c.userId);
       // Deposit/withdrawal history rides on a successful sync; it never fails the sync itself.
       await syncTransfers(c, cached.adapter).catch(() => "failed");
+      // Closed positions for trading statistics, from the exchange's own history where it has one.
+      await syncClosedTrades(c, cached.adapter).catch(() => "failed");
     }
   } catch (error) {
     const code =

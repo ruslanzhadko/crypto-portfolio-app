@@ -36,7 +36,7 @@ it('saves settings, keeps only own excluded connections and signals the worker',
   expect((await PUT(request(settings))).status).toBe(200);
   expect(db.user.update).toHaveBeenCalledWith({
     where: { id: 'main' },
-    data: { positionAlerts: { ...settings, excludedConnections: ['mine'] } },
+    data: { positionAlerts: { ...settings, excludedConnections: ['mine'], dailySummary: false } },
   });
   expect(signal).toHaveBeenCalled();
 });

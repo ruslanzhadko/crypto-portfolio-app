@@ -15,8 +15,8 @@ import {
 import { useIsDemo } from "@/components/demo/demo-context";
 import { POSITION_KINDS_EVENT } from './alerts-tabs';
 
-type Kind = 'opened' | 'closed' | 'liquidation' | 'pnlSign';
-const KINDS: Kind[] = ['opened', 'closed', 'liquidation', 'pnlSign'];
+type Kind = 'opened' | 'closed' | 'liquidation' | 'pnlSign' | 'dailySummary';
+const KINDS: Kind[] = ['opened', 'closed', 'liquidation', 'pnlSign', 'dailySummary'];
 
 /** Notifications → Positions: one switch per kind, for every connected account. */
 export function PositionAlertsCard({

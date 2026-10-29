@@ -204,9 +204,12 @@ export interface PositionDto extends OpenPosition {
 export function PositionsPage({
   connectionId,
   compact = false,
+  tabs,
 }: {
   connectionId?: string;
   compact?: boolean;
+  /** Open | statistics switch next to the title (the Positions page only). */
+  tabs?: React.ReactNode;
 }) {
   const t = useTranslations("Exchanges");
   const locale = useLocale();
@@ -866,8 +869,9 @@ export function PositionsPage({
         {compact || connectionId ? (
           <h2 className="text-lg font-semibold">{t("positions")}</h2>
         ) : (
-          <div>
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-xl font-bold sm:text-2xl">{t("positions")}</h1>
+            {tabs}
           </div>
         )}
         {compact && (

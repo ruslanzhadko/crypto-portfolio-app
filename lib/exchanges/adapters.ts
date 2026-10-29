@@ -1,3 +1,4 @@
+import { bybitClosedTrades } from "./closed-trades";
 import { NextFundingReader } from "./next-funding";
 import { FundingReader } from "./funding";
 import { D, decimal, requiredDecimal as rd, multiply, sum } from "./decimal";
@@ -87,6 +88,20 @@ export class BybitAdapter implements ExchangeAdapter {
   }
   transfers(since: number) {
     return bybitTransfers(this.request, since);
+  }
+  /** Linear closes from `closed-pnl`, which answers at most a week per query. */
+  async closedTrades(since: number, until: number) {
+    const rows: Record<string, unknown>[] = [];
+    for (let start = since; start < until; start += 7 * 86_400_000)
+      rows.push(
+        ...(await this.pages("v5/position/closed-pnl", "private", {
+          category: "linear",
+          startTime: start,
+          endTime: Math.min(until, start + 7 * 86_400_000 - 1),
+          limit: 100,
+        })),
+      );
+    return bybitClosedTrades(rows);
   }
   async verify() {
     const key = bybitResult(await this.request("v5/user/query-api", "private"));

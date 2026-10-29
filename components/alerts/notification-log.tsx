@@ -267,13 +267,14 @@ function PositionLogRow({
   const d = (log.details ?? {}) as Partial<PositionLogDetails>;
   const signedUsd = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${formatUsd(Math.abs(value), { minimumFractionDigits: 2 })}`;
   const kind = log.kind ?? '';
-  const positive = kind === 'pnlSign' ? d.positive === true : kind === 'closed' ? (d.pnlUsd ?? 0) >= 0 : null;
+  const positive =
+    kind === 'pnlSign' ? d.positive === true : kind === 'closed' || kind === 'daily' ? (d.pnlUsd ?? 0) >= 0 : null;
   const tone =
     kind === 'liquidation' ? 'text-warning' : positive === null ? 'text-primary' : positive ? 'text-success' : 'text-danger';
   const Icon =
     kind === 'liquidation' ? TriangleAlert : kind === 'closed' ? CircleOff : kind === 'opened' ? CircleDot : positive ? ArrowUpRight : ArrowDownRight;
   const event =
-    kind === 'pnlSign' ? tp(d.positive ? 'pnlPlus' : 'pnlMinus') : ['opened', 'closed', 'liquidation'].includes(kind) ? tp(kind) : kind;
+    kind === 'pnlSign' ? tp(d.positive ? 'pnlPlus' : 'pnlMinus') : ['opened', 'closed', 'liquidation', 'daily'].includes(kind) ? tp(kind) : kind;
   const lasted = kind === 'closed' && d.durationMs != null ? formatDuration(d.durationMs, tp) : null;
   const detail =
     kind === 'liquidation' && d.distancePercent != null
@@ -284,7 +285,11 @@ function PositionLogRow({
             .join(' · ')
         : lasted;
   const side = d.side ? `${d.side === 'long' ? 'LONG' : 'SHORT'}${d.leverage ? ` ×${Number(d.leverage)}` : ''}` : null;
-  const where = [d.label ?? (d.exchange ? exchangeName(d.exchange) : null), side].filter(Boolean).join(' · ');
+  const daily = (log.details ?? {}) as { count?: number; wins?: number; losses?: number };
+  const where =
+    kind === 'daily'
+      ? tp('dailyTrades', { count: daily.count ?? 0, wins: daily.wins ?? 0, losses: daily.losses ?? 0 })
+      : [d.label ?? (d.exchange ? exchangeName(d.exchange) : null), side].filter(Boolean).join(' · ');
   const size = d.sizeUsd != null && Number.isFinite(Number(d.sizeUsd)) ? formatUsd(Number(d.sizeUsd)) : null;
 
   return (
@@ -322,8 +327,12 @@ function PositionLogRow({
       </div>
 
       <div className="hidden sm:block">
-        <p className="text-base tabular-nums">{size ?? '—'}</p>
-        <p className="text-xs text-text-muted">{tp('size')}</p>
+        {kind !== 'daily' && (
+          <>
+            <p className="text-base tabular-nums">{size ?? '—'}</p>
+            <p className="text-xs text-text-muted">{tp('size')}</p>
+          </>
+        )}
       </div>
 
       <div className="text-right">

@@ -163,6 +163,13 @@ Worker отправляет сообщения сам: `TELEGRAM_BOT_TOKEN` до
 в Vercel и `price-triggers.env` (окно `update-prices` синхронизирует кошельки). Нативная монета — Gram (GRAM,
 бывший Toncoin), id CoinGecko `the-open-network`, пара Binance `GRAMUSDT` (`TONUSDT` замерла на старой цене).
 
+## 4g. Статистика торговли — применена 29.10.2026
+
+Только добавление (`prisma/closed-trades.sql`): таблица `ClosedTrade` и колонка `ExchangeConnection.tradesAt`.
+Порядок как в §4b, **до пуша в `main`**: worker читает подключения целиком (`tradesAt`) и пишет сделки. После деплоя
+каждое подключение Bybit/Gate/BingX/KuCoin один раз читает историю закрытых позиций за 30 дней; BingX — по монетам из
+журнала доходов (медленно из-за лимита 1 запрос/с, один раз). Итог дня — `positionAlerts.dailySummary`, без миграции.
+
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 
 Как устроено: listener — второй контейнер того же образа (`Dockerfile.exchanges`); скрипт

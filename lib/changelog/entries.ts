@@ -15,24 +15,30 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-29",
     title: {
-      ru: "KuCoin, кошельки TON и депозиты в Aster",
-      uk: "KuCoin, гаманці TON і депозити в Aster",
-      en: "KuCoin, TON wallets and Aster deposits",
+      ru: "Статистика торговли, KuCoin и кошельки TON",
+      uk: "Статистика торгівлі, KuCoin і гаманці TON",
+      en: "Trading statistics, KuCoin and TON wallets",
     },
     items: {
       ru: [
+        "Вкладка «Статистика» на странице «Позиции»: итог, доля прибыльных сделок, график по дням, разбивка по биржам, счетам и монетам, фильтры. Bybit, Gate, BingX и KuCoin — с историей за прошлый месяц.",
+        "Итог дня в Telegram: после полуночи по Киеву — сумма закрытых за сутки сделок, лучшая и худшая. Включается в «Уведомления» → «Позиции».",
         "Поддержана биржа KuCoin: спот и USDT/USDC-фьючерсы с позициями, уведомления по позициям с точным итогом закрытия, депозиты и выводы.",
         "Можно добавить кошелёк TON: баланс Gram, джеттоны с ценами и история операций; поддельные джеттоны уходят в спам. Сеть TON видна на обзоре, в распределении по сетям и в фильтрах.",
         "Депозит из кошелька в Aster показывается как перевод на биржу, а не как обычная отправка.",
         "Уведомления на сайте закрываются, когда заканчивается полоска времени, даже если окно не в фокусе.",
       ],
       uk: [
+        "Вкладка «Статистика» на сторінці «Позиції»: підсумок, частка прибуткових угод, графік за днями, розбивка за біржами, рахунками й монетами, фільтри. Bybit, Gate, BingX і KuCoin — з історією за минулий місяць.",
+        "Підсумок дня в Telegram: після півночі за Києвом — сума закритих за добу угод, найкраща й найгірша. Вмикається в «Сповіщення» → «Позиції».",
         "Підтримано біржу KuCoin: спот і USDT/USDC-ф'ючерси з позиціями, сповіщення по позиціях із точним підсумком закриття, депозити й виведення.",
         "Можна додати гаманець TON: баланс Gram, джеттони з цінами та історія операцій; підроблені джеттони йдуть у спам. Мережа TON видна в огляді, у розподілі за мережами та у фільтрах.",
         "Депозит із гаманця в Aster показується як переказ на біржу, а не як звичайне відправлення.",
         "Сповіщення на сайті закриваються, коли закінчується смужка часу, навіть якщо вікно не у фокусі.",
       ],
       en: [
+        "A Statistics tab on the Positions page: result, win rate, a by-day chart, a breakdown by exchange, account and coin, and filters. Bybit, Gate, BingX and KuCoin include last month's history.",
+        "Daily summary in Telegram: after midnight Kyiv time, the day's closed trades with the best and the worst. Turn it on in Notifications → Positions.",
         "KuCoin is supported: spot and USDT/USDC futures with positions, position alerts with the exact close result, deposits and withdrawals.",
         "You can add a TON wallet: Gram balance, jettons with prices and transaction history; fake jettons go to spam. TON shows on the overview, in the network breakdown and in filters.",
         "A deposit from a wallet to Aster shows as a transfer to the exchange, not as a plain send.",

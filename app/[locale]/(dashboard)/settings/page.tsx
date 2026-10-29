@@ -66,7 +66,7 @@ export default async function SettingsPage({
   const format = await getFormatter();
   const positionAlerts = exchangesEnabled(session.user.id);
   const alertSettings = readPositionAlertSettings(user.positionAlerts);
-  const positionKinds = (['opened', 'closed', 'liquidation', 'pnlSign'] as const).filter(
+  const positionKinds = (['opened', 'closed', 'liquidation', 'pnlSign', 'dailySummary'] as const).filter(
     (kind) => alertSettings[kind],
   ).length;
   const activeTriggers = user.triggers.filter((tr) => tr.isActive).length;

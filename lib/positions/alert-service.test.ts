@@ -23,6 +23,11 @@ vi.mock("@/lib/exchanges/worker", () => ({
   connectionClient: async () => ({ adapter, touched: 0, version: 1 }),
 }));
 vi.mock("./delivery", () => ({ deliverPositionEvents: deliver }));
+const saveTrades = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/exchanges/closed-trades", () => ({
+  HISTORY_EXCHANGES: new Set(["bybit", "gate", "bingx", "kucoin"]),
+  saveClosedTrades: saveTrades,
+}));
 import { ALERT_POLL_MS, PositionAlertService } from "./alert-service";
 
 const settings = {
@@ -101,6 +106,7 @@ beforeEach(() => {
     },
   ]);
   deliver.mockResolvedValue("sent");
+  saveTrades.mockResolvedValue(undefined);
 });
 
 describe("PositionAlertService", () => {
@@ -262,5 +268,38 @@ describe("PositionAlertService", () => {
     const service = new PositionAlertService();
     await service.maybeReload(null, 0);
     expect(await service.maybeReload(7, 1000)).toBe(true);
+  });
+
+  it("records closes for statistics without alerts, and skips exchanges with a position history", async () => {
+    db.user.findMany.mockResolvedValue([]);
+    db.exchangeConnection.findMany.mockResolvedValue([row("c1")]);
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    // Record-only connections are not polled.
+    expect(service.size).toBe(0);
+    service.observe({ id: "c1", userId: "u1" }, result(), 5_000);
+    await Promise.resolve();
+    expect(saveTrades).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "c1" }),
+      [expect.objectContaining({ symbol: "BTCUSDT", side: "long", pnl: "25", closedAt: 5_000 })],
+      "watch",
+      false,
+      expect.any(Function),
+    );
+    expect(await service.flush()).toEqual([]);
+    expect(deliver).not.toHaveBeenCalled();
+    // The where clause asks for alert users' connections or exchanges without a history.
+    const where = db.exchangeConnection.findMany.mock.calls[0]![0].where;
+    expect(where.OR[1]).toEqual({ exchange: { notIn: ["bybit", "gate", "bingx", "kucoin"] } });
+  });
+
+  it("an excluded connection still feeds the statistics", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    service.observe({ id: "skipped", userId: "u1" }, result(btc), 1_000);
+    service.observe({ id: "skipped", userId: "u1" }, result(), 2_000);
+    await Promise.resolve();
+    expect(saveTrades).toHaveBeenCalledTimes(1);
+    expect(await service.flush()).toEqual([]);
   });
 });

@@ -99,6 +99,6 @@ it('summarizes notifications and links to their settings', async () => {
   db.findUnique.mockResolvedValue({ triggers: [{ isActive: true }, { isActive: false }], createdAt: new Date(0), name: 'Main', email: 'main@example.com', role: 'USER', passwordHash: 'hash', accounts: [], positionAlerts: { opened: true, closed: true, liquidation: false, pnlSign: false, liquidationPercent: 10, excludedConnections: [] } });
   const html = renderToStaticMarkup(await SettingsPage({ searchParams: Promise.resolve({}) }));
   expect(html).toContain('1 of 2 active');
-  expect(html).toContain('2 of 4 on');
+  expect(html).toContain('2 of 5 on');
   expect(html).toContain('href="/alerts?tab=positions"');
 });

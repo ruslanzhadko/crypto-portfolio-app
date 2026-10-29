@@ -1,3 +1,4 @@
+import type { ClosedTradeRow } from "./closed-trades";
 import { record, records } from "./adapters";
 import { D, decimal, multiply, requiredDecimal as rd, sum } from "./decimal";
 import { finishPosition, positive, timestamp, type Row } from "./provider-utils";
@@ -95,6 +96,48 @@ export class KucoinAdapter implements ExchangeAdapter {
 
   transfers(since: number) {
     return kucoinTransfers((path, params) => this.data(path, "private", params, 1), since);
+  }
+
+  /** Closes from `history-positions` (a week per query, three months kept). */
+  async closedTrades(since: number, until: number): Promise<ClosedTradeRow[]> {
+    const contracts = await this.contractRows().catch(() => new Map<string, Row>());
+    const trades: ClosedTradeRow[] = [];
+    for (let start = since; start < until; start += 7 * 86400_000) {
+      for (let pageId = 1; pageId <= 20; pageId++) {
+        const page = record(
+          await this.data(
+            "history-positions",
+            "futuresPrivate",
+            { from: start, to: Math.min(until, start + 7 * 86400_000 - 1), limit: 200, pageId },
+            1,
+            "FUTURES_UNAVAILABLE",
+          ),
+        );
+        for (const r of records(page.items)) {
+          const symbol = String(r.symbol ?? "");
+          const closedAt = timestamp(r.closeTime);
+          const pnl = decimal(r.pnl);
+          const side = String(r.side ?? "").toUpperCase();
+          if (!symbol || closedAt === null || pnl === null || !["LONG", "SHORT"].includes(side)) continue;
+          const settle = String(r.settleCurrency ?? "USDT").toUpperCase();
+          trades.push({
+            externalId: `kucoin:${String(r.closeId)}`,
+            symbol,
+            base: kucoinAsset(String(contracts.get(symbol)?.baseCurrency ?? symbol.replace(/(USDT|USDC)M$/, ""))),
+            settle,
+            side: side === "LONG" ? "long" : "short",
+            size: null,
+            entryPrice: positive(r.openPrice),
+            exitPrice: positive(r.closePrice),
+            openedAt: timestamp(r.openTime),
+            closedAt,
+            pnl,
+          });
+        }
+        if (pageId >= Number(page.totalPage ?? 1)) break;
+      }
+    }
+    return trades;
   }
 
   async closedResult(input: ClosedInput): Promise<string | null> {
