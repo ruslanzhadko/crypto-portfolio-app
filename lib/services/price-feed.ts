@@ -86,6 +86,8 @@ const NATIVE_BINANCE_SYMBOL: Record<string, string> = {
   polygon: 'POLUSDT',
   avalanche: 'AVAXUSDT',
   solana: 'SOLUSDT',
+  // Gram trades as GRAMUSDT since the rename; the old TONUSDT pair froze at its last price.
+  ton: 'GRAMUSDT',
 };
 
 /**
@@ -104,6 +106,7 @@ const DEXSCREENER_CHAIN_ID: Record<string, string> = {
   avalanche: 'avalanche',
   solana: 'solana',
   xlayer: 'xlayer',
+  ton: 'ton',
 };
 
 // ──────────────────────────────────────────────────────────────

@@ -154,6 +154,7 @@ const CONTRACT_PLATFORM_BY_CHAIN: Record<string, string> = {
   base: 'base',
   avalanche: 'avalanche',
   xlayer: 'x-layer',
+  ton: 'the-open-network',
 };
 
 interface CoinWithPlatforms {

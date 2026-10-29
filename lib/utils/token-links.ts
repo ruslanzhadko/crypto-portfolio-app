@@ -12,6 +12,7 @@ const DEX_CHAIN_BY_INTERNAL: Record<string, string> = {
   hyperevm: 'hyperevm',
   avalanche: 'avalanche',
   xlayer: 'xlayer',
+  ton: 'ton',
 };
 
 export function getDexScreenerChainId(chainName: string): string | null {

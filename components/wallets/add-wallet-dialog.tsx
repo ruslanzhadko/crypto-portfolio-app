@@ -48,6 +48,12 @@ export function AddWalletDialog() {
       desc: t('solanaDesc'),
       placeholder: t('solanaPlaceholder'),
     },
+    {
+      network: Network.TON,
+      label: t('tonLabel'),
+      desc: t('tonDesc'),
+      placeholder: t('tonPlaceholder'),
+    },
   ];
 
   function reset() {
@@ -65,7 +71,11 @@ export function AddWalletDialog() {
 
     if (!isValidAddressForNetwork(trimmed, network)) {
       setError(
-        network === Network.EVM ? t('evmValidationError') : t('solanaValidationError'),
+        network === Network.EVM
+          ? t('evmValidationError')
+          : network === Network.TON
+            ? t('tonValidationError')
+            : t('solanaValidationError'),
       );
       return;
     }
@@ -110,7 +120,12 @@ export function AddWalletDialog() {
 
       toast({
         title: t('toastAddedTitle'),
-        description: network === Network.EVM ? t('toastSyncStartedEvm') : t('toastSyncStartedSolana'),
+        description:
+          network === Network.EVM
+            ? t('toastSyncStartedEvm')
+            : network === Network.TON
+              ? t('toastSyncStartedTon')
+              : t('toastSyncStartedSolana'),
       });
 
       setIsSyncing(true);
@@ -166,7 +181,7 @@ export function AddWalletDialog() {
         <form onSubmit={onSubmit} className="space-y-4" data-testid="add-wallet-form">
           <div className="space-y-2">
             <Label>{t('addressTypeLabel')}</Label>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-3">
               {walletTypes.map((wt) => (
                 <button
                   key={wt.network}

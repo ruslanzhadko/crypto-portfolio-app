@@ -1,7 +1,7 @@
 import { TransactionList } from './transaction-list';
 
 export function WalletTransactions({ walletId, walletAddress, network }: {
-  walletId: string; walletAddress: string; network: 'EVM' | 'SOLANA';
+  walletId: string; walletAddress: string; network: 'EVM' | 'SOLANA' | 'TON';
 }) {
   return <TransactionList walletId={walletId} walletAddress={walletAddress} network={network} />;
 }

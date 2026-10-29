@@ -1,3 +1,4 @@
+import { normalizeTonWallet } from "@/lib/utils/ton-address";
 import {
   migratedWalletIds,
   isMigratedHypercore,
@@ -77,9 +78,13 @@ export async function POST(req: NextRequest) {
     }
     const { address, network, label } = parsed.data;
 
-    const normalizedAddress = address.startsWith("0x")
-      ? address.toLowerCase()
-      : address;
+    // One TON account has several spellings (EQ…, UQ…, 0:hex): store one, so it cannot be added twice.
+    const normalizedAddress =
+      network === "TON"
+        ? (normalizeTonWallet(address) ?? address)
+        : address.startsWith("0x")
+          ? address.toLowerCase()
+          : address;
 
     const existing = await prisma.wallet.findUnique({
       where: {

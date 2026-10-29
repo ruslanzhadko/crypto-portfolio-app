@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       {
         wallet,
         chain: null as string | null,
-        networks: wallet.network === 'EVM' ? EVM_TRANSACTION_NETWORKS : ['solana'],
+        networks: wallet.network === 'EVM' ? EVM_TRANSACTION_NETWORKS : wallet.network === 'TON' ? ['ton'] : ['solana'],
       },
       ...(wallet.network === 'EVM' ? [
         { wallet, chain: 'robinhood', networks: ['robinhood'] },

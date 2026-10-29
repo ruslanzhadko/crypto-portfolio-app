@@ -153,6 +153,16 @@ Worker отправляет сообщения сам: `TELEGRAM_BOT_TOKEN` до
 `DemoExchangeAdapter` (цены — публичный `premiumIndex` Binance), историю капитала за 30 дней worker дорисовывает
 один раз вокруг первого снимка. Выключить демо: убрать `DEMO_USER_ID`.
 
+## 4f. Кошельки TON (29.10)
+
+Только добавление (`prisma/ton-network.sql`): значение `TON` в enum `Network`. `ALTER TYPE … ADD VALUE` нельзя
+использовать в той же транзакции, поэтому файл выполняется сам по себе (`IF NOT EXISTS` — повтор безопасен).
+Порядок как в §4b: резервная копия → diff с production ровно равен файлу → `prisma db execute` → повторный diff
+`--exit-code` = 0 → пуш в `main`. Без значения сайт работает, но добавить TON-кошелёк нельзя (ошибка enum).
+Данные — TonAPI (`lib/services/tonapi.ts`): без ключа ~1 запрос/с; при нехватке добавить `TONAPI_KEY` (Bearer)
+в Vercel и `price-triggers.env` (окно `update-prices` синхронизирует кошельки). Нативная монета — Gram (GRAM,
+бывший Toncoin), id CoinGecko `the-open-network`, пара Binance `GRAMUSDT` (`TONUSDT` замерла на старой цене).
+
 ## 5. Telegram listener: Render → VM (этап E1) — выполнен 20–21.10.2026
 
 Как устроено: listener — второй контейнер того же образа (`Dockerfile.exchanges`); скрипт

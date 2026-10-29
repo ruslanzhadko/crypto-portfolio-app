@@ -13,8 +13,8 @@ interface NetworkBadgeProps {
 
 export function NetworkBadge({ network, className }: NetworkBadgeProps) {
   const t = useTranslations('NetworkBadge');
-  const label = network === Network.EVM ? t('evm') : t('solana');
-  const color = network === Network.EVM ? '#6c63ff' : '#14f195';
+  const label = network === Network.EVM ? t('evm') : network === Network.TON ? t('ton') : t('solana');
+  const color = network === Network.EVM ? '#6c63ff' : network === Network.TON ? '#0098ea' : '#14f195';
   return (
     <span
       className={cn(

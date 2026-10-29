@@ -25,6 +25,7 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
     all: wallets.length,
     [Network.EVM]: wallets.filter((wallet) => wallet.network === Network.EVM).length,
     [Network.SOLANA]: wallets.filter((wallet) => wallet.network === Network.SOLANA).length,
+    [Network.TON]: wallets.filter((wallet) => wallet.network === Network.TON).length,
   };
 
   const visible = useMemo(() => {
@@ -44,6 +45,7 @@ export function WalletGallery({ wallets }: { wallets: WalletCardData[] }) {
     { key: 'all', label: t('filterAll') },
     { key: Network.EVM, label: 'EVM' },
     { key: Network.SOLANA, label: 'Solana' },
+    { key: Network.TON, label: 'TON' },
   ];
 
   return (

@@ -17,7 +17,7 @@ export interface ChainInfo {
   /** Логотип самого блокчейну (відрізняється для Arbitrum/Optimism/Base) */
   chainLogoUrl: string;
   color: string;
-  network: Network; // EVM або SOLANA
+  network: Network; // EVM, SOLANA або TON
 }
 
 const TW = 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains';
@@ -164,7 +164,21 @@ export const SOLANA_CHAIN: ChainInfo = {
   network: Network.SOLANA,
 };
 
-export const ALL_CHAINS: ChainInfo[] = [...EVM_CHAINS, ...HYPERCORE_CHAINS, SOLANA_CHAIN];
+/** TON's native coin is Gram (GRAM), renamed from Toncoin in June 2026; CoinGecko keeps the old id. */
+export const TON_CHAIN: ChainInfo = {
+  chainName: 'ton',
+  displayName: 'TON',
+  symbol: 'GRAM',
+  chainId: null,
+  coingeckoPlatform: 'the-open-network',
+  coingeckoNativeId: 'the-open-network',
+  nativeLogoUrl: 'https://coin-images.coingecko.com/coins/images/17980/small/Gram_Circular_Badge.png',
+  chainLogoUrl: `${TW}/ton/info/logo.png`,
+  color: '#0098ea',
+  network: Network.TON,
+};
+
+export const ALL_CHAINS: ChainInfo[] = [...EVM_CHAINS, ...HYPERCORE_CHAINS, SOLANA_CHAIN, TON_CHAIN];
 
 const CHAIN_MAP = new Map<string, ChainInfo>(ALL_CHAINS.map((c) => [c.chainName, c]));
 
@@ -176,7 +190,6 @@ const EXTRA_NETWORKS: Record<string, { displayName: string; logo: string }> = {
   tron: { displayName: 'Tron', logo: `${TW}/tron/info/logo.png` },
   plasma: { displayName: 'Plasma', logo: `${TW}/plasma/info/logo.png` },
   aptos: { displayName: 'Aptos', logo: `${TW}/aptos/info/logo.png` },
-  ton: { displayName: 'TON', logo: `${TW}/ton/info/logo.png` },
   sui: { displayName: 'Sui', logo: `${TW}/sui/info/logo.png` },
   bitcoin: { displayName: 'Bitcoin', logo: `${TW}/bitcoin/info/logo.png` },
   linea: { displayName: 'Linea', logo: `${TW}/linea/info/logo.png` },
@@ -205,6 +218,7 @@ export function getChainInfo(chainName: string): ChainInfo | null {
 
 export function getChainsByNetwork(network: Network): ChainInfo[] {
   if (network === Network.EVM) return EVM_CHAINS;
+  if (network === Network.TON) return [TON_CHAIN];
   return [SOLANA_CHAIN];
 }
 

@@ -1,3 +1,4 @@
+import { isValidTonAddress } from './ton-address';
 import { z } from 'zod';
 import { Network, TriggerDirection } from '@prisma/client';
 
@@ -64,6 +65,7 @@ export function isValidAddressForNetwork(
   network: Network,
 ): boolean {
   if (network === Network.SOLANA) return isValidSolanaAddress(address);
+  if (network === Network.TON) return isValidTonAddress(address);
   return isValidEvmAddress(address); // EVM — одна адреса для всіх 9 мереж
 }
 
@@ -75,7 +77,7 @@ export const walletCreateSchema = z
   })
   .refine((data) => isValidAddressForNetwork(data.address, data.network), {
     message:
-      'Невірний формат адреси. EVM: 0x... (42 символи). Solana: Base58 (32–44 символи)',
+      'Невірний формат адреси. EVM: 0x... (42 символи). Solana: Base58 (32–44 символи). TON: UQ…/EQ… (48 символів)',
     path: ['address'],
   });
 

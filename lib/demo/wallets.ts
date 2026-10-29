@@ -17,7 +17,7 @@ export type DemoToken = {
 export type DemoWallet = {
   label: string;
   address: string;
-  network: "EVM" | "SOLANA";
+  network: "EVM" | "SOLANA" | "TON";
   tokens: DemoToken[];
 };
 

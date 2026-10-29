@@ -7,6 +7,7 @@ import {
   type NormalizedToken,
 } from "@/lib/services/token-types";
 import { fetchSolanaBalances } from "@/lib/services/helius";
+import { fetchTonBalances } from "@/lib/services/tonapi";
 import { fetchEVMBalancesFromAnkr } from "@/lib/services/ankr";
 import { fetchRobinhoodBalances } from "@/lib/services/robinhood";
 import {
@@ -98,7 +99,9 @@ export async function syncWallet(walletId: string): Promise<SyncResult> {
   const isEvm = wallet.network === Network.EVM;
   const tokens = isEvm
     ? await fetchEVMBalancesFromAnkr(wallet.address)
-    : await fetchSolanaBalances(wallet.address);
+    : wallet.network === Network.TON
+      ? await fetchTonBalances(wallet.address)
+      : await fetchSolanaBalances(wallet.address);
   if (isEvm) {
     const exchangeManaged =
       exchangesEnabled(wallet.userId) &&

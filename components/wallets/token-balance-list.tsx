@@ -64,6 +64,7 @@ function verifiedMarketId(token: TokenBalance): string | null {
 function explorerUrl(token: TokenBalance): string | null {
   if (!token.tokenAddress) return null;
   if (token.chainName === 'solana') return `https://solscan.io/token/${token.tokenAddress}`;
+  if (token.chainName === 'ton') return `https://tonviewer.com/${token.tokenAddress}`;
   if (token.chainName === 'hypercore' && /^0x[\da-f]{32}$/i.test(token.tokenAddress)) {
     return `https://app.hyperliquid.xyz/explorer/token/${token.tokenAddress}`;
   }

@@ -102,7 +102,7 @@ model Wallet {
   id         String    @id @default(cuid())
   userId     String
   address    String
-  network    Network   // EVM = одна адреса для всіх 9 EVM-мереж; SOLANA = окремо
+  network    Network   // EVM = одна адреса для всіх 9 EVM-мереж; SOLANA і TON = окремо
   label      String?
   isActive   Boolean   @default(true)
   lastSyncAt DateTime?
@@ -119,10 +119,11 @@ model Wallet {
 }
 
 // EVM — одна адреса покриває всі EVM-мережі (Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, Base, Avalanche, X Layer, Robinhood)
-// SOLANA — окремо
+// SOLANA, TON — окремо
 enum Network {
   EVM
   SOLANA
+  TON
 }
 
 // ═══════════════════════════════════════

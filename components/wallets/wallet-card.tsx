@@ -158,7 +158,9 @@ export function WalletCard({ wallet, portfolioTotalUsd }: WalletCardProps) {
                 'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg lg:h-11 lg:w-11',
                 wallet.network === Network.SOLANA
                   ? 'bg-success/10 text-success'
-                  : 'bg-primary/10 text-primary',
+                  : wallet.network === Network.TON
+                    ? 'bg-sky-500/10 text-sky-400'
+                    : 'bg-primary/10 text-primary',
               )}
             >
               <WalletIcon className="h-4 w-4 lg:h-5 lg:w-5" />

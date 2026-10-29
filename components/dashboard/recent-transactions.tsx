@@ -91,7 +91,7 @@ const EXPLORER: Record<string, string> = {
   ethereum: 'https://etherscan.io/tx/', bsc: 'https://bscscan.com/tx/',
   polygon: 'https://polygonscan.com/tx/', avalanche: 'https://snowtrace.io/tx/',
   arbitrum: 'https://arbiscan.io/tx/', optimism: 'https://optimistic.etherscan.io/tx/',
-  base: 'https://basescan.org/tx/', solana: 'https://solscan.io/tx/',
+  base: 'https://basescan.org/tx/', solana: 'https://solscan.io/tx/', ton: 'https://tonviewer.com/transaction/',
   hypercore: 'https://app.hyperliquid.xyz/explorer/tx/',
   'hypercore-perps': 'https://app.hyperliquid.xyz/explorer/tx/',
   xlayer: 'https://explorer.xlayer.xyz/tx/', robinhood: 'https://robinhoodchain.blockscout.com/tx/',

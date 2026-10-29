@@ -11,6 +11,7 @@ import { transactionIsSpam, type TransactionSpamCandidate } from '@/lib/services
 import { transactionInitiators } from '@/lib/services/transaction-verification';
 import { transactionAssets } from '@/lib/services/transaction-assets';
 import { pairRelayedSwaps } from '@/lib/services/solana-relayed-swaps';
+import { fetchTonTransactionsPage } from '@/lib/services/tonapi';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -31,7 +32,7 @@ interface WalletTransactionPagePayload {
 interface TransactionWalletRef {
   id: string;
   address: string;
-  network: 'EVM' | 'SOLANA';
+  network: 'EVM' | 'SOLANA' | 'TON';
 }
 
 function cacheGet<T>(key: string): T | null {
@@ -501,6 +502,18 @@ async function getWalletTransactionsPayload(
   const cacheKey = `tx-v6::${wallet.id}::${wallet.network}::${wallet.address}::${chain ?? 'default'}::${pageToken ?? ''}::${pageSize}`;
   const cached = cacheGet<WalletTransactionPagePayload>(cacheKey);
   if (cached) return cached;
+
+  if (wallet.network === 'TON') {
+    const page = await fetchTonTransactionsPage(wallet.address, pageToken, pageSize);
+    const marked = await markSpam(wallet.id, page.transactions as unknown as TransactionSpamCandidate[]);
+    const tonResult: WalletTransactionPagePayload = {
+      transactions: marked.map((tx, i) => ({ ...tx, isSpam: tx.isSpam || page.transactions[i]!.isScam })),
+      nextPageToken: page.nextPageToken,
+      hasMore: !!page.nextPageToken,
+    };
+    cacheSet(cacheKey, tonResult);
+    return tonResult;
+  }
 
   if (wallet.network !== 'EVM') {
     const heliusKey = process.env.HELIUS_API_KEY;

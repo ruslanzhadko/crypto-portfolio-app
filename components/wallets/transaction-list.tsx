@@ -45,7 +45,7 @@ interface TransactionDTO {
 interface TransactionListProps {
   walletId: string;
   walletAddress: string;
-  network: 'EVM' | 'SOLANA';
+  network: 'EVM' | 'SOLANA' | 'TON';
 }
 
 type Source = 'default' | 'robinhood' | 'hyperevm' | 'hypercore';
@@ -66,6 +66,7 @@ const EXPLORER: Record<string, string> = {
   optimism: 'https://optimistic.etherscan.io/tx/',
   base:     'https://basescan.org/tx/',
   solana:   'https://solscan.io/tx/',
+  ton:      'https://tonviewer.com/transaction/',
   xlayer:   'https://explorer.xlayer.xyz/tx/',
   robinhood: 'https://robinhoodchain.blockscout.com/tx/',
   hyperevm: 'https://www.hyperscan.com/tx/',
