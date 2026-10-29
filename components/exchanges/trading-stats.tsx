@@ -212,11 +212,12 @@ export function TradingStats() {
             </span>
           )}
         </Button>
+        {/* Reset sits next to the filters button on phones and after the last filter on wider screens. */}
         {activeFilters > 0 && (
           <Button
             type="button"
             variant="outline"
-            className="h-9 w-9 px-0"
+            className="h-9 w-9 px-0 sm:hidden"
             aria-label={t("resetFilters")}
             title={t("resetFilters")}
             onClick={resetFilters}
@@ -247,6 +248,18 @@ export function TradingStats() {
             <option value="short">{t("short")}</option>
           </StatsSelect>
         </div>
+        {activeFilters > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            className="hidden h-9 gap-1.5 px-3 text-sm sm:inline-flex"
+            title={t("resetFilters")}
+            onClick={resetFilters}
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+            {t("resetFilters")}
+          </Button>
+        )}
       </div>
 
       {!data && loading ? (
@@ -308,10 +321,7 @@ export function TradingStats() {
           <div className="grid gap-2 sm:gap-3 lg:grid-cols-3">
             <div className="grid min-w-0 content-start gap-2 sm:gap-3">
               <Breakdown title={t("byExchange")} groups={data.byExchange} exchangeLogos />
-              {/* One account per exchange would only repeat the exchanges. */}
-              {data.byAccount.length > data.byExchange.length && (
-                <Breakdown title={t("byAccount")} groups={data.byAccount} exchangeLogos />
-              )}
+              <Breakdown title={t("byAccount")} groups={data.byAccount} exchangeLogos />
             </div>
             <div className="min-w-0 lg:col-span-2">
               <Breakdown title={t("byCoin")} groups={data.byCoin} columns />
