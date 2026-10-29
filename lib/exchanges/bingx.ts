@@ -97,35 +97,61 @@ export class BingxAdapter implements ExchangeAdapter {
    * each coin's positions are read for the whole range at once.
    */
   async closedTrades(since: number, until: number) {
-    const symbols = new Set<string>();
-    for (let start = since; start < until; start += 7 * 86_400_000) {
+    const WEEK = 7 * 86_400_000;
+    // Without the income type filter (if the exchange refuses it) realized PnL entries are picked here.
+    let typed = true;
+    const income = async (startTime: number, endTime: number) => {
       const envelope = record(
         await this.request("user/income", "swap:v2:private", {
-          incomeType: "REALIZED_PNL",
-          startTime: start,
-          endTime: Math.min(until, start + 7 * 86_400_000 - 1),
+          ...(typed ? { incomeType: "REALIZED_PNL" } : {}),
+          startTime,
+          endTime,
           limit: 1000,
         }),
       );
-      if (String(envelope.code) !== "0") throw new ExchangeError("UNAVAILABLE");
-      for (const r of envelope.data == null ? [] : records(envelope.data))
-        if (typeof r.symbol === "string" && r.symbol) symbols.add(r.symbol);
+      if (String(envelope.code) !== "0")
+        throw new ExchangeError("UNAVAILABLE", `income code ${String(envelope.code)}`);
+      return (envelope.data == null ? [] : records(envelope.data)).filter(
+        (r) => r.incomeType === undefined || r.incomeType === "REALIZED_PNL",
+      );
+    };
+    const symbols = new Set<string>();
+    for (let start = since; start < until; start += WEEK) {
+      const end = Math.min(until, start + WEEK - 1);
+      let rows: Record<string, unknown>[];
+      try {
+        rows = await income(start, end);
+      } catch (error) {
+        if (!typed) throw error;
+        typed = false;
+        rows = await income(start, end);
+      }
+      for (const r of rows) if (typeof r.symbol === "string" && r.symbol) symbols.add(r.symbol);
     }
+    const history = async (symbol: string, startTs: number, endTs: number) =>
+      records(
+        record(
+          bingxData(
+            await this.request("trade/positionHistory", "swap:v1:private", {
+              symbol,
+              startTs,
+              endTs,
+              pageIndex: 1,
+              pageSize: 100,
+            }),
+            "positionHistory",
+          ),
+        ).positionHistory ?? [],
+      );
     const rows: Record<string, unknown>[] = [];
     for (const symbol of symbols) {
-      const data = record(
-        bingxData(
-          await this.request("trade/positionHistory", "swap:v1:private", {
-            symbol,
-            startTs: since,
-            endTs: until,
-            pageIndex: 1,
-            pageSize: 100,
-          }),
-          "positionHistory",
-        ),
-      );
-      rows.push(...records(data.positionHistory ?? []));
+      try {
+        rows.push(...(await history(symbol, since, until)));
+      } catch {
+        // A range the exchange will not answer at once is read a week at a time.
+        for (let start = since; start < until; start += WEEK)
+          rows.push(...(await history(symbol, start, Math.min(until, start + WEEK - 1))));
+      }
     }
     return bingxClosedTrades(rows);
   }

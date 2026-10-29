@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { D } from "./decimal";
 import { timestamp } from "./provider-utils";
 import { settlementPrices } from "./pricing";
-import type { ExchangeAdapter } from "./types";
+import { errorDiagnostics, safeError, type ExchangeAdapter } from "./types";
 
 /**
  * Closed futures positions for trading statistics (docs/TRADING_STATS.md). One row is one position
@@ -194,8 +194,15 @@ export async function syncClosedTrades(
       where: { id: connection.id },
       data: { tradesAt: new Date(now) },
     });
+    if (fresh || rows.length)
+      console.log(
+        `[closed-trades] ${connection.exchange}: ${rows.length} trade(s) since ${new Date(since).toISOString().slice(0, 10)}`,
+      );
     return "saved";
-  } catch {
+  } catch (error) {
+    console.warn(
+      `[closed-trades] ${connection.exchange} history failed: ${safeError(error)} (${errorDiagnostics(error)})`,
+    );
     return "failed";
   }
 }

@@ -1,6 +1,6 @@
 "use client";
-import { useState, type SelectHTMLAttributes } from "react";
-import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useState, type SelectHTMLAttributes } from "react";
+import { ChevronDown, ChevronLeft, ChevronRight, SlidersHorizontal, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Bar,
@@ -24,6 +24,8 @@ type StatsResponse = ReturnType<typeof tradeStats> & {
   period: StatsPeriod;
   trades: StatsTrade[];
   totalTrades: number;
+  page: number;
+  pageSize: number;
   truncated: boolean;
   options: {
     exchanges: string[];
@@ -59,15 +61,30 @@ function StatsSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
   );
 }
 
-function Breakdown({ title, groups, exchangeLogos }: { title: string; groups: StatsGroup[]; exchangeLogos?: boolean }) {
+const BREAKDOWN_ROWS = 12;
+
+function Breakdown({
+  title,
+  groups,
+  exchangeLogos,
+  columns = false,
+}: {
+  title: string;
+  groups: StatsGroup[];
+  exchangeLogos?: boolean;
+  /** Two columns on wide screens: for the long coin list next to the short exchange lists. */
+  columns?: boolean;
+}) {
   const t = useTranslations("TradingStats");
+  const [all, setAll] = useState(false);
   if (!groups.length) return null;
+  const shown = all ? groups : groups.slice(0, BREAKDOWN_ROWS);
   return (
     <section className="min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
-      <h3 className="mb-2 text-sm font-semibold sm:text-base">{title}</h3>
-      <ul className="divide-y divide-border">
-        {groups.slice(0, 12).map((g) => (
-          <li key={g.key} className="flex items-center justify-between gap-3 py-1.5 text-sm">
+      <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">{title}</h3>
+      <ul className={columns ? "grid sm:grid-cols-2 sm:gap-x-6" : ""}>
+        {shown.map((g) => (
+          <li key={g.key} className="flex items-center justify-between gap-3 border-b border-border py-1.5 text-sm last:border-b-0">
             <span className="flex min-w-0 items-center gap-2">
               {exchangeLogos && <ExchangeLogo exchange={g.exchange ?? g.key} size={16} />}
               {/* Name on top, trade count and winners under it, so a long name never hides the count. */}
@@ -84,7 +101,48 @@ function Breakdown({ title, groups, exchangeLogos }: { title: string; groups: St
           </li>
         ))}
       </ul>
+      {groups.length > BREAKDOWN_ROWS && (
+        <button
+          type="button"
+          onClick={() => setAll((open) => !open)}
+          className="mt-2 text-xs text-primary hover:underline sm:text-sm"
+        >
+          {all ? t("showLess") : t("showAll", { count: groups.length })}
+        </button>
+      )}
     </section>
+  );
+}
+
+/** Previous / page numbers / next under the trades table. */
+function Pages({ page, pages, onPage }: { page: number; pages: number; onPage: (page: number) => void }) {
+  const t = useTranslations("TradingStats");
+  if (pages <= 1) return null;
+  const from = Math.max(1, Math.min(page - 2, pages - 4));
+  const numbers = Array.from({ length: Math.min(5, pages) }, (_, i) => from + i);
+  const button = "flex h-8 min-w-8 items-center justify-center rounded-md px-2 text-sm transition-colors disabled:opacity-40";
+  return (
+    <nav aria-label={t("pages")} className="flex items-center justify-center gap-1 border-t border-border px-3 py-2">
+      <button type="button" className={`${button} hover:bg-surface-2`} disabled={page <= 1} onClick={() => onPage(page - 1)} aria-label={t("prevPage")}>
+        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {numbers[0]! > 1 && <span className="px-1 text-text-muted">…</span>}
+      {numbers.map((n) => (
+        <button
+          key={n}
+          type="button"
+          aria-current={n === page ? "page" : undefined}
+          onClick={() => onPage(n)}
+          className={`${button} tabular-nums ${n === page ? "bg-primary text-white" : "text-text-muted hover:bg-surface-2 hover:text-text"}`}
+        >
+          {n}
+        </button>
+      ))}
+      {numbers.at(-1)! < pages && <span className="px-1 text-text-muted">…</span>}
+      <button type="button" className={`${button} hover:bg-surface-2`} disabled={page >= pages} onClick={() => onPage(page + 1)} aria-label={t("nextPage")}>
+        <ChevronRight className="h-4 w-4" aria-hidden="true" />
+      </button>
+    </nav>
   );
 }
 
@@ -98,7 +156,10 @@ export function TradingStats() {
   const [account, setAccount] = useState("");
   const [coin, setCoin] = useState("");
   const [side, setSide] = useState("");
-  const query = new URLSearchParams({ period, exchange, connectionId: account, coin, side });
+  const [page, setPage] = useState(1);
+  // Another period or filter starts from the newest trades again.
+  useEffect(() => setPage(1), [period, exchange, account, coin, side]);
+  const query = new URLSearchParams({ period, exchange, connectionId: account, coin, side, page: String(page) });
   const { data, loading } = useExchangeData<StatsResponse>(`/api/positions/stats?${query}`, 60_000, true);
   const s = data?.summary;
   const day = (value: string) =>
@@ -243,10 +304,18 @@ export function TradingStats() {
             </section>
           )}
 
+          {/* Exchanges and accounts are short lists: stacked in one column next to the coins. */}
           <div className="grid gap-2 sm:gap-3 lg:grid-cols-3">
-            <Breakdown title={t("byExchange")} groups={data.byExchange} exchangeLogos />
-            <Breakdown title={t("byAccount")} groups={data.byAccount} exchangeLogos />
-            <Breakdown title={t("byCoin")} groups={data.byCoin} />
+            <div className="grid min-w-0 content-start gap-2 sm:gap-3">
+              <Breakdown title={t("byExchange")} groups={data.byExchange} exchangeLogos />
+              {/* One account per exchange would only repeat the exchanges. */}
+              {data.byAccount.length > data.byExchange.length && (
+                <Breakdown title={t("byAccount")} groups={data.byAccount} exchangeLogos />
+              )}
+            </div>
+            <div className="min-w-0 lg:col-span-2">
+              <Breakdown title={t("byCoin")} groups={data.byCoin} columns />
+            </div>
           </div>
 
           <section className="min-w-0 rounded-xl border border-border bg-surface">
@@ -294,6 +363,7 @@ export function TradingStats() {
                 </tbody>
               </table>
             </div>
+            <Pages page={data.page} pages={Math.ceil(data.totalTrades / data.pageSize)} onPage={setPage} />
           </section>
         </>
       )}

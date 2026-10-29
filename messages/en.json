@@ -1284,6 +1284,11 @@
     "approximateHint": "Estimate from the last poll: the exchange did not return the exact result.",
     "sourceNote": "Bybit, Gate, BingX and KuCoin come from the exchange position history (from last month), with fees and funding (Bybit without funding). Other exchanges start when the worker saw the close. A position closed in parts is one trade.",
     "filters": "Filters",
-    "resetFilters": "Reset filters"
+    "resetFilters": "Reset filters",
+    "showAll": "Show all ({count})",
+    "showLess": "Show less",
+    "pages": "Trade pages",
+    "prevPage": "Previous page",
+    "nextPage": "Next page"
   }
 }

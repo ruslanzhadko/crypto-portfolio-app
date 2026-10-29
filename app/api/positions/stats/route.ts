@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 
 /** Rows read for one period; enough for months of active trading. */
 const MAX_TRADES = 5_000;
-/** Rows listed in the table. */
-const LIST_LIMIT = 300;
+/** Rows per page of the trades table. */
+const PAGE_SIZE = 20;
 
 const querySchema = z.object({
   period: z.enum(["today", "7d", "30d", "all"]).default("30d"),
@@ -19,6 +19,7 @@ const querySchema = z.object({
   connectionId: z.string().max(100).optional(),
   coin: z.string().max(40).optional(),
   side: z.enum(["long", "short"]).optional(),
+  page: z.coerce.number().int().min(1).max(1_000).default(1),
 });
 
 const num = (value: { toString(): string } | null) => (value === null ? null : Number(value.toString()));
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
     );
     const parsed = querySchema.safeParse(params);
     if (!parsed.success) return failure("BAD_REQUEST");
-    const { period, exchange, connectionId, coin, side } = parsed.data;
+    const { period, exchange, connectionId, coin, side, page } = parsed.data;
     const now = Date.now();
     const from = periodStart(period, now);
 
@@ -94,7 +95,9 @@ export async function GET(req: Request) {
       period,
       from,
       ...tradeStats(trades, from, now),
-      trades: trades.slice(0, LIST_LIMIT),
+      trades: trades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+      page,
+      pageSize: PAGE_SIZE,
       totalTrades: trades.length,
       truncated: rows.length >= MAX_TRADES,
       options,
