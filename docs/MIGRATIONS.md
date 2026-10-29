@@ -153,7 +153,7 @@ Worker отправляет сообщения сам: `TELEGRAM_BOT_TOKEN` до
 `DemoExchangeAdapter` (цены — публичный `premiumIndex` Binance), историю капитала за 30 дней worker дорисовывает
 один раз вокруг первого снимка. Выключить демо: убрать `DEMO_USER_ID`.
 
-## 4f. Кошельки TON (29.10)
+## 4f. Кошельки TON — применена 29.10.2026
 
 Только добавление (`prisma/ton-network.sql`): значение `TON` в enum `Network`. `ALTER TYPE … ADD VALUE` нельзя
 использовать в той же транзакции, поэтому файл выполняется сам по себе (`IF NOT EXISTS` — повтор безопасен).
