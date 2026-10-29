@@ -1299,6 +1299,7 @@
       "newest": "Сначала новые",
       "oldest": "Сначала старые",
       "count": "По числу сделок"
-    }
+    },
+    "accountsCount": "{count, plural, one {# счёт} few {# счёта} other {# счетов}}"
   }
 }

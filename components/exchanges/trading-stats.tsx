@@ -156,6 +156,85 @@ function sortGroups(groups: StatsGroup[], sort: GroupSort): StatsGroup[] {
   return [...groups].sort(by[sort]);
 }
 
+/** Name with "N of M in profit" under it, and the result on the right. */
+function GroupRow({ group: g, logo, name, note }: { group: StatsGroup; logo?: string; name: string; note?: string }) {
+  const t = useTranslations("TradingStats");
+  return (
+    <>
+      <span className="flex min-w-0 items-center gap-2">
+        {logo && <ExchangeLogo exchange={logo} size={16} />}
+        {/* Name on top, trade count and winners under it, so a long name never hides the count. */}
+        <span className="min-w-0">
+          <span className="block truncate">{name}</span>
+          <span className="block truncate text-xs text-text-muted">
+            {t("winsOf", { wins: g.wins, count: g.count })}
+            {note ? ` · ${note}` : ""}
+          </span>
+        </span>
+      </span>
+      <span className={`shrink-0 font-medium ${tone(g.pnlUsd)}`}>
+        <Money value={usd(g.pnlUsd)} signed />
+      </span>
+    </>
+  );
+}
+
+/**
+ * Exchanges with their accounts inside: one account is the exchange row itself, several open
+ * under it. Avoids a second block that repeats the exchanges for most users.
+ */
+function ExchangeBreakdown({ exchanges, accounts }: { exchanges: StatsGroup[]; accounts: StatsGroup[] }) {
+  const t = useTranslations("TradingStats");
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  if (!exchanges.length) return null;
+  return (
+    <section className="h-full min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
+      <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">{t("byExchange")}</h3>
+      <ul>
+        {exchanges.map((g) => {
+          const own = accounts.filter((a) => a.exchange === g.key);
+          const several = own.length > 1;
+          const expanded = several && open[g.key] === true;
+          const name = several ? exchangeName(g.key) : (own[0]?.label ?? exchangeName(g.key));
+          return (
+            <li key={g.key} className="border-b border-border last:border-b-0">
+              {several ? (
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  onClick={() => setOpen((state) => ({ ...state, [g.key]: !state[g.key] }))}
+                  className="flex w-full items-center justify-between gap-3 py-1.5 text-left text-sm"
+                >
+                  <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                    <GroupRow group={g} logo={g.key} name={name} note={t("accountsCount", { count: own.length })} />
+                  </span>
+                  <ChevronDown
+                    aria-hidden="true"
+                    className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${expanded ? "rotate-180" : ""}`}
+                  />
+                </button>
+              ) : (
+                <div className="flex items-center justify-between gap-3 py-1.5 text-sm">
+                  <GroupRow group={g} logo={g.key} name={name} />
+                </div>
+              )}
+              {expanded && (
+                <ul className="mb-1.5 ml-6 border-l border-border pl-3">
+                  {own.map((a) => (
+                    <li key={a.key} className="flex items-center justify-between gap-3 py-1 text-sm">
+                      <GroupRow group={a} name={a.label} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 const BREAKDOWN_ROWS = 12;
 
 function Breakdown({
@@ -207,19 +286,11 @@ function Breakdown({
       <ul className={twoColumns ? "grid sm:grid-cols-2 sm:gap-x-6" : ""}>
         {shown.map((g) => (
           <li key={g.key} className="flex items-center justify-between gap-3 border-b border-border py-1.5 text-sm last:border-b-0">
-            <span className="flex min-w-0 items-center gap-2">
-              {exchangeLogos && <ExchangeLogo exchange={g.exchange ?? g.key} size={16} />}
-              {/* Name on top, trade count and winners under it, so a long name never hides the count. */}
-              <span className="min-w-0">
-                <span className="block truncate">{exchangeLogos && !g.exchange ? exchangeName(g.key) : g.label}</span>
-                <span className="block truncate text-xs text-text-muted">
-                  {t("winsOf", { wins: g.wins, count: g.count })}
-                </span>
-              </span>
-            </span>
-            <span className={`shrink-0 font-medium ${tone(g.pnlUsd)}`}>
-              <Money value={usd(g.pnlUsd)} signed />
-            </span>
+            <GroupRow
+              group={g}
+              logo={exchangeLogos ? (g.exchange ?? g.key) : undefined}
+              name={exchangeLogos && !g.exchange ? exchangeName(g.key) : g.label}
+            />
           </li>
         ))}
       </ul>
@@ -467,20 +538,19 @@ export function TradingStats() {
             </section>
           )}
 
-          {/* Exchanges and accounts are short lists: stacked in one column next to the coins. */}
+          {/* Exchanges (with their accounts) are a short list: one column next to the coins. */}
           <div className="grid gap-2 sm:gap-3 lg:grid-cols-3">
-            <div className="grid min-w-0 content-start gap-2 sm:gap-3">
-              <Breakdown title={t("byExchange")} groups={data.byExchange} exchangeLogos />
-              <Breakdown title={t("byAccount")} groups={data.byAccount} exchangeLogos />
+            <div className="min-w-0">
+              <ExchangeBreakdown exchanges={data.byExchange} accounts={data.byAccount} />
             </div>
             <div className="min-w-0 lg:col-span-2">
-              {/* As tall as the exchange and account blocks: their rows plus about two for the second header. */}
+              {/* About as tall as the exchange block, so the two end together. */}
               <Breakdown
                 title={t("byCoin")}
                 groups={data.byCoin}
                 columns
                 sortable
-                rows={Math.max(6, data.byExchange.length + data.byAccount.length + 2)}
+                rows={Math.max(6, data.byExchange.length)}
               />
             </div>
           </div>

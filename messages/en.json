@@ -1299,6 +1299,7 @@
       "newest": "Newest first",
       "oldest": "Oldest first",
       "count": "By trade count"
-    }
+    },
+    "accountsCount": "{count, plural, one {# account} other {# accounts}}"
   }
 }
