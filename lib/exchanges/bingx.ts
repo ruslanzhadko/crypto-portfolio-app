@@ -97,7 +97,8 @@ export class BingxAdapter implements ExchangeAdapter {
    * each coin's positions are read for the whole range at once.
    */
   async closedTrades(since: number, until: number) {
-    const WEEK = 7 * 86_400_000;
+    const DAY = 86_400_000;
+    const WEEK = 7 * DAY;
     // Without the income type filter (if the exchange refuses it) realized PnL entries are picked here.
     let typed = true;
     const income = async (startTime: number, endTime: number) => {
@@ -115,9 +116,10 @@ export class BingxAdapter implements ExchangeAdapter {
         (r) => r.incomeType === undefined || r.incomeType === "REALIZED_PNL",
       );
     };
+    // The income ledger answers a day at a time (a wider range comes back empty, as ccxt also reads it).
     const symbols = new Set<string>();
-    for (let start = since; start < until; start += WEEK) {
-      const end = Math.min(until, start + WEEK - 1);
+    for (let start = since; start < until; start += DAY) {
+      const end = Math.min(until, start + DAY - 1);
       let rows: Record<string, unknown>[];
       try {
         rows = await income(start, end);
@@ -145,15 +147,25 @@ export class BingxAdapter implements ExchangeAdapter {
       );
     const rows: Record<string, unknown>[] = [];
     for (const symbol of symbols) {
+      let found: Record<string, unknown>[] = [];
       try {
-        rows.push(...(await history(symbol, since, until)));
+        found = await history(symbol, since, until);
       } catch {
-        // A range the exchange will not answer at once is read a week at a time.
-        for (let start = since; start < until; start += WEEK)
-          rows.push(...(await history(symbol, start, Math.min(until, start + WEEK - 1))));
+        /* read week by week below */
       }
+      // The coin had realized PnL in the range, so an empty answer means the range was too wide.
+      if (!found.length)
+        for (let start = since; start < until; start += WEEK)
+          found.push(...(await history(symbol, start, Math.min(until, start + WEEK - 1))));
+      rows.push(...found);
     }
-    return bingxClosedTrades(rows);
+    const trades = bingxClosedTrades(rows);
+    // Field names only, no values: enough to tell an empty history from an unexpected shape.
+    console.log(
+      `[closed-trades] bingx: ${symbols.size} coin(s) with realized PnL, ${rows.length} position row(s), ${trades.length} closed` +
+        (rows.length && !trades.length ? `; fields ${Object.keys(rows[0]!).join(",")}` : ""),
+    );
+    return trades;
   }
   transfers(since: number) {
     return bingxTransfers(this.request, bingxData, since);

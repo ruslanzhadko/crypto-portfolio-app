@@ -140,7 +140,8 @@ export function bingxClosedTrades(rows: Row[]): ClosedTradeRow[] {
     const closedAt = timestamp(r.updateTime);
     const pnl = dec(r.netProfit);
     const side = str(r.positionSide).toLowerCase();
-    if (r.closeAllPositions !== true || !symbol || closedAt === null || pnl === null || !["long", "short"].includes(side))
+    const closed = r.closeAllPositions === true || r.closeAllPositions === "true";
+    if (!closed || !symbol || closedAt === null || pnl === null || !["long", "short"].includes(side))
       return [];
     const [base, settle] = symbol.split("-");
     return [{
@@ -164,7 +165,7 @@ const lastAttempt = new Map<string, number>();
  * History read before this moment was grouped by an older rule: such connections read the whole
  * month again once, and the stale pieces of the window are replaced.
  */
-const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 18);
+const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 16);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(
