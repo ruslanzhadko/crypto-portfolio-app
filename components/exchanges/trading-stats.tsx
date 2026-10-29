@@ -68,21 +68,26 @@ function Breakdown({
   groups,
   exchangeLogos,
   columns = false,
+  rows = BREAKDOWN_ROWS,
 }: {
   title: string;
   groups: StatsGroup[];
   exchangeLogos?: boolean;
-  /** Two columns on wide screens: for the long coin list next to the short exchange lists. */
+  /** Two columns on wide screens when the list is longer than `rows`. */
   columns?: boolean;
+  /** Rows that fit next to the neighbouring blocks; the rest opens with "show all". */
+  rows?: number;
 }) {
   const t = useTranslations("TradingStats");
   const [all, setAll] = useState(false);
   if (!groups.length) return null;
-  const shown = all ? groups : groups.slice(0, BREAKDOWN_ROWS);
+  const twoColumns = columns && groups.length > rows;
+  const limit = twoColumns ? rows * 2 : rows;
+  const shown = all ? groups : groups.slice(0, limit);
   return (
-    <section className="min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
+    <section className="h-full min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
       <h3 className="mb-1 text-sm font-semibold sm:mb-2 sm:text-base">{title}</h3>
-      <ul className={columns ? "grid sm:grid-cols-2 sm:gap-x-6" : ""}>
+      <ul className={twoColumns ? "grid sm:grid-cols-2 sm:gap-x-6" : ""}>
         {shown.map((g) => (
           <li key={g.key} className="flex items-center justify-between gap-3 border-b border-border py-1.5 text-sm last:border-b-0">
             <span className="flex min-w-0 items-center gap-2">
@@ -101,7 +106,7 @@ function Breakdown({
           </li>
         ))}
       </ul>
-      {groups.length > BREAKDOWN_ROWS && (
+      {groups.length > limit && (
         <button
           type="button"
           onClick={() => setAll((open) => !open)}
@@ -324,7 +329,13 @@ export function TradingStats() {
               <Breakdown title={t("byAccount")} groups={data.byAccount} exchangeLogos />
             </div>
             <div className="min-w-0 lg:col-span-2">
-              <Breakdown title={t("byCoin")} groups={data.byCoin} columns />
+              {/* As tall as the exchange and account blocks: their rows plus about two for the second header. */}
+              <Breakdown
+                title={t("byCoin")}
+                groups={data.byCoin}
+                columns
+                rows={Math.max(6, data.byExchange.length + data.byAccount.length + 2)}
+              />
             </div>
           </div>
 
