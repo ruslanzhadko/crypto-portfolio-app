@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, type SelectHTMLAttributes } from "react";
+import { ChevronDown, SlidersHorizontal, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   Bar,
@@ -15,6 +16,7 @@ import { useExchangeData } from "./use-exchange-data";
 import { ExchangeLogo, exchangeName } from "./exchange-logo";
 import { Money } from "./shared";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { formatDuration } from "@/components/alerts/notification-log";
 import type { StatsGroup, StatsPeriod, StatsTrade, tradeStats } from "@/lib/positions/trade-stats";
 
@@ -36,10 +38,23 @@ const usd = (value: number | null | undefined) => (value == null ? null : String
 
 function Card({ label, children, hint }: { label: string; children: React.ReactNode; hint?: React.ReactNode }) {
   return (
-    <div className="min-w-0 rounded-xl border border-border bg-surface p-3 sm:p-4">
-      <p className="text-xs text-text-muted sm:text-sm">{label}</p>
-      <div className="mt-1 truncate text-lg font-semibold tabular-nums sm:text-xl">{children}</div>
-      {hint && <p className="mt-0.5 truncate text-xs text-text-muted">{hint}</p>}
+    <div className="min-w-0 rounded-lg border border-border bg-surface px-2.5 py-2 sm:rounded-xl sm:p-4">
+      <p className="truncate text-[11px] text-text-muted sm:text-sm">{label}</p>
+      <div className="truncate text-[15px] font-semibold leading-snug tabular-nums sm:mt-1 sm:text-xl">{children}</div>
+      {hint && <p className="truncate text-[11px] text-text-muted sm:mt-0.5 sm:text-xs">{hint}</p>}
+    </div>
+  );
+}
+
+/** The same compact select as the open positions filters. */
+function StatsSelect(props: SelectHTMLAttributes<HTMLSelectElement>) {
+  return (
+    <div className="relative min-w-0">
+      <select
+        {...props}
+        className="h-9 w-full appearance-none rounded-lg border border-border bg-surface-2 pl-3 pr-8 text-[13px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:w-auto sm:text-sm"
+      />
+      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-text-muted" />
     </div>
   );
 }
@@ -48,7 +63,7 @@ function Breakdown({ title, groups, exchangeLogos }: { title: string; groups: St
   const t = useTranslations("TradingStats");
   if (!groups.length) return null;
   return (
-    <section className="min-w-0 rounded-xl border border-border bg-surface p-3 sm:p-4">
+    <section className="min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
       <h3 className="mb-2 text-sm font-semibold sm:text-base">{title}</h3>
       <ul className="divide-y divide-border">
         {groups.slice(0, 12).map((g) => (
@@ -90,54 +105,98 @@ export function TradingStats() {
     new Date(`${value}T12:00:00Z`).toLocaleDateString(locale, { day: "numeric", month: "short" });
   const price = (value: number | null) =>
     value == null ? "—" : new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 }).format(value);
-  const select = "h-9 rounded-lg border border-border bg-surface px-2 text-sm text-text";
+  // On phones the filters open from a button, like on the open positions tab.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const activeFilters = [exchange, account, coin, side].filter(Boolean).length;
+  const resetFilters = () => {
+    setExchange("");
+    setAccount("");
+    setCoin("");
+    setSide("");
+  };
 
   return (
-    <div className="min-w-0 space-y-3 sm:space-y-4">
+    <div className="min-w-0 space-y-2.5 sm:space-y-4">
       <div className="flex flex-wrap items-center gap-2 pt-1 sm:pt-2">
-        <div role="group" aria-label={t("period")} className="flex rounded-lg border border-border bg-surface p-0.5 text-xs sm:text-sm">
+        <div
+          role="group"
+          aria-label={t("period")}
+          className="flex h-9 min-w-0 flex-1 rounded-lg border border-border bg-surface p-0.5 text-[13px] sm:flex-none sm:text-sm"
+        >
           {PERIODS.map((value) => (
             <button
               key={value}
               type="button"
               aria-pressed={period === value}
               onClick={() => setPeriod(value)}
-              className={`rounded-md px-2.5 py-1 transition-colors sm:px-3 ${period === value ? "bg-primary text-white" : "text-text-muted hover:text-text"}`}
+              className={`flex-1 whitespace-nowrap rounded-md px-2 transition-colors sm:flex-none sm:px-3 ${period === value ? "bg-primary text-white" : "text-text-muted hover:text-text"}`}
             >
               {t(`periods.${value}`)}
             </button>
           ))}
         </div>
-        <select aria-label={t("exchange")} className={select} value={exchange} onChange={(e) => { setExchange(e.target.value); setAccount(""); }}>
-          <option value="">{t("allExchanges")}</option>
-          {data?.options.exchanges.map((e) => <option key={e} value={e}>{exchangeName(e)}</option>)}
-        </select>
-        <select aria-label={t("account")} className={select} value={account} onChange={(e) => setAccount(e.target.value)}>
-          <option value="">{t("allAccounts")}</option>
-          {data?.options.accounts
-            .filter((a) => !exchange || a.exchange === exchange)
-            .map((a) => <option key={a.id} value={a.id}>{`${exchangeName(a.exchange)} · ${a.label}`}</option>)}
-        </select>
-        <select aria-label={t("coin")} className={select} value={coin} onChange={(e) => setCoin(e.target.value)}>
-          <option value="">{t("allCoins")}</option>
-          {data?.options.coins.map((c) => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select aria-label={t("side")} className={select} value={side} onChange={(e) => setSide(e.target.value)}>
-          <option value="">{t("allSides")}</option>
-          <option value="long">{t("long")}</option>
-          <option value="short">{t("short")}</option>
-        </select>
+        <Button
+          type="button"
+          variant="outline"
+          className="relative h-9 w-9 px-0 sm:hidden"
+          aria-expanded={filtersOpen}
+          aria-label={t("filters")}
+          title={t("filters")}
+          onClick={() => setFiltersOpen((open) => !open)}
+        >
+          <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
+          {activeFilters > 0 && (
+            <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 text-[11px] leading-4 text-white">
+              {activeFilters}
+            </span>
+          )}
+        </Button>
+        {activeFilters > 0 && (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9 w-9 px-0"
+            aria-label={t("resetFilters")}
+            title={t("resetFilters")}
+            onClick={resetFilters}
+          >
+            <X aria-hidden="true" className="h-4 w-4" />
+          </Button>
+        )}
+        <div
+          className={`${filtersOpen ? "grid animate-in fade-in-0 slide-in-from-top-1 duration-200 motion-reduce:animate-none" : "hidden"} w-full grid-cols-2 gap-2 sm:contents`}
+        >
+          <StatsSelect aria-label={t("exchange")} value={exchange} onChange={(e) => { setExchange(e.target.value); setAccount(""); }}>
+            <option value="">{t("allExchanges")}</option>
+            {data?.options.exchanges.map((e) => <option key={e} value={e}>{exchangeName(e)}</option>)}
+          </StatsSelect>
+          <StatsSelect aria-label={t("account")} value={account} onChange={(e) => setAccount(e.target.value)}>
+            <option value="">{t("allAccounts")}</option>
+            {data?.options.accounts
+              .filter((a) => !exchange || a.exchange === exchange)
+              .map((a) => <option key={a.id} value={a.id}>{`${exchangeName(a.exchange)} · ${a.label}`}</option>)}
+          </StatsSelect>
+          <StatsSelect aria-label={t("coin")} value={coin} onChange={(e) => setCoin(e.target.value)}>
+            <option value="">{t("allCoins")}</option>
+            {data?.options.coins.map((c) => <option key={c} value={c}>{c}</option>)}
+          </StatsSelect>
+          <StatsSelect aria-label={t("side")} value={side} onChange={(e) => setSide(e.target.value)}>
+            <option value="">{t("allSides")}</option>
+            <option value="long">{t("long")}</option>
+            <option value="short">{t("short")}</option>
+          </StatsSelect>
+        </div>
       </div>
 
       {!data && loading ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-          {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-20" />)}
+          {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-14 sm:h-24" />)}
         </div>
       ) : !s || s.count === 0 ? (
         <p className="rounded-xl border border-border bg-surface p-6 text-center text-sm text-text-muted">{t("empty")}</p>
       ) : (
         <>
-          <div className={`grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3 ${loading ? "opacity-60" : ""}`}>
+          <div className={`grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-3 ${loading ? "opacity-60" : ""}`}>
             <Card label={t("total")} hint={s.approximate ? t("approximate", { count: s.approximate }) : undefined}>
               <span className={tone(s.totalUsd)}><Money value={usd(s.totalUsd)} signed /></span>
             </Card>
@@ -155,9 +214,9 @@ export function TradingStats() {
           </div>
 
           {data.days.length > 1 && (
-            <section className="min-w-0 rounded-xl border border-border bg-surface p-3 sm:p-4">
+            <section className="min-w-0 rounded-xl border border-border bg-surface p-2.5 sm:p-4">
               <h3 className="mb-2 text-sm font-semibold sm:text-base">{t("byDay")}</h3>
-              <div className="h-44 min-w-0 sm:h-56">
+              <div className="h-36 min-w-0 sm:h-56">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={data.days}>
                     <XAxis dataKey="day" tickFormatter={day} tick={{ fontSize: 11, fill: "#94a3b8" }} minTickGap={24} />
