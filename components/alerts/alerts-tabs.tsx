@@ -105,7 +105,7 @@ export function AlertsTabs({
             key={value}
             value={value}
             className={cn(
-              'group h-full min-w-0 flex-col items-start justify-start gap-1 whitespace-normal rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-text shadow-none sm:px-4 sm:py-3',
+              'group h-full min-w-0 flex-col items-start justify-center gap-1 whitespace-normal rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-text shadow-none sm:px-4 sm:py-3',
               'hover:border-primary/40 data-[state=active]:border-primary data-[state=active]:bg-primary/10 data-[state=active]:text-text data-[state=active]:shadow-none',
             )}
           >
@@ -118,7 +118,8 @@ export function AlertsTabs({
               <span className="hidden truncate text-base font-semibold sm:inline">{title}</span>
             </span>
             <span className="hidden text-xs font-normal text-text-muted sm:block">{hint}</span>
-            <span className="min-h-4 text-xs font-medium text-text-muted">{status}</span>
+            {/* No empty line for a card without a status: the cards centre their content instead. */}
+            {status && <span className="min-h-4 text-xs font-medium text-text-muted">{status}</span>}
           </TabsTrigger>
         ))}
       </TabsList>
