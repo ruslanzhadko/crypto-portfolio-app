@@ -15,6 +15,25 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-30",
     title: {
+      ru: "Итог закрытия сверяется с биржей",
+      uk: "Підсумок закриття звіряється з біржею",
+      en: "Closing results are checked with the exchange",
+    },
+    items: {
+      ru: [
+        "Если итог закрытия был оценкой «≈», бот позже сверит его с биржей и сам поправит сообщение в Telegram, журнал уведомлений и статистику.",
+      ],
+      uk: [
+        "Якщо підсумок закриття був оцінкою «≈», бот згодом звірить його з біржею та сам виправить повідомлення в Telegram, журнал сповіщень і статистику.",
+      ],
+      en: [
+        "When a closing result was an estimate (≈), the bot later checks it with the exchange and corrects the Telegram message, the alert log and the statistics.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-30",
+    title: {
       ru: "Полная статистика новых подключений",
       uk: "Повна статистика нових підключень",
       en: "Complete statistics for new connections",

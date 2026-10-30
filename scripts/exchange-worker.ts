@@ -84,12 +84,13 @@ async function main() {
       if (alerts.size) await alerts.pollDue();
       await alerts.resolveClosed();
       await alerts.importClosed();
+      const corrected = await alerts.recheckClosed();
       const users = await alerts.flush();
       for (const userId of users) await alertSignal?.fired(userId, Date.now());
       // Yesterday's trading summary, once right after midnight in Kyiv.
       const summarized = await daily.maybeRun();
       // In idle mode nothing else keeps the database awake: close the pool after touching it.
-      if (!fast && (reloaded || users.length || summarized)) await prisma.$disconnect();
+      if (!fast && (reloaded || corrected || users.length || summarized)) await prisma.$disconnect();
     } catch {
       console.error("[position-alerts] cycle failed; retrying next round");
     }

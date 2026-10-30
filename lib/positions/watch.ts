@@ -44,6 +44,8 @@ export type PositionEvent =
       durationMs: number | null;
       /** The figure came from the exchange's ledger after the close, not from the last poll. */
       exact?: boolean;
+      /** The final figure came from fills: fees are in it, funding is not. */
+      withoutFunding?: boolean;
     }
   | { kind: "liquidation"; position: WatchedPosition; distancePercent: number }
   | {

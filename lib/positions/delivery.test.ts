@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
-vi.mock("@/lib/db/prisma", () => ({ prisma: {} }));
-import { formatPositionMessage, type SourcedEvent } from "./delivery";
+const updateMany = vi.hoisted(() => vi.fn(async () => ({ count: 1 })));
+const edit = vi.hoisted(() => vi.fn(async () => {}));
+vi.mock("@/lib/db/prisma", () => ({ prisma: { notificationLog: { updateMany } } }));
+vi.mock("@/lib/services/telegram", async (original) => ({
+  ...(await original<typeof import("@/lib/services/telegram")>()),
+  editTelegramHtml: edit,
+}));
+import { formatPositionMessage, reviseDeliveredEvent, type SourcedEvent } from "./delivery";
 import type { WatchedPosition } from "./watch";
 
 const position: WatchedPosition = {
@@ -55,5 +61,37 @@ describe("formatPositionMessage", () => {
     expect(text).toContain("PnL <b>+$4.00</b>");
     expect(text.split("\n\n")).toHaveLength(5);
     expect(text).not.toContain("по последнему опросу");
+  });
+});
+
+describe("reviseDeliveredEvent", () => {
+  it("rewrites the sent message and the log row with the final figure", async () => {
+    const event: Extract<SourcedEvent, { kind: "closed" }> = {
+      kind: "closed",
+      position,
+      pnlUsd: -20,
+      includesCosts: true,
+      exact: true,
+      withoutFunding: true,
+      durationMs: 60_000,
+      source,
+    };
+    const sentAt = new Date("2026-10-30T13:31:31Z");
+    await reviseDeliveredEvent("u1", event, [event], {
+      status: "sent",
+      sentAt,
+      telegram: { chatId: "42", messageId: 7 },
+    });
+    expect(edit).toHaveBeenCalledWith("42", 7, expect.stringContaining("🔴"));
+    const text = (edit.mock.calls[0] as unknown as [string, number, string])[2];
+    expect(text).toContain("итог <b>−$20.00</b> с комиссиями");
+    expect(text).not.toContain("≈");
+    expect(updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({ userId: "u1", kind: "closed", sentAt, tokenSymbol: "BTC" }),
+      data: expect.objectContaining({
+        message: expect.stringContaining("итог −$20.00"),
+        details: expect.objectContaining({ pnlUsd: -20, approximate: false }),
+      }),
+    });
   });
 });

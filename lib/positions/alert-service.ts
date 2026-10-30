@@ -11,7 +11,12 @@ import {
   type PositionAlertSettings,
 } from "./alert-settings";
 import { HISTORY_EXCHANGES, saveClosedTrades, syncClosedTrades } from "@/lib/exchanges/closed-trades";
-import { deliverPositionEvents, type SourcedEvent } from "./delivery";
+import {
+  deliverPositionEvents,
+  reviseDeliveredEvent,
+  type DeliveredMessage,
+  type SourcedEvent,
+} from "./delivery";
 import { PositionWatch, type WatchedPosition } from "./watch";
 
 /** Target poll interval per connection (POSITION_ALERTS.md §3: 15 s, never slower than 30 s). */
@@ -27,6 +32,14 @@ const EXACT_DELAY_MS = 20_000;
 const EXACT_DEADLINE_MS = 2 * 60_000;
 /** The closing trade needs a moment to show up in the exchange's position history. */
 const IMPORT_DELAY_MS = 60_000;
+/** A close that went out as an estimate is checked again this long after it was seen. */
+const RECHECK_DELAYS_MS = [2 * 60_000, 10 * 60_000, 30 * 60_000];
+/** Fills read before a position's opening, so its first fill is inside the range. */
+const RECHECK_MARGIN_MS = 60 * 60_000;
+/** A position whose opening is unknown (seen before a restart) is looked for this far back. */
+const RECHECK_UNKNOWN_OPEN_MS = 7 * 86_400_000;
+/** Exchange clocks may run a little apart from the polls around the close. */
+const RECHECK_SKEW_MS = 5_000;
 
 type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
@@ -42,6 +55,34 @@ type Watched = {
 };
 
 type ClosedEvent = Extract<SourcedEvent, { kind: "closed" }>;
+/** A close still at its estimate. In memory: a restart leaves the estimate as it is. */
+type Recheck = {
+  userId: string;
+  row: Connection;
+  event: ClosedEvent;
+  since: number | null;
+  lastSeenAt: number;
+  otherLeg: boolean;
+  closedAt: number;
+  record: boolean;
+  step: number;
+  dueAt: number;
+  delivered?: { message: DeliveredMessage; batch: SourcedEvent[] };
+};
+
+/** The figure in USD at the rate of the position's own PnL (1:1 without one). */
+function applyExact(event: ClosedEvent, exact: string) {
+  const p = event.position;
+  const usd = Number(p.unrealizedPnlUsd),
+    native = Number(p.unrealizedPnl);
+  const rate =
+    Number.isFinite(usd) && Number.isFinite(native) && native !== 0
+      ? usd / native
+      : 1;
+  event.pnlUsd = Number(exact) * rate;
+  event.includesCosts = true;
+  event.exact = true;
+}
 
 const WATCHED_STATUSES = ["PENDING", "ACTIVE", "PARTIAL", "ERROR"];
 
@@ -79,6 +120,7 @@ export class PositionAlertService {
   }[] = [];
   /** Connections whose exchange history is read again soon after a close was seen there. */
   private imports = new Map<string, { row: Connection; dueAt: number }>();
+  private rechecks: Recheck[] = [];
   private loadedWindow = -1;
   private version: number | null = null;
 
@@ -257,9 +299,22 @@ export class PositionAlertService {
           deadline: at + EXACT_DEADLINE_MS,
         });
       else {
+        const sourced = { ...event, source };
         if (record)
-          void this.record(watched.row, event as ClosedEvent, null, at);
-        if (deliver) now.push({ ...event, source });
+          void this.record(watched.row, sourced as ClosedEvent, null, at);
+        if (deliver) now.push(sourced);
+        // Too short for a known cycle start, so nothing waited for the exchange's figure.
+        if (event.kind === "closed" && lastSeenAt > 0)
+          this.scheduleRecheck({
+            userId: c.userId,
+            row: watched.row,
+            event: sourced as ClosedEvent,
+            since: null,
+            lastSeenAt,
+            otherLeg: openSymbols.has(event.position.symbol),
+            closedAt: at,
+            record,
+          });
       }
     }
     if (now.length)
@@ -311,18 +366,7 @@ export class PositionAlertService {
         continue;
       }
       const event = item.event;
-      if (exact !== null && event.kind === "closed") {
-        const p = event.position;
-        const usd = Number(p.unrealizedPnlUsd),
-          native = Number(p.unrealizedPnl);
-        const rate =
-          Number.isFinite(usd) && Number.isFinite(native) && native !== 0
-            ? usd / native
-            : 1;
-        event.pnlUsd = Number(exact) * rate;
-        event.includesCosts = true;
-        event.exact = true;
-      }
+      if (exact !== null && event.kind === "closed") applyExact(event, exact);
       if (item.record && event.kind === "closed")
         await this.record(item.row, event, exact, item.closedAt);
       if (item.deliver)
@@ -330,7 +374,112 @@ export class PositionAlertService {
           ...(this.pending.get(item.userId) ?? []),
           event,
         ]);
+      if (exact === null && event.kind === "closed")
+        this.scheduleRecheck({
+          userId: item.userId,
+          row: item.row,
+          event,
+          since: item.input.since,
+          lastSeenAt: item.input.lastSeenAt,
+          otherLeg: item.input.otherLeg,
+          closedAt: item.closedAt,
+          record: item.record,
+        });
     }
+  }
+
+  private scheduleRecheck(item: Omit<Recheck, "step" | "dueAt">) {
+    this.rechecks.push({
+      ...item,
+      step: 0,
+      dueAt: item.closedAt + RECHECK_DELAYS_MS[0]!,
+    });
+  }
+
+  /**
+   * Estimates get the exchange's own figure later: the ledger where the cycle start is known, else
+   * the trade rebuilt from fills. The alert, its log row and the statistics are corrected in place.
+   * Reads the exchange a few times per close; writes to the database only when a figure arrives.
+   */
+  async recheckClosed(now = Date.now()): Promise<boolean> {
+    const waiting = this.rechecks;
+    this.rechecks = [];
+    let changed = false;
+    for (const item of waiting) {
+      if (now < item.dueAt) {
+        this.rechecks.push(item);
+        continue;
+      }
+      const final = await this.finalResult(item, now).catch(() => null);
+      if (final === null) {
+        item.step += 1;
+        const delay = RECHECK_DELAYS_MS[item.step];
+        if (delay !== undefined) {
+          item.dueAt = item.closedAt + delay;
+          this.rechecks.push(item);
+        }
+        continue;
+      }
+      const before = item.event.pnlUsd;
+      applyExact(item.event, final.pnl);
+      item.event.withoutFunding = final.withoutFunding;
+      console.log(
+        `[position-alerts] final result ${item.row.exchange}: estimate ${before?.toFixed(2)}, exchange ${item.event.pnlUsd?.toFixed(2)}`,
+      );
+      if (item.record)
+        await this.record(item.row, item.event, final.pnl, item.closedAt);
+      if (item.delivered)
+        await reviseDeliveredEvent(
+          item.userId,
+          item.event,
+          item.delivered.batch,
+          item.delivered.message,
+        ).catch(() => {
+          console.error("[position-alerts] final result: log not updated");
+        });
+      changed = true;
+    }
+    return changed;
+  }
+
+  private async finalResult(item: Recheck, now: number) {
+    const client = await connectionClient(item.row);
+    const adapter = client.adapter;
+    const p = item.event.position;
+    if (item.since !== null && adapter.closedResult) {
+      const pnl = await adapter.closedResult({
+        symbol: p.symbol,
+        base: p.base,
+        settle: p.settle,
+        positionKey: p.positionKey,
+        since: item.since,
+        lastSeenAt: item.lastSeenAt,
+        otherLeg: item.otherLeg,
+      });
+      if (pnl !== null) return { pnl, withoutFunding: false };
+    }
+    if (!adapter.closedTrades) return null;
+    if (!this.verified.has(adapter)) {
+      await adapter.verify();
+      this.verified.add(adapter);
+    }
+    const duration = item.event.durationMs;
+    const from =
+      duration === null
+        ? item.closedAt - RECHECK_UNKNOWN_OPEN_MS
+        : item.closedAt - duration - RECHECK_MARGIN_MS;
+    const matches = (await adapter.closedTrades(from, now)).filter(
+      (t) =>
+        t.base === p.base &&
+        t.settle === p.settle &&
+        t.side === p.side &&
+        t.closedAt >= item.lastSeenAt - RECHECK_SKEW_MS &&
+        t.closedAt <= item.closedAt + RECHECK_SKEW_MS,
+    );
+    // Two trades between the same two polls cannot be told apart: the estimate stays.
+    return matches.length === 1
+      ? { pnl: matches[0]!.pnl, withoutFunding: true }
+      : null;
   }
 
   /** Stores a close the worker saw; the exchange's figure when it came, else the estimate. */
@@ -426,10 +575,13 @@ export class PositionAlertService {
     const delivered: string[] = [];
     for (const [userId, events] of batches) {
       try {
-        const status = await deliverPositionEvents(userId, events);
+        const message = await deliverPositionEvents(userId, events);
         delivered.push(userId);
+        for (const item of this.rechecks)
+          if (events.includes(item.event))
+            item.delivered = { message, batch: events };
         console.log(
-          `[position-alerts] ${events.map((e) => e.kind).join(",")} ${status}`,
+          `[position-alerts] ${events.map((e) => e.kind).join(",")} ${message.status}`,
         );
       } catch {
         console.error("[position-alerts] delivery failed; events dropped");

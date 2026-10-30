@@ -17,9 +17,10 @@ interface TelegramResponse {
   ok: boolean;
   description?: string;
   error_code?: number;
+  result?: { message_id?: number };
 }
 
-async function sendMessage(opts: TelegramSendOptions): Promise<void> {
+async function sendMessage(opts: TelegramSendOptions): Promise<number | null> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
 
@@ -55,6 +56,7 @@ async function sendMessage(opts: TelegramSendOptions): Promise<void> {
   if (!data.ok) {
     throw new TelegramError(data.description ?? 'Telegram API вернул ошибку');
   }
+  return data.result?.message_id ?? null;
 }
 
 export interface PriceAlertPayload {
@@ -145,8 +147,25 @@ export async function sendPriceTargetAlert(
 }
 
 /** Sends a ready HTML message (position alerts format their own text). */
-export async function sendTelegramHtml(chatId: string, text: string): Promise<void> {
-  await sendMessage({ chatId, text, parseMode: 'HTML' });
+/** Returns the message id, for a later edit. */
+export async function sendTelegramHtml(chatId: string, text: string): Promise<number | null> {
+  return sendMessage({ chatId, text, parseMode: 'HTML' });
+}
+
+/** Replaces the text of a sent message; the same text again is not an error. */
+export async function editTelegramHtml(chatId: string, messageId: number, text: string): Promise<void> {
+  try {
+    await callBot('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: 'HTML',
+      disable_web_page_preview: true,
+    });
+  } catch (error) {
+    if (error instanceof TelegramError && /not modified/i.test(error.message)) return;
+    throw error;
+  }
 }
 
 export async function sendTestMessage(chatId: string): Promise<void> {

@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import {
+  editTelegramHtml,
   escapeHtml,
   formatKyivTime,
   sendTelegramHtml,
@@ -85,7 +86,7 @@ export function formatPositionEvent(e: SourcedEvent): string {
       const result =
         e.pnlUsd === null
           ? null
-          : `итог ${e.exact ? "" : "≈ "}<b>${usd(e.pnlUsd)}</b>${e.includesCosts ? " с фандингом и комиссиями" : ""}`;
+          : `итог ${e.exact ? "" : "≈ "}<b>${usd(e.pnlUsd)}</b>${e.includesCosts ? (e.withoutFunding ? " с комиссиями" : " с фандингом и комиссиями") : ""}`;
       const lasted =
         e.durationMs === null ? null : `⏳ ${formatDurationRu(e.durationMs)}`;
       const move = closedMove(p);
@@ -141,6 +142,12 @@ function logDetails(e: SourcedEvent): PositionLogDetails {
 }
 
 export type PositionDelivery = "sent" | "failed" | "site";
+/** What a later correction of the alert needs. */
+export type DeliveredMessage = {
+  status: PositionDelivery;
+  sentAt: Date;
+  telegram: { chatId: string; messageId: number } | null;
+};
 
 /**
  * Sends one user's events as one Telegram message (when Telegram is linked and on) and records
@@ -150,7 +157,7 @@ export async function deliverPositionEvents(
   userId: string,
   events: SourcedEvent[],
   now = new Date(),
-): Promise<PositionDelivery> {
+): Promise<DeliveredMessage> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -159,20 +166,22 @@ export async function deliverPositionEvents(
       telegramNotificationsEnabled: true,
     },
   });
-  if (!user || user.isBlocked) return "site";
+  if (!user || user.isBlocked) return { status: "site", sentAt: now, telegram: null };
   let status: PositionDelivery = "site";
   let failure: string | null = null;
+  let telegram: DeliveredMessage["telegram"] = null;
   if (
     user.telegramChatId &&
     user.telegramNotificationsEnabled &&
     process.env.TELEGRAM_BOT_TOKEN
   ) {
     try {
-      await sendTelegramHtml(
+      const messageId = await sendTelegramHtml(
         user.telegramChatId,
         formatPositionMessage(events, now),
       );
       status = "sent";
+      if (messageId !== null) telegram = { chatId: user.telegramChatId, messageId };
     } catch (error) {
       status = "failed";
       failure =
@@ -192,5 +201,39 @@ export async function deliverPositionEvents(
       details: logDetails(e) as Prisma.InputJsonValue,
     })),
   });
-  return status;
+  return { status, sentAt: now, telegram };
+}
+
+/**
+ * The exchange's final figure came after the alert went out: rewrites the Telegram message (all its
+ * events, the batch is one message) and the log row of the corrected event.
+ */
+export async function reviseDeliveredEvent(
+  userId: string,
+  event: Extract<SourcedEvent, { kind: "closed" }>,
+  batch: SourcedEvent[],
+  delivered: DeliveredMessage,
+) {
+  if (delivered.telegram)
+    await editTelegramHtml(
+      delivered.telegram.chatId,
+      delivered.telegram.messageId,
+      formatPositionMessage(batch, delivered.sentAt),
+    ).catch(() => {
+      console.warn("[position-alerts] final result: message not edited");
+    });
+  await prisma.notificationLog.updateMany({
+    where: {
+      userId,
+      kind: "closed",
+      sentAt: delivered.sentAt,
+      tokenSymbol: event.position.base,
+      details: { path: ["label"], equals: event.source.label },
+    },
+    data: {
+      // A failed delivery keeps its error text in the log.
+      ...(delivered.status === "failed" ? {} : { message: formatPositionEvent(event).replace(/<[^>]+>/g, "") }),
+      details: logDetails(event) as Prisma.InputJsonValue,
+    },
+  });
 }

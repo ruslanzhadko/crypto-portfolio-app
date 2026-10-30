@@ -354,7 +354,7 @@ const lastAttempt = new Map<string, number>();
  * History read before this moment was grouped by an older rule: such connections read the whole
  * month again once, and the stale pieces of the window are replaced.
  */
-const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 18, 45);
+const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 30, 14, 0);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(

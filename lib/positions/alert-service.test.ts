@@ -14,15 +14,17 @@ const adapter = vi.hoisted(() => ({
   verify: vi.fn(),
   fetch: vi.fn(),
   closedResult: vi.fn(),
+  closedTrades: vi.fn(),
 }));
 const deliver = vi.hoisted(() => vi.fn());
+const revise = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/db/prisma", () => ({ prisma: db }));
 vi.mock("@/lib/exchanges/config", () => ({ exchangesEnabled: () => true }));
 vi.mock("@/lib/exchanges/worker", () => ({
   clientVersion: () => null,
   connectionClient: async () => ({ adapter, touched: 0, version: 1 }),
 }));
-vi.mock("./delivery", () => ({ deliverPositionEvents: deliver }));
+vi.mock("./delivery", () => ({ deliverPositionEvents: deliver, reviseDeliveredEvent: revise }));
 const saveTrades = vi.hoisted(() => vi.fn());
 const importTrades = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/exchanges/closed-trades", () => ({
@@ -109,6 +111,7 @@ beforeEach(() => {
   ]);
   deliver.mockResolvedValue("sent");
   saveTrades.mockResolvedValue(undefined);
+  revise.mockResolvedValue(undefined);
 });
 
 describe("PositionAlertService", () => {
@@ -316,5 +319,78 @@ describe("PositionAlertService", () => {
     expect(importTrades).toHaveBeenCalledWith(expect.objectContaining({ id: "c1" }), adapter, 70_000, true);
     // Not recorded by the worker itself: the exchange history is the source there.
     expect(saveTrades).not.toHaveBeenCalled();
+  });
+
+  describe("final result after an estimate", () => {
+    const MIN = 60_000;
+    const shortLived: OpenPosition = { ...btc, unrealizedPnl: "22.68", unrealizedPnlUsd: "22.68" };
+    const trade = (closedAt: number, pnl = "-20") => ({ base: "BTC", settle: "USDT", side: "long", closedAt, pnl });
+    /** Position seen at 10 s and gone at 25 s, with no known cycle start; the alert went out. */
+    async function closedEstimate() {
+      adapter.closedResult.mockResolvedValue(null);
+      const service = new PositionAlertService();
+      await service.maybeReload(null, 0);
+      service.observe({ id: "c1", userId: "u1" }, result(shortLived), 10_000);
+      service.observe({ id: "c1", userId: "u1" }, result(), 25_000);
+      deliver.mockResolvedValue({ status: "sent", sentAt: new Date(25_000), telegram: { chatId: "1", messageId: 7 } });
+      await service.flush();
+      deliver.mockClear();
+      saveTrades.mockClear();
+      return service;
+    }
+
+    it("corrects the alert and the statistics with the figure from fills", async () => {
+      const service = await closedEstimate();
+      adapter.closedTrades.mockResolvedValue([trade(20_000)]);
+      expect(await service.recheckClosed(MIN)).toBe(false);
+      expect(adapter.closedTrades).not.toHaveBeenCalled();
+
+      expect(await service.recheckClosed(25_000 + 2 * MIN)).toBe(true);
+      expect(revise).toHaveBeenCalledTimes(1);
+      const [userId, event] = revise.mock.calls[0]!;
+      expect(userId).toBe("u1");
+      expect(event).toMatchObject({ pnlUsd: -20, exact: true, includesCosts: true, withoutFunding: true });
+      expect(saveTrades).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "c1" }),
+        [expect.objectContaining({ pnl: "-20", closedAt: 25_000 })],
+        "watch",
+        true,
+        expect.any(Function),
+      );
+      // Done: nothing is read or edited again.
+      adapter.closedTrades.mockClear();
+      expect(await service.recheckClosed(25_000 + 30 * MIN)).toBe(false);
+      expect(adapter.closedTrades).not.toHaveBeenCalled();
+    });
+
+    it("keeps trying until the last check, then leaves the estimate", async () => {
+      const service = await closedEstimate();
+      adapter.closedTrades.mockResolvedValue([]);
+      await service.recheckClosed(25_000 + 2 * MIN);
+      await service.recheckClosed(25_000 + 10 * MIN);
+      await service.recheckClosed(25_000 + 30 * MIN);
+      expect(adapter.closedTrades).toHaveBeenCalledTimes(3);
+      await service.recheckClosed(25_000 + 60 * MIN);
+      expect(adapter.closedTrades).toHaveBeenCalledTimes(3);
+      expect(revise).not.toHaveBeenCalled();
+    });
+
+    it("does not guess between two trades, or take one outside the polls around the close", async () => {
+      const service = await closedEstimate();
+      adapter.closedTrades.mockResolvedValueOnce([trade(15_000), trade(20_000)]);
+      expect(await service.recheckClosed(25_000 + 2 * MIN)).toBe(false);
+      adapter.closedTrades.mockResolvedValueOnce([trade(25_000 + 5 * MIN)]);
+      expect(await service.recheckClosed(25_000 + 10 * MIN)).toBe(false);
+      expect(revise).not.toHaveBeenCalled();
+    });
+
+    it("a position stored before a restart has no poll to bound the close and is not rechecked", async () => {
+      const service = new PositionAlertService();
+      await service.maybeReload(null, 0);
+      service.observe({ id: "c1", userId: "u1" }, result(), 25_000);
+      adapter.closedTrades.mockResolvedValue([trade(20_000)]);
+      expect(await service.recheckClosed(25_000 + 2 * MIN)).toBe(false);
+      expect(adapter.closedTrades).not.toHaveBeenCalled();
+    });
   });
 });
