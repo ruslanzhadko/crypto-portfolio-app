@@ -2,6 +2,7 @@ import { Prisma, TriggerDirection, TriggerType } from '@prisma/client';
 import { prisma } from '@/lib/db/prisma';
 import { fetchPricesByIds, type SimplePriceItem } from '@/lib/services/coingecko';
 import { fetchPrices, type PriceQuery } from '@/lib/services/price-feed';
+import { falsePriceJumps } from '@/lib/services/price-jump';
 import { sendPriceAlert, sendPriceTargetAlert, TelegramError } from '@/lib/services/telegram';
 import { savePortfolioSnapshot } from '@/lib/services/portfolio';
 import { syncWallet } from '@/lib/services/wallet-sync';
@@ -317,10 +318,18 @@ async function recalculateBalances(): Promise<number> {
     cgRows.map((c) => [c.tokenId, { price: c.currentPrice, change24h: c.priceChange24h }]),
   );
 
-  const writes: Prisma.PrismaPromise<unknown>[] = [];
-  for (const b of balances) {
+  const priced = balances.flatMap((b) => {
     const resolved = resolveBalancePrice(b, feedPrices, cgPriceMap);
-    if (!resolved || resolved.price <= 0 || !Number.isFinite(resolved.price)) continue;
+    if (!resolved || resolved.price <= 0 || !Number.isFinite(resolved.price)) return [];
+    return [{ b, resolved, symbol: b.tokenSymbol, previous: b.priceUsd, next: resolved.price }];
+  });
+  // Coins with a CoinGecko id were already checked against it in resolveBalancePrice.
+  const falseJumps = await falsePriceJumps(priced.filter((p) => !p.b.coingeckoId));
+
+  const writes: Prisma.PrismaPromise<unknown>[] = [];
+  for (const move of priced) {
+    if (falseJumps.has(move)) continue;
+    const { b, resolved } = move;
 
     const newUsd = b.balance * resolved.price;
     const newChange = clampChange(resolved.change24h);

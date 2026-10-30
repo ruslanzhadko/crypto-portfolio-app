@@ -21,6 +21,7 @@ import {
   type SimplePriceItem,
 } from "@/lib/services/coingecko";
 import { fetchPrices, type PriceQuery } from "@/lib/services/price-feed";
+import { falsePriceJumps } from "@/lib/services/price-jump";
 import { checkedPrice, verifiedCoingeckoId } from "@/lib/services/reference-price";
 import { getChainInfo } from "@/lib/utils/networks";
 import { exchangesEnabled, HYPERCORE_CHAINS } from "@/lib/exchanges/config";
@@ -161,10 +162,6 @@ async function saveBalances(
   await enrichMissingPrices(enriched);
   await applyReferencePrices(enriched);
 
-  const spamCount = enriched.filter(shouldMarkSpam).length;
-
-  const toSave = enriched.filter((t) => t.balance > 0);
-
   // Зберігаємо isHidden/isSpam перед видаленням — щоб відновити після sync
   const prevTokens = await prisma.tokenBalance.findMany({
     where: { walletId },
@@ -173,8 +170,15 @@ async function saveBalances(
       tokenAddress: true,
       tokenSymbol: true,
       isHidden: true,
+      priceUsd: true,
     },
   });
+  await keepPricesOfFalseJumps(enriched, prevTokens);
+
+  const spamCount = enriched.filter(shouldMarkSpam).length;
+
+  const toSave = enriched.filter((t) => t.balance > 0);
+
   const prevHidden = new Map<string, boolean>();
   for (const t of prevTokens) {
     if (t.isHidden) {
@@ -503,6 +507,28 @@ async function applyReferencePrices(tokens: EnrichedToken[]): Promise<void> {
     if (price === t.priceUsd) continue;
     t.priceUsd = price;
     t.usdValue = t.balance * price;
+  }
+}
+
+/** Coins without CoinGecko keep their stored price when Gate rejects a sharp move (price-jump.ts). */
+async function keepPricesOfFalseJumps(
+  tokens: EnrichedToken[],
+  stored: Array<{ chainName: string; tokenAddress: string; tokenSymbol: string; priceUsd: number }>,
+): Promise<void> {
+  const previous = new Map(
+    stored.map((s) => [tokenKey(s.chainName, s.tokenAddress, s.tokenSymbol), s.priceUsd]),
+  );
+  const moves = tokens
+    .filter((t) => !t.coingeckoId)
+    .map((t) => ({
+      token: t,
+      symbol: t.symbol,
+      previous: previous.get(tokenKey(t.chainName, t.address, t.symbol)) ?? 0,
+      next: t.priceUsd,
+    }));
+  for (const { token, previous: price } of await falsePriceJumps(moves)) {
+    token.priceUsd = price;
+    token.usdValue = token.balance * price;
   }
 }
 

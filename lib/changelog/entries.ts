@@ -15,6 +15,25 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-30",
     title: {
+      ru: "Защита от ложных скачков цены",
+      uk: "Захист від хибних стрибків ціни",
+      en: "Protection from false price spikes",
+    },
+    items: {
+      ru: [
+        "Резкое изменение цены монеты без CoinGecko теперь сверяется с биржей Gate, поэтому ложный скачок не попадёт в баланс и на график.",
+      ],
+      uk: [
+        "Різку зміну ціни монети без CoinGecko тепер звіряємо з біржею Gate, тому хибний стрибок не потрапить у баланс і на графік.",
+      ],
+      en: [
+        "A sharp price move of a coin without CoinGecko is now checked against the Gate exchange, so a false spike stays out of balances and charts.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-30",
+    title: {
       ru: "Хеджи вне статистики",
       uk: "Хеджі поза статистикою",
       en: "Hedges out of the statistics",
