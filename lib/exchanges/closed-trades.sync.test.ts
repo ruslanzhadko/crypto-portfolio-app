@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const db = vi.hoisted(() => ({
   upsert: vi.fn(async () => ({})),
   findMany: vi.fn(async (): Promise<unknown[]> => []),
+  updateMany: vi.fn(async () => ({ count: 1 })),
   deleteMany: vi.fn(async () => ({ count: 0 })),
   update: vi.fn(async () => ({})),
 }));
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
-    closedTrade: { upsert: db.upsert, deleteMany: db.deleteMany, findMany: db.findMany },
+    closedTrade: { upsert: db.upsert, deleteMany: db.deleteMany, findMany: db.findMany, updateMany: db.updateMany },
     exchangeConnection: { update: db.update },
   },
 }));
@@ -128,6 +129,23 @@ describe("closed trade import", () => {
       );
       expect(corrected).toBe(1);
       expect(await reconcileEstimatedTrades([], async () => ({}) as ExchangeAdapter, NOW)).toBe(0);
+    });
+
+    it("a close stored twice around a restart: the estimate is left out, not given the figure again", async () => {
+      db.findMany.mockResolvedValueOnce([
+        { ...estimate("watch:old", SEEN - 60_000), id: "exact", exact: true },
+        { ...estimate("watch:new", SEEN), id: "double", exact: false },
+      ]);
+      const read = vi.fn(async () => [exchange(SEEN - 90_000)]);
+      const corrected = await reconcileEstimatedTrades(
+        [connection],
+        async () => ({ closedTrades: read }) as unknown as ExchangeAdapter,
+        NOW,
+      );
+      expect(corrected).toBe(0);
+      expect(db.updateMany).toHaveBeenCalledWith({ where: { id: { in: ["double"] } }, data: { excluded: true } });
+      expect(db.upsert).not.toHaveBeenCalled();
+      expect(read).not.toHaveBeenCalled();
     });
 
     it("only a one to one match counts", () => {

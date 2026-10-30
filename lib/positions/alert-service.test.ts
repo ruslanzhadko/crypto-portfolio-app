@@ -9,6 +9,7 @@ const db = vi.hoisted(() => ({
   user: { findMany: vi.fn() },
   exchangeConnection: { findMany: vi.fn() },
   exchangePosition: { findMany: vi.fn() },
+  closedTrade: { findMany: vi.fn() },
 }));
 const adapter = vi.hoisted(() => ({
   verify: vi.fn(),
@@ -114,6 +115,7 @@ beforeEach(() => {
   deliver.mockResolvedValue("sent");
   saveTrades.mockResolvedValue(undefined);
   revise.mockResolvedValue(undefined);
+  db.closedTrade.findMany.mockResolvedValue([]);
 });
 
 describe("PositionAlertService", () => {
@@ -127,6 +129,7 @@ describe("PositionAlertService", () => {
     await service.pollDue(10_000);
     expect(adapter.verify).toHaveBeenCalledTimes(1);
     expect(adapter.fetch).toHaveBeenCalledWith(false);
+    await service.resolveClosed(10_000);
     expect(await service.flush()).toEqual(["u1"]);
     expect(deliver).toHaveBeenCalledWith("u1", [
       expect.objectContaining({
@@ -285,7 +288,7 @@ describe("PositionAlertService", () => {
     // Record-only connections are not polled.
     expect(service.size).toBe(0);
     service.observe({ id: "c1", userId: "u1" }, result(), 5_000);
-    await Promise.resolve();
+    await service.resolveClosed(5_000);
     expect(saveTrades).toHaveBeenCalledWith(
       expect.objectContaining({ id: "c1" }),
       [expect.objectContaining({ symbol: "BTCUSDT", side: "long", pnl: "25", closedAt: 5_000 })],
@@ -395,13 +398,29 @@ describe("PositionAlertService", () => {
       expect(revise).not.toHaveBeenCalled();
     });
 
-    it("a position stored before a restart has no poll to bound the close and is not rechecked", async () => {
+    it("a close found right after a restart goes out as an estimate and is corrected later", async () => {
       const service = new PositionAlertService();
       await service.maybeReload(null, 0);
-      service.observe({ id: "c1", userId: "u1" }, result(), 25_000);
-      adapter.closedTrades.mockResolvedValue([trade(20_000)]);
-      expect(await service.recheckClosed(25_000 + 2 * MIN)).toBe(false);
-      expect(adapter.closedTrades).not.toHaveBeenCalled();
+      const seenAt = 20 * MIN;
+      service.observe({ id: "c1", userId: "u1" }, result(), seenAt);
+      await service.resolveClosed(seenAt);
+      expect(saveTrades).toHaveBeenCalledTimes(1);
+      deliver.mockResolvedValue({ status: "sent", sentAt: new Date(seenAt), telegram: { chatId: "1", messageId: 7 } });
+      expect(await service.flush()).toEqual(["u1"]);
+      adapter.closedTrades.mockResolvedValue([trade(seenAt - 2 * MIN, "1.18")]);
+      expect(await service.recheckClosed(seenAt + 2 * MIN)).toBe(true);
+      expect(revise.mock.calls[0]![1]).toMatchObject({ pnlUsd: 1.18, exact: true });
+    });
+
+    it("a close the old worker already stored gets no second trade and no second alert", async () => {
+      db.closedTrade.findMany.mockResolvedValue([{ entryPrice: { toString: () => "70000" } }]);
+      const service = new PositionAlertService();
+      await service.maybeReload(null, 0);
+      service.observe({ id: "c1", userId: "u1" }, result(), 20 * MIN);
+      await service.resolveClosed(20 * MIN);
+      expect(saveTrades).not.toHaveBeenCalled();
+      expect(await service.flush()).toEqual([]);
+      expect(await service.recheckClosed(22 * MIN)).toBe(false);
     });
   });
 });

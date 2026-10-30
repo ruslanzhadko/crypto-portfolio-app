@@ -45,6 +45,9 @@ const RECHECK_MARGIN_MS = 60 * 60_000;
 const RECHECK_UNKNOWN_OPEN_MS = 7 * 86_400_000;
 /** Exchange clocks may run a little apart from the polls around the close. */
 const RECHECK_SKEW_MS = 5_000;
+/** A close found right after a restart happened at most about this long ago (the worker's downtime). */
+const RESTART_WINDOW_MS = 10 * 60_000;
+const ENTRY_TOLERANCE = 0.005;
 
 type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
@@ -73,6 +76,12 @@ type Recheck = {
   step: number;
   dueAt: number;
   delivered?: { message: DeliveredMessage; batch: SourcedEvent[] };
+};
+
+const sameEntry = (a: unknown, b: unknown) => {
+  const x = Number(a),
+    y = Number(b);
+  return !(x > 0 && y > 0) || Math.abs(x / y - 1) <= ENTRY_TOLERANCE;
 };
 
 /** The figure in USD at the rate of the position's own PnL (1:1 without one). */
@@ -127,6 +136,16 @@ export class PositionAlertService {
   private imports = new Map<string, { row: Connection; dueAt: number }>();
   private rechecks: Recheck[] = [];
   private reconciled = false;
+  /** Positions stored before a restart that turned out closed: the old worker may have handled them. */
+  private restartCloses: {
+    userId: string;
+    row: Connection;
+    event: ClosedEvent;
+    otherLeg: boolean;
+    closedAt: number;
+    deliver: boolean;
+    record: boolean;
+  }[] = [];
   private loadedWindow = -1;
   private version: number | null = null;
 
@@ -304,13 +323,23 @@ export class PositionAlertService {
           dueAt: at + EXACT_DELAY_MS,
           deadline: at + EXACT_DEADLINE_MS,
         });
+      else if (event.kind === "closed" && lastSeenAt <= 0)
+        this.restartCloses.push({
+          userId: c.userId,
+          row: watched.row,
+          event: { ...event, source },
+          otherLeg: openSymbols.has(event.position.symbol),
+          closedAt: at,
+          deliver,
+          record,
+        });
       else {
         const sourced = { ...event, source };
         if (record)
           void this.record(watched.row, sourced as ClosedEvent, null, at);
         if (deliver) now.push(sourced);
         // Too short for a known cycle start, so nothing waited for the exchange's figure.
-        if (event.kind === "closed" && lastSeenAt > 0)
+        if (event.kind === "closed")
           this.scheduleRecheck({
             userId: c.userId,
             row: watched.row,
@@ -348,7 +377,52 @@ export class PositionAlertService {
     }
   }
 
+  /**
+   * A close already stored by the worker before the restart is not a new one: no second trade and no
+   * second alert. Otherwise it goes out as an estimate (the position's stored figures) and is rechecked.
+   */
+  private async handleRestartCloses() {
+    const found = this.restartCloses;
+    this.restartCloses = [];
+    for (const item of found) {
+      const p = item.event.position;
+      if (item.record) {
+        const stored = await prisma.closedTrade.findMany({
+          where: {
+            connectionId: item.row.id,
+            base: p.base,
+            settle: p.settle,
+            side: p.side,
+            closedAt: {
+              gte: new Date(item.closedAt - RESTART_WINDOW_MS),
+              lte: new Date(item.closedAt),
+            },
+          },
+          select: { entryPrice: true },
+        });
+        if (stored.some((t) => sameEntry(t.entryPrice, p.entryPrice))) continue;
+        await this.record(item.row, item.event, null, item.closedAt);
+      }
+      if (item.deliver)
+        this.pending.set(item.userId, [
+          ...(this.pending.get(item.userId) ?? []),
+          item.event,
+        ]);
+      this.scheduleRecheck({
+        userId: item.userId,
+        row: item.row,
+        event: item.event,
+        since: null,
+        lastSeenAt: item.closedAt - RESTART_WINDOW_MS,
+        otherLeg: item.otherLeg,
+        closedAt: item.closedAt,
+        record: item.record,
+      });
+    }
+  }
+
   async resolveClosed(now = Date.now()) {
+    await this.handleRestartCloses();
     const waiting = this.closing;
     this.closing = [];
     for (const item of waiting) {
@@ -497,7 +571,8 @@ export class PositionAlertService {
         t.settle === p.settle &&
         t.side === p.side &&
         t.closedAt >= item.lastSeenAt - RECHECK_SKEW_MS &&
-        t.closedAt <= item.closedAt + RECHECK_SKEW_MS,
+        t.closedAt <= item.closedAt + RECHECK_SKEW_MS &&
+        sameEntry(t.entryPrice, p.entryPrice),
     );
     // Two trades between the same two polls cannot be told apart: the estimate stays.
     return matches.length === 1

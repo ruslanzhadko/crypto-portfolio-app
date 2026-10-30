@@ -454,6 +454,19 @@ export function matchEstimates<E extends Estimate>(estimates: E[], trades: Close
   });
 }
 
+/** Two stored rows that describe one close: same coin and side, seen minutes apart, same entry. */
+function sameClose(a: Estimate, b: Estimate) {
+  const x = Number(a.entryPrice?.toString()),
+    y = Number(b.entryPrice?.toString());
+  return (
+    a.base === b.base &&
+    a.settle === b.settle &&
+    a.side === b.side &&
+    Math.abs(a.closedAt.getTime() - b.closedAt.getTime()) <= RECONCILE_WINDOW_MS &&
+    (!(x > 0 && y > 0) || Math.abs(x / y - 1) <= RECONCILE_ENTRY_TOLERANCE)
+  );
+}
+
 /**
  * Worker start: closes of the last week still at the estimate get the exchange's figure, also those
  * whose in-memory recheck a restart dropped. The sent Telegram messages stay as they are. Returns how
@@ -469,13 +482,25 @@ export async function reconcileEstimatedTrades(
     where: {
       connectionId: { in: connections.map((c) => c.id) },
       source: "watch",
-      exact: false,
       closedAt: { gte: new Date(now - RECONCILE_DAYS * DAY_MS) },
     },
   });
   let corrected = 0;
   for (const connection of connections) {
-    const own = estimates.filter((e) => e.connectionId === connection.id);
+    const all = estimates.filter((e) => e.connectionId === connection.id);
+    const final = all.filter((e) => e.exact);
+    const open = all.filter((e) => !e.exact);
+    // The same close stored twice around a restart: the estimate leaves the statistics, reversibly,
+    // and must not take the exact trade's figure as a second result.
+    const doubles = open.filter((e) => final.some((f) => sameClose(e, f)));
+    if (doubles.length) {
+      await prisma.closedTrade.updateMany({
+        where: { id: { in: doubles.map((e) => e.id) } },
+        data: { excluded: true },
+      });
+      console.log(`[closed-trades] ${connection.exchange}: ${doubles.length} repeated close(s) left out`);
+    }
+    const own = open.filter((e) => !doubles.includes(e));
     if (!own.length) continue;
     try {
       const adapter = await adapterFor(connection.id);
