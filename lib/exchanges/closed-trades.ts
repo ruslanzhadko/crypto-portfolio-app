@@ -409,6 +409,109 @@ export async function syncClosedTrades(
   }
 }
 
+const RECONCILE_DAYS = 7;
+/** Fills read before a position's opening, so its first fill is inside the range. */
+const RECONCILE_MARGIN_MS = 60 * 60_000;
+/** The worker sees a close at the next read after it, minutes later on a connection without alerts. */
+const RECONCILE_WINDOW_MS = 5 * 60_000;
+const RECONCILE_SKEW_MS = 5_000;
+const RECONCILE_ENTRY_TOLERANCE = 0.005;
+
+type Estimate = {
+  externalId: string;
+  base: string;
+  settle: string;
+  side: string;
+  entryPrice: { toString(): string } | null;
+  closedAt: Date;
+};
+
+/**
+ * Pairs stored estimates with trades read from the exchange: same coin and side, closed shortly before
+ * the worker saw it, entry price close when both are known. Anything not one to one is left alone.
+ */
+export function matchEstimates<E extends Estimate>(estimates: E[], trades: ClosedTradeRow[]) {
+  const candidates = estimates.map((e) => {
+    const seenAt = e.closedAt.getTime();
+    const entry = e.entryPrice === null ? NaN : Number(e.entryPrice.toString());
+    return trades.filter((t) => {
+      const tradeEntry = t.entryPrice === null ? NaN : Number(t.entryPrice);
+      return (
+        t.base === e.base &&
+        t.settle === e.settle &&
+        t.side === e.side &&
+        t.closedAt >= seenAt - RECONCILE_WINDOW_MS &&
+        t.closedAt <= seenAt + RECONCILE_SKEW_MS &&
+        (!(entry > 0 && tradeEntry > 0) || Math.abs(tradeEntry / entry - 1) <= RECONCILE_ENTRY_TOLERANCE)
+      );
+    });
+  });
+  const uses = new Map<ClosedTradeRow, number>();
+  for (const list of candidates) for (const t of list) uses.set(t, (uses.get(t) ?? 0) + 1);
+  return estimates.flatMap((estimate, i) => {
+    const list = candidates[i]!;
+    return list.length === 1 && uses.get(list[0]!) === 1 ? [{ estimate, trade: list[0]! }] : [];
+  });
+}
+
+/**
+ * Worker start: closes of the last week still at the estimate get the exchange's figure, also those
+ * whose in-memory recheck a restart dropped. The sent Telegram messages stay as they are. Returns how
+ * many trades were corrected; a connection that cannot be read keeps its estimates.
+ */
+export async function reconcileEstimatedTrades(
+  connections: { id: string; userId: string; exchange: string }[],
+  adapterFor: (connectionId: string) => Promise<ExchangeAdapter>,
+  now = Date.now(),
+): Promise<number> {
+  if (!connections.length) return 0;
+  const estimates = await prisma.closedTrade.findMany({
+    where: {
+      connectionId: { in: connections.map((c) => c.id) },
+      source: "watch",
+      exact: false,
+      closedAt: { gte: new Date(now - RECONCILE_DAYS * DAY_MS) },
+    },
+  });
+  let corrected = 0;
+  for (const connection of connections) {
+    const own = estimates.filter((e) => e.connectionId === connection.id);
+    if (!own.length) continue;
+    try {
+      const adapter = await adapterFor(connection.id);
+      if (!adapter.closedTrades) continue;
+      const from = Math.min(
+        ...own.map((e) => (e.openedAt ?? new Date(now - RECONCILE_DAYS * DAY_MS)).getTime()),
+      );
+      const trades = await adapter.closedTrades(from - RECONCILE_MARGIN_MS, now);
+      const matched = matchEstimates(own, trades);
+      await saveClosedTrades(
+        connection,
+        matched.map(({ estimate: e, trade: t }) => ({
+          externalId: e.externalId,
+          symbol: e.symbol,
+          base: e.base,
+          settle: e.settle,
+          side: e.side as "long" | "short",
+          size: e.size?.toString() ?? t.size,
+          entryPrice: t.entryPrice ?? e.entryPrice?.toString() ?? null,
+          exitPrice: t.exitPrice ?? e.exitPrice?.toString() ?? null,
+          openedAt: t.openedAt ?? e.openedAt?.getTime() ?? null,
+          closedAt: e.closedAt.getTime(),
+          pnl: t.pnl,
+        })),
+        "watch",
+        true,
+      );
+      corrected += matched.length;
+      console.log(`[closed-trades] ${connection.exchange}: ${matched.length} of ${own.length} estimate(s) corrected`);
+    } catch (error) {
+      console.warn(`[closed-trades] ${connection.exchange} estimates not checked: ${safeError(error)}`);
+    }
+  }
+  return corrected;
+}
+
 /** Stores trades once per (connection, externalId); a re-read refreshes the figures. */
 export async function saveClosedTrades(
   connection: { id: string; userId: string },

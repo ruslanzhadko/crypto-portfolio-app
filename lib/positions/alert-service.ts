@@ -10,7 +10,12 @@ import {
   readPositionAlertSettings,
   type PositionAlertSettings,
 } from "./alert-settings";
-import { HISTORY_EXCHANGES, saveClosedTrades, syncClosedTrades } from "@/lib/exchanges/closed-trades";
+import {
+  HISTORY_EXCHANGES,
+  reconcileEstimatedTrades,
+  saveClosedTrades,
+  syncClosedTrades,
+} from "@/lib/exchanges/closed-trades";
 import {
   deliverPositionEvents,
   reviseDeliveredEvent,
@@ -121,6 +126,7 @@ export class PositionAlertService {
   /** Connections whose exchange history is read again soon after a close was seen there. */
   private imports = new Map<string, { row: Connection; dueAt: number }>();
   private rechecks: Recheck[] = [];
+  private reconciled = false;
   private loadedWindow = -1;
   private version: number | null = null;
 
@@ -442,9 +448,30 @@ export class PositionAlertService {
     return changed;
   }
 
+  /** Once per worker start, when the connections are loaded: see reconcileEstimatedTrades. */
+  async reconcileEstimates(now = Date.now()): Promise<boolean> {
+    if (this.reconciled || !this.connections.size) return false;
+    this.reconciled = true;
+    await reconcileEstimatedTrades(
+      [...this.connections.values()].map((w) => w.row),
+      async (id) => this.verifiedAdapter(this.connections.get(id)!.row),
+      now,
+    );
+    return true;
+  }
+
+  /** A new client must be verified first: some adapters refuse to read otherwise. */
+  private async verifiedAdapter(row: Connection) {
+    const { adapter } = await connectionClient(row);
+    if (!this.verified.has(adapter)) {
+      await adapter.verify();
+      this.verified.add(adapter);
+    }
+    return adapter;
+  }
+
   private async finalResult(item: Recheck, now: number) {
-    const client = await connectionClient(item.row);
-    const adapter = client.adapter;
+    const adapter = await this.verifiedAdapter(item.row);
     const p = item.event.position;
     if (item.since !== null && adapter.closedResult) {
       const pnl = await adapter.closedResult({
@@ -459,10 +486,6 @@ export class PositionAlertService {
       if (pnl !== null) return { pnl, withoutFunding: false };
     }
     if (!adapter.closedTrades) return null;
-    if (!this.verified.has(adapter)) {
-      await adapter.verify();
-      this.verified.add(adapter);
-    }
     const duration = item.event.durationMs;
     const from =
       duration === null

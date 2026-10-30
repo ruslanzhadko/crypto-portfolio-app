@@ -27,7 +27,9 @@ vi.mock("@/lib/exchanges/worker", () => ({
 vi.mock("./delivery", () => ({ deliverPositionEvents: deliver, reviseDeliveredEvent: revise }));
 const saveTrades = vi.hoisted(() => vi.fn());
 const importTrades = vi.hoisted(() => vi.fn());
+const reconcile = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/exchanges/closed-trades", () => ({
+  reconcileEstimatedTrades: reconcile,
   HISTORY_EXCHANGES: new Set(["bybit", "gate", "bingx", "kucoin"]),
   saveClosedTrades: saveTrades,
   syncClosedTrades: importTrades,
@@ -319,6 +321,15 @@ describe("PositionAlertService", () => {
     expect(importTrades).toHaveBeenCalledWith(expect.objectContaining({ id: "c1" }), adapter, 70_000, true);
     // Not recorded by the worker itself: the exchange history is the source there.
     expect(saveTrades).not.toHaveBeenCalled();
+  });
+
+  it("checks stored estimates once per start, after the connections are loaded", async () => {
+    const service = new PositionAlertService();
+    expect(await service.reconcileEstimates(1)).toBe(false);
+    await service.maybeReload(null, 0);
+    expect(await service.reconcileEstimates(1)).toBe(true);
+    expect(await service.reconcileEstimates(2)).toBe(false);
+    expect(reconcile).toHaveBeenCalledTimes(1);
   });
 
   describe("final result after an estimate", () => {
