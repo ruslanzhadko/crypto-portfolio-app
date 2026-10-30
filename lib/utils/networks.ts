@@ -186,7 +186,8 @@ const CHAIN_MAP = new Map<string, ChainInfo>(ALL_CHAINS.map((c) => [c.chainName,
  * Networks seen only in exchange deposits and withdrawals: a name and a logo for the badge, no
  * wallet support. Keys are what `transferChain` (lib/exchanges/transfer-networks.ts) returns.
  */
-const EXTRA_NETWORKS: Record<string, { displayName: string; logo: string }> = {
+const EXTRA_NETWORKS: Record<string, { displayName: string; logo: string | null }> = {
+  'bybit-id': { displayName: 'Bybit ID', logo: null },
   tron: { displayName: 'Tron', logo: `${TW}/tron/info/logo.png` },
   plasma: { displayName: 'Plasma', logo: `${TW}/plasma/info/logo.png` },
   aptos: { displayName: 'Aptos', logo: `${TW}/aptos/info/logo.png` },

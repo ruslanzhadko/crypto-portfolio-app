@@ -11,6 +11,7 @@ describe("exchange transfer networks", () => {
     expect(transferChain("Arbitrum One")).toBe("arbitrum");
     expect(transferChain("TRX")).toBe("tron");
     expect(transferChain("PLASMA")).toBe("plasma");
+    expect(transferChain("internalAddressChain")).toBe("bybit-id");
     expect(transferChain("SomeNewChain")).toBe("SomeNewChain");
     expect(transferChain(null)).toBeNull();
     expect(transferChain("  ")).toBeNull();

@@ -57,6 +57,8 @@ const NAMES: Record<string, string> = {
   LTC: "litecoin",
   DOT: "polkadot",
   ATOM: "cosmos",
+  // A transfer by Bybit UID: no blockchain involved.
+  INTERNALADDRESSCHAIN: "bybit-id",
 };
 
 const EXPLORER: Record<string, string> = {
