@@ -37,8 +37,9 @@ const OVERLAP_MS = 7 * DAY_MS;
 export const HISTORY_EXCHANGES = new Set(["bybit", "gate", "kucoin"]);
 /**
  * Exchanges whose closes the worker records itself, with the history read only for the past: trades
- * closed before the moment the worker started recording them (no duplicates). BingX: its position
- * history came back empty for a real account while the income ledger (exact close results) works.
+ * closed before the moment the worker started recording them (no duplicates). A connection added
+ * later is only watched from its creation, so its history runs up to that moment instead. BingX: its
+ * position history came back empty for a real account while the income ledger (exact close results) works.
  */
 export const BACKFILL_UNTIL: Record<string, number> = {
   bingx: Date.UTC(2026, 9, 29, 16, 44),
@@ -357,15 +358,17 @@ const HISTORY_RULES_SINCE = Date.UTC(2026, 9, 29, 18, 45);
 
 /** Reads new closed trades of a connection after a successful sync; never fails the sync. */
 export async function syncClosedTrades(
-  connection: { id: string; userId: string; exchange: string; tradesAt: Date | null },
+  connection: { id: string; userId: string; exchange: string; tradesAt: Date | null; createdAt: Date },
   adapter: ExchangeAdapter,
   now = Date.now(),
   /** A close was just seen: read now instead of waiting for the 30-minute interval. */
   force = false,
 ): Promise<"skipped" | "saved" | "failed"> {
-  const backfillUntil = BACKFILL_UNTIL[connection.exchange];
-  if (!adapter.closedTrades || (!HISTORY_EXCHANGES.has(connection.exchange) && backfillUntil === undefined))
+  const recordingSince = BACKFILL_UNTIL[connection.exchange];
+  if (!adapter.closedTrades || (!HISTORY_EXCHANGES.has(connection.exchange) && recordingSince === undefined))
     return "skipped";
+  const backfillUntil =
+    recordingSince === undefined ? undefined : Math.max(recordingSince, connection.createdAt.getTime());
   if (!force && now - (lastAttempt.get(connection.id) ?? 0) < INTERVAL_MS) return "skipped";
   lastAttempt.set(connection.id, now);
   const fresh = !connection.tradesAt || connection.tradesAt.getTime() < HISTORY_RULES_SINCE;

@@ -15,6 +15,25 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-30",
     title: {
+      ru: "Полная статистика новых подключений",
+      uk: "Повна статистика нових підключень",
+      en: "Complete statistics for new connections",
+    },
+    items: {
+      ru: [
+        "У новых подключений BingX, Binance и Aster в статистике больше не пропадают сделки, закрытые незадолго до подключения.",
+      ],
+      uk: [
+        "У нових підключень BingX, Binance та Aster у статистиці більше не зникають угоди, закриті незадовго до підключення.",
+      ],
+      en: [
+        "New BingX, Binance and Aster connections no longer miss trades closed shortly before they were added.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-30",
+    title: {
       ru: "Защита от ложных скачков цены",
       uk: "Захист від хибних стрибків ціни",
       en: "Protection from false price spikes",
