@@ -33,6 +33,8 @@ describe("GET /api/worker/activity", () => {
     );
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toContain("no-store");
-    expect((await res.json()).users).toEqual(["viewer"]);
+    const body = await res.json();
+    expect(body.users).toEqual(["viewer"]);
+    expect(body.positionViews).toEqual([]);
   });
 });

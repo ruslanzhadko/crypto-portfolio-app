@@ -13,6 +13,28 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-10-31",
+    title: {
+      ru: "Позиции в Telegram-боте",
+      uk: "Позиції в Telegram-боті",
+      en: "Positions in the Telegram bot",
+    },
+    items: {
+      ru: [
+        "Команда /positions показывает открытые позиции: PnL, размер и расстояние до ликвидации.",
+        "Кнопка «Обновить» запрашивает свежие данные с биржи.",
+      ],
+      uk: [
+        "Команда /positions показує відкриті позиції: PnL, розмір і відстань до ліквідації.",
+        "Кнопка «Оновити» запитує свіжі дані з біржі.",
+      ],
+      en: [
+        "The /positions command shows open positions: PnL, size and distance to liquidation.",
+        "The Refresh button requests fresh data from the exchange.",
+      ],
+    },
+  },
+  {
     date: "2026-10-30",
     title: {
       ru: "Итог закрытия сверяется с биржей",

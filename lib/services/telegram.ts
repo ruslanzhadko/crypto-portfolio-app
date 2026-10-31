@@ -213,6 +213,7 @@ export async function setWebhook(
 
 /** Commands shown in the bot's menu. */
 export const BOT_COMMANDS = [
+  { command: 'positions', description: 'Открытые позиции' },
   { command: 'stats', description: 'Статистика торговли с кнопками периодов' },
   { command: 'today', description: 'Итог закрытых сделок за сегодня' },
   { command: 'week', description: 'Статистика за 7 дней' },
@@ -223,7 +224,7 @@ export const BOT_COMMANDS = [
 export type InlineKeyboard = { text: string; callback_data?: string; url?: string }[][];
 
 /** Any Bot API method with a JSON body; the token never leaves this module, errors carry no config. */
-export async function callBot(method: string, body: Record<string, unknown>): Promise<void> {
+export async function callBot(method: string, body: Record<string, unknown>): Promise<TelegramResponse['result']> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) throw new TelegramError('TELEGRAM_BOT_TOKEN не установлен');
   let data: TelegramResponse;
@@ -238,16 +239,19 @@ export async function callBot(method: string, body: Record<string, unknown>): Pr
     throw new TelegramError(description ?? 'Telegram временно недоступен. Повторите попытку позже.');
   }
   if (!data.ok) throw new TelegramError(data.description ?? `${method} failed`);
+  return data.result;
 }
 
-export async function sendWithKeyboard(chatId: number, text: string, keyboard: InlineKeyboard): Promise<void> {
-  await callBot('sendMessage', {
+/** Returns the message id, for a later edit. */
+export async function sendWithKeyboard(chatId: number, text: string, keyboard: InlineKeyboard): Promise<number | null> {
+  const result = await callBot('sendMessage', {
     chat_id: chatId,
     text,
     parse_mode: 'HTML',
     disable_web_page_preview: true,
     reply_markup: { inline_keyboard: keyboard },
   });
+  return result?.message_id ?? null;
 }
 
 /** Replaces a bot message in place; pressing the active button again is not an error. */

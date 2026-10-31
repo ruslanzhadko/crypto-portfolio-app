@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/prisma";
 import { exchangesEnabled } from "@/lib/exchanges/config";
-import { safeError, type SyncResult } from "@/lib/exchanges/types";
+import { positionsComplete, safeError, type SyncResult } from "@/lib/exchanges/types";
 import type { ClosedInput } from "@/lib/exchanges/closed-result";
 import { clientVersion, connectionClient } from "@/lib/exchanges/worker";
 import {
@@ -49,13 +49,15 @@ const RECHECK_SKEW_MS = 5_000;
 const RESTART_WINDOW_MS = 10 * 60_000;
 const ENTRY_TOLERANCE = 0.005;
 
-type Connection = Prisma.ExchangeConnectionGetPayload<{
+export type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
 }>;
 type Watched = {
   row: Connection;
   nextAt: number;
   observedAt: number;
+  /** The last read, for the bot's /positions; only a recent complete one is reused. */
+  latest?: SyncResult;
   /** The user wants position alerts from this connection: it is polled every 15 s. */
   alerts: boolean;
   /** Closes are stored for trading statistics (exchanges without a position history). */
@@ -98,7 +100,7 @@ function applyExact(event: ClosedEvent, exact: string) {
   event.exact = true;
 }
 
-const WATCHED_STATUSES = ["PENDING", "ACTIVE", "PARTIAL", "ERROR"];
+export const WATCHED_STATUSES = ["PENDING", "ACTIVE", "PARTIAL", "ERROR"];
 
 const text = (value: { toString(): string } | null) =>
   value === null ? null : value.toString();
@@ -248,6 +250,7 @@ export class PositionAlertService {
         row,
         nextAt: known?.nextAt ?? now,
         observedAt: known?.observedAt ?? Number.NEGATIVE_INFINITY,
+        latest: known?.latest,
         alerts: alertsOn(row),
         record: !HISTORY_EXCHANGES.has(row.exchange),
       });
@@ -281,6 +284,7 @@ export class PositionAlertService {
     }
     const lastSeenAt = watched.observedAt;
     watched.observedAt = at;
+    watched.latest = result;
     const events = this.watch.observe(c.id, result.accounts, settings, at);
     if (!events.length) return;
     const source = { label: watched.row.label, exchange: watched.row.exchange };
@@ -655,6 +659,39 @@ export class PositionAlertService {
         if (code === "RATE_LIMIT") this.rateLimited(exchange, now);
         watched.nextAt = Date.now() + SLOW_POLL_MS;
       }
+    }
+  }
+
+  /**
+   * Positions for the bot's /positions: the last poll when it is recent, otherwise one read of the
+   * exchange (which also counts as this connection's alert poll). Null while the exchange is rate
+   * limited or the read failed; the caller then shows the stored positions.
+   */
+  async readForView(row: Connection, now = Date.now()) {
+    const watched = this.connections.get(row.id);
+    if (
+      watched?.latest &&
+      now - watched.observedAt < ALERT_POLL_MS &&
+      positionsComplete(watched.latest)
+    )
+      return { result: watched.latest, at: watched.observedAt };
+    if ((this.slowUntil.get(row.exchange) ?? 0) > now) return null;
+    try {
+      const client = await connectionClient(row);
+      client.touched = Date.now();
+      if (!this.verified.has(client.adapter)) {
+        await client.adapter.verify();
+        this.verified.add(client.adapter);
+      }
+      const result = await client.adapter.fetch(false);
+      const at = Date.now();
+      this.observe(row, result, at);
+      if (result.failedAccounts.some((a) => a.errorCode === "RATE_LIMIT"))
+        this.rateLimited(row.exchange, now);
+      return { result, at };
+    } catch (error) {
+      if (safeError(error) === "RATE_LIMIT") this.rateLimited(row.exchange, now);
+      return null;
     }
   }
 

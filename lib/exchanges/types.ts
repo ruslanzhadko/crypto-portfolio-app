@@ -85,6 +85,13 @@ export interface SyncResult {
   failedAccounts: { accountKey: string; kind: string; errorCode: ErrorCode }[];
   externalAccountId?: string;
 }
+/** Every section that can hold positions was read; spot accounts hold none. */
+export function positionsComplete(result: SyncResult) {
+  return (
+    !result.failedAccounts.some((a) => a.kind !== "spot") &&
+    result.accounts.every((a) => a.kind === "spot" || a.positions !== undefined)
+  );
+}
 export interface ExchangeAdapter {
   verify(): Promise<{ externalAccountId?: string }>;
   fetch(includeSpot: boolean): Promise<SyncResult>;

@@ -14,6 +14,7 @@ import {
   workerHeartbeat,
 } from "../lib/exchanges/worker";
 import { PositionAlertService } from "../lib/positions/alert-service";
+import { refreshPositionView } from "../lib/positions/view-refresh";
 import { createAlertSignalClient } from "../lib/alerts/signal-client";
 import { sleep } from "../lib/exchanges/transport";
 import { prepareWalletConnections } from "../lib/exchanges/wallet-schema";
@@ -95,6 +96,16 @@ async function main() {
       console.error("[position-alerts] cycle failed; retrying next round");
     }
   };
+  // The bot asked for fresh positions: one read and one message edit per request.
+  const runPositionViews = async (fast: boolean) => {
+    const requests = activity?.takePositionViews() ?? [];
+    if (!requests.length) return;
+    for (const request of requests)
+      await refreshPositionView(request, (row) => alerts.readForView(row)).catch(() =>
+        console.error("[position-views] refresh failed"),
+      );
+    if (!fast) await prisma.$disconnect();
+  };
   console.log(
     activity
       ? "[exchange-worker] Viewer-driven mode: fast sync for viewers, otherwise every idle slot."
@@ -140,6 +151,7 @@ async function main() {
         const wasFast = fast;
         fast = !activity || viewers.size > 0;
         await runAlerts(fast);
+        await runPositionViews(fast);
 
         if (fast) {
           if (!wasFast) await workerHeartbeat(owner);

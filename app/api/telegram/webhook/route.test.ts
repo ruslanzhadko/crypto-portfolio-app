@@ -13,6 +13,21 @@ vi.mock('@/lib/telegram/stats-bot', async (original) => ({
   statsMessage: stats.message,
 }));
 vi.mock('@/lib/db/prisma', () => ({ prisma: {} }));
+const positions = vi.hoisted(() => ({
+  snapshot: vi.fn(),
+  online: vi.fn(),
+  cooling: vi.fn(),
+  request: vi.fn(),
+}));
+vi.mock('@/lib/telegram/positions-bot', async (original) => ({
+  ...(await original<typeof import('@/lib/telegram/positions-bot')>()),
+  positionsSnapshot: positions.snapshot,
+  workerOnline: positions.online,
+}));
+vi.mock('@/lib/positions/view-requests', () => ({
+  positionViewCooling: positions.cooling,
+  requestPositionView: positions.request,
+}));
 
 import { POST } from './route';
 import { answerCallback, editWithKeyboard, replyToUpdate, sendWithKeyboard } from '@/lib/services/telegram';
@@ -281,5 +296,74 @@ describe('trading statistics commands', () => {
     expect(stats.message).toHaveBeenCalledWith('u1', 'all');
     expect(vi.mocked(editWithKeyboard)).toHaveBeenCalledWith(12345, 77, 'stats text', expect.any(Array));
     expect(vi.mocked(answerCallback)).toHaveBeenCalledWith('cb1', undefined);
+  });
+});
+
+describe('/positions', () => {
+  const snapshot = (age: number) => ({
+    connections: [{ id: 'c', exchange: 'binance', positionsAt: Date.now() - age }],
+    positions: [],
+  });
+  const press = {
+    update_id: 3,
+    callback_query: { id: 'cb2', data: 'pos:refresh', message: { chat: { id: 12345 }, message_id: 88 } },
+  };
+
+  beforeEach(() => {
+    stats.user.mockResolvedValue({ id: 'u1' });
+    positions.snapshot.mockResolvedValue(snapshot(5_000));
+    positions.online.mockResolvedValue(true);
+    positions.cooling.mockResolvedValue(false);
+    positions.request.mockResolvedValue(true);
+    vi.mocked(sendWithKeyboard).mockResolvedValue(55);
+  });
+
+  it('answers with fresh stored data without asking the worker', async () => {
+    await POST(makeWebhookRequest(makeUpdate('/positions'), VALID_SECRET) as never);
+    expect(vi.mocked(sendWithKeyboard)).toHaveBeenCalledOnce();
+    expect(positions.request).not.toHaveBeenCalled();
+  });
+
+  it('asks the worker to edit the sent message when the data is old', async () => {
+    positions.snapshot.mockResolvedValue(snapshot(600_000));
+    await POST(makeWebhookRequest(makeUpdate('/positions'), VALID_SECRET) as never);
+    expect(vi.mocked(sendWithKeyboard).mock.calls[0]![1]).toContain('Запросил свежие данные');
+    expect(positions.request).toHaveBeenCalledWith({ userId: 'u1', chatId: 12345, messageId: 55 });
+  });
+
+  it('promises no refresh while the worker is offline', async () => {
+    positions.snapshot.mockResolvedValue(snapshot(600_000));
+    positions.online.mockResolvedValue(false);
+    await POST(makeWebhookRequest(makeUpdate('/positions'), VALID_SECRET) as never);
+    expect(vi.mocked(sendWithKeyboard).mock.calls[0]![1]).not.toContain('Запросил');
+    expect(positions.request).not.toHaveBeenCalled();
+  });
+
+  it('tells an unlinked chat how to link it', async () => {
+    stats.user.mockResolvedValue(null);
+    await POST(makeWebhookRequest(makeUpdate('/positions'), VALID_SECRET) as never);
+    expect(mockReply).toHaveBeenCalledWith(12345, expect.stringContaining('не привязан'));
+  });
+
+  it('the button leaves the redraw to the worker', async () => {
+    await POST(makeWebhookRequest(press, VALID_SECRET) as never);
+    expect(positions.request).toHaveBeenCalledWith({ userId: 'u1', chatId: 12345, messageId: 88 });
+    expect(vi.mocked(editWithKeyboard)).not.toHaveBeenCalled();
+    expect(vi.mocked(answerCallback)).toHaveBeenCalledWith('cb2', expect.stringContaining('Обновляю'));
+  });
+
+  it('a repeated press touches neither the database nor the worker', async () => {
+    positions.cooling.mockResolvedValue(true);
+    await POST(makeWebhookRequest(press, VALID_SECRET) as never);
+    expect(stats.user).not.toHaveBeenCalled();
+    expect(positions.request).not.toHaveBeenCalled();
+    expect(vi.mocked(answerCallback)).toHaveBeenCalledWith('cb2', expect.stringContaining('Уже обновляю'));
+  });
+
+  it('without a worker the button redraws from the database', async () => {
+    positions.online.mockResolvedValue(false);
+    await POST(makeWebhookRequest(press, VALID_SECRET) as never);
+    expect(vi.mocked(editWithKeyboard)).toHaveBeenCalledOnce();
+    expect(positions.request).not.toHaveBeenCalled();
   });
 });

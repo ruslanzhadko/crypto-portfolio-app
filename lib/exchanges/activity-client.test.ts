@@ -37,6 +37,21 @@ describe("worker activity client", () => {
     expect(init.headers.Authorization).toBe(`Bearer ${"x".repeat(40)}`);
   });
 
+  it("hands out each position view request once", async () => {
+    const view = { id: "r1", userId: "u", chatId: 1, messageId: 2, at: 100_000 };
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ users: [], positionViews: [view] }),
+    }));
+    const client = createActivityClient(env, fetchImpl as unknown as typeof fetch)!;
+    await client.poll(100_000);
+    expect(client.takePositionViews()).toEqual([view]);
+    expect(client.takePositionViews()).toEqual([]);
+    // Still listed at the next poll: not handed out again.
+    await client.poll(111_000);
+    expect(client.takePositionViews()).toEqual([]);
+  });
+
   it("keeps the last viewers through a failed poll until they expire", async () => {
     const fetchImpl = vi
       .fn()

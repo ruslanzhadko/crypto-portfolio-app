@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFeedActivityUntil } from "@/lib/feed/activity";
 import { readTriggersVersion } from "@/lib/triggers/signal";
 import { readPositionAlertsVersion } from "@/lib/positions/signal";
+import { readPositionViews } from "@/lib/positions/view-requests";
 import {
   readExchangeActivity,
   workerSignalAuthorized,
@@ -19,12 +20,13 @@ export async function GET(req: NextRequest) {
     );
   try {
     const now = Date.now();
-    const [activity, feedUntil, triggersVersion, positionAlertsVersion] =
+    const [activity, feedUntil, triggersVersion, positionAlertsVersion, positionViews] =
       await Promise.all([
         readExchangeActivity(now),
         readFeedActivityUntil(now).catch(() => null),
         readTriggersVersion().catch(() => null),
         readPositionAlertsVersion().catch(() => null),
+        readPositionViews(now).catch(() => []),
       ]);
     return NextResponse.json(
       {
@@ -32,6 +34,7 @@ export async function GET(req: NextRequest) {
         feedUntil,
         triggersVersion,
         positionAlertsVersion,
+        positionViews,
         serverTime: now,
       },
       { headers },

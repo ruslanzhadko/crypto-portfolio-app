@@ -14,6 +14,16 @@ import {
   statsKeyboard,
   statsMessage,
 } from '@/lib/telegram/stats-bot';
+import {
+  formatPositionsMessage,
+  POSITIONS_COMMAND,
+  positionsKeyboard,
+  positionsSnapshot,
+  REFRESH_CALLBACK,
+  snapshotStale,
+  workerOnline,
+} from '@/lib/telegram/positions-bot';
+import { positionViewCooling, requestPositionView } from '@/lib/positions/view-requests';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,8 +73,38 @@ function buildStartReply(chatId: number, firstName?: string): string {
     '',
     'После этого создайте ценовые триггеры на странице <b>Уведомления</b> и бот начнёт отправлять алерты сюда.',
     '',
+    '\u{1F4C8} Открытые позиции — /positions',
     '\u{1F4CA} Статистика торговли — /stats',
   ].join('\n');
+}
+
+/** A snapshot right away; when it is old, the worker edits this one message with fresh figures. */
+async function sendPositions(chatId: number, userId: string): Promise<void> {
+  const snapshot = await positionsSnapshot(userId);
+  const refresh =
+    snapshotStale(snapshot) && !(await positionViewCooling(chatId)) && (await workerOnline());
+  const messageId = await sendWithKeyboard(
+    chatId,
+    formatPositionsMessage(snapshot, { refreshing: refresh }),
+    positionsKeyboard(siteUrl()),
+  );
+  if (refresh && messageId !== null) await requestPositionView({ userId, chatId, messageId });
+}
+
+/** The button: the worker redraws the message; without a worker, the stored data with its time. */
+async function refreshPositions(callbackId: string, chatId: number, messageId: number): Promise<void> {
+  if (await positionViewCooling(chatId)) return answerCallback(callbackId, 'Уже обновляю, подождите несколько секунд');
+  const user = await chatUser(chatId);
+  if (!user) return answerCallback(callbackId, NOT_LINKED.slice(0, 190));
+  if ((await workerOnline()) && (await requestPositionView({ userId: user.id, chatId, messageId })))
+    return answerCallback(callbackId, 'Обновляю, это займёт до 15 секунд');
+  await editWithKeyboard(
+    chatId,
+    messageId,
+    formatPositionsMessage(await positionsSnapshot(user.id)),
+    positionsKeyboard(siteUrl()),
+  );
+  await answerCallback(callbackId);
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -85,6 +125,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Period buttons under a statistics message: redraw it in place.
   const callback = update.callback_query;
+  if (callback?.data === REFRESH_CALLBACK && callback.message) {
+    try {
+      await refreshPositions(callback.id, callback.message.chat.id, callback.message.message_id);
+    } catch (err) {
+      console.error('[telegram/webhook] positions refresh failed', err);
+    }
+    return NextResponse.json({ ok: true });
+  }
   if (callback) {
     const period = parseStatsCallback(callback.data);
     const target = callback.message;
@@ -112,6 +160,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   console.log(`[telegram/webhook] chat_id=${chatId} text="${text}"`);
 
+  if (commandOf(text) === POSITIONS_COMMAND) {
+    try {
+      const user = await chatUser(chatId);
+      if (user) await sendPositions(chatId, user.id);
+      else await replyToUpdate(chatId, NOT_LINKED);
+    } catch (err) {
+      console.error(`[telegram/webhook] positions failed chat_id=${chatId}`, err);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   const period = PERIOD_COMMANDS[commandOf(text)];
   if (period) {
     try {
@@ -137,6 +196,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       chatId,
       [
         '\u{1F4D6} <b>Команды:</b>',
+        '/positions — открытые позиции',
         '/stats — статистика торговли (кнопки: сегодня, 7 дней, 30 дней, всё)',
         '/today — итог закрытых сделок за сегодня',
         '/week — за 7 дней',

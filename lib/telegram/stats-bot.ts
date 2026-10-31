@@ -29,7 +29,7 @@ const BUTTONS: [StatsPeriod, string][] = [
 ];
 const EXCHANGE_NAMES: Record<string, string> = {
   binance: "Binance", bybit: "Bybit", gate: "Gate", okx: "OKX", bingx: "BingX", bitget: "Bitget",
-  kucoin: "KuCoin", hyperliquid: "Hyperliquid", aster: "Aster",
+  kucoin: "KuCoin", hyperliquid: "Hyperliquid", aster: "Aster", lighter: "Lighter",
 };
 
 /** "/stats", "/stats@SomeBot" → "/stats". */
@@ -42,13 +42,15 @@ export function parseStatsCallback(data: string | undefined): StatsPeriod | null
   return period && BUTTONS.some(([p]) => p === period) ? (period as StatsPeriod) : null;
 }
 
-const money = (value: number) =>
+export const money = (value: number) =>
   `${value > 0 ? "+" : value < 0 ? "−" : ""}${new Intl.NumberFormat("ru-RU", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(Math.abs(value))} $`;
-const escape = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const exchange = (id: string) => EXCHANGE_NAMES[id] ?? escape(id);
+export const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escape = escapeHtml;
+export const exchangeName = (id: string) => EXCHANGE_NAMES[id] ?? escape(id);
+const exchange = exchangeName;
 
 /** Rows shown inside a collapsed list; Telegram messages stop at 4096 characters. */
 const LIST_LIMIT = 25;

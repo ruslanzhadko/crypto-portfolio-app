@@ -1,4 +1,8 @@
 import { ACTIVITY_POLL_MS, ACTIVITY_TTL_MS } from "./config";
+import {
+  parseViewRequests,
+  type PositionViewRequest,
+} from "../positions/view-requests";
 
 export type ActivityClient = {
   /** Current viewers; polls the web app at most every ACTIVITY_POLL_MS. */
@@ -6,6 +10,8 @@ export type ActivityClient = {
   isActive(userId: string): boolean;
   /** Moment position alert settings last changed, from the same response; null when unknown. */
   positionAlertsVersion(): number | null;
+  /** Bot requests for fresh positions that were not handed out yet. */
+  takePositionViews(): PositionViewRequest[];
 };
 
 type Fetch = typeof fetch;
@@ -32,6 +38,9 @@ export function createActivityClient(
   let polledAt = Number.NEGATIVE_INFINITY;
   let failures = 0;
   let alertsVersion: number | null = null;
+  // Requests stay in the response until they expire: each is handed out once.
+  let views: PositionViewRequest[] = [];
+  let handedOut = new Set<string>();
 
   const active = (now: number) => {
     for (const [id, at] of seen) if (now - at > ACTIVITY_TTL_MS) seen.delete(id);
@@ -60,6 +69,9 @@ export function createActivityClient(
         for (const id of users) seen.set(id, now);
         const version = (body as { positionAlertsVersion?: unknown }).positionAlertsVersion;
         alertsVersion = typeof version === "number" ? version : null;
+        views = parseViewRequests((body as { positionViews?: unknown }).positionViews, now);
+        const listed = new Set(views.map((r) => r.id));
+        handedOut = new Set([...handedOut].filter((id) => listed.has(id)));
         // A user missing from the response stopped viewing (entries expire there).
         for (const id of [...seen.keys()])
           if (!users.includes(id)) seen.delete(id);
@@ -77,6 +89,11 @@ export function createActivityClient(
     },
     positionAlertsVersion() {
       return alertsVersion;
+    },
+    takePositionViews() {
+      const fresh = views.filter((r) => !handedOut.has(r.id));
+      for (const r of fresh) handedOut.add(r.id);
+      return fresh;
     },
   };
 }
