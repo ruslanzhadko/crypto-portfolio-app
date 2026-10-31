@@ -15,6 +15,28 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     date: "2026-10-31",
     title: {
+      ru: "Точные цены закрытых сделок",
+      uk: "Точні ціни закритих угод",
+      en: "Accurate prices of closed trades",
+    },
+    items: {
+      ru: [
+        "Цена выхода, размер, время и длительность закрытой сделки теперь берутся из истории биржи, а не из последнего опроса.",
+        "Сообщение в Telegram и статистика исправляются сами в течение нескольких минут после закрытия.",
+      ],
+      uk: [
+        "Ціна виходу, розмір, час і тривалість закритої угоди тепер беруться з історії біржі, а не з останнього опитування.",
+        "Повідомлення в Telegram і статистика виправляються самі протягом кількох хвилин після закриття.",
+      ],
+      en: [
+        "Exit price, size, time and duration of a closed trade now come from the exchange's history, not the last poll.",
+        "The Telegram message and the statistics correct themselves within minutes of the close.",
+      ],
+    },
+  },
+  {
+    date: "2026-10-31",
+    title: {
       ru: "Позиции в Telegram-боте",
       uk: "Позиції в Telegram-боті",
       en: "Positions in the Telegram bot",

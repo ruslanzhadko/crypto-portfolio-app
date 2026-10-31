@@ -103,7 +103,7 @@ describe("closed trade import", () => {
     });
     const connection = { id: "c1", userId: "u1", exchange: "aster" };
 
-    it("replaces the estimate with the exchange's figure, keeping the row and the moment", async () => {
+    it("replaces the estimate with the exchange's figure and moment, keeping the row", async () => {
       db.findMany.mockResolvedValueOnce([estimate("watch:1")]);
       const read = vi.fn(async () => [exchange(SEEN - 10_000)]);
       const corrected = await reconcileEstimatedTrades(
@@ -114,7 +114,7 @@ describe("closed trade import", () => {
       expect(corrected).toBe(1);
       const call = (db.upsert.mock.calls[0] as unknown as [{ where: unknown; update: Record<string, unknown> }])[0];
       expect(call.where).toEqual({ connectionId_externalId: { connectionId: "c1", externalId: "watch:1" } });
-      expect(call.update).toMatchObject({ pnl: "-20", pnlUsd: "-20", exact: true, source: "watch", closedAt: new Date(SEEN) });
+      expect(call.update).toMatchObject({ pnl: "-20", pnlUsd: "-20", exact: true, source: "watch", closedAt: new Date(SEEN - 10_000) });
     });
 
     it("skips a connection without a history, and one that fails does not stop the next", async () => {
@@ -133,7 +133,7 @@ describe("closed trade import", () => {
 
     it("a close stored twice around a restart: the estimate is left out, not given the figure again", async () => {
       db.findMany.mockResolvedValueOnce([
-        { ...estimate("watch:old", SEEN - 60_000), id: "exact", exact: true },
+        { ...estimate("watch:old", SEEN - 60_000), id: "exact", exact: true, pnl: { toString: () => "-21" } },
         { ...estimate("watch:new", SEEN), id: "double", exact: false },
       ]);
       const read = vi.fn(async () => [exchange(SEEN - 90_000)]);
@@ -144,8 +144,11 @@ describe("closed trade import", () => {
       );
       expect(corrected).toBe(0);
       expect(db.updateMany).toHaveBeenCalledWith({ where: { id: { in: ["double"] } }, data: { excluded: true } });
-      expect(db.upsert).not.toHaveBeenCalled();
-      expect(read).not.toHaveBeenCalled();
+      // Only the exact row is written: with its own result and the exchange's prices.
+      expect(db.upsert).toHaveBeenCalledTimes(1);
+      const call = (db.upsert.mock.calls[0] as unknown as [{ where: unknown; update: Record<string, unknown> }])[0];
+      expect(call.where).toEqual({ connectionId_externalId: { connectionId: "c1", externalId: "watch:old" } });
+      expect(call.update).toMatchObject({ pnl: "-21", exitPrice: "2229" });
     });
 
     it("only a one to one match counts", () => {

@@ -366,7 +366,8 @@ describe("PositionAlertService", () => {
       expect(event).toMatchObject({ pnlUsd: -20, exact: true, includesCosts: true, withoutFunding: true });
       expect(saveTrades).toHaveBeenCalledWith(
         expect.objectContaining({ id: "c1" }),
-        [expect.objectContaining({ pnl: "-20", closedAt: 25_000 })],
+        // The row keeps the id of the close the worker saw, with the exchange's moment of it.
+        [expect.objectContaining({ pnl: "-20", closedAt: 20_000, externalId: "watch:futures:BTCUSDT:BOTH:25000" })],
         "watch",
         true,
         expect.any(Function),
@@ -375,6 +376,52 @@ describe("PositionAlertService", () => {
       adapter.closedTrades.mockClear();
       expect(await service.recheckClosed(25_000 + 30 * MIN)).toBe(false);
       expect(adapter.closedTrades).not.toHaveBeenCalled();
+    });
+
+    it("replaces the last poll's prices, size and times with the exchange's trade", async () => {
+      const service = await closedEstimate();
+      adapter.closedTrades.mockResolvedValue([
+        { ...trade(20_000), entryPrice: "70100", exitPrice: "69000", size: "0.5", openedAt: 8_000 },
+      ]);
+      await service.recheckClosed(25_000 + 2 * MIN);
+      const event = revise.mock.calls[0]![1] as {
+        position: { entryPrice: string; markPrice: string; baseSize: string; notionalUsd: string };
+        durationMs: number;
+        closedAt: number;
+        fromTrade: boolean;
+      };
+      expect(event.position).toMatchObject({
+        entryPrice: "70100",
+        markPrice: "69000",
+        baseSize: "0.5",
+        notionalUsd: "34500",
+      });
+      expect(event).toMatchObject({ durationMs: 12_000, closedAt: 20_000, fromTrade: true });
+      expect(saveTrades.mock.calls[0]![1]).toEqual([
+        expect.objectContaining({ exitPrice: "69000", size: "0.5", openedAt: 8_000, closedAt: 20_000 }),
+      ]);
+    });
+
+    it("an exact close keeps its result and still gets the exchange's prices", async () => {
+      adapter.closedResult.mockResolvedValue("5");
+      const service = new PositionAlertService();
+      await service.maybeReload(null, 0);
+      const cycle: OpenPosition = {
+        ...btc,
+        funding: { since: 1_000 } as OpenPosition["funding"],
+      };
+      service.observe({ id: "c1", userId: "u1" }, result(cycle), 10_000);
+      service.observe({ id: "c1", userId: "u1" }, result(), 25_000);
+      await service.resolveClosed(25_000 + 20_000);
+      deliver.mockResolvedValue({ status: "sent", sentAt: new Date(45_000), telegram: { chatId: "1", messageId: 7 } });
+      await service.flush();
+      saveTrades.mockClear();
+      adapter.closedResult.mockClear();
+      adapter.closedTrades.mockResolvedValue([{ ...trade(20_000, "999"), exitPrice: "69000" }]);
+      expect(await service.recheckClosed(25_000 + 2 * MIN)).toBe(true);
+      expect(adapter.closedResult).not.toHaveBeenCalled();
+      expect(saveTrades.mock.calls[0]![1]).toEqual([expect.objectContaining({ pnl: "5", exitPrice: "69000" })]);
+      expect(revise.mock.calls[0]![1]).toMatchObject({ exact: true, fromTrade: true });
     });
 
     it("keeps trying until the last check, then leaves the estimate", async () => {

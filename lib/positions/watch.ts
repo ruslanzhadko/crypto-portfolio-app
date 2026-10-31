@@ -46,6 +46,13 @@ export type PositionEvent =
       exact?: boolean;
       /** The final figure came from fills: fees are in it, funding is not. */
       withoutFunding?: boolean;
+      /**
+       * Prices, size and times are the exchange's own trade. Until then `markPrice` is only the last
+       * polled mark and the times are when the worker saw the close.
+       */
+      fromTrade?: boolean;
+      /** The exchange's moment of the close, when `fromTrade`. */
+      closedAt?: number;
     }
   | { kind: "liquidation"; position: WatchedPosition; distancePercent: number }
   | {

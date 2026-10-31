@@ -47,12 +47,12 @@ const plainUsd = (value: string | null) =>
     : `$${Number(value).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 
 /** Size and price move of a closed position: "$540 · цена 0.2114 → 0.1711 (−19.1%)". */
-export function closedMove(p: SourcedEvent["position"]): string | null {
+export function closedMove(p: SourcedEvent["position"], exitConfirmed = false): string | null {
   const entry = Number(p.entryPrice),
     exit = Number(p.markPrice);
   const move =
     Number.isFinite(entry) && Number.isFinite(exit) && entry > 0 && exit > 0
-      ? `цена ${entry} → ${exit} (${exit >= entry ? "+" : "−"}${Math.abs((exit / entry - 1) * 100).toFixed(1)}%)`
+      ? `цена ${entry} → ${exitConfirmed ? "" : "≈"}${exit} (${exit >= entry ? "+" : "−"}${Math.abs((exit / entry - 1) * 100).toFixed(1)}%)`
       : null;
   const parts = [plainUsd(p.notionalUsd), move].filter(Boolean);
   return parts.length ? `📏 ${parts.join(" · ")}` : null;
@@ -89,7 +89,7 @@ export function formatPositionEvent(e: SourcedEvent): string {
           : `итог ${e.exact ? "" : "≈ "}<b>${usd(e.pnlUsd)}</b>${e.includesCosts ? (e.withoutFunding ? " с комиссиями" : " с фандингом и комиссиями") : ""}`;
       const lasted =
         e.durationMs === null ? null : `⏳ ${formatDurationRu(e.durationMs)}`;
-      const move = closedMove(p);
+      const move = closedMove(p, e.fromTrade);
       return [
         `${icon} <b>Позиция закрыта: ${title(e)}</b>`,
         [where, result].filter(Boolean).join(" · "),

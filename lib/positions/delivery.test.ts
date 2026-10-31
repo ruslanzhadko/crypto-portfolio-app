@@ -52,7 +52,7 @@ describe("formatPositionMessage", () => {
     expect(text).toContain("итог ≈ <b>−$12.50</b> с фандингом и комиссиями");
     expect(text).toContain("⏳ 3 ч 12 мин");
     // Size and the price move from entry to the last mark.
-    expect(text).toContain("📏 $7,000 · цена 70000 → 54000 (−22.9%)");
+    expect(text).toContain("📏 $7,000 · цена 70000 → ≈54000 (−22.9%)");
     expect(text).toContain("🔵 <b>Позиция открыта");
     expect(text).toContain(
       "до ликвидации <b>7.4%</b> (цена 54000, ликвидация 50000)",
@@ -85,7 +85,7 @@ describe("reviseDeliveredEvent", () => {
     expect(edit).toHaveBeenCalledWith("42", 7, expect.stringContaining("🔴"));
     const text = (edit.mock.calls[0] as unknown as [string, number, string])[2];
     expect(text).toContain("итог <b>−$20.00</b> с комиссиями");
-    expect(text).not.toContain("≈");
+    expect(text).not.toContain("итог ≈");
     expect(updateMany).toHaveBeenCalledWith({
       where: expect.objectContaining({ userId: "u1", kind: "closed", sentAt, tokenSymbol: "BTC" }),
       data: expect.objectContaining({

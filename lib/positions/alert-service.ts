@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { positionsComplete, safeError, type SyncResult } from "@/lib/exchanges/types";
 import type { ClosedInput } from "@/lib/exchanges/closed-result";
+import type { ClosedTradeRow } from "@/lib/exchanges/closed-trades";
 import { clientVersion, connectionClient } from "@/lib/exchanges/worker";
 import {
   anyPositionAlert,
@@ -65,8 +66,13 @@ type Watched = {
 };
 
 type ClosedEvent = Extract<SourcedEvent, { kind: "closed" }>;
-/** A close still at its estimate. In memory: a restart leaves the estimate as it is. */
+/**
+ * A close still at its estimate or without the exchange's trade. In memory: a restart leaves it to
+ * reconcileEstimatedTrades, which does not reach the sent message.
+ */
 type Recheck = {
+  /** The exchange's final figure, settle currency, when it already came. */
+  pnl?: string | null;
   userId: string;
   row: Connection;
   event: ClosedEvent;
@@ -98,6 +104,29 @@ function applyExact(event: ClosedEvent, exact: string) {
   event.pnlUsd = Number(exact) * rate;
   event.includesCosts = true;
   event.exact = true;
+}
+
+/**
+ * The position as it really closed, from the exchange's trade: the last poll only knows the mark
+ * price and the moment the worker noticed. A close stays in `markPrice`, like every reader expects.
+ */
+function applyTrade(event: ClosedEvent, trade: ClosedTradeRow) {
+  const p = event.position;
+  const stable = trade.settle === "USDT" || trade.settle === "USDC";
+  event.position = {
+    ...p,
+    entryPrice: trade.entryPrice ?? p.entryPrice,
+    markPrice: trade.exitPrice ?? p.markPrice,
+    baseSize: trade.size ?? p.baseSize,
+    notionalUsd:
+      stable && trade.size && trade.exitPrice
+        ? String(Number(trade.size) * Number(trade.exitPrice))
+        : p.notionalUsd,
+  };
+  event.closedAt = trade.closedAt;
+  event.fromTrade = true;
+  if (trade.openedAt != null)
+    event.durationMs = Math.max(0, trade.closedAt - trade.openedAt);
 }
 
 export const WATCHED_STATUSES = ["PENDING", "ACTIVE", "PARTIAL", "ERROR"];
@@ -458,8 +487,10 @@ export class PositionAlertService {
           ...(this.pending.get(item.userId) ?? []),
           event,
         ]);
-      if (exact === null && event.kind === "closed")
+      // Also with an exact result: the real prices and times come only from the exchange's trade.
+      if (event.kind === "closed")
         this.scheduleRecheck({
+          pnl: exact,
           userId: item.userId,
           row: item.row,
           event,
@@ -495,23 +526,31 @@ export class PositionAlertService {
         continue;
       }
       const final = await this.finalResult(item, now).catch(() => null);
-      if (final === null) {
+      const again = () => {
         item.step += 1;
         const delay = RECHECK_DELAYS_MS[item.step];
         if (delay !== undefined) {
           item.dueAt = item.closedAt + delay;
           this.rechecks.push(item);
         }
+      };
+      if (final === null) {
+        again();
         continue;
       }
-      const before = item.event.pnlUsd;
-      applyExact(item.event, final.pnl);
-      item.event.withoutFunding = final.withoutFunding;
-      console.log(
-        `[position-alerts] final result ${item.row.exchange}: estimate ${before?.toFixed(2)}, exchange ${item.event.pnlUsd?.toFixed(2)}`,
-      );
+      if (final.pnl !== null) {
+        const before = item.event.pnlUsd;
+        applyExact(item.event, final.pnl);
+        item.event.withoutFunding = final.withoutFunding;
+        item.pnl = final.pnl;
+        console.log(
+          `[position-alerts] final result ${item.row.exchange}: estimate ${before?.toFixed(2)}, exchange ${item.event.pnlUsd?.toFixed(2)}`,
+        );
+      }
+      if (final.trade) applyTrade(item.event, final.trade);
+      else if (final.tradeExpected) again();
       if (item.record)
-        await this.record(item.row, item.event, final.pnl, item.closedAt);
+        await this.record(item.row, item.event, item.pnl ?? null, item.closedAt);
       if (item.delivered)
         await reviseDeliveredEvent(
           item.userId,
@@ -551,8 +590,9 @@ export class PositionAlertService {
   private async finalResult(item: Recheck, now: number) {
     const adapter = await this.verifiedAdapter(item.row);
     const p = item.event.position;
-    if (item.since !== null && adapter.closedResult) {
-      const pnl = await adapter.closedResult({
+    let pnl: string | null = null;
+    if (!item.event.exact && item.since !== null && adapter.closedResult)
+      pnl = await adapter.closedResult({
         symbol: p.symbol,
         base: p.base,
         settle: p.settle,
@@ -561,15 +601,19 @@ export class PositionAlertService {
         lastSeenAt: item.lastSeenAt,
         otherLeg: item.otherLeg,
       });
-      if (pnl !== null) return { pnl, withoutFunding: false };
-    }
-    if (!adapter.closedTrades) return null;
+    if (!adapter.closedTrades)
+      return pnl === null ? null : { pnl, withoutFunding: false, trade: null, tradeExpected: false };
     const duration = item.event.durationMs;
     const from =
       duration === null
         ? item.closedAt - RECHECK_UNKNOWN_OPEN_MS
         : item.closedAt - duration - RECHECK_MARGIN_MS;
-    const matches = (await adapter.closedTrades(from, now)).filter(
+    const trades = await adapter.closedTrades(from, now).catch((error: unknown) => {
+      // The ledger's figure is not lost when the trade cannot be read yet.
+      if (pnl === null) throw error;
+      return [];
+    });
+    const matches = trades.filter(
       (t) =>
         t.base === p.base &&
         t.settle === p.settle &&
@@ -579,9 +623,11 @@ export class PositionAlertService {
         sameEntry(t.entryPrice, p.entryPrice),
     );
     // Two trades between the same two polls cannot be told apart: the estimate stays.
-    return matches.length === 1
-      ? { pnl: matches[0]!.pnl, withoutFunding: true }
-      : null;
+    const trade = matches.length === 1 ? matches[0]! : null;
+    const fromFills = pnl === null && !item.event.exact && trade !== null;
+    if (fromFills) pnl = trade.pnl;
+    if (pnl === null && trade === null) return null;
+    return { pnl, withoutFunding: fromFills, trade, tradeExpected: true };
   }
 
   /** Stores a close the worker saw; the exchange's figure when it came, else the estimate. */
@@ -595,6 +641,8 @@ export class PositionAlertService {
     const pnl = exact ?? (event.pnlUsd === null ? null : String(event.pnlUsd));
     if (pnl === null || event.pnlUsd === null) return;
     const pnlUsd = event.pnlUsd;
+    // `closedAt` stays the id of this close, so a correction replaces its row.
+    const realClose = event.closedAt ?? closedAt;
     await saveClosedTrades(
       row,
       [
@@ -608,8 +656,8 @@ export class PositionAlertService {
           entryPrice: p.entryPrice,
           exitPrice: p.markPrice,
           openedAt:
-            event.durationMs === null ? null : closedAt - event.durationMs,
-          closedAt,
+            event.durationMs === null ? null : realClose - event.durationMs,
+          closedAt: realClose,
           pnl,
         },
       ],

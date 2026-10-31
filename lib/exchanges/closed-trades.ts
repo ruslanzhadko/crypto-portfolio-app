@@ -501,15 +501,17 @@ export async function reconcileEstimatedTrades(
       console.log(`[closed-trades] ${connection.exchange}: ${doubles.length} repeated close(s) left out`);
     }
     const own = open.filter((e) => !doubles.includes(e));
-    if (!own.length) continue;
+    // Exact rows have the right result, but their prices and times may still be the last poll's.
+    const candidates = [...own, ...final.filter((e) => !e.excluded)];
+    if (!candidates.length) continue;
     try {
       const adapter = await adapterFor(connection.id);
       if (!adapter.closedTrades) continue;
       const from = Math.min(
-        ...own.map((e) => (e.openedAt ?? new Date(now - RECONCILE_DAYS * DAY_MS)).getTime()),
+        ...candidates.map((e) => (e.openedAt ?? new Date(now - RECONCILE_DAYS * DAY_MS)).getTime()),
       );
       const trades = await adapter.closedTrades(from - RECONCILE_MARGIN_MS, now);
-      const matched = matchEstimates(own, trades);
+      const matched = matchEstimates(candidates, trades);
       await saveClosedTrades(
         connection,
         matched.map(({ estimate: e, trade: t }) => ({
@@ -518,18 +520,20 @@ export async function reconcileEstimatedTrades(
           base: e.base,
           settle: e.settle,
           side: e.side as "long" | "short",
-          size: e.size?.toString() ?? t.size,
+          size: t.size ?? e.size?.toString() ?? null,
           entryPrice: t.entryPrice ?? e.entryPrice?.toString() ?? null,
           exitPrice: t.exitPrice ?? e.exitPrice?.toString() ?? null,
           openedAt: t.openedAt ?? e.openedAt?.getTime() ?? null,
-          closedAt: e.closedAt.getTime(),
-          pnl: t.pnl,
+          closedAt: t.closedAt,
+          pnl: e.exact ? e.pnl.toString() : t.pnl,
         })),
         "watch",
         true,
       );
-      corrected += matched.length;
-      console.log(`[closed-trades] ${connection.exchange}: ${matched.length} of ${own.length} estimate(s) corrected`);
+      corrected += matched.filter(({ estimate }) => !estimate.exact).length;
+      console.log(
+        `[closed-trades] ${connection.exchange}: ${matched.length} of ${candidates.length} close(s) matched with the exchange's trades`,
+      );
     } catch (error) {
       console.warn(`[closed-trades] ${connection.exchange} estimates not checked: ${safeError(error)}`);
     }
