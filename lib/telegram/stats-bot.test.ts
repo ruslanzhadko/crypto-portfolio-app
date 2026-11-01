@@ -15,6 +15,7 @@ describe("statistics in the bot", () => {
   it("reads commands with a bot name and period buttons", () => {
     expect(commandOf("/stats@cryptoportfolio_bot extra")).toBe("/stats");
     expect(parseStatsCallback("stats:7d")).toBe("7d");
+    expect(parseStatsCallback("stats:yesterday")).toBe("yesterday");
     expect(parseStatsCallback("stats:1y")).toBeNull();
     expect(parseStatsCallback(undefined)).toBeNull();
   });
@@ -44,9 +45,12 @@ describe("statistics in the bot", () => {
   it("marks the active period and links to the site", () => {
     const keyboard = statsKeyboard("30d", "https://example.com");
     expect(keyboard[0]!.map((b) => [b.text, b.callback_data])).toEqual([
-      ["Сегодня", "stats:today"], ["7 дней", "stats:7d"], ["• 30 дней •", "stats:30d"], ["Всё", "stats:all"],
+      ["Сегодня", "stats:today"], ["Вчера", "stats:yesterday"],
     ]);
-    expect(keyboard[1]).toEqual([{ text: "Открыть на сайте", url: "https://example.com/ru/positions?tab=stats" }]);
-    expect(statsKeyboard("today", null)).toHaveLength(1);
+    expect(keyboard[1]!.map((b) => [b.text, b.callback_data])).toEqual([
+      ["7 дней", "stats:7d"], ["• 30 дней •", "stats:30d"], ["Всё", "stats:all"],
+    ]);
+    expect(keyboard[2]).toEqual([{ text: "Открыть на сайте", url: "https://example.com/ru/positions?tab=stats" }]);
+    expect(statsKeyboard("today", null)).toHaveLength(2);
   });
 });

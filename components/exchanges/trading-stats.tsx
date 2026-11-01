@@ -43,7 +43,7 @@ type StatsResponse = ReturnType<typeof tradeStats> & {
   };
 };
 
-const PERIODS: StatsPeriod[] = ["today", "7d", "30d", "all"];
+const PERIODS: StatsPeriod[] = ["today", "yesterday", "7d", "30d", "all"];
 const tone = (value: number) => (value > 0 ? "text-success" : value < 0 ? "text-danger" : "text-text-muted");
 const usd = (value: number | null | undefined) => (value == null ? null : String(value));
 
@@ -418,7 +418,7 @@ export function TradingStats() {
               type="button"
               aria-pressed={period === value}
               onClick={() => setPeriod(value)}
-              className={`flex-1 whitespace-nowrap rounded-md px-2 transition-colors sm:flex-none sm:px-3 ${period === value ? "bg-primary text-white" : "text-text-muted hover:text-text"}`}
+              className={`flex-1 whitespace-nowrap rounded-md px-1.5 transition-colors sm:flex-none sm:px-3 ${period === value ? "bg-primary text-white" : "text-text-muted hover:text-text"}`}
             >
               {t(`periods.${value}`)}
             </button>

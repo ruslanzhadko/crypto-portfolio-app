@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kyivDay, kyivDayStart, periodStart, tradeStats, type StatsTrade } from "./trade-stats";
+import { kyivDay, kyivDayStart, periodEnd, periodLast, periodRange, periodStart, tradeStats, type StatsTrade } from "./trade-stats";
 
 const trade = (over: Partial<StatsTrade>): StatsTrade => ({
   id: "t",
@@ -30,6 +30,21 @@ describe("trading statistics", () => {
     // 23 October was still summer time (UTC+3): DST ended on 25 October.
     expect(periodStart("7d", now)).toBe(Date.UTC(2026, 9, 22, 21));
     expect(periodStart("all", now)).toBeNull();
+  });
+
+  it("yesterday is one whole Kyiv day that ends at today's midnight", () => {
+    const now = Date.UTC(2026, 9, 29, 10);
+    expect(periodStart("yesterday", now)).toBe(Date.UTC(2026, 9, 27, 22));
+    expect(periodEnd("yesterday", now)).toBe(Date.UTC(2026, 9, 28, 22));
+    expect(periodEnd("today", now)).toBeNull();
+    expect(periodRange("yesterday", now)).toEqual({
+      closedAt: { gte: new Date(Date.UTC(2026, 9, 27, 22)), lt: new Date(Date.UTC(2026, 9, 28, 22)) },
+    });
+    expect(periodRange("all", now)).toEqual({});
+    // Half an hour after the 23-hour day of 29 March 2026 (UTC+3 from then on).
+    expect(periodStart("yesterday", Date.UTC(2026, 2, 29, 21, 30))).toBe(Date.UTC(2026, 2, 28, 22));
+    const days = tradeStats([trade({ closedAt: Date.UTC(2026, 9, 28, 12) })], periodStart("yesterday", now), periodLast("yesterday", now)).days;
+    expect(days.map((d) => d.day)).toEqual(["2026-10-28"]);
   });
 
   it("sums results, wins, averages, extremes and groups", () => {

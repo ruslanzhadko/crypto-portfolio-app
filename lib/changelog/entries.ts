@@ -13,6 +13,19 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-02",
+    title: {
+      ru: "Статистика за вчера",
+      uk: "Статистика за вчора",
+      en: "Statistics for yesterday",
+    },
+    items: {
+      ru: ["В статистике появился период «Вчера», в Telegram-боте тоже: кнопка и команда /yesterday."],
+      uk: ["У статистиці з'явився період «Вчора», у Telegram-боті теж: кнопка і команда /yesterday."],
+      en: ["Statistics now has a Yesterday period, in the Telegram bot too: a button and the /yesterday command."],
+    },
+  },
+  {
     date: "2026-10-31",
     title: {
       ru: "Точные цены закрытых сделок",

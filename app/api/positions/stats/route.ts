@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireUser } from "@/lib/api/auth-guard";
 import { exchangesEnabled } from "@/lib/exchanges/config";
 import { exchangeJson, failure, safeApiFailure } from "@/lib/exchanges/api";
-import { periodStart, tradeStats, type StatsTrade } from "@/lib/positions/trade-stats";
+import { periodLast, periodRange, periodStart, tradeStats, type StatsTrade } from "@/lib/positions/trade-stats";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ const MAX_TRADES = 5_000;
 const PAGE_SIZE = 20;
 
 const querySchema = z.object({
-  period: z.enum(["today", "7d", "30d", "all"]).default("30d"),
+  period: z.enum(["today", "yesterday", "7d", "30d", "all"]).default("30d"),
   // Several values separated by commas: any of them matches.
   exchange: z.string().max(400).optional(),
   connectionId: z.string().max(2_000).optional(),
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
     const from = periodStart(period, now);
 
     const rows = await prisma.closedTrade.findMany({
-      where: { userId: guard.user.id, ...(from !== null ? { closedAt: { gte: new Date(from) } } : {}) },
+      where: { userId: guard.user.id, ...periodRange(period, now) },
       orderBy: { closedAt: "desc" },
       take: MAX_TRADES,
       select: {
@@ -102,7 +102,7 @@ export async function GET(req: Request) {
       period,
       from,
       // Trades the owner left out stay in the list but not in the figures.
-      ...tradeStats(trades.filter((t) => !t.excluded), from, now),
+      ...tradeStats(trades.filter((t) => !t.excluded), from, periodLast(period, now)),
       trades: trades.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
       page,
       pageSize: PAGE_SIZE,

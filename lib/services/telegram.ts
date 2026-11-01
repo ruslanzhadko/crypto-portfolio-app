@@ -216,6 +216,7 @@ export const BOT_COMMANDS = [
   { command: 'positions', description: 'Открытые позиции' },
   { command: 'stats', description: 'Статистика торговли с кнопками периодов' },
   { command: 'today', description: 'Итог закрытых сделок за сегодня' },
+  { command: 'yesterday', description: 'Итог закрытых сделок за вчера' },
   { command: 'week', description: 'Статистика за 7 дней' },
   { command: 'month', description: 'Статистика за 30 дней' },
   { command: 'help', description: 'Список команд' },

@@ -1,15 +1,16 @@
 import { prisma } from "@/lib/db/prisma";
 import { exchangesEnabled } from "@/lib/exchanges/config";
-import { periodStart, tradeStats, type StatsPeriod, type StatsTrade } from "@/lib/positions/trade-stats";
+import { periodLast, periodRange, periodStart, tradeStats, type StatsPeriod, type StatsTrade } from "@/lib/positions/trade-stats";
 import type { InlineKeyboard } from "@/lib/services/telegram";
 
 /**
- * Trading statistics in the Telegram bot: /stats (and /today, /week, /month, /all) answer with the
+ * Trading statistics in the Telegram bot: /stats (and /today, /yesterday, /week, /month, /all) answer with the
  * same figures as the Statistics tab; buttons under the message switch the period in place.
  */
 export const PERIOD_COMMANDS: Record<string, StatsPeriod> = {
   "/stats": "today",
   "/today": "today",
+  "/yesterday": "yesterday",
   "/week": "7d",
   "/month": "30d",
   "/all": "all",
@@ -17,15 +18,22 @@ export const PERIOD_COMMANDS: Record<string, StatsPeriod> = {
 
 const PERIOD_TITLES: Record<StatsPeriod, string> = {
   today: "сегодня",
+  yesterday: "вчера",
   "7d": "7 дней",
   "30d": "30 дней",
   all: "всё время",
 };
-const BUTTONS: [StatsPeriod, string][] = [
-  ["today", "Сегодня"],
-  ["7d", "7 дней"],
-  ["30d", "30 дней"],
-  ["all", "Всё"],
+// Two rows: five buttons in one would cut their labels on a phone.
+const BUTTON_ROWS: [StatsPeriod, string][][] = [
+  [
+    ["today", "Сегодня"],
+    ["yesterday", "Вчера"],
+  ],
+  [
+    ["7d", "7 дней"],
+    ["30d", "30 дней"],
+    ["all", "Всё"],
+  ],
 ];
 const EXCHANGE_NAMES: Record<string, string> = {
   binance: "Binance", bybit: "Bybit", gate: "Gate", okx: "OKX", bingx: "BingX", bitget: "Bitget",
@@ -39,7 +47,7 @@ export function commandOf(text: string): string {
 
 export function parseStatsCallback(data: string | undefined): StatsPeriod | null {
   const period = data?.startsWith("stats:") ? data.slice(6) : null;
-  return period && BUTTONS.some(([p]) => p === period) ? (period as StatsPeriod) : null;
+  return period && BUTTON_ROWS.flat().some(([p]) => p === period) ? (period as StatsPeriod) : null;
 }
 
 export const money = (value: number) =>
@@ -77,7 +85,7 @@ function collapsible(lines: string[], more: number): string {
 export function formatStatsMessage(period: StatsPeriod, trades: StatsTrade[], now = Date.now()): string {
   const title = `📊 <b>Статистика торговли · ${PERIOD_TITLES[period]}</b>`;
   if (!trades.length) return `${title}\n\nЗакрытых сделок за этот период нет.`;
-  const stats = tradeStats(trades, periodStart(period, now), now);
+  const stats = tradeStats(trades, periodStart(period, now), periodLast(period, now));
   const s = stats.summary;
   const side = (t: StatsTrade) => (t.side === "short" ? "шорт" : "лонг");
   const sections: string[] = [title];
@@ -117,7 +125,7 @@ export function formatStatsMessage(period: StatsPeriod, trades: StatsTrade[], no
   );
 
   // Newest first; within one day the time is enough, otherwise the date too.
-  const oneDay = period === "today";
+  const oneDay = period === "today" || period === "yesterday";
   const latest = [...trades].sort((a, b) => b.closedAt - a.closedAt);
   sections.push(
     `<b>Сделки</b> (${latest.length})\n` +
@@ -137,12 +145,12 @@ export function formatStatsMessage(period: StatsPeriod, trades: StatsTrade[], no
 }
 
 export function statsKeyboard(active: StatsPeriod, siteUrl: string | null): InlineKeyboard {
-  const rows: InlineKeyboard = [
-    BUTTONS.map(([period, label]) => ({
+  const rows: InlineKeyboard = BUTTON_ROWS.map((row) =>
+    row.map(([period, label]) => ({
       text: period === active ? `• ${label} •` : label,
       callback_data: `stats:${period}`,
     })),
-  ];
+  );
   if (siteUrl) rows.push([{ text: "Открыть на сайте", url: `${siteUrl}/ru/positions?tab=stats` }]);
   return rows;
 }
@@ -161,9 +169,8 @@ export async function chatUser(chatId: number) {
 
 /** The statistics message of one user for a period. */
 export async function statsMessage(userId: string, period: StatsPeriod, now = Date.now()) {
-  const from = periodStart(period, now);
   const rows = await prisma.closedTrade.findMany({
-    where: { userId, excluded: false, ...(from !== null ? { closedAt: { gte: new Date(from) } } : {}) },
+    where: { userId, excluded: false, ...periodRange(period, now) },
     orderBy: { closedAt: "desc" },
     take: 5_000,
     select: {

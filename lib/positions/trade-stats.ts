@@ -64,13 +64,34 @@ export function kyivDayStart(day: string): number {
   return utcMidnight - 2 * 3_600_000;
 }
 
-export type StatsPeriod = "today" | "7d" | "30d" | "all";
+export type StatsPeriod = "today" | "yesterday" | "7d" | "30d" | "all";
 
 /** Start of a period counted in Kyiv days (today = since midnight; 7d = today and 6 days before). */
 export function periodStart(period: StatsPeriod, now = Date.now()): number | null {
   if (period === "all") return null;
+  // One moment before today's midnight, so a 23-hour day cannot skip yesterday.
+  if (period === "yesterday") return kyivDayStart(kyivDay(kyivDayStart(kyivDay(now)) - 1));
   const days = period === "today" ? 0 : period === "7d" ? 6 : 29;
   return kyivDayStart(kyivDay(now - days * DAY_MS));
+}
+
+/** The moment a period stops (exclusive); null when it runs up to now. */
+export function periodEnd(period: StatsPeriod, now = Date.now()): number | null {
+  return period === "yesterday" ? kyivDayStart(kyivDay(now)) : null;
+}
+
+/** The `closedAt` filter of a period. */
+export function periodRange(period: StatsPeriod, now = Date.now()) {
+  const from = periodStart(period, now);
+  const to = periodEnd(period, now);
+  if (from === null) return {};
+  return { closedAt: { gte: new Date(from), ...(to !== null ? { lt: new Date(to) } : {}) } };
+}
+
+/** The last moment a period covers, so the day bars stop there. */
+export function periodLast(period: StatsPeriod, now = Date.now()): number {
+  const to = periodEnd(period, now);
+  return to === null ? now : to - 1;
 }
 
 function group(

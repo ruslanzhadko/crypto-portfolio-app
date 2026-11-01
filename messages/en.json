@@ -1245,6 +1245,7 @@
     "period": "Period",
     "periods": {
       "today": "Today",
+      "yesterday": "Yesterday",
       "7d": "7 days",
       "30d": "30 days",
       "all": "All"
