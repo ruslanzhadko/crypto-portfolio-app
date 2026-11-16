@@ -50,6 +50,30 @@ const RECHECK_SKEW_MS = 5_000;
 const RESTART_WINDOW_MS = 10 * 60_000;
 const ENTRY_TOLERANCE = 0.005;
 
+/**
+ * A trade of the same symbol closed after this cycle's reported start (a flip from long to short
+ * within seconds): the symbol's ledger since that start also holds the earlier trade's realized PnL,
+ * so it cannot be the result of this one. The trade rebuilt from fills is used instead.
+ */
+async function closedInCycle(
+  connectionId: string,
+  input: Pick<ClosedInput, "symbol" | "since" | "lastSeenAt">,
+) {
+  const earlier = await prisma.closedTrade.findMany({
+    where: {
+      connectionId,
+      symbol: input.symbol,
+      closedAt: {
+        gte: new Date(input.since - RECHECK_SKEW_MS),
+        lt: new Date(input.lastSeenAt),
+      },
+    },
+    select: { id: true },
+    take: 1,
+  });
+  return earlier.length > 0;
+}
+
 export type Connection = Prisma.ExchangeConnectionGetPayload<{
   include: { wallet: true };
 }>;
@@ -468,7 +492,12 @@ export class PositionAlertService {
       try {
         const client = await connectionClient(item.row);
         if (client.adapter.closedResult)
-          exact = await client.adapter.closedResult(item.input);
+          exact = await client.adapter.closedResult({
+            ...item.input,
+            otherLeg:
+              item.input.otherLeg ||
+              (await closedInCycle(item.row.id, item.input)),
+          });
         else supported = false;
       } catch {
         // Treated as "not yet": retried until the deadline.
@@ -591,8 +620,8 @@ export class PositionAlertService {
     const adapter = await this.verifiedAdapter(item.row);
     const p = item.event.position;
     let pnl: string | null = null;
-    if (!item.event.exact && item.since !== null && adapter.closedResult)
-      pnl = await adapter.closedResult({
+    if (!item.event.exact && item.since !== null && adapter.closedResult) {
+      const input = {
         symbol: p.symbol,
         base: p.base,
         settle: p.settle,
@@ -600,7 +629,10 @@ export class PositionAlertService {
         since: item.since,
         lastSeenAt: item.lastSeenAt,
         otherLeg: item.otherLeg,
-      });
+      };
+      if (!input.otherLeg) input.otherLeg = await closedInCycle(item.row.id, input);
+      pnl = await adapter.closedResult(input);
+    }
     if (!adapter.closedTrades)
       return pnl === null ? null : { pnl, withoutFunding: false, trade: null, tradeExpected: false };
     const duration = item.event.durationMs;

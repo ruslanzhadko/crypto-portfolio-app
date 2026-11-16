@@ -256,6 +256,41 @@ describe("PositionAlertService", () => {
     expect(deliver.mock.calls[0]![1][0].exact).toBeUndefined();
   });
 
+  it("does not take the ledger when an earlier trade of the symbol closed inside the cycle (a flip)", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    const open = {
+      ...btc,
+      funding: {
+        amount: "0",
+        realizedPnl: "0",
+        tradingFees: "0",
+        since: 1_000,
+        updatedAt: 1_000,
+        status: "complete" as const,
+      },
+    };
+    service.observe({ id: "c1", userId: "u1" }, result(open), 100_000);
+    await service.flush();
+    service.observe({ id: "c1", userId: "u1" }, result(), 115_000);
+    // The previous long of the symbol closed a few seconds after the short's cycle start.
+    db.closedTrade.findMany.mockResolvedValue([{ id: "long" }]);
+    adapter.closedResult.mockResolvedValue(null);
+    await service.resolveClosed(115_000 + 2 * 60_000);
+    expect(adapter.closedResult).toHaveBeenLastCalledWith(
+      expect.objectContaining({ symbol: "BTCUSDT", otherLeg: true }),
+    );
+    expect(db.closedTrade.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          connectionId: "c1",
+          symbol: "BTCUSDT",
+          closedAt: { gte: new Date(1_000 - 5_000), lt: new Date(100_000) },
+        }),
+      }),
+    );
+  });
+
   it("treats the first read of a never-synced connection as the base, not as opened positions", async () => {
     db.exchangeConnection.findMany.mockResolvedValue([row("c1", null)]);
     const service = new PositionAlertService();
