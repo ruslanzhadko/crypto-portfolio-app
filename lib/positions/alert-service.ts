@@ -287,6 +287,7 @@ export class PositionAlertService {
             liquidationPrice: text(p.liquidationPrice),
             leverage: text(p.leverage),
             margin: text(p.margin),
+            marginMode: p.marginMode,
             unrealizedPnlUsd: text(p.unrealizedPnlUsd),
           }));
         this.watch.baseline(
@@ -554,7 +555,12 @@ export class PositionAlertService {
         this.rechecks.push(item);
         continue;
       }
-      const final = await this.finalResult(item, now).catch(() => null);
+      const final = await this.finalResult(item, now).catch((error: unknown) => {
+        console.warn(
+          `[position-alerts] final result ${item.row.exchange} ${item.event.position.symbol} failed: ${safeError(error)}`,
+        );
+        return null;
+      });
       const again = () => {
         item.step += 1;
         const delay = RECHECK_DELAYS_MS[item.step];
@@ -620,6 +626,17 @@ export class PositionAlertService {
     const adapter = await this.verifiedAdapter(item.row);
     const p = item.event.position;
     let pnl: string | null = null;
+    // Why no exchange figure came: field names and counts only, never keys or amounts of others.
+    const why: string[] = [];
+    const miss = () => {
+      console.log(
+        `[position-alerts] no exchange figure ${item.row.exchange} ${p.symbol} ${p.side} (recheck ${item.step + 1}/${RECHECK_DELAYS_MS.length}${item.event.liquidated ? ", liquidation estimate" : ""}): ${why.join("; ")}`,
+      );
+      return null;
+    };
+    if (item.event.exact) why.push("ledger: already exact");
+    else if (item.since === null) why.push("ledger: no cycle start");
+    else if (!adapter.closedResult) why.push("ledger: no reader");
     if (!item.event.exact && item.since !== null && adapter.closedResult) {
       const input = {
         symbol: p.symbol,
@@ -632,9 +649,14 @@ export class PositionAlertService {
       };
       if (!input.otherLeg) input.otherLeg = await closedInCycle(item.row.id, input);
       pnl = await adapter.closedResult(input);
+      if (pnl === null)
+        why.push(input.otherLeg ? "ledger: another trade of the symbol in the cycle" : "ledger: no closing entry");
     }
-    if (!adapter.closedTrades)
-      return pnl === null ? null : { pnl, withoutFunding: false, trade: null, tradeExpected: false };
+    if (!adapter.closedTrades) {
+      if (pnl !== null) return { pnl, withoutFunding: false, trade: null, tradeExpected: false };
+      why.push("trades: no reader");
+      return miss();
+    }
     const duration = item.event.durationMs;
     const from =
       duration === null
@@ -645,20 +667,30 @@ export class PositionAlertService {
       if (pnl === null) throw error;
       return [];
     });
-    const matches = trades.filter(
-      (t) =>
-        t.base === p.base &&
-        t.settle === p.settle &&
-        t.side === p.side &&
-        t.closedAt >= item.lastSeenAt - RECHECK_SKEW_MS &&
-        t.closedAt <= item.closedAt + RECHECK_SKEW_MS &&
-        sameEntry(t.entryPrice, p.entryPrice),
+    const coin = trades.filter(
+      (t) => t.base === p.base && t.settle === p.settle && t.side === p.side,
     );
+    const inTime = coin.filter(
+      (t) =>
+        t.closedAt >= item.lastSeenAt - RECHECK_SKEW_MS &&
+        t.closedAt <= item.closedAt + RECHECK_SKEW_MS,
+    );
+    const matches = inTime.filter((t) => sameEntry(t.entryPrice, p.entryPrice));
     // Two trades between the same two polls cannot be told apart: the estimate stays.
     const trade = matches.length === 1 ? matches[0]! : null;
     const fromFills = pnl === null && !item.event.exact && trade !== null;
     if (fromFills) pnl = trade.pnl;
-    if (pnl === null && trade === null) return null;
+    if (pnl === null && trade === null) {
+      why.push(
+        `trades: ${trades.length} read, ${coin.length} of ${p.base} ${p.side}, ${inTime.length} closed between the polls` +
+          (inTime.length
+            ? `, ${matches.length} with entry ${p.entryPrice ?? "?"} (theirs ${inTime.map((t) => t.entryPrice ?? "?").join(", ")})`
+            : coin.length
+              ? ` (closest close ${Math.round(Math.min(...coin.map((t) => Math.abs(t.closedAt - item.closedAt))) / 1000)} s away)`
+              : ""),
+      );
+      return miss();
+    }
     return { pnl, withoutFunding: fromFills, trade, tradeExpected: true };
   }
 

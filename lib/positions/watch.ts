@@ -24,6 +24,8 @@ export type WatchedPosition = Pick<
   | "unrealizedPnlUsd"
 > & {
   accountKey: string;
+  /** "isolated" or "cross"; absent on positions built before it was kept. */
+  marginMode?: string | null;
   /** Settle-currency PnL and cycle accounting, when the poll has them (not stored rows). */
   unrealizedPnl?: string | null;
   funding?: OpenPosition["funding"];
@@ -53,6 +55,8 @@ export type PositionEvent =
       fromTrade?: boolean;
       /** The exchange's moment of the close, when `fromTrade`. */
       closedAt?: number;
+      /** Isolated position last seen at its liquidation price: the estimate is the whole margin. */
+      liquidated?: boolean;
     }
   | { kind: "liquidation"; position: WatchedPosition; distancePercent: number }
   | {
@@ -90,15 +94,40 @@ const cycleStart = (p: WatchedPosition) =>
     : null;
 
 /**
+ * An isolated position that vanished this close to its liquidation price was most likely liquidated:
+ * the exchange takes the whole isolated margin, and the price between the last poll and the
+ * liquidation (plus the liquidation fee) is not in the last unrealized PnL. Closing by hand this
+ * close to liquidation loses nearly the whole margin anyway.
+ */
+export const LIQUIDATED_DISTANCE_PERCENT = 1;
+
+function liquidatedLoss(p: WatchedPosition): number | null {
+  if (p.marginMode !== "isolated") return null;
+  const margin = num(p.margin),
+    unrealized = num(p.unrealizedPnl ?? p.unrealizedPnlUsd),
+    distance = liquidationDistance(p);
+  if (margin === null || margin <= 0 || unrealized === null || unrealized >= 0) return null;
+  if (distance === null || distance > LIQUIDATED_DISTANCE_PERCENT) return null;
+  return -margin;
+}
+
+/**
  * Closed result in USD: unrealized PnL plus the cycle's realized PnL, funding and fees when the
  * history is complete. Settle-currency amounts use the position's own PnL rate (else 1:1).
  */
 export function closedResult(p: WatchedPosition): {
   pnlUsd: number | null;
   includesCosts: boolean;
+  liquidated?: boolean;
 } {
-  const unrealized = num(p.unrealizedPnlUsd);
-  if (unrealized === null) return { pnlUsd: null, includesCosts: false };
+  const polled = num(p.unrealizedPnlUsd);
+  if (polled === null) return { pnlUsd: null, includesCosts: false };
+  const native = num(p.unrealizedPnl);
+  const rate = native !== null && native !== 0 ? polled / native : 1;
+  const loss = liquidatedLoss(p);
+  // The margin is in the settle currency, like the native unrealized PnL.
+  const unrealized = loss === null ? polled : loss * rate;
+  const flag = loss === null ? {} : { liquidated: true };
   const f = p.funding;
   const realized = num(f?.realizedPnl),
     funding = num(f?.amount),
@@ -109,12 +138,11 @@ export function closedResult(p: WatchedPosition): {
     funding === null ||
     fees === null
   )
-    return { pnlUsd: unrealized, includesCosts: false };
-  const native = num(p.unrealizedPnl);
-  const rate = native !== null && native !== 0 ? unrealized / native : 1;
+    return { pnlUsd: unrealized, includesCosts: false, ...flag };
   return {
     pnlUsd: unrealized + (realized + funding - fees) * rate,
     includesCosts: true,
+    ...flag,
   };
 }
 

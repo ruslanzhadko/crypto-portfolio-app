@@ -228,6 +228,32 @@ describe("closed position result", () => {
       durationMs: 45 * 60_000,
     });
   });
+
+  it("estimates an isolated position gone at its liquidation price as the whole margin", () => {
+    const near = {
+      marginMode: "isolated",
+      margin: "25",
+      markPrice: "0.02874",
+      liquidationPrice: "0.0286",
+      unrealizedPnl: "-10.84",
+      unrealizedPnlUsd: "-10.84",
+    };
+    const watch = new PositionWatch();
+    watch.observe("c1", futures(), all, 0);
+    watch.observe("c1", futures(position(near)), all, 1);
+    const [closed] = watch.observe("c1", futures(), all, 2);
+    expect(closed).toMatchObject({ kind: "closed", pnlUsd: -25, liquidated: true });
+
+    // Cross margin, or still far from the liquidation price: the last unrealized PnL stays.
+    for (const over of [{ marginMode: "cross" }, { liquidationPrice: "0.027" }]) {
+      const other = new PositionWatch();
+      other.observe("c1", futures(), all, 0);
+      other.observe("c1", futures(position({ ...near, ...over })), all, 1);
+      const [result] = other.observe("c1", futures(), all, 2);
+      expect(result).toMatchObject({ kind: "closed", pnlUsd: -10.84 });
+      expect(result).not.toHaveProperty("liquidated");
+    }
+  });
 });
 
 describe("liquidationDistance", () => {
