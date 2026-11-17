@@ -87,7 +87,7 @@ async function tick() {
   const now = Date.now();
   const currentWindow = Math.floor(now / WINDOW_MS);
   if (currentWindow !== slot) {
-    // Runs on Vercel alongside the trigger work below; skipped at startup so a deploy adds no run.
+    // Runs here or on the site (see createUpdatePricesCaller) alongside the trigger work below; skipped at startup so a deploy adds no run.
     const updating =
       walletPrices && slot !== -1
         ? walletPrices
@@ -167,7 +167,7 @@ async function main() {
   );
   console.log(
     walletPrices
-      ? "[triggers] wallet prices are updated in every :00/:30 window"
+      ? `[triggers] wallet prices are updated in every :00/:30 window ${walletPrices.local ? "here (UPDATE_PRICES_LOCAL)" : "on the site"}`
       : "[triggers] CRON_SECRET not set: wallet prices stay with the external cron",
   );
   while (!stopping) {

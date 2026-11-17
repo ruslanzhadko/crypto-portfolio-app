@@ -38,8 +38,9 @@
   `/var/log/cryptoportfolio`; коммиты только сайта VM не пересобирает. Новый пилотный пользователь:
   `User.id` через запятую в Vercel (Production, redeploy) **и** в env-файл worker на VM.
 - **Фон без cron-job.org:** триггеры на VM (правила в памяти, цены Binance → Gate раз в 20 с, иначе
-  CoinGecko раз в 10 мин; MIGRATIONS.md §5a); тот же контейнер в окне :00/:30 вызывает
-  `/api/cron/update-prices` (§5b) — синхронизация кошельков, цены, снимки капитала, лидеры роста
+  CoinGecko раз в 10 мин; MIGRATIONS.md §5a); тот же контейнер в окне :00/:30 обновляет цены кошельков:
+  с `UPDATE_PRICES_LOCAL=1` сам (нужны ключи кошельков и цен сайта в `price-triggers.env`), иначе через
+  `/api/cron/update-prices` на Vercel (§5b) — синхронизация кошельков, цены, снимки капитала, лидеры роста
   (`TokenPriceSeries`/`TokenHoldingSeries`, §4b). Проверено по БД 25.10. Задачи в cron-job.org выключены.
 - **Neon:** ветка `production` 0,25–0,5 CU, база 83 МБ после удаления `PriceHistory` (25.10).
 - **Биржи:** Binance, Bybit, Gate, OKX, Hyperliquid, Aster (Main EVM и Binance Wallet, Shield Mode).

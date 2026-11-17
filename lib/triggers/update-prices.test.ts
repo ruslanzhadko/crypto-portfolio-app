@@ -47,4 +47,18 @@ describe("update-prices caller", () => {
     })) as unknown as typeof fetch)!;
     await expect(caller.run()).rejects.toThrow("HTTP 401");
   });
+
+  it("runs the update in this process with UPDATE_PRICES_LOCAL=1, without the site", async () => {
+    let fetched = false;
+    const caller = createUpdatePricesCaller(
+      { UPDATE_PRICES_LOCAL: "1" } as unknown as NodeJS.ProcessEnv,
+      (async () => {
+        fetched = true;
+      }) as unknown as typeof fetch,
+      async () => ({ walletsSynced: 1, pricesUpdated: 5, pricesWritten: 4, balancesRecalculated: 2, snapshotsCreated: 1, durationMs: 900 }),
+    )!;
+    expect(caller.local).toBe(true);
+    expect(await caller.run()).toBe("wallets 1, prices 4/5 written, balances 2, snapshots 1, 900 ms");
+    expect(fetched).toBe(false);
+  });
 });

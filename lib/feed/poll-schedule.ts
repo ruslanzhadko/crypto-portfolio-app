@@ -1,4 +1,5 @@
-export const FEED_FAST_POLL_MS = 3_000;
+/** An attentive reader: often enough for a news feed, rare enough for the Vercel function budget. */
+export const FEED_FAST_POLL_MS = 15_000;
 const SLOW_POLL_MS = 60_000;
 const FAST_UNTIL_MS = 10 * 60_000;
 const SLOW_UNTIL_MS = 30 * 60_000;
