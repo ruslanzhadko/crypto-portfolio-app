@@ -166,6 +166,27 @@ describe("PositionAlertService", () => {
     expect(service.recent(key, 10_000)).toBeNull();
   });
 
+  it("reads different exchanges in parallel and one exchange's connections in turn", async () => {
+    db.exchangeConnection.findMany.mockResolvedValue([
+      row("c1"),
+      { ...row("c2"), exchange: "bybit" },
+      row("c3"),
+    ]);
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    let running = 0,
+      peak = 0;
+    adapter.fetch.mockImplementation(async () => {
+      peak = Math.max(peak, ++running);
+      await new Promise((r) => setTimeout(r, 5));
+      running--;
+      return result(btc);
+    });
+    await service.pollDue(Date.now());
+    expect(adapter.fetch).toHaveBeenCalledTimes(3);
+    expect(peak).toBe(2);
+  });
+
   it("slows down an exchange that answers with a rate limit", async () => {
     const service = new PositionAlertService();
     await service.maybeReload(null, 0);
