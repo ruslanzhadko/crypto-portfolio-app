@@ -13,6 +13,28 @@ export interface ChangelogEntry {
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    date: "2026-11-21",
+    title: {
+      ru: "Aster: капитал с USD1 в залоге",
+      uk: "Aster: капітал з USD1 у заставі",
+      en: "Aster: equity with USD1 collateral",
+    },
+    items: {
+      ru: [
+        "Остаток USD1 на фьючерсах Aster больше не скрывает капитал и PnL всего счёта: USD1 теперь оценивается.",
+        "Если у монеты нет цены, считается остальной капитал, а не прочерк.",
+      ],
+      uk: [
+        "Залишок USD1 на ф'ючерсах Aster більше не приховує капітал і PnL усього рахунку: USD1 тепер оцінюється.",
+        "Якщо монета не має ціни, рахується решта капіталу, а не прочерк.",
+      ],
+      en: [
+        "A USD1 remainder on Aster futures no longer hides the whole account's equity and PnL: USD1 is now priced.",
+        "If a coin has no price, the rest of the equity is counted instead of a dash.",
+      ],
+    },
+  },
+  {
     date: "2026-11-02",
     title: {
       ru: "Статистика за вчера",
