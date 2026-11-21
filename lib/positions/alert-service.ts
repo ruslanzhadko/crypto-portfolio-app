@@ -756,21 +756,13 @@ export class PositionAlertService {
   }
 
   /**
-   * Reads positions of every connection that is due. Exchanges are read in parallel (each has
-   * its own rate budget); connections of one exchange stay one at a time.
+   * Reads positions of every connection that is due; one at a time, like the sync jobs.
+   * (Reading exchanges in parallel made every round wait for the slowest one, so the sync jobs
+   * between rounds fell further behind.)
    */
   async pollDue(now = Date.now()) {
-    const groups = new Map<string, Watched[]>();
-    for (const watched of this.connections.values()) {
-      if (!watched.alerts || now < watched.nextAt) continue;
-      const exchange = watched.row.exchange;
-      groups.set(exchange, [...(groups.get(exchange) ?? []), watched]);
-    }
-    await Promise.all(
-      [...groups.values()].map(async (list) => {
-        for (const watched of list) await this.pollOne(watched, now);
-      }),
-    );
+    for (const watched of [...this.connections.values()])
+      if (watched.alerts && now >= watched.nextAt) await this.pollOne(watched, now);
   }
 
   private async pollOne(watched: Watched, now: number) {
