@@ -342,6 +342,8 @@ export class PositionAlertService {
     const lastSeenAt = watched.observedAt;
     watched.observedAt = at;
     watched.latest = result;
+    // Set again by pollOne right after, when this read was the poller's own.
+    watched.polledAt = undefined;
     const events = this.watch.observe(c.id, result.accounts, settings, at);
     if (!events.length) return;
     const source = { label: watched.row.label, exchange: watched.row.exchange };
@@ -745,8 +747,7 @@ export class PositionAlertService {
     const watched = this.connections.get(c.id);
     if (
       !watched?.latest ||
-      !watched.polledAt ||
-      watched.polledAt !== watched.observedAt ||
+      watched.polledAt === undefined ||
       now - watched.polledAt > maxAgeMs ||
       watched.row.credentialVersion !== c.credentialVersion
     )
@@ -798,7 +799,7 @@ export class PositionAlertService {
       const result = await client.adapter.fetch(false);
       const at = Date.now();
       this.observe(watched.row, result, at);
-      watched.polledAt = at;
+      if (watched.latest === result) watched.polledAt = at;
       const limited = result.failedAccounts.some(
         (a) => a.errorCode === "RATE_LIMIT",
       );
