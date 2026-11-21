@@ -56,6 +56,22 @@ export function setPositionObserver(observer: typeof positionObserver) {
   positionObserver = observer;
 }
 
+/**
+ * The alert poller's last read of a connection, when it is younger than `maxAgeMs` and made with
+ * the same key. Without it every sync job reads the exchange again and, in one serial loop with
+ * the 15 s alert polls, the jobs fall behind the 30 s cadence (positions looked stale on the site).
+ */
+let recentReader:
+  | ((
+      c: { id: string; credentialVersion: number },
+      maxAgeMs: number,
+    ) => { result: SyncResult; at: number } | null)
+  | null = null;
+export function setRecentReader(reader: typeof recentReader) {
+  recentReader = reader;
+}
+const REUSE_MS = 10_000;
+
 const clients = new Map<
   string,
   { version: number; adapter: ExchangeAdapter; touched: number }
@@ -498,22 +514,31 @@ export async function runOneJob(
   try {
     const cached = await connectionClient(c);
     cached.touched = Date.now();
-    const identity = await cached.adapter.verify();
-    const result = await cached.adapter.fetch(
+    const balances =
       job.forceBalances ||
-        !c.balancesAt ||
-        Date.now() - c.balancesAt.getTime() >= BALANCE_INTERVAL_MS,
-    );
-    result.externalAccountId =
-      identity.externalAccountId ?? result.externalAccountId;
-    positionObserver?.(c, result, Date.now());
+      !c.balancesAt ||
+      Date.now() - c.balancesAt.getTime() >= BALANCE_INTERVAL_MS;
+    // The alert poller read the same positions seconds ago: store that read
+    // instead of asking the exchange again (balance refreshes always read).
+    const reused = balances ? null : (recentReader?.(c, REUSE_MS) ?? null);
+    let result: SyncResult, observedAt: number;
+    if (reused) {
+      ({ result, at: observedAt } = reused);
+    } else {
+      const identity = await cached.adapter.verify();
+      result = await cached.adapter.fetch(balances);
+      observedAt = Date.now();
+      result.externalAccountId =
+        identity.externalAccountId ?? result.externalAccountId;
+      positionObserver?.(c, result, observedAt);
+    }
     if (
       await commitResult(
         c.id,
         c.credentialVersion,
         job.token,
         result,
-        new Date(),
+        new Date(observedAt),
         isActive(c.userId) ? undefined : nextIdleSlot(),
       )
     ) {

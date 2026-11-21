@@ -149,6 +149,44 @@ describe("PositionAlertService", () => {
     expect(adapter.fetch).not.toHaveBeenCalled();
   });
 
+  it("hands its own fresh read to a sync job, never a stale one or one under another key", async () => {
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    const read = result(btc);
+    adapter.fetch.mockResolvedValue(read);
+    const start = Date.now();
+    await service.pollDue(start);
+    const key = { id: "c1", credentialVersion: 1 };
+    const recent = service.recent(key, 10_000, start + 5_000);
+    expect(recent?.result).toBe(read);
+    expect(service.recent(key, 10_000, recent!.at + 10_001)).toBeNull();
+    expect(service.recent({ ...key, credentialVersion: 2 }, 10_000)).toBeNull();
+    // A sync job's own read is not offered back to the next job.
+    service.observe({ id: "c1", userId: "u1" }, result(), Date.now());
+    expect(service.recent(key, 10_000)).toBeNull();
+  });
+
+  it("reads different exchanges in parallel and one exchange's connections in turn", async () => {
+    db.exchangeConnection.findMany.mockResolvedValue([
+      row("c1"),
+      { ...row("c2"), exchange: "bybit" },
+      row("c3"),
+    ]);
+    const service = new PositionAlertService();
+    await service.maybeReload(null, 0);
+    let running = 0,
+      peak = 0;
+    adapter.fetch.mockImplementation(async () => {
+      peak = Math.max(peak, ++running);
+      await new Promise((r) => setTimeout(r, 5));
+      running--;
+      return result(btc);
+    });
+    await service.pollDue(Date.now());
+    expect(adapter.fetch).toHaveBeenCalledTimes(3);
+    expect(peak).toBe(2);
+  });
+
   it("slows down an exchange that answers with a rate limit", async () => {
     const service = new PositionAlertService();
     await service.maybeReload(null, 0);

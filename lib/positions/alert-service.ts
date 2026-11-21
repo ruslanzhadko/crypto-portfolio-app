@@ -83,6 +83,8 @@ type Watched = {
   observedAt: number;
   /** The last read, for the bot's /positions; only a recent complete one is reused. */
   latest?: SyncResult;
+  /** When this poller itself read `latest` (not a sync job); a sync job may store that read. */
+  polledAt?: number;
   /** The user wants position alerts from this connection: it is polled every 15 s. */
   alerts: boolean;
   /** Closes are stored for trading statistics (exchanges without a position history). */
@@ -305,6 +307,7 @@ export class PositionAlertService {
         nextAt: known?.nextAt ?? now,
         observedAt: known?.observedAt ?? Number.NEGATIVE_INFINITY,
         latest: known?.latest,
+        polledAt: known?.polledAt,
         alerts: alertsOn(row),
         record: !HISTORY_EXCHANGES.has(row.exchange),
       });
@@ -733,44 +736,78 @@ export class PositionAlertService {
     });
   }
 
-  /** Reads positions of every connection that is due; one at a time, like the sync jobs. */
+  /** This poller's own last read, for a sync job to store instead of reading again. */
+  recent(
+    c: { id: string; credentialVersion: number },
+    maxAgeMs: number,
+    now = Date.now(),
+  ): { result: SyncResult; at: number } | null {
+    const watched = this.connections.get(c.id);
+    if (
+      !watched?.latest ||
+      !watched.polledAt ||
+      watched.polledAt !== watched.observedAt ||
+      now - watched.polledAt > maxAgeMs ||
+      watched.row.credentialVersion !== c.credentialVersion
+    )
+      return null;
+    return { result: watched.latest, at: watched.polledAt };
+  }
+
+  /**
+   * Reads positions of every connection that is due. Exchanges are read in parallel (each has
+   * its own rate budget); connections of one exchange stay one at a time.
+   */
   async pollDue(now = Date.now()) {
+    const groups = new Map<string, Watched[]>();
     for (const watched of this.connections.values()) {
       if (!watched.alerts || now < watched.nextAt) continue;
       const exchange = watched.row.exchange;
-      const slow = (this.slowUntil.get(exchange) ?? 0) > now;
-      const interval = slow ? SLOW_POLL_MS : ALERT_POLL_MS;
-      // The key was replaced since the last load: reload the row before using it.
-      if (
-        (clientVersion(watched.row.id) ?? 0) > watched.row.credentialVersion
-      ) {
-        this.loadedWindow = -1;
-        continue;
+      groups.set(exchange, [...(groups.get(exchange) ?? []), watched]);
+    }
+    await Promise.all(
+      [...groups.values()].map(async (list) => {
+        for (const watched of list) await this.pollOne(watched, now);
+      }),
+    );
+  }
+
+  private async pollOne(watched: Watched, now: number) {
+    const exchange = watched.row.exchange;
+    const slow = (this.slowUntil.get(exchange) ?? 0) > now;
+    const interval = slow ? SLOW_POLL_MS : ALERT_POLL_MS;
+    // The key was replaced since the last load: reload the row before using it.
+    if (
+      (clientVersion(watched.row.id) ?? 0) > watched.row.credentialVersion
+    ) {
+      this.loadedWindow = -1;
+      return;
+    }
+    if (now - watched.observedAt < FRESH_MS) {
+      watched.nextAt = watched.observedAt + interval;
+      return;
+    }
+    try {
+      const client = await connectionClient(watched.row);
+      client.touched = Date.now();
+      // A new client must be verified first: some adapters learn the account mode there.
+      if (!this.verified.has(client.adapter)) {
+        await client.adapter.verify();
+        this.verified.add(client.adapter);
       }
-      if (now - watched.observedAt < FRESH_MS) {
-        watched.nextAt = watched.observedAt + interval;
-        continue;
-      }
-      try {
-        const client = await connectionClient(watched.row);
-        client.touched = Date.now();
-        // A new client must be verified first: some adapters learn the account mode there.
-        if (!this.verified.has(client.adapter)) {
-          await client.adapter.verify();
-          this.verified.add(client.adapter);
-        }
-        const result = await client.adapter.fetch(false);
-        this.observe(watched.row, result);
-        const limited = result.failedAccounts.some(
-          (a) => a.errorCode === "RATE_LIMIT",
-        );
-        if (limited) this.rateLimited(exchange, now);
-        watched.nextAt = Date.now() + (limited ? SLOW_POLL_MS : interval);
-      } catch (error) {
-        const code = safeError(error);
-        if (code === "RATE_LIMIT") this.rateLimited(exchange, now);
-        watched.nextAt = Date.now() + SLOW_POLL_MS;
-      }
+      const result = await client.adapter.fetch(false);
+      const at = Date.now();
+      this.observe(watched.row, result, at);
+      watched.polledAt = at;
+      const limited = result.failedAccounts.some(
+        (a) => a.errorCode === "RATE_LIMIT",
+      );
+      if (limited) this.rateLimited(exchange, now);
+      watched.nextAt = Date.now() + (limited ? SLOW_POLL_MS : interval);
+    } catch (error) {
+      const code = safeError(error);
+      if (code === "RATE_LIMIT") this.rateLimited(exchange, now);
+      watched.nextAt = Date.now() + SLOW_POLL_MS;
     }
   }
 

@@ -11,6 +11,7 @@ import {
   pullForward,
   runOneJob,
   setPositionObserver,
+  setRecentReader,
   workerHeartbeat,
 } from "../lib/exchanges/worker";
 import { PositionAlertService } from "../lib/positions/alert-service";
@@ -73,6 +74,7 @@ async function main() {
   const daily = new DailySummary();
   const alertSignal = createAlertSignalClient();
   setPositionObserver((c, result, at) => alerts.observe(c, result, at));
+  setRecentReader((c, maxAgeMs) => alerts.recent(c, maxAgeMs));
   if (!process.env.TELEGRAM_BOT_TOKEN)
     console.warn(
       "[position-alerts] TELEGRAM_BOT_TOKEN not set: position alerts go to the site log only",
