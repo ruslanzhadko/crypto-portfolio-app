@@ -158,6 +158,49 @@ describe("Aster authenticated API Wallet", () => {
     });
     expect(result.failedAccounts).toEqual([]);
   });
+  it("keeps equity when a small collateral asset has no price", async () => {
+    const f = fixture();
+    const base = f.request.getMockImplementation()!;
+    f.request.mockImplementation(async (path: string) => {
+      const value = await base(path);
+      if (path !== "v3/account" || !("assets" in value)) return value;
+      value.assets.push({
+        asset: "USD1",
+        walletBalance: "0.22",
+        marginBalance: "0.22",
+        availableBalance: "0.22",
+        unrealizedProfit: "0",
+      });
+      return value;
+    });
+    await f.adapter.verify();
+    const result = await f.adapter.fetch();
+    expect(result.accounts[0]).toMatchObject({
+      equityUsd: "1188",
+      availableUsd: "772.2",
+      unrealizedPnlUsd: "198",
+      complete: false,
+      errorCode: "UNPRICED_ASSETS",
+    });
+    expect(
+      result.accounts[0]!.balances.find((b) => b.symbol === "USD1"),
+    ).toMatchObject({ total: "0.22", usdValue: null });
+  });
+  it("leaves equity unknown when no collateral asset is priced", async () => {
+    const f = fixture();
+    const adapter = new AsterApiAdapter(
+      user,
+      signer,
+      f.request,
+      async () => new Map(),
+    );
+    await adapter.verify();
+    expect((await adapter.fetch()).accounts[0]).toMatchObject({
+      equityUsd: null,
+      unrealizedPnlUsd: null,
+      complete: false,
+    });
+  });
   it("never forwards credentials in transport failures", async () => {
     vi.spyOn(aster.prototype, "request").mockRejectedValue(
       new Error("secret=private signed query"),

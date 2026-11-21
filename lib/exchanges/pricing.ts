@@ -5,6 +5,8 @@ const IDS = [
   ["USDT", "tether"],
   ["USDC", "usd-coin"],
 ] as const;
+/** Collateral some exchanges accept (Aster); a missing quote only leaves that asset unpriced. */
+const OPTIONAL_IDS = [["USD1", "usd1-wlfi"]] as const;
 /** Stablecoin quotes: every 30 minutes is plenty and keeps CoinGecko inside its monthly budget. */
 const FRESH_MS = 30 * 60_000;
 /** Stablecoin quotes barely move; a recent verified quote beats an unknown equity. */
@@ -13,11 +15,12 @@ const FALLBACK_MS = 6 * 3600_000;
 let cached: { until: number; prices: Map<string, string> } | undefined;
 let lastGood: { at: number; prices: Map<string, string> } | undefined;
 let inflight: Promise<Map<string, string>> | undefined;
+const optional = new Map<string, { at: number; price: string }>();
 
 async function load(): Promise<Map<string, string>> {
   try {
     const result = await fetchPricesByIds(
-      IDS.map(([, id]) => id),
+      [...IDS, ...OPTIONAL_IDS].map(([, id]) => id),
       { attempts: 2, timeoutMs: 10_000 },
     );
     const prices = new Map<string, string>();
@@ -26,6 +29,15 @@ async function load(): Promise<Map<string, string>> {
       if (price && price > 0) prices.set(symbol, decimal(price)!);
     }
     if (prices.size === IDS.length) {
+      for (const [symbol, id] of OPTIONAL_IDS) {
+        const price = result.get(id)?.price;
+        if (price && price > 0)
+          optional.set(symbol, { at: Date.now(), price: decimal(price)! });
+        // Own timestamp, so a carried-over quote never outlives FALLBACK_MS.
+        const quote = optional.get(symbol);
+        if (quote && Date.now() - quote.at < FALLBACK_MS)
+          prices.set(symbol, quote.price);
+      }
       cached = { until: Date.now() + FRESH_MS, prices };
       lastGood = { at: Date.now(), prices };
       return prices;
@@ -55,4 +67,5 @@ export async function settlementPrices(): Promise<Map<string, string>> {
 /** Test hook. */
 export function resetSettlementPrices() {
   cached = lastGood = inflight = undefined;
+  optional.clear();
 }

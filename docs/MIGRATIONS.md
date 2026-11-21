@@ -261,6 +261,15 @@ Vercel: синхронизация кошельков старше 4 ч (до 10
 
 Откат: убрать строку `CRON_SECRET` из env, пересоздать контейнер, включить задачу в cron-job.org.
 
+**Работа на самой VM (17.11, лимит Vercel Hobby):** с `UPDATE_PRICES_LOCAL=1` контейнер выполняет
+обновление сам, без функции Vercel. Добавить ключи (значения из Vercel, вводятся скрыто; пустой ввод
+пропускает ключ) и пересоздать контейнер, как в п. 2:
+```bash
+cd ~/.config/cryptoportfolio && grep -E '^(EXCHANGES_ENABLED|EXCHANGES_PILOT_USER_IDS)=' exchange-production.env >> price-triggers.env && for k in ANKR_API_KEY ETHERSCAN_API_KEY HELIUS_API_KEY TONAPI_KEY ROBINHOOD_BLOCKSCOUT_API_KEY; do read -rsp "$k: " t; echo; [ -n "$t" ] && echo "$k=$t" >> price-triggers.env; done; unset t; echo UPDATE_PRICES_LOCAL=1 >> price-triggers.env && cut -d= -f1 price-triggers.env
+```
+В логе: `wallet prices are updated in every :00/:30 window here (UPDATE_PRICES_LOCAL)`. Откат: удалить
+строку `UPDATE_PRICES_LOCAL=1`, пересоздать контейнер.
+
 ## 6. Переезд VM: GCP → платный VPS (этап E2, декабрь)
 
 ### 6.1 Выбор

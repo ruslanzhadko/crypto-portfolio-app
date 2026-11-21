@@ -321,45 +321,30 @@ export class AsterApiAdapter implements ExchangeAdapter {
       })
       .filter((b) => !new D(b.total).isZero());
     const relevant = assets.filter((r) => !new D(rd(r.marginBalance)).isZero());
+    const priced = relevant.filter((r) => rates.has(textField(r.asset)));
     const complete =
-      relevant.every((r) => rates.has(textField(r.asset))) &&
+      priced.length === relevant.length &&
       positions.every((p) => p.unrealizedPnlUsd !== null);
+    // An unpriced collateral asset (e.g. a USD1 remainder) is left out of the
+    // totals and flagged, instead of hiding the whole account's equity.
+    const known = relevant.length === 0 || priced.length > 0;
+    const total = (field: string) =>
+      known
+        ? sum(
+            priced.map((r) =>
+              multiply(rd(r[field]), rates.get(textField(r.asset)) ?? null),
+            ),
+          )
+        : null;
     return {
       accounts: [
         {
           accountKey: "futures",
           kind: "futures",
           mode: "api-wallet",
-          equityUsd: complete
-            ? sum(
-                assets.map((r) =>
-                  multiply(
-                    rd(r.marginBalance),
-                    rates.get(textField(r.asset)) ?? null,
-                  ),
-                ),
-              )
-            : null,
-          availableUsd: complete
-            ? sum(
-                assets.map((r) =>
-                  multiply(
-                    rd(r.availableBalance),
-                    rates.get(textField(r.asset)) ?? null,
-                  ),
-                ),
-              )
-            : null,
-          unrealizedPnlUsd: complete
-            ? sum(
-                assets.map((r) =>
-                  multiply(
-                    rd(r.unrealizedProfit),
-                    rates.get(textField(r.asset)) ?? null,
-                  ),
-                ),
-              )
-            : null,
+          equityUsd: total("marginBalance"),
+          availableUsd: total("availableBalance"),
+          unrealizedPnlUsd: total("unrealizedProfit"),
           complete,
           errorCode: complete ? null : "UNPRICED_ASSETS",
           balances,

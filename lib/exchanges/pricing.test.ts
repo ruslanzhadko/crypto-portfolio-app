@@ -36,6 +36,25 @@ describe("settlement prices", () => {
     expect((await settlementPrices()).size).toBe(0);
   });
 
+  it("prices USD1 when quoted and never lets its gap drop USDT", async () => {
+    fetchPricesByIds.mockResolvedValueOnce(
+      new Map([...quotes(0.999, 1), ["usd1-wlfi", { price: 0.9993 }]]),
+    );
+    expect((await settlementPrices()).get("USD1")).toBe("0.9993");
+    // Next refresh lacks USD1: the earlier quote is kept within the fallback window.
+    vi.advanceTimersByTime(31 * 60_000);
+    fetchPricesByIds.mockResolvedValueOnce(quotes(0.998, 1));
+    const later = await settlementPrices();
+    expect(later.get("USDT")).toBe("0.998");
+    expect(later.get("USD1")).toBe("0.9993");
+    // Too old: USD1 is unknown again while USDT stays fresh.
+    vi.advanceTimersByTime(7 * 3600_000);
+    fetchPricesByIds.mockResolvedValueOnce(quotes(0.997, 1));
+    const old = await settlementPrices();
+    expect(old.get("USDT")).toBe("0.997");
+    expect(old.has("USD1")).toBe(false);
+  });
+
   it("never caches an empty result", async () => {
     fetchPricesByIds.mockRejectedValueOnce(new Error("down"));
     expect((await settlementPrices()).size).toBe(0);
